@@ -124,60 +124,57 @@ export function FeedShell() {
 <option value="rules">{"共现候选"}</option>
 </NativeSelect>
 </Label>
-{"\n        "}<fieldset id="rule-section" className="rule-section" hidden disabled>
-{"\n          "}<div className="label-row">
-<Label htmlFor="rule-config">{"生成预设"}</Label>
-<IconButton id="reload-rule-configs" icon={RefreshCw} label="刷新生成预设" variant="ghost" type="button" />
-</div>
-{"\n          "}<NativeSelect id="rule-config" required aria-label="生成预设" size="sm">
-</NativeSelect>
-{"\n          "}<p id="rule-config-note" className="hint" role="status" hidden />
-{"\n          "}<Label>{"抽取模式"}<NativeSelect id="rule-mode" size="sm">
-<option value="random_each_run">{"每次随机"}</option>
-<option value="fixed_seed">{"固定提示词种子"}</option>
-<option value="sequence">{"连续序列"}</option>
-</NativeSelect>
-</Label>
-{"\n          "}<fieldset id="rule-seed-fields" hidden disabled>
-{"\n            "}<Label><span className="field-caption">{"提示词种子"}<HelpTip text="控制共现标签抽取，与图像种子独立。" /></span><Input id="rule-seed" type="number" min="0" max="9007199254740991" step="1" required defaultValue="0" />
-
-</Label>
-{"\n            "}<Label>{"种子生成后"}<NativeSelect id="rule-seed-control" size="sm">
-<option value="fixed">{"固定"}</option>
-<option value="increment">{"递增"}</option>
-<option value="decrement">{"递减"}</option>
-<option value="randomize">{"随机"}</option>
-</NativeSelect>
-</Label>
-{"\n          "}</fieldset>
-{"\n          "}<fieldset id="rule-sequence-fields" hidden disabled>
-{"\n            "}<Label><span className="field-caption">{"帧序号"}<HelpTip text="同一提示词种子下按帧衔接，0 为起始帧。" /></span><Input id="sequence-step" type="number" min="0" max="1000" step="1" required defaultValue="0" />
-
-</Label>
-{"\n            "}<Label>{"帧序号生成后"}<NativeSelect id="sequence-control" size="sm">
-<option value="increment">{"递增"}</option>
-<option value="fixed">{"固定"}</option>
-<option value="decrement">{"递减"}</option>
-<option value="randomize">{"随机"}</option>
-</NativeSelect>
-</Label>
-{"\n          "}</fieldset>
-{"\n          "}<details className="rule-advanced">
-<summary>{"搜索设置"}</summary>
-<Label><span className="field-caption">{"搜索上限"}<HelpTip text="所有模式共用，限制寻找满足共现门槛的组合的搜索步数。" /></span><Input id="rule-max-steps" type="number" min="1" max="1000000" step="1" required defaultValue="100" />
-
-</Label>
-</details>
-{"\n          "}<Button id="generate-prompts" className="quiet full" type="button" variant="secondary"><Sparkles aria-hidden="true" />{"抽取提示词"}</Button>
-{"\n          "}<Label className="checkbox-label auto-prompts">
-<input id="auto-prompts" type="checkbox" defaultChecked />{"生图前自动抽取"}<HelpTip text="手动编辑提示词会关闭自动抽取，下次生图使用当前文本。重新勾选即可恢复。" /></Label>
-{"\n          "}<p id="rule-generation-note" className="hint" role="status" hidden />
-{"\n          "}<details id="rule-report" className="rule-report" hidden>
-<summary>{"抽取报告"}</summary>
-<pre id="rule-report-content">
-</pre>
-</details>
-{"\n        "}</fieldset>
+<fieldset id="rule-section" className="rule-section" hidden disabled>
+  <div className="rule-primary-fields">
+    <div className="rule-field">
+      <div className="rule-field-heading"><Label htmlFor="rule-config--control">生成预设</Label><IconButton id="reload-rule-configs" icon={RefreshCw} label="刷新生成预设" size="icon-xs" /></div>
+      <NativeSelect id="rule-config" required aria-label="生成预设" />
+    </div>
+    <div className="rule-field">
+      <Label htmlFor="rule-mode--control">抽取模式</Label>
+      <NativeSelect id="rule-mode" aria-label="抽取模式">
+        <option value="random_each_run">每次随机</option>
+        <option value="fixed_seed">固定提示词种子</option>
+        <option value="sequence">连续序列</option>
+      </NativeSelect>
+    </div>
+  </div>
+  <p id="rule-config-note" className="hint" role="status" hidden />
+  <fieldset id="rule-seed-fields" className="rule-control-grid" hidden disabled>
+    <div className="rule-field">
+      <Label htmlFor="rule-seed"><span className="field-caption">提示词种子<HelpTip text="控制共现标签抽取，与图像种子独立。" /></span></Label>
+      <Input id="rule-seed" type="number" min="0" max="9007199254740991" step="1" required defaultValue="0" />
+    </div>
+    <div className="rule-field">
+      <Label htmlFor="rule-seed-control--control">种子生成后</Label>
+      <NativeSelect id="rule-seed-control" aria-label="种子生成后">
+        <option value="fixed">固定</option><option value="increment">递增</option><option value="decrement">递减</option><option value="randomize">随机</option>
+      </NativeSelect>
+    </div>
+  </fieldset>
+  <fieldset id="rule-sequence-fields" className="rule-control-grid" hidden disabled>
+    <div className="rule-field">
+      <Label htmlFor="sequence-step"><span className="field-caption">帧序号<HelpTip text="同一提示词种子下按帧衔接，0 为起始帧。" /></span></Label>
+      <Input id="sequence-step" type="number" min="0" max="1000" step="1" required defaultValue="0" />
+    </div>
+    <div className="rule-field">
+      <Label htmlFor="sequence-control--control">帧序号生成后</Label>
+      <NativeSelect id="sequence-control" aria-label="帧序号生成后">
+        <option value="increment">递增</option><option value="fixed">固定</option><option value="decrement">递减</option><option value="randomize">随机</option>
+      </NativeSelect>
+    </div>
+  </fieldset>
+  <details className="rule-advanced">
+    <summary>搜索设置</summary>
+    <div className="rule-field"><Label htmlFor="rule-max-steps"><span className="field-caption">搜索上限<HelpTip text="所有模式共用，限制寻找满足共现门槛的组合的搜索步数。" /></span></Label><Input id="rule-max-steps" type="number" min="1" max="1000000" step="1" required defaultValue="100" /></div>
+  </details>
+  <div className="rule-actions">
+    <Label className="checkbox-label auto-prompts"><input id="auto-prompts" type="checkbox" defaultChecked />生图前自动抽取<HelpTip text="手动编辑提示词会关闭自动抽取，下次生图使用当前文本。重新勾选即可恢复。" /></Label>
+    <Button id="generate-prompts" type="button" variant="secondary" size="sm"><Sparkles aria-hidden="true" />抽取提示词</Button>
+  </div>
+  <p id="rule-generation-note" className="hint" role="status" hidden />
+  <details id="rule-report" className="rule-report" hidden><summary>抽取报告</summary><pre id="rule-report-content" /></details>
+</fieldset>
 {"\n        "}<Label>{"正向提示词"}<Textarea id="positive" rows={8} placeholder={"描述你想看到的画面…"} required>
 </Textarea>
 </Label>

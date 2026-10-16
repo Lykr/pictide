@@ -122,15 +122,19 @@
 .feed-page .dialog-footer .hint:not(:where(.editor-page, .editor-page *)) { margin: 0; }
 .feed-page #history-fields:not(:where(.editor-page, .editor-page *)) { margin-top: 16px; }
 .feed-page .load-more-row:not(:where(.editor-page, .editor-page *)) { display: flex; justify-content: center; margin-top: 16px; }
-.feed-page .rule-section:not(:where(.editor-page, .editor-page *)) { padding: 0; margin: 0 0 20px; }
-.feed-page .rule-section .hint:not(:where(.editor-page, .editor-page *)) { margin: 8px 0 12px; }
-.feed-page .rule-section .auto-prompts:not(:where(.editor-page, .editor-page *)) { margin: 12px 0 8px; }
-.feed-page .rule-section .label-row:not(:where(.editor-page, .editor-page *)) { margin-bottom: 8px; }
-.feed-page .rule-advanced:not(:where(.editor-page, .editor-page *)) { margin-bottom: 12px; }
-.feed-page .rule-advanced summary:not(:where(.editor-page, .editor-page *)), .feed-page .rule-report summary:not(:where(.editor-page, .editor-page *)) { padding: 0; color: var(--foreground); }
-.feed-page .rule-advanced label:not(:where(.editor-page, .editor-page *)) { margin-top: 12px; }
-.feed-page .rule-report:not(:where(.editor-page, .editor-page *)) { padding-top: 0; margin-top: 12px; }
-.feed-page .rule-report pre:not(:where(.editor-page, .editor-page *)) { max-height: 240px; overflow: auto; }
+.feed-page .rule-section { display: grid; min-width: 0; gap: 12px; padding: 0; margin: 0 0 16px; }
+.feed-page .rule-primary-fields, .feed-page .rule-control-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; }
+.feed-page .rule-field { display: grid; align-content: start; gap: 6px; min-width: 0; }
+.feed-page .rule-field-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 24px; }
+.feed-page .rule-section .rule-field label { display: flex; align-items: center; min-height: 24px; margin: 0; }
+.feed-page .rule-section .rule-field [data-slot=native-select-wrapper] { width: 100%; }
+.feed-page .rule-section .hint { margin: 0; }
+.feed-page .rule-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.feed-page .rule-section .auto-prompts { min-height: 32px; margin: 0; }
+.feed-page .rule-advanced, .feed-page .rule-report { min-width: 0; margin: 0; }
+.feed-page .rule-advanced .collapsible-label, .feed-page .rule-report .collapsible-label { padding-inline: 0; }
+.feed-page .rule-advanced .rule-field { margin-top: 8px; }
+.feed-page .rule-report pre { max-height: 240px; overflow: auto; }
 .feed-page #default-workflow:not(:where(.editor-page, .editor-page *)) { margin-bottom: 16px; }
 .feed-page #edit-default-parameters:not(:where(.editor-page, .editor-page *)) { margin-top: 8px; }
 .feed-page .node-parameters:not(:where(.editor-page, .editor-page *)) { position: relative; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; padding: 12px; }
