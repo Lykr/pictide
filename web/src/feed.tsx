@@ -5,6 +5,7 @@ import { JobPageControls } from "./components/page-controls";
 import { GeneralSettings } from "./components/general-settings";
 import { PreferenceActions } from "./components/preference-actions";
 import { ImageInfo } from "./components/image-info";
+import { RoamPlaybackButton, RoamPlaybackSettings } from "./components/roam-playback";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings2, Database, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Upload } from "lucide-react";
 import { IconButton, HelpTip } from "./components/actions";
 import { Card } from "./components/ui/card";
@@ -54,6 +55,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 <div className="roam-heading-actions">
 <span id="liked-privacy-controls" hidden />
+<span id="roam-playback-settings"><RoamPlaybackSettings /></span>
 <span id="roam-privacy-controls"><Toggle id="roam-privacy" size="sm" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={`${privacyLabel} · 空格。刷新页面后默认开启。`}>
 {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
 </Toggle></span>
@@ -84,6 +86,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 <div className="image-navigation">
 <IconButton id="previous" icon={ArrowLeft} label="上一张较旧图片 · ←" variant="ghost" type="button" />
+<RoamPlaybackButton />
 <IconButton id="like" icon={Heart} label="喜欢 · ↑" variant="ghost" type="button" className="feedback" aria-pressed="false" />
 <Toggle id="roam-immersive-privacy" size="sm" className="immersive-privacy" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={`${privacyLabel} · 空格`}>
 {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}

@@ -1,0 +1,63 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createRoamPlayback, playbackInterval } from '../web/src/controllers/roam-playback.mjs';
+
+function fixture() {
+  const timers = new Map(); let serial = 0, calls = 0, cancelledWaits = 0, current;
+  const playback = createRoamPlayback({
+    advance: guard => { calls++; current = guard; },
+    cancelWait: () => cancelledWaits++,
+    schedule: (run, delay) => { timers.set(++serial, { run, delay }); return serial; },
+    cancel: id => timers.delete(id),
+  });
+  const update = changes => { Object.assign(state, changes); playback.update(state); };
+  const state = { imageId: 'first', ready: false, active: true, busy: false, blocked: false };
+  update({});
+  return { playback, timers, update,
+    get calls() { return calls; }, get cancelledWaits() { return cancelledWaits; }, get guard() { return current; },
+    async fire() { const [id, timer] = timers.entries().next().value; timers.delete(id); timer.run(); await Promise.resolve(); },
+  };
+}
+
+test('loaded pictures get one interval, pending generation waits and resumes on the next loaded picture', async () => {
+  const f = fixture(); f.playback.toggle();
+  assert.equal(f.timers.size, 0);
+  f.update({ ready: true });
+  const firstTimer = [...f.timers.keys()][0];
+  f.update({ ready: true });
+  assert.equal([...f.timers.keys()][0], firstTimer); // Refreshes do not postpone the deadline.
+  assert.equal([...f.timers.values()][0].delay, 5000);
+  await f.fire();
+  assert.equal(f.calls, 1);
+  f.update({ busy: true }); f.playback.retry();
+  assert.equal(f.calls, 1); assert.equal(f.timers.size, 0);
+  f.update({ imageId: 'second', ready: false, busy: false });
+  assert.equal(f.timers.size, 0);
+  f.update({ ready: true });
+  assert.equal(f.timers.size, 1);
+  await f.fire();
+  assert.equal(f.calls, 2);
+});
+
+test('pause cancels its pending advance, manual navigation restarts, hidden/blocked pages stop', async () => {
+  const f = fixture(); f.update({ ready: true }); f.playback.toggle();
+  await f.fire(); assert.equal(f.guard(), true);
+  f.playback.pause();
+  assert.equal(f.cancelledWaits, 1); assert.equal(f.guard(), false);
+  f.playback.toggle();
+  const old = [...f.timers.keys()][0];
+  f.playback.restart();
+  assert.notEqual([...f.timers.keys()][0], old);
+  f.playback.setInterval(2);
+  assert.equal([...f.timers.values()][0].delay, 2000);
+  f.update({ active: false });
+  assert.equal(f.playback.playing, false); assert.equal(f.timers.size, 0);
+  f.update({ active: true }); f.playback.toggle();
+  f.update({ blocked: true });
+  assert.equal(f.playback.playing, false); assert.equal(f.timers.size, 0);
+});
+
+test('interval accepts integers from 1 to 600 and rejects blanks and invalid values', () => {
+  assert.equal(playbackInterval('1'), 1); assert.equal(playbackInterval(600), 600);
+  for (const value of ['', ' ', 0, 601, 1.5, true, null]) assert.throws(() => playbackInterval(value));
+});

@@ -307,6 +307,9 @@ class PictideApplication:
         async with self._roam_lock:
             if payload is None:
                 document = await asyncio.to_thread(self.roam.get)
+            elif set(payload) == {"playback_interval_seconds"}:
+                document = await asyncio.to_thread(self.roam.save_playback_interval, payload["playback_interval_seconds"])
+                self.events.publish("roam_settings")
             else:
                 if "prefetch_count" not in payload:
                     raise ValidationError("请填写漫游预取数量。")
@@ -324,11 +327,16 @@ class PictideApplication:
                         raise ValidationError("漫游生图后端不存在，请重新选择。")
                     if preset_id and preset_id not in {item["id"] for item in (await asyncio.to_thread(self.candidates.list_presets))["presets"]}:
                         raise ValidationError("漫游候选预设不存在，请重新选择。")
-                document = await asyncio.to_thread(self.roam.save, count, backend_id, preset_id, max_history)
+                if "playback_interval_seconds" in payload:
+                    # Validate before saving either part of a combined settings request.
+                    from .store.roam_settings import playback_interval_seconds
+                    playback_interval_seconds(payload["playback_interval_seconds"])
+                document = await asyncio.to_thread(self.roam.save, count, backend_id, preset_id, max_history,
+                                                   payload.get("playback_interval_seconds"))
                 await self.clean_history(force=True, roam_only=True)
                 self.events.publish("roam_settings")
             state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
-            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id")} | {
+            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds")} | {
                 "artifact_revision": await asyncio.to_thread(self.storage.artifact_revision),
                 "paused": state["paused"], "preference_learning": await self._learning_available(),
                 **({"error": state["error"]} if state.get("error") else {})}

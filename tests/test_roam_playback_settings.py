@@ -1,0 +1,86 @@
+"""Autoplay interval HTTP smokes with isolated SQLite and no generation backend."""
+import asyncio
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+from aiohttp.test_utils import TestClient, TestServer
+
+from backend.host import APPLICATION, create_app
+
+
+class RoamPlaybackSettingsTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.root = Path(self.directory.name)
+        static = self.root / "static"
+        static.mkdir()
+        static_patch = patch("backend.host.STATIC", static)
+        static_patch.start()
+        self.addCleanup(static_patch.stop)
+        await self.open_app()
+
+    async def open_app(self):
+        self.host = create_app(self.root)
+        self.app = self.host[APPLICATION]
+        self.client = TestClient(TestServer(self.host))
+        await self.client.start_server()
+        await self.app.tasks.stop()
+
+    async def asyncTearDown(self):
+        await self.client.close()
+        self.directory.cleanup()
+
+    async def put(self, payload):
+        response = await self.client.put("/api/settings/roam", json=payload)
+        data = await response.json()
+        self.assertEqual(response.status, 200, data)
+        return data
+
+    async def test_default_event_and_restart_persistence(self):
+        response = await self.client.get("/api/settings/roam")
+        self.assertEqual(response.status, 200)
+        self.assertEqual((await response.json())["playback_interval_seconds"], 5)
+        stream = self.app.events.stream()
+        self.assertEqual((await anext(stream))["topic"], "ready")
+        saved = await self.put({"playback_interval_seconds": 12})
+        self.assertEqual(saved["playback_interval_seconds"], 12)
+        self.assertEqual((await asyncio.wait_for(anext(stream), 1))["topic"], "roam_settings")
+        await stream.aclose()
+        await self.client.close()
+        await self.open_app()
+        response = await self.client.get("/api/settings/roam")
+        self.assertEqual((await response.json())["playback_interval_seconds"], 12)
+        self.assertEqual(self.app.storage.jobs(), [])
+
+    async def test_interval_preserves_settings_epoch_pause_and_invalid_is_atomic(self):
+        previous = self.app.roam.save(4, "selected-backend", "selected-preset", 25)
+        self.app.storage.pause_roam(previous["epoch"], "Paused smoke")
+        saved = await self.put({"playback_interval_seconds": 1})
+        self.assertTrue(saved["paused"])
+        self.assertEqual(saved["error"], "Paused smoke")
+        self.assertEqual(self.app.roam.get(), dict(previous, playback_interval_seconds=1))
+        saved = await self.put({"playback_interval_seconds": 600})
+        self.assertEqual(saved["playback_interval_seconds"], 600)
+        self.assertTrue(saved["paused"])
+        before = self.app.roam.get()
+        revision = self.app.events.revision
+        for value in (0, 601, 1.5, True, None, "5"):
+            for payload in ({"playback_interval_seconds": value},
+                            {"prefetch_count": 0, "playback_interval_seconds": value}):
+                response = await self.client.put("/api/settings/roam", json=payload)
+                self.assertEqual(response.status, 400, payload)
+                self.assertIn("error", await response.json())
+                self.assertEqual(self.app.roam.get(), before)
+        self.assertEqual(self.app.events.revision, revision)
+        # Existing full settings requests keep the saved interval.
+        saved = await self.put({"prefetch_count": 0, "max_history_images": 30})
+        self.assertEqual(saved["playback_interval_seconds"], 600)
+        self.assertEqual(saved["max_history_images"], 30)
+        self.assertEqual(saved["backend_id"], "selected-backend")
+        self.assertEqual(saved["preset_id"], "selected-preset")
+        self.assertNotEqual(self.app.roam.get()["epoch"], before["epoch"])
+        saved = await self.put({"prefetch_count": 0, "playback_interval_seconds": 8})
+        self.assertEqual(saved["playback_interval_seconds"], 8)
+        self.assertEqual(self.app.storage.jobs(), [])

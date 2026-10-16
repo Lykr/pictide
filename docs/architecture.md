@@ -195,11 +195,13 @@ HTTP 候选端点与请求字段见 [共现候选接口](cooccurrence-candidates
 
 | 请求 | 输入与返回 |
 | --- | --- |
-| `GET /api/settings/roam` | 返回 `prefetch_count`、`max_history_images`、`backend_id`、`preset_id`、`paused`、`artifact_revision`、`preference_learning`（实际可用状态）；暂停原因存在时附 `error`。 |
+| `GET /api/settings/roam` | 返回 `prefetch_count`、`max_history_images`、`backend_id`、`preset_id`、`playback_interval_seconds`（整数 1–600，默认 5）、`paused`、`artifact_revision`、`preference_learning`（实际可用状态）；暂停原因存在时附 `error`。 |
 | `PUT /api/settings/roam` | 输入必填整数 `prefetch_count`（`0`–`20`），可选 `max_history_images`（`0`–`100000`）、`backend_id`、`preset_id`；未传的选项保留当前值，空字符串自动选择。开启预取时检查显式选择存在，`0` 关闭预取时跳过存在性检查。保存立即检查清理，返回同 GET，并发布 `roam_settings` 事件。 |
 | `GET /api/roam/view` | 返回 `artifact_id`（图片 ID 或 `null`）和 `viewed_at`（最后保存的毫秒时间戳，未保存时为 `0`）。清理后的图片返回邻近可用漫游图片，无可用图返回 `null`。 |
 | `PUT /api/roam/view` | 必填 `artifact_id`（未清理的漫游图片 ID 或 `null`）及 `viewed_at`（非负安全整数毫秒时间戳）；只有严格较新时间戳更新，旧/相等请求忽略。返回同 GET，纯位置更新不发布 SSE；触发清理时发布产物变化事件。 |
 | `POST /api/roam/ensure` | 输入 `anchor_id`（图片 ID 或 `null`），可选布尔值 `demand` 表示主动请求下一张。返回 `enabled`、`prefetch_count`、`target`、`ready`、`pending`、`roam_pending`、`paused`、`preference_learning`（实际可用状态），按实际情况附 `job`、`error`、已解析的 `backend_id`、`preset_id`。 |
+
+`PUT /api/settings/roam` 也支持只提交 `playback_interval_seconds`，保存到同库 `roam_playback_settings`，保留原设置 epoch 和暂停状态，不触发历史清理；原完整设置保存保留间隔，可显式附带间隔。播放状态和一次性计时在浏览器管理，不新增服务端调度。详见 [漫游自动播放](roam-autoplay.md)。
 
 设置默认缓冲数量为 `0`，不自动补图。开启时，有 anchor 的目标 `target=N`，无 anchor 为 `N+1`；关闭时普通检查目标为 `0`，`demand: true` 则至少请求一张可前进的图片，不修改已保存缓冲数量。`max_history_images`（`1`–`100000`，`0` 关闭）只限制当前观看位置之前全部可见漫游历史，不调整上述预取目标。`ready` 只计未删除且未隐藏的漫游图片（有 anchor 时只数较新漫游图片），生成页图片不计入缓冲；将生成图片作为 anchor 会返回 404。`pending` 为全局排队、提交中及运行中的任务数，`roam_pending` 只统计这些状态中的漫游任务（含旧设置版本）。设置保存在数据目录的 主 SQLite 的 `roam_settings` 表，保存生成新版本以区分旧任务与当前暂停状态。
 
