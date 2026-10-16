@@ -76,7 +76,8 @@ function syncRoamPlayback(artifact = null) {
     ready: !!artifact && state.currentImage === artifact.id && image.complete && image.naturalWidth > 0 && $('image-error').hidden,
     active: state.view === 'feed' && roamPageActive && !document.hidden,
     busy: !!nextImageWait.current || roamWindowLoading || state.feedbackPending,
-    blocked: roamBlocked || !$('image-error').hidden,
+    // A paused generator must not disable playback of already saved pictures.
+    blocked: !$('image-error').hidden,
   });
 }
 function publishPlaybackInterval(settings) {
@@ -865,7 +866,7 @@ async function loadRoamSettings({ preserveDraft = false } = {}) {
     }
     renderRoamBackends(); await loadRoamConfigs();
     if (settings.paused) { roamBlocked = true; roamPlayback.pause(); } else clearRoamError();
-    roamAnchorRetried = false; refillRoam();
+    roamAnchorRetried = false; if (state.view === 'feed') renderArtifacts(); refillRoam();
   } catch (error) { inlineStatus('roam-result', `设置读取失败：${error.message}`); }
   finally { roamSettingsLoading = false; }
 }
@@ -1169,7 +1170,7 @@ document.addEventListener('keydown', (event) => {
 });
 window.addEventListener('hashchange', () => setView(location.hash.slice(1) || 'feed', false));
 setView(location.hash.slice(1) || 'feed', false);
-document.addEventListener('visibilitychange', () => { if (document.hidden) roamPlayback.pause(); else refresh(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) roamPlayback.pause(); else { loadRoamSettings({ preserveDraft: true }); refresh(true); } });
 await bootstrap();
 updateRuleControls();
 let realtimeConnected = false;
@@ -1180,7 +1181,7 @@ function syncTheme() {
 function connectEvents() {
   if (!window.EventSource || eventSource) return;
   eventSource = new EventSource('/api/events');
-  eventSource.addEventListener('open', () => { realtimeConnected = true; syncTheme(); refresh(true); });
+  eventSource.addEventListener('open', () => { realtimeConnected = true; syncTheme(); loadRoamSettings({ preserveDraft: true }); refresh(true); });
   // Queue another refresh if a change arrives while the current read is in flight.
   eventSource.addEventListener('change', event => {
     try {
