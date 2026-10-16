@@ -6,7 +6,7 @@ import { GeneralSettings } from "./components/general-settings";
 import { PreferenceActions } from "./components/preference-actions";
 import { ImageInfo } from "./components/image-info";
 import { RoamPlaybackButton, RoamPlaybackSettings } from "./components/roam-playback";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings2, Database, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings2, Database, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown, ChevronRight } from "lucide-react";
 import { IconButton, HelpTip } from "./components/actions";
 import { Card } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -14,6 +14,7 @@ import { Input } from "./components/ui/input";
 import { Textarea } from "./components/ui/textarea";
 import { Label } from "./components/ui/label";
 import { Toggle } from "./components/ui/toggle";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "./components/ui/collapsible";
 import { nativeSelectClassName, NativeSelect } from "./components/ui/native-select";
 import "./styles/theme.css";
 import "./styles/feed.css";
@@ -21,6 +22,7 @@ import "./styles/feed.css";
 // Mount once; the established controller owns form values and dynamic regions.
 export function FeedShell({ themeError = "" }: { themeError?: string }) {
   const [privacyBlur, setPrivacyBlur] = useState(true);
+  const [nodeParametersOpen, setNodeParametersOpen] = useState(false);
   const privacyLabel = privacyBlur ? "关闭毛玻璃，显示图片" : "开启毛玻璃，模糊图片";
   return <div className={`feed-page${privacyBlur ? " privacy-blurred" : ""}`}>
 {"\n  "}<header className="topbar">
@@ -244,15 +246,17 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <Button id="edit-default-parameters" type="button" className="quiet" variant="outline" data-tooltip="将默认工作流展开为自定义草稿，编辑采样、尺寸等节点参数"><SlidersHorizontal aria-hidden="true" />节点参数</Button>
 </section>
 <fieldset id="custom-workflow" hidden disabled>
-<section id="node-parameters" className="node-parameters" data-editor-mode="parameters">
-<div className="node-parameters-heading"><h3>节点参数</h3><div className="node-parameters-actions">
+<Collapsible id="node-parameters" className="node-parameters" data-editor-mode="parameters" open={nodeParametersOpen} onOpenChange={setNodeParametersOpen}>
+<div className="node-parameters-heading"><h3><CollapsibleTrigger asChild><Button id="toggle-node-parameters" type="button" variant="ghost" size="sm" className="gap-2 px-0"><ChevronRight className={nodeParametersOpen ? "rotate-90" : ""} aria-hidden="true" />节点参数</Button></CollapsibleTrigger></h3><div className="node-parameters-actions">
 <Button id="toggle-workflow-json" type="button" variant="ghost" size="sm" aria-pressed="false" aria-controls="node-parameter-fields workflow-json-editor" aria-label="编辑 API 工作流 JSON" data-tooltip="编辑 API 工作流 JSON">JSON</Button>
 <IconButton icon={Download} label="导入 ComfyUI API 工作流 JSON" onClick={() => document.getElementById("workflow-file")?.click()} />
 <input id="workflow-file" type="file" accept=".json,application/json" hidden />
 </div></div>
+<CollapsibleContent forceMount hidden={!nodeParametersOpen}>
 <div id="node-parameter-fields" />
 <div id="workflow-json-editor" hidden><Label htmlFor="workflow-json" className="sr-only">API 工作流 JSON</Label><Textarea id="workflow-json" className="code-input" rows={7} placeholder={'{"6":{"class_type":"CLIPTextEncode","inputs":{"text":"…"}}}'} spellCheck={false} /></div>
-</section>
+</CollapsibleContent>
+</Collapsible>
 <div id="workflow-error" className="validation" role="status" />
 <div className="form-grid workflow-bindings">
 <div className="binding-inputs">

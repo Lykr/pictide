@@ -631,6 +631,7 @@ function loadBackend(id) {
   $('settings-result').hidden = true;
   $('workflow-name').value = backend?.workflow_name || customWorkflowName(state.workflows.map(item => item.name));
   setWorkflowPanelMode('parameters', false);
+  setNodeParametersExpanded(false);
   settingsDirty = false;
   settingsInitialized = true;
   $('delete-backend').disabled = !backend;
@@ -652,7 +653,12 @@ function parseBinding(value) { if (!value) return null; const [node_id, input] =
 function readWorkflow() {
   return parseWorkflowDraft($('workflow-json').value);
 }
+function setNodeParametersExpanded(expanded) {
+  const trigger = $('toggle-node-parameters');
+  if (trigger.getAttribute('aria-expanded') !== String(expanded)) trigger.click();
+}
 function setWorkflowPanelMode(mode, validate = true) {
+  if (validate) setNodeParametersExpanded(true);
   if (mode === 'json' && validate) {
     const invalidParameter = $('node-parameter-fields').querySelector(':invalid');
     if (invalidParameter) {
@@ -820,7 +826,7 @@ function draftBackend({ saveWorkflow = false } = {}) {
   draft.workflow_mode = $('workflow-mode').value === 'default' ? 'default' : 'custom';
   if (draft.workflow_mode === 'default') { draft.default_checkpoint = $('default-checkpoint').value; return draft; }
   const invalidParameter = $('node-parameters').querySelector(':invalid');
-  if (invalidParameter) { setWorkflowPanelMode('parameters', false); invalidParameter.reportValidity(); invalidParameter.focus(); throw new Error('请先修正节点参数中的无效输入。'); }
+  if (invalidParameter) { setNodeParametersExpanded(true); setWorkflowPanelMode('parameters', false); invalidParameter.reportValidity(); invalidParameter.focus(); throw new Error('请先修正节点参数中的无效输入。'); }
   const workflow = readWorkflow();
   const positive = parseBinding($('binding-positive').value), negative = parseBinding($('binding-negative').value), seed = parseBinding($('binding-seed').value);
   if (!positive) throw new Error('请选择正向提示词输入。');
@@ -963,7 +969,7 @@ $('workflow-json').addEventListener('input', () => {
 $('workflow-json').addEventListener('change', () => { updateBindings(); updateWorkflowControls(); });
 $('edit-default-parameters').addEventListener('click', async () => {
   const button = $('edit-default-parameters'); button.disabled = true; settingsNotice('正在读取默认工作流参数…');
-  try { const template = await currentDefaultTemplate(); applyWorkflowDraft(template, template.input_options || {}); settingsNotice('已展开节点参数，保存后生效。'); }
+  try { const template = await currentDefaultTemplate(); applyWorkflowDraft(template, template.input_options || {}); setNodeParametersExpanded(true); settingsNotice('已展开节点参数，保存后生效。'); }
   catch (error) { settingsNotice(error.message, true); }
   finally { button.disabled = false; }
 });
@@ -1016,6 +1022,7 @@ $('workflow-file').addEventListener('change', async (event) => {
     workflowInputOptions = {};
     const valid = updateBindings();
     updateWorkflowControls();
+    setNodeParametersExpanded(true);
     if (!valid) setWorkflowPanelMode('json', false);
   } catch (error) { settingsNotice(error.message, true); }
   finally { event.target.value = ''; }
@@ -1043,6 +1050,9 @@ $('test-backend').addEventListener('click', async () => {
   catch (error) { settingsNotice(error.message, true); }
   finally { button.disabled = false; }
 });
+$('settings-form').addEventListener('invalid', (event) => {
+  if (event.target.closest('#node-parameters')) setNodeParametersExpanded(true);
+}, true);
 $('settings-form').addEventListener('submit', async (event) => {
   event.preventDefault(); if (state.saving) return;
   state.saving = true; $('save-backend').disabled = true; $('settings-form').inert = true;

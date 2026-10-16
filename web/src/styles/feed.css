@@ -173,6 +173,7 @@
 .feed-page #settings-form #default-workflow, .feed-page #settings-form #custom-workflow { display: grid; min-width: 0; gap: 16px; margin: 0; }
 .feed-page #settings-form #edit-default-parameters { justify-self: start; margin: 0; }
 .feed-page #settings-form .node-parameters { margin: 0; padding: 16px; }
+.feed-page #settings-form .node-parameters[data-state=closed] .node-parameters-heading { margin-bottom: 0; }
 .feed-page #settings-form #node-parameter-fields { display: grid; gap: 24px; }
 .feed-page #settings-form .node-parameter-group { margin: 0; }
 .feed-page #settings-form .node-parameter-group legend { margin-bottom: 8px; padding: 0; }
