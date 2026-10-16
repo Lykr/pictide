@@ -84,9 +84,30 @@ class CooccurrenceSmoke(unittest.TestCase):
             self.assertEqual(result["report"]["stop_reason"], "target_length")
         # Fixed seeds give a repeatable smoke check that lengths do not pile up at the cap.
         self.assertTrue(all(75 <= count <= 125 for count in counts.values()), counts)
-        with self.assertRaisesRegex(CandidateError, "随机目标长度 5"):
-            self.service.generate(dict(preset_id="test", mode="fixed_seed", seed=5,
-                                      document=dict(document, min_tags=3, max_tags=5), max_steps=20))
+        result = self.service.generate(dict(preset_id="test", mode="fixed_seed", seed=5,
+                                            document=dict(document, min_tags=3, max_tags=5), max_steps=20))
+        self.assertEqual(result["report"]["tag_count"], 4)
+        self.assertEqual(result["report"]["stop_reason"], "no_eligible_tags")
+
+    def test_search_limit_partial_sequence_keeps_budget_and_replays(self):
+        document = dict(self.doc, min_tags=20, max_tags=20)
+        options = dict(preset_id="test", document=document, mode="sequence", seed=8, max_steps=1)
+        previous = self.service.generate(dict(options, sequence_step=0))
+        self.assertEqual(previous["report"]["tag_count"], 2)
+        self.assertEqual(previous["report"]["stop_reason"], "search_limit")
+        for step in range(1, 4):
+            current = self.service.generate(dict(options, sequence_step=step))
+            before = {tag["id"] for tag in previous["selected_tags"]}
+            after = {tag["id"] for tag in current["selected_tags"]}
+            self.assertLessEqual(len(before ^ after), document["change_budget"])
+            self.assertEqual(current["sequence"]["changes"], len(before ^ after))
+            self.assertLessEqual(current["report"]["tag_count"], 4)
+            previous = current
+        fresh = CandidateService(SQLiteCandidateStore(self.path))
+        self.assertEqual(previous, fresh.generate(dict(options, sequence_step=3)))
+        limited = self.service.generate(dict(options, mode="fixed_seed"))
+        self.assertEqual(limited["report"]["tag_count"], 2)
+        self.assertEqual(limited, self.service.generate(dict(options, mode="fixed_seed")))
 
     def test_relation_lookup_distinguishes_unknown_omitted_and_negative(self):
         with self.service.store.connect() as db:
@@ -162,11 +183,12 @@ class CooccurrenceSmoke(unittest.TestCase):
         result=self.service.generate(dict(preset_id="test",mode="fixed_seed",document=document))
         self.assertEqual(result["positive"],"blue sky, gentle atmosphere")
         self.assertEqual(result["report"]["unrecognized_fixed"],["gentle atmosphere"])
-        with self.assertRaises(CandidateError):
-            self.service.generate(dict(preset_id="test",document=dict(self.doc,min_tags=5,max_tags=5),max_steps=8))
+        result = self.service.generate(dict(preset_id="test",document=dict(self.doc,min_tags=5,max_tags=5),max_steps=8))
+        self.assertEqual(result["report"]["tag_count"], 4)
         with patch.object(self.service.store, "expansion_candidates", wraps=self.service.store.expansion_candidates) as candidates:
-            with self.assertRaisesRegex(CandidateError, "起始候选"):
-                self.service.generate(dict(preset_id="test",document=dict(self.doc,pmi_threshold=2)))
+            result = self.service.generate(dict(preset_id="test",document=dict(self.doc,pmi_threshold=2)))
+            self.assertEqual(result["positive"], "blue sky")
+            self.assertEqual(result["report"]["stop_reason"], "no_eligible_tags")
             self.assertEqual(candidates.call_count, 1)
         self.service.save_preset(dict(id="test",name="edited",document=self.doc))
         self.assertEqual(self.service.load_preset("test")["name"],"edited")

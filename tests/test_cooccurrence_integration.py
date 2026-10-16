@@ -46,7 +46,7 @@ class CooccurrenceIntegrationSmoke(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(relations["relations"][0]["count"],100)
                 self.assertFalse(relations["relations"][1]["known"])
                 self.assertEqual(len((await (await client.get("/api/jobs")).json())["jobs"]),0)
-                document = {"base_positive":["illustration"],"base_negative":["blurry"],"min_tags":5,"max_tags":5,"pmi_threshold":.1,"min_cooccurrence":1,"change_budget":2}
+                document = {"base_positive":["illustration"],"base_negative":["blurry"],"min_tags":8,"max_tags":8,"pmi_threshold":.1,"min_cooccurrence":1,"change_budget":2}
                 response = await client.post("/api/candidate/presets",json={"name":"中性测试","document":document})
                 self.assertEqual(response.status,200,await response.text())
                 preset = await response.json()
@@ -55,6 +55,8 @@ class CooccurrenceIntegrationSmoke(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(response.status,200,await response.text())
                 preview = await response.json()
                 self.assertEqual(preview["negative"],"blurry")
+                self.assertEqual(preview["report"]["tag_count"],6)
+                self.assertEqual(preview["report"]["stop_reason"],"no_eligible_tags")
                 response = await client.put("/api/backends/local",json=configuration())
                 self.assertEqual(response.status,200,await response.text())
                 payload = {"backend_id":"local","request_id":"cooc-smoke-batch","candidate":options,"count":2,"repetitions":2,"seed":41}
@@ -82,6 +84,8 @@ class CooccurrenceIntegrationSmoke(unittest.IsolatedAsyncioTestCase):
                 response = await client.post("/api/roam/ensure",json={"anchor_id":None})
                 self.assertEqual(response.status,200,await response.text())
                 roam = await response.json()
+                self.assertFalse(roam["paused"])
+                self.assertEqual(len(roam["job"]["positive"].split(", ")),6)
                 self.assertEqual(len(policy.calls),1)
                 self.assertEqual(len(policy.calls[0].candidates),4)
                 for candidate in policy.calls[0].candidates:
