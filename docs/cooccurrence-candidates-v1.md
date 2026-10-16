@@ -53,7 +53,7 @@
 ```json
 {
   "anchor": "black hair",
-  "terms": ["gray eyes", "custom style", "forest"]
+  "terms": ["blue eyes", "custom style", "forest"]
 }
 ```
 
@@ -63,7 +63,7 @@
 {
   "anchor": {"text": "black hair", "known": true},
   "relations": [
-    {"text": "gray eyes", "known": true, "pmi": 1.25, "count": 500},
+    {"text": "blue eyes", "known": true, "pmi": 1.25, "count": 500},
     {"text": "custom style", "known": false, "pmi": null, "count": null},
     {"text": "forest", "known": true, "pmi": null, "count": 0}
   ]
