@@ -28,7 +28,7 @@ class CooccurrenceSmoke(unittest.TestCase):
                 (1,2,1.0,80),(1,3,1.0,80),(1,4,1.0,80),(2,3,1.0,80),(2,4,1.0,80),(3,4,1.0,80),(1,5,10.0,1)])
         self.doc = dict(base_positive=["blue sky"],base_negative=["blurry"],
                         min_tags=3,max_tags=3,pmi_threshold=0.5,min_cooccurrence=5,
-                        stop_probability=0,change_budget=2)
+                        change_budget=2)
         self.service.save_preset(dict(id="test",name="neutral",document=self.doc))
 
     def tearDown(self):
@@ -61,6 +61,19 @@ class CooccurrenceSmoke(unittest.TestCase):
         negative_threshold = dict(self.doc, pmi_threshold=-1)
         self.assertTrue(self.service.generate(dict(options, document=negative_threshold))["positive"])
 
+    def test_uniform_target_length_and_unreachable_target(self):
+        document = dict(self.doc, min_tags=2, max_tags=4)
+        counts = {length: 0 for length in range(2, 5)}
+        for seed in range(300):
+            result = self.service.generate(dict(preset_id="test", mode="fixed_seed", seed=seed, document=document))
+            counts[result["report"]["tag_count"]] += 1
+            self.assertEqual(result["report"]["stop_reason"], "target_length")
+        # Fixed seeds give a repeatable smoke check that lengths do not pile up at the cap.
+        self.assertTrue(all(75 <= count <= 125 for count in counts.values()), counts)
+        with self.assertRaisesRegex(CandidateError, "随机目标长度 5"):
+            self.service.generate(dict(preset_id="test", mode="fixed_seed", seed=5,
+                                      document=dict(document, min_tags=3, max_tags=5), max_steps=20))
+
     def test_vocabulary_defaults_to_fifteen_and_supports_page_jump(self):
         with closing(sqlite3.connect(self.path)) as db, db:
             db.executemany("INSERT INTO tags VALUES(?,?,?)", [
@@ -92,13 +105,27 @@ class CooccurrenceSmoke(unittest.TestCase):
         self.assertEqual([r["sequence"]["step"] for r in rounds],[0,1])
         self.assertEqual(next_options["sequence_step"],2)
 
+    def test_variable_length_sequence_respects_single_change_budget(self):
+        document = dict(self.doc, min_tags=2, max_tags=4, change_budget=1)
+        options = dict(preset_id="test", mode="sequence", seed=9, document=document)
+        previous = self.service.generate(options)
+        for step in range(1, 12):
+            current = self.service.generate(dict(options, sequence_step=step))
+            a = {tag["id"] for tag in previous["selected_tags"]}
+            b = {tag["id"] for tag in current["selected_tags"]}
+            self.assertLessEqual(len(a ^ b), 1)
+            self.assertIn(current["report"]["tag_count"], (2, 3, 4))
+            previous = current
+        fresh = CandidateService(SQLiteCandidateStore(self.path))
+        self.assertEqual(previous, fresh.generate(dict(options, sequence_step=11)))
+
     def test_bounds_failure_and_free_fixed_text(self):
         with self.assertRaisesRegex(CandidateError, "min_tags"):
             self.service.generate(dict(preset_id="test",document=dict(self.doc,min_tags=0)))
         for invalid in (float("inf"), float("nan"), True):
             with self.assertRaisesRegex(CandidateError, "pmi_threshold"):
                 self.service.generate(dict(preset_id="test",document=dict(self.doc,pmi_threshold=invalid)))
-        minimal=dict(self.doc,base_positive=[],min_tags=1,max_tags=1,stop_probability=1)
+        minimal=dict(self.doc,base_positive=[],min_tags=1,max_tags=1)
         self.assertTrue(self.service.generate(dict(preset_id="test",document=minimal))["positive"])
         document=dict(self.doc,base_positive=["blue_sky","gentle atmosphere"],min_tags=2,max_tags=2)
         result=self.service.generate(dict(preset_id="test",mode="fixed_seed",document=document))

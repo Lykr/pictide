@@ -40,7 +40,7 @@ class CooccurrenceIntegrationSmoke(unittest.IsolatedAsyncioTestCase):
                 tags_page = await response.json()
                 self.assertEqual(tags_page["tags"][0]["name"],"blue_sky")
                 self.assertEqual(tags_page["page_size"],15)
-                document = {"base_positive":["illustration"],"base_negative":["blurry"],"min_tags":5,"max_tags":5,"pmi_threshold":.1,"min_cooccurrence":1,"stop_probability":0,"change_budget":2}
+                document = {"base_positive":["illustration"],"base_negative":["blurry"],"min_tags":5,"max_tags":5,"pmi_threshold":.1,"min_cooccurrence":1,"change_budget":2}
                 response = await client.post("/api/candidate/presets",json={"name":"中性测试","document":document})
                 self.assertEqual(response.status,200,await response.text())
                 preset = await response.json()

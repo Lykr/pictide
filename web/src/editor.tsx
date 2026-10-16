@@ -19,12 +19,12 @@ import "./styles/editor.css";
 
 type Tag = { id: number; name: string; post_count: number };
 type TagPage = { tags: Tag[]; total: number; page: number; page_size: number };
-type PresetDocument = { base_positive: string[]; base_negative: string[]; min_tags: number; max_tags: number; pmi_threshold: number; min_cooccurrence: number; stop_probability: number; change_budget: number };
+type PresetDocument = { base_positive: string[]; base_negative: string[]; min_tags: number; max_tags: number; pmi_threshold: number; min_cooccurrence: number; change_budget: number };
 type Preset = { id: string; name: string; document: PresetDocument };
 type Mode = "random_each_run" | "fixed_seed" | "sequence";
 type Result = { positive: string; negative: string; seed: number; selected_tags: (Tag | string)[]; sequence?: { seed?: number; step?: number; changes?: number; change_budget?: number }; report: Record<string, unknown> };
-const defaults: PresetDocument = { base_positive: [], base_negative: [], min_tags: 5, max_tags: 20, pmi_threshold: 0, min_cooccurrence: 5, stop_probability: 0.15, change_budget: 2 };
-const stopReasons: Record<string, string> = { max_tags: "达到数量上限", stop_probability: "随机停止", no_candidates: "无可用候选", budget_exhausted: "达到变化预算", max_steps: "达到搜索上限", search_limit: "达到搜索上限", no_eligible_tags: "无可用候选", budget_zero: "保持上一帧", held_no_legal_change: "无合法变化，保持上一帧" };
+const defaults: PresetDocument = { base_positive: [], base_negative: [], min_tags: 5, max_tags: 20, pmi_threshold: 0, min_cooccurrence: 5, change_budget: 2 };
+const stopReasons: Record<string, string> = { target_length: "达到目标长度", no_candidates: "无可用候选", budget_exhausted: "达到变化预算", max_steps: "达到搜索上限", search_limit: "达到搜索上限", no_eligible_tags: "无可用候选", budget_zero: "保持上一帧", held_no_legal_change: "无合法变化，保持上一帧" };
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json" } });
   const data = await response.json();
@@ -226,12 +226,11 @@ export function EditorWorkspace() {
           <div className="cooc-fixed-grid"><FixedTags label="固定正向词" values={preset.document.base_positive} disabled={busy} onChange={values => update("base_positive", values)} /><FixedTags label="固定负向词" values={preset.document.base_negative} disabled={busy} onChange={values => update("base_negative", values)} /></div>
           <div className="cooc-section-heading"><h2>共现扩展</h2><HelpTip text="每个新标签必须同时满足与所有已有统计标签的 PMI 阈值及最低共现次数。词库仅包含出现至少 100 次的普通标签。" /></div>
           <div className="cooc-number-grid">
-            {numberField("min_tags", "标签数量下限", "包含固定正向词。无法达到时明确报错，不放宽阈值。", 1, 1000)}
-            {numberField("max_tags", "标签数量上限", "包含固定正向词，达到上限停止扩展。", 1, 1000)}
+            {numberField("min_tags", "标签数量下限", "包含固定正向词；每次在下限和上限之间等概率抽取目标数量，无法达到时明确报错。", 1, 1000)}
+            {numberField("max_tags", "标签数量上限", "包含固定正向词；上下限均可被抽中。固定词超过下限时，以固定词数量作为实际下限。", 1, 1000)}
             {numberField("pmi_threshold", "PMI 阈值", "PMI = log₂(共同次数 × 总图片数 ÷ 两个标签各自次数之积)。0 表示独立，正数表示更常共同出现，负数表示更少共同出现；可填写任意有限数。", undefined, undefined, "any")}
             {numberField("min_cooccurrence", "最低共现次数", "每对标签必须共同出现至少此次数，避免偶然共现产生过高的 PMI。", 1, Number.MAX_SAFE_INTEGER)}
-            {numberField("stop_probability", "停止概率", "达到数量下限后，每轮以此概率停止加入标签，取值 0–1。", 0, 1, 0.01)}
-            {numberField("change_budget", "连续变化预算", "仅连续模式生效。相邻帧标签增删的总数上限；替换一个标签计 2，固定词保留。", 0, 1000)}
+            {numberField("change_budget", "连续变化预算", "仅连续模式生效。相邻帧标签增删的总数上限；替换一个标签计 2，固定词保留。在预算可达的数量区间内均匀抽取目标，无法合法变化时保持上一帧。", 0, 1000)}
           </div><button type="submit" hidden />
         </form> : <section className="cooc-preview">
           <div className="cooc-preview-controls"><Field label="生成模式"><Choice label="预览生成模式" value={mode} onChange={value => setMode(value as Mode)} options={[{ value: "random_each_run", text: "每次随机" }, { value: "fixed_seed", text: "固定种子" }, { value: "sequence", text: "连续序列" }]} disabled={busy} /></Field>

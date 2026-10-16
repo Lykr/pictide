@@ -11,7 +11,7 @@ from .errors import CandidateError
 from .rounds import integer, validate_options, prepare_rounds
 
 DEFAULT_DOCUMENT = dict(base_positive=[], base_negative=[], min_tags=5, max_tags=20,
-                        pmi_threshold=0, min_cooccurrence=5, stop_probability=0.15, change_budget=2)
+                        pmi_threshold=0, min_cooccurrence=5, change_budget=2)
 
 
 def document_key(document):
@@ -32,12 +32,9 @@ def validate_document(document):
     integer(result["max_tags"], "max_tags", result["min_tags"], 1000)
     integer(result["min_cooccurrence"], "min_cooccurrence", 1, 2**53-1)
     integer(result["change_budget"], "change_budget", 0, 2000)
-    for key in ("pmi_threshold", "stop_probability"):
-        value = result[key]
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
-            raise CandidateError(f"{key} 必须是有限数值")
-        if key == "stop_probability" and not 0 <= value <= 1:
-            raise CandidateError("stop_probability 必须是 0 到 1 之间的数值")
+    value = result["pmi_threshold"]
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise CandidateError("pmi_threshold 必须是有限数值")
     if len(result["base_positive"]) > result["max_tags"]:
         raise CandidateError("固定正向标签数量超过 max_tags，请减少固定标签或提高上限")
     return {key: result[key] for key in DEFAULT_DOCUMENT}
@@ -100,10 +97,8 @@ class CandidateService:
 
     def _extend(self, document, fixed_count, anchors, variable, rng, cap, work):
         variable = list(variable)
-        reason = "max_tags"
+        reason = "target_length"
         while fixed_count + len(variable) < cap:
-            if fixed_count + len(variable) >= document["min_tags"] and rng.random() < document["stop_probability"]:
-                return variable, "stop_probability"
             if work[0] <= 0:
                 return variable, "search_limit"
             work[0] -= 1
@@ -116,34 +111,43 @@ class CandidateService:
         return variable, reason
 
     def _initial(self, document, fixed_count, anchors, rng, limit):
+        target = rng.randint(max(document["min_tags"], fixed_count), document["max_tags"])
         work = [limit]
         while work[0] > 0:
             work[0] -= 1
-            tags, reason = self._extend(document, fixed_count, anchors, [], rng, document["max_tags"], work)
-            if fixed_count + len(tags) >= document["min_tags"]:
+            tags, reason = self._extend(document, fixed_count, anchors, [], rng, target, work)
+            if fixed_count + len(tags) == target:
                 return tags, reason
             if not tags and reason == "no_eligible_tags":
                 raise CandidateError("当前锚点没有满足共现条件的起始候选，无法满足 min_tags，请调整锚点或阈值")
-            # A different initial random choice can still find a longer path.
-        raise CandidateError("当前锚点、共现阈值或搜索上限 max_steps 无法满足 min_tags，请调整设置")
+            # Retry the same target; redrawing it would favour shorter combinations.
+        raise CandidateError(f"共现条件或搜索上限 max_steps 无法达到随机目标长度 {target}，请调整数量范围、锚点、阈值或搜索上限")
 
     def _advance(self, document, fixed_count, anchors, previous, rng, limit):
         budget = document["change_budget"]
         if not budget:
             return list(previous), "budget_zero", 0
+        current = fixed_count + len(previous)
+        lower = max(document["min_tags"], fixed_count, current - budget)
+        upper = min(document["max_tags"], current + budget)
+        target = rng.randint(lower, upper)
+        wanted = target - fixed_count
+        minimum_removed = max(0, len(previous) - wanted)
+        maximum_removed = min(len(previous), (budget + len(previous) - wanted) // 2)
+        if target == current:
+            if not maximum_removed:
+                return list(previous), "target_length", 0
+            minimum_removed = 1  # Same length can still replace a tag within the budget.
         previous_ids = {tag["id"] for tag in previous}
         work = [limit]
         while work[0] > 0:
             work[0] -= 1
-            removed = rng.randint(0, min(len(previous), budget))
+            removed = rng.randint(minimum_removed, maximum_removed)
             remove_ids = set(rng.sample([tag["id"] for tag in previous], removed))
             retained = [tag for tag in previous if tag["id"] not in remove_ids]
-            cap = min(document["max_tags"], fixed_count + len(retained) + budget-removed)
-            if cap < document["min_tags"]:
-                continue
-            tags, reason = self._extend(document, fixed_count, anchors, retained, rng, cap, work)
+            tags, reason = self._extend(document, fixed_count, anchors, retained, rng, target, work)
             changes = len(previous_ids ^ {tag["id"] for tag in tags})
-            if fixed_count + len(tags) >= document["min_tags"] and 0 < changes <= budget:
+            if fixed_count + len(tags) == target and 0 < changes <= budget:
                 return tags, reason, changes
         return list(previous), "held_no_legal_change", 0
 

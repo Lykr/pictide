@@ -23,7 +23,8 @@ PMI(a,b) = log2(count(a,b) * N / (count(a) * count(b)))。
 - 预设将 threshold 改为 pmi_threshold（默认 0，允许负数，不限定为 0–1）。保留 min_cooccurrence（默认 5），用于排除高 PMI 但证据不足的偶然关系。
 - storage.expansion_candidates(existing,pmi_threshold,min_cooccurrence) 要求新标签与每个已有可统计标签的 PMI 均达标且共现次数满足 min_cooccurrence；在达标候选中按 2 ** mean(PMI) 加权随机抽取，使负 PMI 也有有效正权重。无可统计锚点时仍按标签频次抽取起点。
 - CandidateService.generate 的路由、候选完整组合输出和 CandidateProvider 接口不变；推荐输入保留现有标签快照结构，general 类别可由候选服务赋值，不需要持久化类别。
-- 保留固定正负词、数量上下限、停止概率、随机/固定种子/连续模式、预算和计数控制。固定自由文本缺少统计时保留但不参与比较。
+- 保留固定正负词、数量上下限、随机/固定种子/连续模式、预算和计数控制。固定自由文本缺少统计时保留但不参与比较。
+- 移除停止概率。独立生成先从 `[max(min_tags, 固定正向词数), max_tags]` 等概率抽取目标整数；整个搜索过程不重抽目标，须精确达到目标，否则报错。连续帧从该区间与 `[上一帧数量 - change_budget, 上一帧数量 + change_budget]` 的交集抽取目标，并将替换计为两次变化；没有合法变化时保留上一帧。目标数均匀不等于受共现可行性或连续约束后的成品长度必然均匀。
 
 ## 实施与验证
 
