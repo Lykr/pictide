@@ -46,6 +46,27 @@ function FixedTags({ label, values, onChange, disabled }: { label: string; value
   const [matches, setMatches] = useState<Tag[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [origins, setOrigins] = useState<Map<string, boolean>>(new Map());
+  const [originError, setOriginError] = useState(false);
+  const originCache = useRef(new Map<string, boolean>());
+  const termKey = JSON.stringify([...new Set(values.map(value => value.trim().replaceAll("_", " ")).filter(Boolean))].sort());
+  useEffect(() => {
+    const terms: string[] = JSON.parse(termKey);
+    const missing = terms.filter(text => !originCache.current.has(text));
+    setOriginError(false);
+    if (!missing.length) return;
+    const abort = new AbortController();
+    const timer = setTimeout(() => {
+      api<{ anchor: { text: string; known: boolean }; relations: { text: string; known: boolean }[] }>("/api/candidate/relations", {
+        method: "POST", body: JSON.stringify({ anchor: missing[0], terms: missing.slice(1) }), signal: abort.signal,
+      }).then(data => {
+        if (abort.signal.aborted) return;
+        for (const term of [data.anchor, ...data.relations]) originCache.current.set(term.text, term.known);
+        setOrigins(new Map(originCache.current));
+      }).catch(() => { if (!abort.signal.aborted) setOriginError(true); });
+    }, 250);
+    return () => { clearTimeout(timer); abort.abort(); };
+  }, [termKey]);
   const list = useRef<HTMLDivElement>(null);
   const navigating = useRef(false);
   const move = (from: number, to: number) => {
@@ -95,7 +116,12 @@ function FixedTags({ label, values, onChange, disabled }: { label: string; value
         event.preventDefault(); event.stopPropagation();
         if (to >= 0 && to < values.length) { move(index, to); (list.current?.children[to]?.querySelector(".cooc-fixed-handle") as HTMLButtonElement)?.focus(); }
       }} />
-      <Input aria-label={`${label}第 ${index + 1} 项`} value={value} disabled={disabled} onChange={event => onChange(values.map((item, position) => position === index ? event.target.value : item))} />
+      <div className="cooc-fixed-value">
+        <Input aria-label={`${label}第 ${index + 1} 项`} value={value} disabled={disabled} onChange={event => onChange(values.map((item, position) => position === index ? event.target.value : item))} />
+        <Badge className="cooc-fixed-origin" variant={origins.get(value.trim().replaceAll("_", " ")) === true ? "secondary" : "outline"} data-tooltip={
+          !value.trim() ? "输入完整提示词后识别来源" : origins.get(value.trim().replaceAll("_", " ")) === true ? "完整文本匹配词库；固定正向词参与共现比较，固定负向词仅输出" : origins.get(value.trim().replaceAll("_", " ")) === false ? "完整文本未匹配词库；保留输出，不参与共现比较" : originError ? "词库识别暂不可用，尚未确定来源；编辑词项可重试" : "正在匹配词库"
+        }>{!value.trim() ? "待输入" : origins.get(value.trim().replaceAll("_", " ")) === true ? "词库词" : origins.get(value.trim().replaceAll("_", " ")) === false ? "自定义" : originError ? "未识别" : "识别中"}</Badge>
+      </div>
       <IconButton icon={X} label={`移除${label}第 ${index + 1} 项`} disabled={disabled} onClick={() => onChange(values.filter((_, position) => position !== index))} />
     </div>)}</div>
   </section>;

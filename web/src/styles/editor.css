@@ -32,7 +32,9 @@
 .cooc-fixed-handle { cursor: grab; touch-action: none; color: var(--muted-foreground); }
 .cooc-fixed-handle:active { cursor: grabbing; }
 .cooc-fixed-ghost { opacity: 0.4; }
-.cooc-fixed-row input { min-width: 0; }
+.cooc-fixed-value { position: relative; min-width: 0; }
+.cooc-fixed-value input { min-width: 0; padding-right: 80px; }
+.cooc-fixed-origin { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); }
 .cooc-number-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .cooc-preview { }
 .cooc-preview-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
