@@ -59,7 +59,7 @@ class RecommendationStoreTests(unittest.TestCase):
         self.assertEqual(self.store.load_policy('local','v1'),self.state(1))
         self.repo.rate(iid,None)
         latest=self.pending()[0]
-        self.assertFalse(latest.liked)
+        self.assertIsNone(latest.value)
         self.assertGreater(latest.revision,first.revision)
         self.assertTrue(self.store.commit_feedback(latest,self.state(2,0),1))
         self.repo.rate(iid,None)
@@ -100,8 +100,8 @@ class RecommendationStoreTests(unittest.TestCase):
         self.assertEqual(second,replace(update,feature_version='v2'))
         self.assertTrue(self.store.commit_feedback(second,self.state(1),0))
         self.repo.rate(iid,None)
-        self.assertFalse(self.pending('v2')[0].liked)
-        self.assertFalse(self.pending('v1')[0].liked)
+        self.assertIsNone(self.pending('v2')[0].value)
+        self.assertIsNone(self.pending('v1')[0].value)
         self.assertIsNone(self.store.load_policy('other','v1'))
     def test_legacy_seed_idempotent_unverifiable_ignored(self):
         good=self.image();manual=self.image(roam=False)
@@ -117,7 +117,7 @@ class RecommendationStoreTests(unittest.TestCase):
         self.assertEqual(self.pending(),(update,))
         self.repo.rate(good,None);self.store.seed_feedback('local','v1')
         self.assertEqual(len(self.pending()),1)
-        self.assertFalse(self.pending()[0].liked)
+        self.assertIsNone(self.pending()[0].value)
         for iid in (manual,broken,mismatch):self.assertEqual(self.repo.artifact(iid)['feedback'],1)
     def test_category_rename_preserves_old_snapshots_and_same_feedback_features(self):
         legacy = self.image()  # Historical metadata deliberately keeps its v2 tags field.
@@ -161,7 +161,7 @@ class RecommendationStoreTests(unittest.TestCase):
         with self.repo.connection() as db:db.execute('DELETE FROM roam_jobs')
         self.repo.rate(iid,None)
         update=self.pending()[0]
-        self.assertFalse(update.liked)
+        self.assertIsNone(update.value)
         self.assertEqual(update.candidate,self.candidate)
     def test_learning_commit_is_atomic_if_evidence_write_fails(self):
         iid=self.image();self.repo.rate(iid,1)
@@ -185,7 +185,7 @@ class RecommendationStoreTests(unittest.TestCase):
         iid=self.image();Repository(self.repo.path).rate(iid,1)
         self.assertEqual(len(self.pending()),1)
     def test_invalid_revision_duplicate_and_opaque_buffers(self):
-        update=FeedbackUpdate('local','direct',1,True,self.candidate,'v1')
+        update=FeedbackUpdate('local','direct',1,1,self.candidate,'v1')
         with self.assertRaises(ValueError):self.store.commit_feedback(update,self.state(3),0)
         self.assertTrue(self.store.commit_feedback(update,self.state(1),0))
         self.assertFalse(self.store.commit_feedback(update,self.state(2),1))

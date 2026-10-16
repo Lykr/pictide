@@ -47,61 +47,24 @@ class RepositoryTests(unittest.TestCase):
         self.repo.rate(iid,None)
         self.assertEqual(len(self.repo.artifacts(liked=True)),0)
         self.assertIsNone(Repository(self.repo.path).artifact(iid)["feedback"])
-        for value in (-1, 0, True, False, 1.0, "1", [], {}):
+        for value in (0, True, False, 1.0, "1", [], {}):
             with self.subTest(value=value), self.assertRaises(ValidationError):
                 self.repo.rate(iid,value)
         self.assertIsNone(self.repo.artifact(iid)["feedback"])
 
-    def legacy_feedback(self, values):
-        with self.repo.connection() as db:
-            db.execute("DROP TABLE feedback")
-            db.execute("""CREATE TABLE feedback (
-                artifact_id TEXT NOT NULL REFERENCES artifacts(id),
-                actor_id TEXT NOT NULL, value INTEGER NOT NULL CHECK(value IN (-1,1)),
-                updated_at TEXT NOT NULL, PRIMARY KEY(artifact_id,actor_id))""")
-            db.executemany("INSERT INTO feedback VALUES (?,?,?,?)", values)
-
-    def test_legacy_feedback_migration_keeps_likes_all_actors_and_image_records(self):
+    def test_signed_feedback_survives_reopen_and_remains_exclusive(self):
         job = self.repo.create_job(self.payload)
-        self.repo.complete(job["id"],[{"node_id":"9","index":n,"filename":f"old-{n}.png"} for n in range(3)])
-        ids = [row["id"] for row in self.repo.artifacts()]
-        expected = [(ids[0], "local", 1, "2026-01-01"), (ids[1], "other", 1, "2026-01-02")]
-        self.legacy_feedback(expected + [(ids[1], "local", -1, "2026-01-03"), (ids[2], "other", -1, "2026-01-04")])
-        migrated = Repository(self.repo.path)
-        self.assertEqual(len(migrated.artifacts()), 3)
-        self.assertEqual(migrated.job(job["id"])["status"], "completed")
-        self.assertEqual(migrated.artifact(ids[0])["feedback"], 1)
-        self.assertIsNone(migrated.artifact(ids[1])["feedback"])
-        with migrated.connection() as db:
-            self.assertEqual(sorted(tuple(row) for row in db.execute("SELECT * FROM feedback")), sorted(expected))
-            self.assertEqual(list(db.execute("PRAGMA foreign_key_check")), [])
-            schema_version = db.execute("PRAGMA schema_version").fetchone()[0]
-            with self.assertRaises(sqlite3.IntegrityError):
-                db.execute("INSERT INTO feedback VALUES (?,'local',-1,'today')",(ids[2],))
-            with self.assertRaises(sqlite3.IntegrityError):
-                db.execute("INSERT INTO feedback VALUES ('missing','local',1,'today')")
-        reopened = Repository(self.repo.path)
-        with reopened.connection() as db:
-            self.assertEqual(db.execute("PRAGMA schema_version").fetchone()[0], schema_version)
-            self.assertEqual(sorted(tuple(row) for row in db.execute("SELECT * FROM feedback")), sorted(expected))
-        # Another actor's like remains protected after withdrawing the local state.
-        reopened.rate(ids[1], None)
-        self.assertEqual(reopened.expire_artifacts("2999-01-01T00:00:00Z"), 1)
-        self.assertIsNotNone(reopened.artifact(ids[1]))
-
-    def test_legacy_like_only_and_empty_tables_also_migrate_constraint(self):
-        job = self.repo.create_job(self.payload)
-        self.repo.complete(job["id"],[{"node_id":"9","index":0}])
+        self.repo.complete(job["id"], [{"node_id": "9", "index": 0}])
         iid = self.repo.artifacts()[0]["id"]
-        for values in ([], [(iid, "local", 1, "2026-01-01")]):
-            with self.subTest(values=values):
-                self.legacy_feedback(values)
-                migrated = Repository(self.repo.path)
-                self.assertEqual(len(migrated.artifacts()), 1)
-                with migrated.connection() as db:
-                    self.assertEqual([tuple(row) for row in db.execute("SELECT * FROM feedback")], values)
-                    with self.assertRaises(sqlite3.IntegrityError):
-                        db.execute("INSERT INTO feedback VALUES (?,'other',-1,'today')",(iid,))
+        self.repo.rate(iid, 1)
+        self.repo.rate(iid, -1)
+        reopened = Repository(self.repo.path)
+        self.assertEqual(reopened.artifact(iid)["feedback"], -1)
+        self.assertEqual(reopened.artifacts(liked=True), [])
+        with reopened.connection() as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM feedback WHERE artifact_id=?", (iid,)).fetchone()[0], 1)
+        reopened.rate(iid, None)
+        self.assertIsNone(reopened.artifact(iid)["feedback"])
 
     def test_cancelled_submission_retains_id_but_never_enters_feed(self):
         job = self.repo.create_job(self.payload)

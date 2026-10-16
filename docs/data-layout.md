@@ -134,3 +134,7 @@ SQLite 在初始化时以 `CREATE TABLE IF NOT EXISTS` 增加漫游表，保留�
 ## PMI 候选库
 
 候选成品只保留 general 且频次至少 100 的标签；tags 保存 id/name/post_count，correlations 保存无序标签对的 pmi/count，另有数据来源和预设。原名是词库显示内容，空格形式仅在推荐和生图调用时转换。导入去重 ID、进度和临时计数只在独立离线 SQLite 中，成品不保留。重建先备份旧 candidate.sqlite3，不做旧概率预设兼容；历史任务快照和推荐反馈仍在主库，保持原文本。完整规则见 [PMI 设计](candidate-pmi.md)。
+
+## 正负反馈表更新
+
+不喜欢反馈发布前先停止应用并备份 `pictide.sqlite3`，再执行 `python -m backend.store.feedback_upgrade <数据库绝对路径>`。这是针对当前安装的一次性离线转换，将推荐事件与证据的 `liked` 转为 `value`（喜欢 1、撤回 null），并允许图片反馈 -1；保留已有点赞、策略参数、向量缓存、修订与重置分界。不在应用启动时执行。转换后使用对应新版代码启动；需要回退时恢复完整数据库备份与旧代码。见 [不喜欢反馈](dislike-feedback.md)。

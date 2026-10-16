@@ -34,6 +34,11 @@ class RecommendationApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
+        static = self.root / "static"
+        static.mkdir()
+        static_patch = patch("backend.host.STATIC", static)
+        static_patch.start()
+        self.addCleanup(static_patch.stop)
         self.fake = FakeBackend()
         self.host = create_app(self.root, lambda config, session: self.fake)
         self.app = self.host[APPLICATION]
@@ -70,6 +75,57 @@ class RecommendationApplicationTests(unittest.IsolatedAsyncioTestCase):
 
     def policy(self):
         return self.app.recommendation_store.load_policy("local", self.version)
+
+    async def test_signed_http_feedback_is_exclusive_reversible_and_idempotent(self):
+        image = self.output(1)[0]
+        await self.rate(image, -1)
+        disliked = self.policy()
+        self.assertEqual(disliked.evidence_count, 1)
+        request = ScoreRequest("signed-score", "local", 23, (self.candidate,))
+        low = self.app.recommendation.score(request).scores[0].score
+        await self.rate(image, -1)
+        self.assertEqual(self.policy().revision, disliked.revision)
+        await self.rate(image, 1)
+        liked = self.policy()
+        self.assertEqual(liked.evidence_count, 1)
+        self.assertEqual(liked.precision, disliked.precision)
+        np.testing.assert_allclose(np.frombuffer(liked.reward, dtype="<f8"),
+                                   -np.frombuffer(disliked.reward, dtype="<f8"), atol=1e-12)
+        self.assertGreater(self.app.recommendation.score(request).scores[0].score, low)
+        await self.rate(image, None)
+        restored = self.policy()
+        self.assertEqual(restored.evidence_count, 0)
+        dim = 768 + len(restored.term_keys)
+        np.testing.assert_allclose(np.frombuffer(restored.precision, dtype="<f8").reshape(dim, dim), np.eye(dim), atol=1e-12)
+        np.testing.assert_allclose(np.frombuffer(restored.reward, dtype="<f8"), 0, atol=1e-12)
+        self.assertEqual(self.app.recommendation_store.pending_feedback("local", self.version), ())
+
+    async def test_negative_failure_replays_on_restart_and_reset_blocks_old_evidence(self):
+        image = self.output(1)[0]
+        with patch.object(self.app.recommendation, "apply_feedback", side_effect=RuntimeError("simulated failure")):
+            with self.assertLogs("backend.application", level="ERROR"):
+                await self.rate(image, -1)
+        self.assertEqual(self.app.storage.artifact(image["id"])["feedback"], -1)
+        self.assertIsNone(self.policy())
+        await self.client.close()
+        self.host = create_app(self.root, lambda config, session: self.fake)
+        self.app = self.host[APPLICATION]
+        self.app.recommendation = RecommendationService(self.app.recommendation_store, CPUEncoder())
+        self.client = TestClient(TestServer(self.host))
+        await self.client.start_server()
+        await self.app.tasks.stop()
+        self.assertEqual(self.policy().evidence_count, 1)
+        self.assertEqual(self.app.recommendation_store.load_evidence("local", self.version)[0].value, -1)
+        preferences = await (await self.client.get("/api/recommendation/preferences")).json()
+        self.assertEqual(preferences["evidence_count"], 1)
+        response = await self.client.post("/api/recommendation/preferences/reset", json={"request_id": "signed-reset", "expected_reset_revision": 0})
+        self.assertEqual(response.status, 200, await response.text())
+        await asyncio.to_thread(self.app._sync_recommendation)
+        self.assertIsNone(self.policy())
+        self.assertEqual(self.app.storage.artifact(image["id"])["feedback"], -1)
+        await self.rate(image, None)
+        await self.rate(image, -1)
+        self.assertEqual(self.policy().evidence_count, 1)
 
     async def test_http_likes_are_per_image_idempotent_and_withdraw_exactly(self):
         first, second = self.output()

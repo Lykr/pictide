@@ -117,11 +117,11 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
             response = await self.client.put(f"/api/artifacts/{artifact['id']}/feedback",json={"value":value})
             self.assertEqual(response.status,200)
             self.assertEqual((await response.json())["artifact"]["feedback"],value)
-        for value in [-1, 0, True, False, 1.0, "1", [], {}]:
+        for value in [0, True, False, 1.0, "1", [], {}]:
             with self.subTest(value=value):
                 response = await self.client.put(f"/api/artifacts/{artifact['id']}/feedback",json={"value":value})
                 self.assertEqual(response.status,400)
-                self.assertIn("1 或 null",(await response.json())["error"])
+                self.assertIn("1、-1 或 null",(await response.json())["error"])
                 self.assertIsNone(self.client.server.app[APPLICATION].storage.artifact(artifact["id"])["feedback"])
         response = await self.client.get(f"/api/artifacts/{artifact['id']}/prompts")
         self.assertEqual(await response.json(),{"positive":"  library, warm light\n","negative":"blurry"})

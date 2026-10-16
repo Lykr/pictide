@@ -47,7 +47,7 @@ class PreferenceResetStoreTests(unittest.TestCase):
             from backend.store.recommendation import record_feedback
             with self.repo.connection() as db:
                 db.execute('INSERT INTO feedback VALUES (?,?,1,?)', (image_id, user, '2026-01-01'))
-                record_feedback(db, image_id, user, True)
+                record_feedback(db, image_id, user, 1)
         update = next(u for u in self.store.pending_feedback(user, version) if u.artifact_id == image_id)
         previous = self.store.load_policy(user, version)
         expected = previous.revision if previous else 0
@@ -117,10 +117,10 @@ class PreferenceResetStoreTests(unittest.TestCase):
         self.store.reset_user('local', 'reset-relike', 0)
         self.repo.rate(iid, None)
         retract = self.store.pending_feedback('local', 'v1')[0]
-        self.assertFalse(retract.liked)
+        self.assertIsNone(retract.value)
         self.assertTrue(self.store.commit_feedback(retract, self.state(1, 0), 0))
         relike = self.learn(iid)
-        self.assertTrue(relike.liked)
+        self.assertEqual(relike.value, 1)
         self.assertGreater(relike.revision, retract.revision)
         self.assertEqual(self.store.load_evidence('local', 'v1'), (relike,))
 
