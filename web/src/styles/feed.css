@@ -161,8 +161,29 @@
 .feed-page .settings-navigation button.active:not(:where(.editor-page, .editor-page *)) { background: var(--accent); color: var(--accent-foreground); }
 .feed-page .settings-content:not(:where(.editor-page, .editor-page *)) { min-width: 0; max-width: 780px; }
 .feed-page .workflow-actions:not(:where(.editor-page, .editor-page *)) { display: flex; gap: 4px; align-items: center; }
-.feed-page .backend-picker:not(:where(.editor-page, .editor-page *)) { margin-bottom: 16px; }
-.feed-page .backend-picker .label-row:not(:where(.editor-page, .editor-page *)) { height: 21px; }
+/* Backend fields share one rhythm; shadcn primitives retain their own styling. */
+.feed-page #settings-form { display: grid; min-width: 0; gap: 24px; }
+.feed-page #settings-form .form-grid { row-gap: 16px; align-items: start; }
+.feed-page #settings-form .settings-field { display: grid; align-content: start; min-width: 0; gap: 8px; }
+.feed-page #settings-form .settings-field > label, .feed-page #settings-form .settings-field-heading { display: flex; align-items: center; min-height: 24px; margin: 0; }
+.feed-page #settings-form .settings-field-heading { justify-content: space-between; gap: 8px; }
+.feed-page #settings-form .settings-field-heading > label { margin: 0; }
+.feed-page #settings-form [data-control-host=workflow] { margin: 0; }
+.feed-page #settings-form .workflow-picker [data-slot=command-input-wrapper] { padding: 0; }
+.feed-page #settings-form #default-workflow, .feed-page #settings-form #custom-workflow { display: grid; min-width: 0; gap: 16px; margin: 0; }
+.feed-page #settings-form #edit-default-parameters { justify-self: start; margin: 0; }
+.feed-page #settings-form .node-parameters { margin: 0; padding: 16px; }
+.feed-page #settings-form #node-parameter-fields { display: grid; gap: 24px; }
+.feed-page #settings-form .node-parameter-group { margin: 0; }
+.feed-page #settings-form .node-parameter-group legend { margin-bottom: 8px; padding: 0; }
+.feed-page #settings-form .node-input-field { display: grid; align-content: start; gap: 8px; }
+.feed-page #settings-form .node-input-caption { display: flex; align-items: center; min-height: 24px; }
+.feed-page #settings-form .node-input-field > input, .feed-page #settings-form .node-input-field > textarea, .feed-page #settings-form .node-input-field > select { margin: 0; }
+.feed-page #settings-form .node-input-field:only-child { grid-column: 1 / -1; }
+.feed-page #settings-form .validation { margin: 0; }
+.feed-page #settings-form .binding-inputs { display: grid; min-width: 0; gap: 16px; }
+.feed-page #settings-form .dialog-footer { margin: 0; }
+
 .feed-page #workflow-mode:not(:where(.editor-page, .editor-page *)), .feed-page [data-slot=native-select-wrapper]:has(>#workflow-mode):not(:where(.editor-page, .editor-page *)) { margin-bottom: 20px; }
 .feed-page .data-locations:not(:where(.editor-page, .editor-page *)) { display: grid; gap: 8px; }
 .feed-page .data-locations dt:not(:where(.editor-page, .editor-page *)) { font-size: 12px; color: var(--muted-foreground); margin-top: 12px; }

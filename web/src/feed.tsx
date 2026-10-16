@@ -6,7 +6,7 @@ import { GeneralSettings } from "./components/general-settings";
 import { PreferenceActions } from "./components/preference-actions";
 import { ImageInfo } from "./components/image-info";
 import { RoamPlaybackButton, RoamPlaybackSettings } from "./components/roam-playback";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings2, Database, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Upload, ThumbsDown } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings2, Database, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown } from "lucide-react";
 import { IconButton, HelpTip } from "./components/actions";
 import { Card } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -212,94 +212,60 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="settings-content">
 <section id="settings-general" className="settings-category"><GeneralSettings initialError={themeError} /></section>
 <section id="settings-backend" className="settings-category"><form id="settings-form">
-{"\n    "}<div className="form-grid">
-<div className="backend-picker"><div className="label-row"><Label htmlFor="edit-backend">已有后端</Label><IconButton id="delete-backend" icon={Trash2} label="删除后端配置" size="icon-xs" disabled /></div><NativeSelect id="edit-backend" size="sm">
-</NativeSelect>
+<div className="form-grid">
+<div className="settings-field">
+<div className="settings-field-heading"><Label htmlFor="edit-backend">已有后端</Label><IconButton id="delete-backend" icon={Trash2} label="删除后端配置" size="icon-xs" disabled /></div>
+<NativeSelect id="edit-backend" />
 </div>
-<Label>{"后端名称"}<Input id="backend-name" required placeholder={"本机 ComfyUI"} />
-</Label>
-<Label>{"后端类型"}<NativeSelect id="backend-kind" size="sm">
-<option value="comfyui">{"ComfyUI"}</option>
-</NativeSelect>
-</Label>
-<Label>{"API 地址"}<Input id="backend-url" type="url" required defaultValue="http://127.0.0.1:8188" />
-</Label>
+<div className="settings-field"><Label htmlFor="backend-name">后端名称</Label><Input id="backend-name" required placeholder="本机 ComfyUI" /></div>
+<div className="settings-field"><Label htmlFor="backend-kind">后端类型</Label><NativeSelect id="backend-kind"><option value="comfyui">ComfyUI</option></NativeSelect></div>
+<div className="settings-field"><Label htmlFor="backend-url">API 地址</Label><Input id="backend-url" type="url" required defaultValue="http://127.0.0.1:8188" /></div>
 </div>
-{"\n    "}<Label htmlFor="backend-key"><span className="field-caption">{"API Key"}<HelpTip id="key-state" text="可选。保留遮罩不修改密钥，清空并保存可移除。" /></span><Input id="backend-key" type="password" autoComplete="new-password" />
-
-</Label>
-{"\n    "}<div className="label-row">
-<Label htmlFor="workflow-name--control">工作流</Label>
-<div className="workflow-actions">
-<IconButton id="delete-workflow" icon={Trash2} label="删除工作流" disabled />
-<IconButton id="reload-workflows" icon={RefreshCw} label="刷新工作流列表" variant="ghost" type="button" />
+<div className="settings-field">
+<Label htmlFor="backend-key"><span className="field-caption">API Key<HelpTip id="key-state" text="可选。保留遮罩不修改密钥，清空并保存可移除。" /></span></Label>
+<Input id="backend-key" type="password" autoComplete="new-password" />
 </div>
-</div>
+<div className="settings-field">
+<div className="settings-field-heading"><Label htmlFor="workflow-name--control">工作流</Label><div className="workflow-actions">
+<IconButton id="delete-workflow" icon={Trash2} label="删除工作流" size="icon-xs" disabled />
+<IconButton id="reload-workflows" icon={RefreshCw} label="刷新工作流列表" size="icon-xs" />
+</div></div>
 <div data-workflow-picker="">
-<select id="workflow-mode" aria-hidden="true" tabIndex={-1}>
-<option value="default">默认文生图</option>
-<option value="custom">自定义 API 工作流</option>
-</select>
+<select id="workflow-mode" aria-hidden="true" tabIndex={-1}><option value="default">默认文生图</option><option value="custom">自定义 API 工作流</option></select>
 <input id="workflow-name" aria-hidden="true" tabIndex={-1} maxLength={120} />
 </div>
-{"\n    "}<section id="default-workflow">
-<div className="label-row">
-<Label htmlFor="default-checkpoint"><span className="field-caption">{"模型"}<HelpTip text="从配置的 ComfyUI 读取模型，留空时自动选择第一个可用模型。" /></span></Label>
-<IconButton id="load-models" icon={RefreshCw} label="读取后端模型" variant="ghost" type="button" />
 </div>
-<NativeSelect id="default-checkpoint" size="sm">
-<option value="">{"自动选择第一个可用模型"}</option>
-</NativeSelect>
+<section id="default-workflow">
+<div className="settings-field">
+<div className="settings-field-heading"><Label htmlFor="default-checkpoint"><span className="field-caption">模型<HelpTip text="从配置的 ComfyUI 读取模型，留空时自动选择第一个可用模型。" /></span></Label><IconButton id="load-models" icon={RefreshCw} label="读取后端模型" size="icon-xs" /></div>
+<NativeSelect id="default-checkpoint"><option value="">自动选择第一个可用模型</option></NativeSelect>
+</div>
 <p id="model-note" className="hint" role="status" hidden />
-<Button id="edit-default-parameters" type="button" className="quiet" variant="outline" data-tooltip="将默认工作流展开为自定义草稿，编辑采样、尺寸等节点参数"><SlidersHorizontal aria-hidden="true" />{"节点参数"}</Button>
-
+<Button id="edit-default-parameters" type="button" className="quiet" variant="outline" data-tooltip="将默认工作流展开为自定义草稿，编辑采样、尺寸等节点参数"><SlidersHorizontal aria-hidden="true" />节点参数</Button>
 </section>
-{"\n    "}<fieldset id="custom-workflow" hidden disabled>
-{"\n      "}<section id="node-parameters" className="node-parameters" data-editor-mode="parameters">
-<div className="node-parameters-heading">
-<h3>节点参数</h3>
-<div className="node-parameters-actions">
+<fieldset id="custom-workflow" hidden disabled>
+<section id="node-parameters" className="node-parameters" data-editor-mode="parameters">
+<div className="node-parameters-heading"><h3>节点参数</h3><div className="node-parameters-actions">
 <Button id="toggle-workflow-json" type="button" variant="ghost" size="sm" aria-pressed="false" aria-controls="node-parameter-fields workflow-json-editor" aria-label="编辑 API 工作流 JSON" data-tooltip="编辑 API 工作流 JSON">JSON</Button>
-<IconButton icon={Upload} label="导入 ComfyUI API 工作流 JSON" variant="ghost" type="button" onClick={() => document.getElementById("workflow-file")?.click()} />
+<IconButton icon={Download} label="导入 ComfyUI API 工作流 JSON" onClick={() => document.getElementById("workflow-file")?.click()} />
 <input id="workflow-file" type="file" accept=".json,application/json" hidden />
-</div>
-</div>
-<div id="node-parameter-fields">
-</div>
-<div id="workflow-json-editor" hidden>
-<Label htmlFor="workflow-json" className="sr-only">API 工作流 JSON</Label>
-<Textarea id="workflow-json" className="code-input" rows={7} placeholder={"{\"6\":{\"class_type\":\"CLIPTextEncode\",\"inputs\":{\"text\":\"…\"}}}"} spellCheck={false}>
-</Textarea>
-</div>
+</div></div>
+<div id="node-parameter-fields" />
+<div id="workflow-json-editor" hidden><Label htmlFor="workflow-json" className="sr-only">API 工作流 JSON</Label><Textarea id="workflow-json" className="code-input" rows={7} placeholder={'{"6":{"class_type":"CLIPTextEncode","inputs":{"text":"…"}}}'} spellCheck={false} /></div>
 </section>
-<div id="workflow-error" className="validation" role="status">
+<div id="workflow-error" className="validation" role="status" />
+<div className="form-grid workflow-bindings">
+<div className="binding-inputs">
+<div className="settings-field"><Label htmlFor="binding-positive">正向提示词输入</Label><NativeSelect id="binding-positive"><option value="">先导入工作流</option></NativeSelect></div>
+<div className="settings-field"><Label htmlFor="binding-negative">负向提示词输入</Label><NativeSelect id="binding-negative"><option value="">选择负向 text 输入</option></NativeSelect></div>
+<div className="settings-field"><Label htmlFor="binding-seed">图像种子输入（可选）</Label><NativeSelect id="binding-seed"><option value="">不绑定</option></NativeSelect></div>
 </div>
-{"\n      "}<div className="form-grid">
-<Label>{"正向提示词输入"}<NativeSelect id="binding-positive" size="sm">
-<option value="">{"先导入工作流"}</option>
-</NativeSelect>
-</Label>
-<Label>{"负向提示词输入"}<NativeSelect id="binding-negative" size="sm">
-<option value="">{"选择负向 text 输入"}</option>
-</NativeSelect>
-</Label>
-<Label>{"图像种子输入（可选）"}<NativeSelect id="binding-seed" size="sm">
-<option value="">{"不绑定"}</option>
-</NativeSelect>
-</Label>
-<Label><span className="field-caption">{"输出节点"}<HelpTip text="可多选；留空时使用后端返回的图像输出。" /></span><select id="output-nodes" data-slot="native-select" className={nativeSelectClassName} multiple size={3}>
-</select>
-
-</Label>
+<div className="settings-field"><Label htmlFor="output-nodes"><span className="field-caption">输出节点<HelpTip text="可多选；留空时使用后端返回的图像输出。" /></span></Label><select id="output-nodes" data-slot="native-select" className={nativeSelectClassName} multiple size={3} /></div>
 </div>
-{"\n    "}</fieldset>
-{"\n    "}<div id="settings-result" className="notice" role="status" hidden>
-</div>
-<div className="dialog-footer">
-<Button id="test-backend" type="button" className="quiet" variant="outline">{"测试连接"}</Button>
-<Button id="save-backend" type="submit" className="primary" variant="default">{"保存后端"}</Button>
-</div>
-{"\n  "}</form></section>
+</fieldset>
+<div id="settings-result" className="notice" role="status" hidden />
+<div className="dialog-footer"><Button id="test-backend" type="button" className="quiet" variant="outline">测试连接</Button><Button id="save-backend" type="submit" className="primary" variant="default">保存后端</Button></div>
+</form></section>
 <section id="settings-roam" className="settings-category" hidden><form id="roam-form">
 <fieldset id="roam-fields">
 <div className="form-grid">

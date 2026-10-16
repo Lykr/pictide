@@ -718,14 +718,15 @@ function renderNodeParameters() {
     const legend = document.createElement('legend'); legend.textContent = `${node.id} · ${node.title}`; panel.append(legend);
     const grid = document.createElement('div'); grid.className = 'node-input-grid'; panel.append(grid);
     for (const input of node.inputs) {
-      const label = document.createElement('label'); label.textContent = input.name;
+      const label = document.createElement('label'); label.className = 'node-input-field';
+      const caption = document.createElement('span'); caption.className = 'node-input-caption'; caption.textContent = input.name; label.append(caption);
       let control;
       if (Array.isArray(input.options) && input.options.length) {
         control = document.createElement('select');
         const values = input.options.includes(input.value) ? input.options : [input.value, ...input.options];
         control.append(...values.map((value) => option(String(value), String(value)))); control.value = String(input.value);
       } else if (input.kind === 'string' && (input.value.length > 100 || input.value.includes('\n'))) {
-        control = document.createElement('textarea'); control.rows = 3; control.value = input.value; label.className = 'wide-node-input';
+        control = document.createElement('textarea'); control.rows = 3; control.value = input.value; label.classList.add('wide-node-input');
       } else {
         control = document.createElement('input');
         control.type = input.kind === 'boolean' ? 'checkbox' : ['integer', 'number'].includes(input.kind) ? 'number' : 'text';
