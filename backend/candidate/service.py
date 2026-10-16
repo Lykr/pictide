@@ -74,6 +74,25 @@ class CandidateService:
     def delete_preset(self, preset_id):
         return self.store.delete_preset(preset_id)
 
+    def relations(self, anchor, terms):
+        if not isinstance(anchor, str) or not anchor.strip():
+            raise CandidateError("anchor 必须是完整且非空的提示词")
+        if not isinstance(terms, list) or any(not isinstance(text, str) or not text.strip() for text in terms):
+            raise CandidateError("terms 必须是完整且非空的提示词列表")
+        anchor = anchor.strip().replace("_", " ")
+        terms = list(dict.fromkeys(text.strip().replace("_", " ") for text in terms))
+        terms = [text for text in terms if text != anchor]
+        tag = self.store.find_tag(anchor)
+        others = [(text, self.store.find_tag(text)) for text in terms]
+        pairs = self.store.pair_relations(tag["id"], [other["id"] for _, other in others if other]) if tag else {}
+        result = []
+        for text, other in others:
+            pair = pairs.get(other["id"]) if other else None
+            result.append(dict(text=text, known=other is not None,
+                               pmi=pair["pmi"] if pair else None,
+                               count=pair["count"] if pair else 0 if tag and other else None))
+        return dict(anchor=dict(text=anchor, known=tag is not None), relations=result)
+
     def dataset_status(self):
         return self.store.dataset_status()
 

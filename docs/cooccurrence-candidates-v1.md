@@ -17,6 +17,7 @@
 - GET /api/candidate/tags：只读原名词库，query/page/page_size，默认每页 15 条。
 - GET /api/candidate/dataset：已导入数据状态及来源。
 - GET /api/candidate/presets、GET /api/candidate/presets/{id}、POST /api/candidate/presets、DELETE /api/candidate/presets/{id}：命名预设。
+- POST /api/candidate/relations：只读查询当前组合词项的两两相关性，详见下文预览悬停相关性。
 - POST /api/candidate/generate：预览完整组合；preset_id/mode/seed/sequence_step/max_steps/document（可选草稿）。
 - CandidateProvider.generate(context,{count})：沿用 Sequence[Candidate]，完整正负文本和标签快照；推荐不读取词库或统计数据库。
 
@@ -29,7 +30,7 @@
 应用候选库更换前备份。状态 ready、导入进程退出且 WAL 已清空后才发布；不复制正在写入的库。旧预设原文件保留于备份，新版本不解释旧的概率阈值。任务、图片、喜欢和推荐证据保留。
 
 
-## 预览悬停相关性（设计待确认）
+## 预览悬停相关性（已确认并实现）
 
 ### 架构
 
@@ -45,7 +46,7 @@
 
 ### 接口
 
-新增 `POST /api/candidate/relations`，只读，不创建任务或保存配置。
+`POST /api/candidate/relations`，只读，不创建任务或保存配置。
 
 请求：
 

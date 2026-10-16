@@ -53,6 +53,20 @@ class SQLiteCandidateStore:
                              (text.replace(" ", "_"),)).fetchone()
         return dict(row) if row else None
 
+    def pair_relations(self, anchor_id, other_ids):
+        result = {}
+        with self.connect() as db:
+            for offset in range(0, len(other_ids), 400):
+                ids = other_ids[offset:offset+400]
+                marks = ",".join("?" for _ in ids)
+                rows = db.execute(f"""
+                    SELECT tag_b AS id,pmi,count FROM correlations WHERE tag_a=? AND tag_b IN ({marks})
+                    UNION ALL
+                    SELECT tag_a AS id,pmi,count FROM correlations WHERE tag_b=? AND tag_a IN ({marks})
+                """, [anchor_id, *ids, anchor_id, *ids])
+                result.update((row["id"], dict(pmi=row["pmi"], count=row["count"])) for row in rows)
+        return result
+
     def expansion_candidates(self, existing, pmi_threshold, minimum):
         """Intersect PMI-qualified indexed neighbours, weighted by geometric lift."""
         if not existing:

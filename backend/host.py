@@ -277,7 +277,7 @@ def create_app(data_dir=None, backend_factory=create_backend):
         web.get("/api/artifacts/{id}/image", image), web.get("/api/artifacts/{id}/prompts", prompts),
         web.get("/api/candidate/{action:tags|presets|dataset}", candidate),
         web.get("/api/candidate/presets/{id}", candidate),
-        web.post("/api/candidate/{action:presets|generate}", candidate),
+        web.post("/api/candidate/{action:presets|generate|relations}", candidate),
         web.delete("/api/candidate/presets/{id}", candidate),
         web.get("/api/workflows", workflows), web.get("/api/workflows/{id}", workflows), web.post("/api/workflows", workflows),
         web.delete("/api/workflows/{id}", workflows),

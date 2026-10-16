@@ -430,6 +430,8 @@ class PictideApplication:
         if action == "tags":
             return await asyncio.to_thread(self.candidates.list_tags, query.get("query", ""),
                                           int(query.get("page", 1)), int(query.get("page_size", 15)))
+        if action == "relations":
+            return await asyncio.to_thread(self.candidates.relations, data.get("anchor"), data.get("terms"))
         if action == "dataset":
             return await asyncio.to_thread(self.candidates.dataset_status)
         if action == "presets":

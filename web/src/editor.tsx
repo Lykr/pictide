@@ -10,6 +10,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./components/ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./components/ui/collapsible";
 import { HelpTip, IconButton } from "./components/actions";
+import { PreviewPrompts, type PreviewTerm } from "./components/preview-relations";
 import { PageControls, DEFAULT_PAGE_SIZE } from "./components/page-controls";
 import { confirmAction } from "./components/confirm-action";
 import { sortFixedTags } from "./controllers/fixed-tags-sort.mjs";
@@ -22,7 +23,7 @@ type TagPage = { tags: Tag[]; total: number; page: number; page_size: number };
 type PresetDocument = { base_positive: string[]; base_negative: string[]; min_tags: number; max_tags: number; pmi_threshold: number; min_cooccurrence: number; change_budget: number };
 type Preset = { id: string; name: string; document: PresetDocument };
 type Mode = "random_each_run" | "fixed_seed" | "sequence";
-type Result = { positive: string; negative: string; seed: number; selected_tags: (Tag | string)[]; sequence?: { seed?: number; step?: number; changes?: number; change_budget?: number }; report: Record<string, unknown> };
+type Result = { candidate_id: string; positive: string; negative: string; seed: number; selected_tags: PreviewTerm[]; sequence?: { seed?: number; step?: number; changes?: number; change_budget?: number }; report: Record<string, unknown> };
 const defaults: PresetDocument = { base_positive: [], base_negative: [], min_tags: 5, max_tags: 20, pmi_threshold: 0, min_cooccurrence: 5, change_budget: 2 };
 const stopReasons: Record<string, string> = { target_length: "达到目标长度", no_candidates: "无可用候选", budget_exhausted: "达到变化预算", max_steps: "达到搜索上限", search_limit: "达到搜索上限", no_eligible_tags: "无可用候选", budget_zero: "保持上一帧", held_no_legal_change: "无合法变化，保持上一帧" };
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -39,13 +40,6 @@ function Choice({ label, value, onChange, options, disabled }: { label: string; 
 function Field({ label, help, children }: { label: string; help?: string; children: ReactNode }) {
   return <div className="cooc-field"><Label><span>{label}</span>{help && <HelpTip text={help} />}</Label>{children}</div>;
 }
-function CopyText({ text, label }: { text: string; label: string }) {
-  const [status, setStatus] = useState("");
-  const copy = async () => { try { await navigator.clipboard.writeText(text); setStatus("已复制"); } catch { setStatus("复制失败，请重试"); } };
-  useEffect(() => { if (!status) return; const timer = setTimeout(() => setStatus(""), 1800); return () => clearTimeout(timer); }, [status]);
-  return <IconButton icon={status === "已复制" ? Check : Copy} label={status || `复制${label}`} disabled={!text} onClick={copy} />;
-}
-
 function FixedTags({ label, values, onChange, disabled }: { label: string; values: string[]; onChange: (values: string[]) => void; disabled: boolean }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -239,7 +233,7 @@ export function EditorWorkspace() {
             <Button variant="secondary" disabled={busy || !loaded} onClick={preview}>{busy ? <LoaderCircle className="animate-spin" /> : <Sparkles />}预览</Button>
           </div>
           <Collapsible><CollapsibleTrigger asChild><Button variant="ghost" size="sm">搜索设置</Button></CollapsibleTrigger><CollapsibleContent><Field label="搜索上限" help="限制寻找合法组合的搜索步数，所有模式共用。"><Input className="max-w-48" aria-label="预览搜索上限" type="number" min={1} max={1000000} value={maxSteps} step={1} onChange={event => setMaxSteps(event.target.valueAsNumber)} /></Field></CollapsibleContent></Collapsible>
-          {result ? <><div className="cooc-preview-grid">{(["positive", "negative"] as const).map(direction => <section key={direction}><div className="cooc-section-heading"><h2>{direction === "positive" ? "正向提示词" : "负向提示词"}</h2><span className="spacer" /><CopyText text={result[direction]} label={direction === "positive" ? "正向提示词" : "负向提示词"} /></div><p className="cooc-prompt">{result[direction] || "—"}</p></section>)}</div><div className="cooc-result-summary"><Badge variant="secondary">{stopReasons[String(result.report.stop_reason)] || String(result.report.stop_reason || "已生成")}</Badge><span>种子 {result.seed}</span>{result.sequence && <span>帧 {result.sequence.step ?? step} · 变化 {result.sequence.changes ?? 0} / {result.sequence.change_budget ?? preset.document.change_budget}</span>}</div>{Array.isArray(result.report.unrecognized_fixed) && result.report.unrecognized_fixed.length > 0 && <p className="text-xs text-muted-foreground" role="status">未参与共现计算：{result.report.unrecognized_fixed.join(", ")}</p>}<Collapsible><CollapsibleTrigger asChild><Button variant="ghost" size="sm">生成报告</Button></CollapsibleTrigger><CollapsibleContent><pre className="cooc-report">{JSON.stringify({ selected_tags: result.selected_tags, sequence: result.sequence, ...result.report }, null, 2)}</pre></CollapsibleContent></Collapsible></> : <p className="cooc-empty">预览当前预设，不生成图片。</p>}
+          {result ? <><PreviewPrompts key={result.candidate_id} terms={result.selected_tags} positive={result.positive} negative={result.negative} /><div className="cooc-result-summary"><Badge variant="secondary">{stopReasons[String(result.report.stop_reason)] || String(result.report.stop_reason || "已生成")}</Badge><span>种子 {result.seed}</span>{result.sequence && <span>帧 {result.sequence.step ?? step} · 变化 {result.sequence.changes ?? 0} / {result.sequence.change_budget ?? preset.document.change_budget}</span>}</div>{Array.isArray(result.report.unrecognized_fixed) && result.report.unrecognized_fixed.length > 0 && <p className="text-xs text-muted-foreground" role="status">未参与共现计算：{result.report.unrecognized_fixed.join(", ")}</p>}<Collapsible><CollapsibleTrigger asChild><Button variant="ghost" size="sm">生成报告</Button></CollapsibleTrigger><CollapsibleContent><pre className="cooc-report">{JSON.stringify({ selected_tags: result.selected_tags, sequence: result.sequence, ...result.report }, null, 2)}</pre></CollapsibleContent></Collapsible></> : <p className="cooc-empty">预览当前预设，不生成图片。</p>}
         </section>}
       </>}
     </main>

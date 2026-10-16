@@ -43,3 +43,21 @@
 .cooc-report { max-height: 340px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 var(--font-mono); }
 @media (max-width: 800px) { .cooc-fixed-grid, .cooc-preview-grid { grid-template-columns: minmax(0, 1fr); } .cooc-number-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 480px) { .cooc-library-filters { flex-wrap: wrap; } .cooc-number-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.cooc-preview-term { display: inline; height: auto; min-height: 24px; padding: 2px 4px; border-radius: var(--radius-sm); font: inherit; white-space: normal; text-align: left; vertical-align: baseline; }
+.cooc-preview-term[data-relation=anchor] { background: var(--accent); box-shadow: inset 0 0 0 1px var(--ring); }
+.cooc-preview-term[data-relation=positive] { background: color-mix(in oklch, var(--success) 16%, transparent); }
+.cooc-preview-term[data-relation=negative] { background: color-mix(in oklch, var(--warning) 18%, transparent); }
+.cooc-preview-term[data-relation=neutral] { background: var(--muted); }
+.cooc-preview-term[data-relation=zero] { background: color-mix(in oklch, var(--destructive) 12%, transparent); text-decoration: underline dotted; }
+.cooc-preview-term[data-relation=unknown] { color: var(--muted-foreground); text-decoration: underline dotted; }
+.cooc-relations-tooltip { display: block; width: min(400px, calc(100vw - 32px)); max-width: none; padding: 12px; }
+.cooc-relations-tooltip > strong { display: block; margin-bottom: 8px; overflow-wrap: anywhere; }
+.cooc-relations-tooltip > p { display: flex; align-items: center; gap: 6px; }
+.cooc-relations-scroll { max-height: 260px; overflow: auto; }
+.cooc-relations-tooltip table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.cooc-relations-tooltip th, .cooc-relations-tooltip td { padding: 4px 6px; text-align: right; vertical-align: top; }
+.cooc-relations-tooltip th { font-weight: 500; opacity: .7; }
+.cooc-relations-tooltip th:first-child, .cooc-relations-tooltip td:first-child { text-align: left; overflow-wrap: anywhere; }
+.cooc-relations-tooltip td:not(:first-child) { white-space: nowrap; }
+.cooc-relations-tooltip .cooc-relations-note { display: block; margin-top: 8px; opacity: .7; line-height: 1.5; }
