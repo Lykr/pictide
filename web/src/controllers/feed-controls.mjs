@@ -10,11 +10,11 @@ export function keyboardAction(event, context) {
   if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || context.editing || context.dialogOpen || !['feed', 'liked', 'generate'].includes(context.view) || context.feedbackPending) return null;
   if (['feed', 'generate', 'liked'].includes(context.view) && (event.key === ' ' || event.key === 'Spacebar')) return 'privacy';
   if (['generate', 'liked'].includes(context.view)) return null;
-  return { ArrowLeft: 'older', ArrowRight: 'newer', ArrowUp: 'like' }[event.key] || null;
+  return { ArrowLeft: 'older', ArrowRight: 'newer', ArrowUp: 'like', ArrowDown: 'dislike' }[event.key] || null;
 }
 
 export function feedbackValue(current, target, toggle = true) {
-  if (target !== 1) throw new TypeError('Only liking is supported');
+  if (target !== 1 && target !== -1) throw new TypeError('Feedback must be 1 or -1');
   return toggle && current === target ? null : target;
 }
 

@@ -367,6 +367,9 @@ function renderArtifacts() {
   $('image-index').textContent = `${index + 1} / ${page.total || items.length}`;
   $('like').setAttribute('aria-pressed', String(artifact.feedback === 1));
   describeAction($('like'), artifact.feedback === 1 ? '已喜欢，点击撤回' : '喜欢 · ↑');
+  $('dislike').setAttribute('aria-pressed', String(artifact.feedback === -1));
+  describeAction($('dislike'), artifact.feedback === -1 ? '已不喜欢，点击撤回' : '不喜欢 · ↓');
+  $('like').disabled = state.feedbackPending; $('dislike').disabled = state.feedbackPending;
   $('previous').disabled = (index >= items.length - 1 && !page.hasMore) || state.feedbackPending || roamWindowLoading;
   $('next').disabled = (!roam && index <= 0) || state.feedbackPending || waiting;
   syncRoamPlayback(artifact);
@@ -421,14 +424,13 @@ async function feedback(value, toggle = true) {
   if (nextValue === artifact.feedback) return;
   const artifactRevision = state.artifactRevision;
   state.feedbackPending = true;
-  $('like').disabled = true;
-  $('previous').disabled = true; $('next').disabled = true;
+  renderArtifacts();
   try {
     if (state.view === 'liked' && nextValue === null && !await confirmAction('确定取消喜欢这张图片？取消后将从喜欢页面移除，并受自动清理规则影响。')) return;
     const result = await api(`/api/artifacts/${encodeURIComponent(artifact.id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value: nextValue }) }); state.feedbackRevision++; observeArtifactRevision(state, result.revision ?? result.artifact_revision); if (artifactRevision === state.artifactRevision) { const delta = Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); state.pages.liked.total += delta; replaceArtifact(result.artifact); } renderArtifacts();
   }
   catch (error) { showNotice(error.status === 404 || error.status === 410 ? '图片已清理或不可用，正在刷新列表。' : error.message, true); }
-  finally { state.feedbackPending = false; $('like').disabled = false; renderArtifacts(); await refresh(true); }
+  finally { state.feedbackPending = false; renderArtifacts(); await refresh(true); }
 }
 function replaceArtifact(artifact) {
   state.artifacts = state.artifacts.map((item) => item.id === artifact.id ? artifact : item);
@@ -1135,6 +1137,7 @@ $('generate-form').addEventListener('input', () => { composeDirty = true; });
 $('generate-form').addEventListener('change', () => { composeDirty = true; });
 window.addEventListener('beforeunload', (event) => { if (composeDirty || settingsDirty || roamDirty || uncertainRequests.size) { event.preventDefault(); event.returnValue = ''; } });
 $('like').addEventListener('click', () => feedback(1));
+$('dislike').addEventListener('click', () => feedback(-1));
 $('generate-backend').addEventListener('change', updateGenerationHints);
 $('previous').addEventListener('click', () => moveImage('older')); $('next').addEventListener('click', () => moveImage('newer'));
 $('load-more').addEventListener('click', loadMore);
@@ -1162,6 +1165,7 @@ document.addEventListener('keydown', (event) => {
   if (!action) return;
   event.preventDefault();
   if (action === 'like') feedback(1, false);
+  else if (action === 'dislike') feedback(-1, false);
   else if (action === 'privacy') {
     const control = ['generate', 'liked'].includes(state.view) ? document.querySelector(`.generated-privacy-toggle[data-collection="${state.view}"]`) : $(immersive.active ? 'roam-immersive-privacy' : 'roam-privacy');
     control?.click();

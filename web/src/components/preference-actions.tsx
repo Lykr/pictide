@@ -160,12 +160,12 @@ export function PreferenceActions() {
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl" onCloseAutoFocus={(event) => { event.preventDefault(); if (!viewEntry.current?.closest("[hidden],[inert]")) viewEntry.current?.focus(); }}>
         <DialogHeader>
           <DialogTitle>用户偏好</DialogTitle>
-          <DialogDescription className="sr-only">查看有效点赞形成的标签关联权重。</DialogDescription>
+          <DialogDescription className="sr-only">查看喜欢与不喜欢反馈形成的标签关联权重。</DialogDescription>
         </DialogHeader>
         <div className="flex min-h-0 flex-col gap-4" aria-busy={loading}>
           {result && <>
             <dl className="flex flex-wrap gap-x-6 gap-y-2 text-xs">
-              <div><dt className="text-muted-foreground">有效学习点赞</dt><dd className="mt-1 text-sm font-medium">{result.evidence_count}</dd></div>
+              <div><dt className="text-muted-foreground">有效学习反馈</dt><dd className="mt-1 text-sm font-medium">{result.evidence_count}</dd></div>
               <div><dt className="text-muted-foreground">学习标签</dt><dd className="mt-1 text-sm font-medium">{result.term_count}</dd></div>
               <div><dt className="text-muted-foreground">上次重置</dt><dd className="mt-1">{timeLabel(result.reset_at)}</dd></div>
             </dl>
@@ -175,7 +175,7 @@ export function PreferenceActions() {
                 <thead className="border-b border-border text-muted-foreground"><tr>
                   <th className="py-2 pr-3 font-normal">标签</th>
                   <th className="px-2 py-2 font-normal">方向</th>
-                  <th className="px-2 py-2 text-right font-normal"><span className="inline-flex items-center gap-1">关联权重<HelpTip text="标签对应的偏好参数中心值，仅反映关联；不是喜欢概率，负值不表示明确讨厌。" /></span></th>
+                  <th className="px-2 py-2 text-right font-normal"><span className="inline-flex items-center gap-1">关联权重<HelpTip text="喜欢与不喜欢反馈形成的偏好参数中心值。正值倾向提高评分，负值倾向降低评分；不是喜欢概率，也不表示标签被永久禁用。" /></span></th>
                   <th className="py-2 pl-3 text-right font-normal">证据次数</th>
                 </tr></thead>
                 <tbody>{result.terms.map((term) => <tr key={`${term.channel}:${term.text}`} className="border-b border-border/60 last:border-0">
@@ -199,7 +199,7 @@ export function PreferenceActions() {
       <AlertDialogContent onCloseAutoFocus={(event) => { event.preventDefault(); if (!resetEntry.current?.closest("[hidden],[inert]")) resetEntry.current?.focus(); }}>
         <AlertDialogHeader>
           <AlertDialogTitle>重置用户偏好？</AlertDialogTitle>
-          <AlertDialogDescription>清空已学习的偏好，保留喜欢的图片。从此后的新反馈重新学习。</AlertDialogDescription>
+          <AlertDialogDescription>清空喜欢与不喜欢反馈形成的偏好，保留图片的评价。从此后的新反馈重新学习。</AlertDialogDescription>
         </AlertDialogHeader>
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <AlertDialogFooter>

@@ -19,9 +19,11 @@ test('navigation stops at both boundaries and on empty feed', () => {
   assert.equal(destinationIndex(0, 1, 'newer'), null);
 });
 
-test('up likes the image and down has no feedback action', () => {
+test('up likes and down dislikes only in roam, including immersive mode', () => {
   assert.equal(keyboardAction({ key: 'ArrowUp' }, context), 'like');
-  assert.equal(keyboardAction({ key: 'ArrowDown' }, context), null);
+  assert.equal(keyboardAction({ key: 'ArrowDown' }, context), 'dislike');
+  assert.equal(keyboardAction({ key: 'ArrowDown' }, { ...context, immersive: true }), 'dislike');
+  assert.equal(keyboardAction({ key: 'ArrowDown' }, { ...context, view: 'generate' }), null);
   assert.equal(keyboardAction({ key: 'ArrowDown' }, { ...context, view: 'liked' }), null);
 });
 
@@ -52,6 +54,7 @@ test('space toggles privacy in normal and immersive roam and respects input guar
 test('hotkeys ignore edit fields, dialogs, records and pending feedback', () => {
   for (const patch of [{ editing: true }, { dialogOpen: true }, { view: 'jobs' }, { feedbackPending: true }]) {
     assert.equal(keyboardAction({ key: 'ArrowUp' }, { ...context, ...patch }), null);
+    assert.equal(keyboardAction({ key: 'ArrowDown' }, { ...context, ...patch }), null);
   }
   assert.equal(keyboardAction({ key: 'Enter' }, context), null);
 });
@@ -60,7 +63,13 @@ test('keyboard feedback is idempotent while buttons can withdraw', () => {
   assert.equal(feedbackValue(1, 1, false), 1);
   assert.equal(feedbackValue(1, 1, true), null);
   assert.equal(feedbackValue(null, 1), 1);
-  assert.throws(() => feedbackValue(1, -1), TypeError);
+  assert.equal(feedbackValue(-1, -1, false), -1);
+  assert.equal(feedbackValue(-1, -1, true), null);
+  assert.equal(feedbackValue(null, -1), -1);
+  assert.equal(feedbackValue(1, -1), -1);
+  assert.equal(feedbackValue(-1, 1), 1);
+  assert.throws(() => feedbackValue(1, 0), TypeError);
+  assert.throws(() => feedbackValue(-1, null), TypeError);
 });
 
 test('first-page refresh retains loaded older pages and updates overlapping artifacts', () => {
