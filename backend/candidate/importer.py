@@ -1,7 +1,9 @@
-"""Offline Danbooru general tags -> frequency-filtered SQLite PMI vocabulary.
+"""Offline Danbooru general tags + ratings -> filtered SQLite PMI vocabulary.
 
 Only metadata is read. Intermediate counts and import progress live in a
 separate SQLite file, never in the application's finished vocabulary.
+The finished DB retains general tags occurring >=100 times, observed ratings,
+and pair relationships with >=10 co-occurrences.
 """
 from __future__ import annotations
 
@@ -14,6 +16,8 @@ import time
 
 SOURCE = "Shio-Koube/Danbooru-2026-parquet-metadata"
 MIN_POST_COUNT = 100
+MIN_PAIR_COUNT = 10
+RATINGS = {"g": "general", "s": "sensitive", "q": "questionable", "e": "explicit"}
 SCHEMA = """
 CREATE TABLE tags (
  id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, post_count INTEGER NOT NULL
@@ -43,6 +47,12 @@ CREATE TABLE IF NOT EXISTS pair_counts (
 """
 
 
+def _post_tags(text, rating):
+    if rating not in RATINGS:
+        raise ValueError(f"Unknown or missing Danbooru rating: {rating!r}")
+    return set((text or "").split()) | {RATINGS[rating]}
+
+
 def _summary(db):
     result = dict(zip(("source", "revision", "post_count", "status"),
                       db.execute("SELECT source,revision,post_count,status FROM dataset WHERE id=1").fetchone()))
@@ -53,7 +63,11 @@ def _summary(db):
 
 def import_parquet(paths, destination, *, source=SOURCE, revision="local",
                    state_path=None, block_size=256, batch_size=16384, progress=print):
-    """Two passes: count general tags, then count retained tag pairs.
+    """Two passes: count general tags + ratings, then retained tag pairs.
+
+    General tags need >=100 posts; every observed rating is retained.
+    Unknown or missing ratings fail the import rather than silently dropping posts.
+    Only globally accumulated pairs with >=10 posts enter the finished DB.
 
     Post IDs are deduplicated across all inputs, keeping the first record.
     Every unique post contributes to N, including posts with no retained tags.
@@ -100,27 +114,29 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
                 continue
             frequencies = Counter()
             new_posts = []
-            for batch in pq.ParquetFile(path).iter_batches(batch_size=batch_size, columns=["id", "tag_string_general"], row_groups=[group]):
+            for batch in pq.ParquetFile(path).iter_batches(batch_size=batch_size, columns=["id", "tag_string_general", "rating"], row_groups=[group]):
                 data = batch.to_pydict()
-                for post_id, text in zip(data["id"], data["tag_string_general"]):
+                for post_id, text, rating in zip(data["id"], data["tag_string_general"], data["rating"]):
                     if post_id is None:
                         raise ValueError(f"Post without id in {path.name}")
                     if post_id in seen:
                         continue
                     seen.add(post_id)
                     new_posts.append(post_id)
-                    frequencies.update(set((text or "").split()))
+                    frequencies.update(_post_tags(text, rating))
             with db:
                 db.executemany("INSERT INTO posts VALUES(?)", ((ident,) for ident in new_posts))
                 db.executemany("INSERT INTO frequencies VALUES(?,?) ON CONFLICT(name) DO UPDATE SET count=count+excluded.count", frequencies.items())
                 db.execute("INSERT INTO groups VALUES(?,?,?,0,1)", key)
             progress(f"Frequency pass: {path.name}/group={group}, {len(new_posts):,} new posts")
         del seen
-        tags = list(db.execute("SELECT name,count FROM frequencies WHERE count>=? ORDER BY name", (MIN_POST_COUNT,)))
+        tags = list(db.execute(
+            "SELECT name,count FROM frequencies WHERE count>=? OR name IN (?,?,?,?) ORDER BY name",
+            (MIN_POST_COUNT, *RATINGS.values())))
         tag_ids = {name: index for index, (name, _) in enumerate(tags)}
         n_tags = len(tags)
         n_posts = db.execute("SELECT count(*) FROM posts").fetchone()[0]
-        progress(f"Retained {n_tags:,} general tags with frequency >= {MIN_POST_COUNT}; N={n_posts:,}")
+        progress(f"Retained {n_tags:,} tags (general frequency >= {MIN_POST_COUNT}, all observed ratings); N={n_posts:,}")
 
         seen = {row[0] for row in db.execute("SELECT id FROM pair_posts")}
         for path, group in units:
@@ -130,14 +146,14 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
                 continue
             started = time.monotonic()
             pointers = array("i", [0]); indices = array("i"); new_posts = []
-            for batch in pq.ParquetFile(path).iter_batches(batch_size=batch_size, columns=["id", "tag_string_general"], row_groups=[group]):
+            for batch in pq.ParquetFile(path).iter_batches(batch_size=batch_size, columns=["id", "tag_string_general", "rating"], row_groups=[group]):
                 data = batch.to_pydict()
-                for post_id, text in zip(data["id"], data["tag_string_general"]):
+                for post_id, text, rating in zip(data["id"], data["tag_string_general"], data["rating"]):
                     if post_id in seen:
                         continue
                     seen.add(post_id)
                     new_posts.append(post_id)
-                    indices.extend(sorted({tag_ids[name] for name in (text or "").split() if name in tag_ids}))
+                    indices.extend(sorted({tag_ids[name] for name in _post_tags(text, rating) if name in tag_ids}))
                     pointers.append(len(indices))
             matrix = csr_matrix((np.ones(len(indices), dtype=np.int64), np.frombuffer(indices, dtype=np.int32), np.frombuffer(pointers, dtype=np.int32)), shape=(len(new_posts), n_tags))
             columns_matrix = matrix.tocsc()
@@ -173,7 +189,8 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
                 SELECT p.tag_a,p.tag_b,
                        log2((1.0*p.count*?)/(a.post_count*1.0*b.post_count)),p.count
                 FROM intermediate.pair_counts p
-                JOIN tags a ON a.id=p.tag_a JOIN tags b ON b.id=p.tag_b""", (n_posts,))
+                JOIN tags a ON a.id=p.tag_a JOIN tags b ON b.id=p.tag_b
+                WHERE p.count>=?""", (n_posts, MIN_PAIR_COUNT))
         output.execute("CREATE INDEX correlations_b ON correlations(tag_b,tag_a)")
         output.execute("CREATE INDEX tags_frequency ON tags(post_count DESC,name)")
         output.execute("ANALYZE main")

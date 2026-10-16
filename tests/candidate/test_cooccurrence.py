@@ -45,7 +45,7 @@ class CooccurrenceSmoke(unittest.TestCase):
         self.assertEqual(len(self.service.provider.generate(options,{"count":2})),2)
         self.assertEqual(self.service.list_tags("blue sky")["total"],1)
         self.assertEqual(set(self.service.list_tags()["tags"][0]), {"id", "name", "post_count"})
-        self.assertIn("pmi-v1:general:min100", a["source_id"])
+        self.assertIn("pmi-v2:general+ratings:min100:pair10", a["source_id"])
         self.assertEqual(a["selected_tags"][0]["categories"], ["general"])
         self.assertEqual(self.service.store.find_tag("blue_sky"), self.service.store.find_tag("blue sky"))
         with self.service.store.connect() as db:
@@ -74,7 +74,7 @@ class CooccurrenceSmoke(unittest.TestCase):
             self.service.generate(dict(preset_id="test", mode="fixed_seed", seed=5,
                                       document=dict(document, min_tags=3, max_tags=5), max_steps=20))
 
-    def test_relation_lookup_distinguishes_unknown_zero_and_negative(self):
+    def test_relation_lookup_distinguishes_unknown_omitted_and_negative(self):
         with self.service.store.connect() as db:
             db.execute("UPDATE correlations SET pmi=-2 WHERE tag_a=1 AND tag_b=3")
         result = self.service.relations("blue sky", ["blue_sky", "green grass", "green_grass", "soft light", "custom, complete phrase"])
@@ -86,7 +86,7 @@ class CooccurrenceSmoke(unittest.TestCase):
         self.assertEqual(pairs["custom, complete phrase"], dict(text="custom, complete phrase", known=False, pmi=None, count=None))
         reverse = self.service.relations("green grass", ["blue sky", "night"])["relations"]
         self.assertEqual(reverse[0]["pmi"], 1)
-        self.assertEqual(reverse[1], dict(text="night", known=True, pmi=None, count=0))
+        self.assertEqual(reverse[1], dict(text="night", known=True, pmi=None, count=None))
         unknown = self.service.relations("custom anchor", ["blue sky"])
         self.assertFalse(unknown["anchor"]["known"])
         self.assertIsNone(unknown["relations"][0]["count"])

@@ -11,7 +11,7 @@ from .errors import CandidateError
 from .rounds import integer, validate_options, prepare_rounds
 
 DEFAULT_DOCUMENT = dict(base_positive=[], base_negative=[], min_tags=5, max_tags=20,
-                        pmi_threshold=0, min_cooccurrence=5, change_budget=2)
+                        pmi_threshold=0, min_cooccurrence=10, change_budget=2)
 
 
 def document_key(document):
@@ -90,7 +90,7 @@ class CandidateService:
             pair = pairs.get(other["id"]) if other else None
             result.append(dict(text=text, known=other is not None,
                                pmi=pair["pmi"] if pair else None,
-                               count=pair["count"] if pair else 0 if tag and other else None))
+                               count=pair["count"] if pair else None))
         return dict(anchor=dict(text=anchor, known=tag is not None), relations=result)
 
     def dataset_status(self):
@@ -109,7 +109,7 @@ class CandidateService:
                 continue
             seen.add(tag_id)
             terms.append(dict(id=tag_id, text=tag["name"].replace("_", " ") if tag else text,
-                              categories=["general"] if tag else [], channel=channel, source_id=source_id))
+                              categories=["rating" if tag["name"] in ("general", "sensitive", "questionable", "explicit") else "general"] if tag else [], channel=channel, source_id=source_id))
             if tag:
                 anchors.append(tag)
         return terms, anchors
@@ -198,7 +198,7 @@ class CandidateService:
         if dataset["status"] != "ready":
             raise CandidateError("共现数据尚未导入完成，请等待 dataset 状态为 ready 后再生成")
         seed = secrets.randbits(53) if options["mode"] == "random_each_run" else options["seed"]
-        source_id = "danbooru:pmi-v1:general:min100:" + (dataset.get("revision") or dataset.get("source") or "local")
+        source_id = "danbooru:pmi-v2:general+ratings:min100:pair10:" + (dataset.get("revision") or dataset.get("source") or "local")
         fixed, anchors = self._fixed(document["base_positive"], "positive", source_id)
         negative, _ = self._fixed(document["base_negative"], "negative", source_id)
         limit = options.get("max_steps", 100)
@@ -208,7 +208,7 @@ class CandidateService:
         else:
             variable, reason = self._initial(document, len(fixed), anchors, random.Random(seed), limit)
             changes = 0
-        generated = [dict(id=str(tag["id"]), text=tag["name"].replace("_", " "), categories=["general"],
+        generated = [dict(id=str(tag["id"]), text=tag["name"].replace("_", " "), categories=["rating" if tag["name"] in ("general", "sensitive", "questionable", "explicit") else "general"],
                           channel="positive", source_id=source_id) for tag in variable]
         terms = [*fixed, *generated, *negative]
         positive_text = ", ".join(term["text"] for term in [*fixed, *generated])

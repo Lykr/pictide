@@ -24,21 +24,24 @@ class ImportSmoke(unittest.TestCase):
                 tags += ['exact_100']
             if index < 99:
                 tags += ['only_99']
+            if 191 <= index < 200 or 390 <= index < 481:
+                tags += ['nine_overlap']
             if index % 5 == 0:
                 tags += ['every_fifth']
-            rows.append((index, ' '.join(tags)))
+            rows.append((index, ' '.join(tags), ('g', 's', 'q')[index] if index < 3 else 'e'))
         paths = []
-        for number, chunk in enumerate((rows[:250] + [(0, 'discarded_duplicate')],
-                                        [(249, 'discarded_cross_shard')] + rows[250:])):
+        for number, chunk in enumerate((rows[:250] + [(0, 'discarded_duplicate', 'invalid')],
+                                        [(249, 'discarded_cross_shard', 'invalid')] + rows[250:])):
             path = root / f'{number}.parquet'
             pq.write_table(pa.table({
                 'id': [row[0] for row in chunk],
                 'tag_string_general': [row[1] for row in chunk],
+                'rating': [row[2] for row in chunk],
                 'tag_string_character': ['character_only'] * len(chunk),
                 'tag_string_artist': ['artist_only'] * len(chunk),
                 'tag_string_copyright': ['copyright_only'] * len(chunk),
                 'tag_string_meta': ['meta_only'] * len(chunk),
-            }), path, row_group_size=160)
+            }), path, row_group_size=195)
             paths.append(path)
         return paths
 
@@ -54,13 +57,20 @@ class ImportSmoke(unittest.TestCase):
             result = import_parquet(files, target, block_size=2, progress=lambda _: None)
             self.assertEqual(result['post_count'], 500)
             tags, pairs, status = self.inspect(target)
-            self.assertEqual(tags, [('black_hair', 200), ('every_fifth', 100), ('exact_100', 100), ('standing', 200)])
+            self.assertEqual(tags, [('black_hair', 200), ('every_fifth', 100), ('exact_100', 100), ('explicit', 497), ('general', 1), ('nine_overlap', 100), ('questionable', 1), ('sensitive', 1), ('standing', 200)])
             self.assertEqual(status, (500, 'ready'))
             counts = dict(tags)
             for a, b, pmi, count in pairs:
                 self.assertAlmostEqual(pmi, math.log2(count * 500 / (counts[a] * counts[b])))
+            # Five co-occurrences in each of two row groups must survive globally.
             self.assertIn(('black_hair', 'standing', -3.0, 10), pairs)
             self.assertIn(('every_fifth', 'exact_100', 0.0, 20), pairs)
+            self.assertTrue(all(count >= 10 for _, _, _, count in pairs))
+            self.assertNotIn(('nine_overlap', 'standing'), {(a, b) for a, b, _, _ in pairs})
+            self.assertNotIn(('black_hair', 'nine_overlap'), {(a, b) for a, b, _, _ in pairs})
+            with closing(sqlite3.connect(target.with_name('candidate-state.sqlite3'))) as state:
+                ids = {name: index + 1 for index, (name, _) in enumerate(tags)}
+                self.assertEqual(state.execute('SELECT count FROM pair_counts WHERE tag_a=? AND tag_b=?', (ids['nine_overlap'], ids['standing'])).fetchone()[0], 9)
             with closing(sqlite3.connect(target)) as db:
                 self.assertEqual([row[1] for row in db.execute('PRAGMA table_info(tags)')], ['id', 'name', 'post_count'])
                 self.assertEqual({row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}, {'tags', 'correlations', 'dataset'})

@@ -51,7 +51,7 @@
 .cooc-preview-term[data-relation=positive] { background: color-mix(in oklch, var(--success) 16%, transparent); }
 .cooc-preview-term[data-relation=negative] { background: color-mix(in oklch, var(--warning) 18%, transparent); }
 .cooc-preview-term[data-relation=neutral] { background: var(--muted); }
-.cooc-preview-term[data-relation=zero] { background: color-mix(in oklch, var(--destructive) 12%, transparent); text-decoration: underline dotted; }
+.cooc-preview-term[data-relation=omitted] { background: color-mix(in oklch, var(--destructive) 12%, transparent); text-decoration: underline dotted; }
 .cooc-preview-term[data-relation=unknown] { color: var(--muted-foreground); text-decoration: underline dotted; }
 .cooc-relations-tooltip { display: block; width: min(400px, calc(100vw - 32px)); max-width: none; padding: 12px; }
 .cooc-relations-tooltip > strong { display: block; margin-bottom: 8px; overflow-wrap: anywhere; }

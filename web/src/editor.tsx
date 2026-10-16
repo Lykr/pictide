@@ -24,7 +24,7 @@ type PresetDocument = { base_positive: string[]; base_negative: string[]; min_ta
 type Preset = { id: string; name: string; document: PresetDocument };
 type Mode = "random_each_run" | "fixed_seed" | "sequence";
 type Result = { candidate_id: string; positive: string; negative: string; seed: number; selected_tags: PreviewTerm[]; sequence?: { seed?: number; step?: number; changes?: number; change_budget?: number }; report: Record<string, unknown> };
-const defaults: PresetDocument = { base_positive: [], base_negative: [], min_tags: 5, max_tags: 20, pmi_threshold: 0, min_cooccurrence: 5, change_budget: 2 };
+const defaults: PresetDocument = { base_positive: [], base_negative: [], min_tags: 5, max_tags: 20, pmi_threshold: 0, min_cooccurrence: 10, change_budget: 2 };
 const stopReasons: Record<string, string> = { target_length: "达到目标长度", no_candidates: "无可用候选", budget_exhausted: "达到变化预算", max_steps: "达到搜索上限", search_limit: "达到搜索上限", no_eligible_tags: "无可用候选", budget_zero: "保持上一帧", held_no_legal_change: "无合法变化，保持上一帧" };
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json" } });
@@ -244,12 +244,12 @@ export function EditorWorkspace() {
         {tab === "settings" ? <form className="cooc-settings" onSubmit={event => { event.preventDefault(); save(); }}>
           <Field label="预设名称"><Input aria-label="预设名称" value={preset.name} disabled={busy} required onChange={event => { setPreset(current => ({ ...current, name: event.target.value })); setSuccess(false); }} /></Field>
           <div className="cooc-fixed-grid"><FixedTags label="固定正向词" values={preset.document.base_positive} disabled={busy} onChange={values => update("base_positive", values)} /><FixedTags label="固定负向词" values={preset.document.base_negative} disabled={busy} onChange={values => update("base_negative", values)} /></div>
-          <div className="cooc-section-heading"><h2>共现扩展</h2><HelpTip text="每个新标签必须同时满足与所有已有统计标签的 PMI 阈值及最低共现次数。词库仅包含出现至少 100 次的普通标签。" /></div>
+          <div className="cooc-section-heading"><h2>共现扩展</h2><HelpTip text="每个新标签必须同时满足与所有已有统计标签的 PMI 阈值及最低共现次数。词库包含出现至少 100 次的普通标签及 general / sensitive / questionable / explicit 评级；仅保留共现至少 10 次的关系。" /></div>
           <div className="cooc-number-grid">
             {numberField("min_tags", "标签数量下限", "包含固定正向词；每次在下限和上限之间等概率抽取目标数量，无法达到时明确报错。", 1, 1000)}
             {numberField("max_tags", "标签数量上限", "包含固定正向词；上下限均可被抽中。固定词超过下限时，以固定词数量作为实际下限。", 1, 1000)}
             {numberField("pmi_threshold", "PMI 阈值", "PMI = log₂(共同次数 × 总图片数 ÷ 两个标签各自次数之积)。0 表示独立，正数表示更常共同出现，负数表示更少共同出现；可填写任意有限数。", undefined, undefined, "any")}
-            {numberField("min_cooccurrence", "最低共现次数", "每对标签必须共同出现至少此次数，避免偶然共现产生过高的 PMI。", 1, Number.MAX_SAFE_INTEGER)}
+            {numberField("min_cooccurrence", "最低共现次数", "每对标签必须共同出现至少此次数；词库仅保留至少 10 次的关系，设为更小的值也不会恢复已裁剪关系。", 1, Number.MAX_SAFE_INTEGER)}
             {numberField("change_budget", "连续变化预算", "仅连续模式生效。相邻帧标签增删的总数上限；替换一个标签计 2，固定词保留。在预算可达的数量区间内均匀抽取目标，无法合法变化时保持上一帧。", 0, 1000)}
           </div><button type="submit" hidden />
         </form> : <section className="cooc-preview">

@@ -20,7 +20,7 @@ function CopyText({ text, label }: { text: string; label: string }) {
 function tone(relation: Relation | undefined, anchorKnown: boolean | undefined) {
   if (!relation || anchorKnown === undefined) return "";
   if (!anchorKnown || !relation.known) return "unknown";
-  if (relation.count === 0) return "zero";
+  if (relation.count === null) return "omitted";
   return relation.pmi! > 0 ? "positive" : relation.pmi! < 0 ? "negative" : "neutral";
 }
 
@@ -60,9 +60,9 @@ export function PreviewPrompts({ terms, positive, negative }: { terms: PreviewTe
               <strong>{term.text}</strong>
               {!query || !query.data && !query.error ? <p role="status"><LoaderCircle className="size-3 animate-spin" />读取相关性…</p> : query.error ? <p role="status">读取失败：{query.error}。移开后重试。</p> : !query.data!.anchor.known ? <p>自定义词，无统计；不参与 PMI 比较。</p> : !query.data!.relations.length ? <p>当前组合没有其他词项。</p> : <>
                 <div className="cooc-relations-scroll"><table><thead><tr><th>提示词</th><th>PMI</th><th>共现次数</th></tr></thead><tbody>{query.data!.relations.map(relation => <tr key={relation.text}>
-                  <td>{relation.text}</td><td>{!relation.known ? "无统计" : relation.count === 0 ? "无共同记录" : relation.pmi!.toFixed(2)}</td><td>{relation.count === null ? "—" : relation.count.toLocaleString()}</td>
+                  <td>{relation.text}</td><td>{!relation.known ? "无统计" : relation.count === null ? "未保留统计" : relation.pmi!.toFixed(2)}</td><td>{!relation.known ? "—" : relation.count === null ? "<10" : relation.count.toLocaleString()}</td>
                 </tr>)}</tbody></table></div>
-                <p className="cooc-relations-note">正负 PMI 表示数据集关联，不等于语义协调或冲突；负向词不参与生成筛选。</p>
+                <p className="cooc-relations-note">仅保留共现 ≥10 次的关系；未保留关系可能是零共现或不足 10 次。PMI 不等于协调或冲突；负向词不参与生成筛选。</p>
               </>}
             </TooltipContent>
           </Tooltip>{position < items.length - 1 ? ", " : ""}
