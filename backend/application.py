@@ -263,7 +263,7 @@ class PictideApplication:
 
     async def feedback(self, identifier, payload):
         if "value" not in payload:
-            raise ValidationError("缺少喜欢状态 value。")
+            raise ValidationError("缺少反馈状态 value。")
         value = feedback_value(payload["value"])
         try:
             await self.tasks.database(self.storage.rate, identifier, value)

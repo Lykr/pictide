@@ -60,7 +60,7 @@ class Repository:
                 UNIQUE(job_id, node_id, output_index));
             CREATE TABLE IF NOT EXISTS feedback (
                 artifact_id TEXT NOT NULL REFERENCES artifacts(id),
-                actor_id TEXT NOT NULL, value INTEGER NOT NULL CHECK(value=1),
+                actor_id TEXT NOT NULL, value INTEGER NOT NULL CHECK(value IN (-1,1)),
                 updated_at TEXT NOT NULL, PRIMARY KEY(artifact_id, actor_id));
             """)
             columns = {row["name"] for row in db.execute("PRAGMA table_info(artifacts)")}
@@ -90,29 +90,6 @@ class Repository:
             if "context" not in {row["name"] for row in db.execute("PRAGMA table_info(generation_batches)")}:
                 db.execute("ALTER TABLE generation_batches ADD COLUMN context TEXT")
             initialize_recommendation(db)
-            self._migrate_feedback(db)
-
-    @staticmethod
-    def _migrate_feedback(db):
-        # Rebuild legacy feedback atomically; only likes remain, across all actors.
-        # Inspect the actual constraint so an already migrated database stays read-only.
-        def likes_only():
-            sql = db.execute("SELECT sql FROM sqlite_schema WHERE type='table' AND name='feedback'").fetchone()[0]
-            return "check(value=1)" in "".join(sql.lower().split())
-
-        if likes_only():
-            return
-        db.execute("BEGIN IMMEDIATE")
-        # Another application may have completed the migration while this one waited.
-        if likes_only():
-            return
-        db.execute("""CREATE TABLE feedback_likes (
-            artifact_id TEXT NOT NULL REFERENCES artifacts(id),
-            actor_id TEXT NOT NULL, value INTEGER NOT NULL CHECK(value=1),
-            updated_at TEXT NOT NULL, PRIMARY KEY(artifact_id, actor_id))""")
-        db.execute("INSERT INTO feedback_likes SELECT artifact_id,actor_id,value,updated_at FROM feedback WHERE value=1")
-        db.execute("DROP TABLE feedback")
-        db.execute("ALTER TABLE feedback_likes RENAME TO feedback")
 
     @contextmanager
     def connection(self):
@@ -657,11 +634,12 @@ class Repository:
             db.execute("BEGIN IMMEDIATE")
             if not db.execute("SELECT 1 FROM artifacts WHERE id=? AND deleted_at IS NULL", (iid,)).fetchone():
                 raise ValidationError("图片不存在。")
-            was_liked = bool(db.execute("SELECT 1 FROM feedback WHERE artifact_id=? AND actor_id='local' AND value=1", (iid,)).fetchone())
+            previous = db.execute("SELECT value FROM feedback WHERE artifact_id=? AND actor_id='local'", (iid,)).fetchone()
+            previous_value = previous["value"] if previous else None
             if value is None:
                 db.execute("DELETE FROM feedback WHERE artifact_id=? AND actor_id='local'", (iid,))
             else:
                 db.execute("INSERT INTO feedback VALUES (?,'local',?,?) ON CONFLICT(artifact_id,actor_id) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", (iid,value,now()))
-            if was_liked != (value == 1):
-                record_feedback(db, iid, "local", value == 1)
+            if previous_value != value:
+                record_feedback(db, iid, "local", value)
         return self.artifact(iid)

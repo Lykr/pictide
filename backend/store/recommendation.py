@@ -22,7 +22,7 @@ def initialize_recommendation(db):
         PRIMARY KEY(user_id,feature_version));
     CREATE TABLE IF NOT EXISTS recommendation_events (
         revision INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL, artifact_id TEXT NOT NULL, liked INTEGER NOT NULL CHECK(liked IN (0,1)),
+        user_id TEXT NOT NULL, artifact_id TEXT NOT NULL, value INTEGER CHECK(value IN (-1,1)),
         candidate TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS recommendation_events_image
         ON recommendation_events(user_id,artifact_id,revision DESC);
@@ -35,7 +35,7 @@ def initialize_recommendation(db):
         PRIMARY KEY(user_id,request_id));
     CREATE TABLE IF NOT EXISTS recommendation_evidence (
         user_id TEXT NOT NULL, feature_version TEXT NOT NULL, artifact_id TEXT NOT NULL,
-        revision INTEGER NOT NULL, liked INTEGER NOT NULL CHECK(liked IN (0,1)), candidate TEXT NOT NULL,
+        revision INTEGER NOT NULL, value INTEGER CHECK(value IN (-1,1)), candidate TEXT NOT NULL,
         PRIMARY KEY(user_id,feature_version,artifact_id));
     """)
 
@@ -69,7 +69,7 @@ def _decode(value):
     return ScoreCandidate(identifier, value["positive"], value["negative"], tuple(parsed))
 
 
-def record_feedback(db, artifact_id, user_id, liked):
+def record_feedback(db, artifact_id, user_id, value):
     """Called inside the transaction that saves a real feedback state transition."""
     previous = db.execute("SELECT candidate FROM recommendation_events WHERE user_id=? AND artifact_id=? "
                           "ORDER BY revision DESC LIMIT 1", (user_id, artifact_id)).fetchone()
@@ -87,8 +87,8 @@ def record_feedback(db, artifact_id, user_id, liked):
     if candidate is None and previous:
         candidate = _decode(previous["candidate"])
     if candidate is not None:
-        db.execute("INSERT INTO recommendation_events(user_id,artifact_id,liked,candidate) VALUES (?,?,?,?)",
-                   (user_id, artifact_id, int(liked), _encode(candidate)))
+        db.execute("INSERT INTO recommendation_events(user_id,artifact_id,value,candidate) VALUES (?,?,?,?)",
+                   (user_id, artifact_id, value, _encode(candidate)))
 
 
 class SQLiteRecommendationStore:
@@ -179,7 +179,7 @@ class SQLiteRecommendationStore:
 
     @staticmethod
     def _update(row, feature_version):
-        return FeedbackUpdate(row["user_id"], row["artifact_id"], row["revision"], bool(row["liked"]),
+        return FeedbackUpdate(row["user_id"], row["artifact_id"], row["revision"], row["value"],
                               _decode(row["candidate"]), feature_version)
 
     def load_evidence(self, user_id, feature_version):
@@ -207,13 +207,13 @@ class SQLiteRecommendationStore:
             db.execute("BEGIN IMMEDIATE")
             if db.execute("SELECT 1 FROM recommendation_resets WHERE user_id=?", (user_id,)).fetchone():
                 return
-            rows = db.execute("SELECT f.artifact_id FROM feedback f JOIN artifacts a ON a.id=f.artifact_id "
-                              "WHERE f.actor_id=? AND f.value=1 AND NOT EXISTS "
+            rows = db.execute("SELECT f.artifact_id,f.value FROM feedback f JOIN artifacts a ON a.id=f.artifact_id "
+                              "WHERE f.actor_id=? AND f.value IN (-1,1) AND NOT EXISTS "
                               "(SELECT 1 FROM recommendation_events e WHERE e.user_id=f.actor_id AND e.artifact_id=f.artifact_id) "
                               "AND NOT EXISTS (SELECT 1 FROM recommendation_evidence e WHERE e.user_id=f.actor_id "
                               "AND e.artifact_id=f.artifact_id)", (user_id,)).fetchall()
             for row in rows:
-                record_feedback(db, row["artifact_id"], user_id, True)
+                record_feedback(db, row["artifact_id"], user_id, row["value"])
 
     def commit_feedback(self, update, state, expected_revision):
         if state.revision != expected_revision + 1:
@@ -239,7 +239,7 @@ class SQLiteRecommendationStore:
             if reset and latest is None:
                 return False
             if latest and (latest["revision"] != update.revision or
-                           bool(latest["liked"]) != update.liked or latest["candidate"] != snapshot):
+                           latest["value"] != update.value or latest["candidate"] != snapshot):
                 return False
             db.execute("INSERT INTO recommendation_policy VALUES (?,?,?,?,?,?,?) "
                        "ON CONFLICT(user_id,feature_version) DO UPDATE SET revision=excluded.revision, "
@@ -248,6 +248,6 @@ class SQLiteRecommendationStore:
                         state.precision, state.reward, state.evidence_count))
             db.execute("INSERT INTO recommendation_evidence VALUES (?,?,?,?,?,?) "
                        "ON CONFLICT(user_id,feature_version,artifact_id) DO UPDATE SET revision=excluded.revision, "
-                       "liked=excluded.liked,candidate=excluded.candidate",
-                       (update.user_id, update.feature_version, update.artifact_id, update.revision, int(update.liked), snapshot))
+                       "value=excluded.value,candidate=excluded.candidate",
+                       (update.user_id, update.feature_version, update.artifact_id, update.revision, update.value, snapshot))
             return True

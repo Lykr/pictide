@@ -26,8 +26,8 @@ def roam_can_enqueue(state, target):
 
 
 def feedback_value(value):
-    if value is not None and (type(value) is not int or value != 1):
-        raise ValidationError("喜欢状态必须是 1 或 null。")
+    if value is not None and (type(value) is not int or value not in (-1, 1)):
+        raise ValidationError("反馈状态必须是 1、-1 或 null。")
     return value
 
 def generation_fields(payload: dict) -> dict:
