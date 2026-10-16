@@ -61,6 +61,20 @@ class CooccurrenceSmoke(unittest.TestCase):
         negative_threshold = dict(self.doc, pmi_threshold=-1)
         self.assertTrue(self.service.generate(dict(options, document=negative_threshold))["positive"])
 
+    def test_intersection_handles_large_pool_and_reverse_index(self):
+        with self.service.store.connect() as db:
+            db.execute("DELETE FROM correlations")
+            db.execute("DELETE FROM tags")
+            db.executemany("INSERT INTO tags VALUES(?,?,?)", [(1, "anchor_low", 1000), (1000, "anchor_high", 2000),
+                *[(ident, f"candidate_{ident}", 100) for ident in range(2, 503)]])
+            db.executemany("INSERT INTO correlations VALUES(?,?,?,?)", [
+                *[(1, ident, .25, 100) for ident in range(2, 503)],
+                *[(ident, 1000, -.1 if ident == 5 else .75, 9 if ident == 3 else 100) for ident in range(2, 503)]])
+        anchors = [self.service.store.find_tag(name) for name in ("anchor_low", "anchor_high")]
+        choices = self.service.store.expansion_candidates(anchors, 0, 10)
+        self.assertEqual([tag["id"] for tag, _ in choices], [ident for ident in range(2, 503) if ident not in (3, 5)])
+        self.assertTrue(all(weight == 1 for _, weight in choices))
+
     def test_uniform_target_length_and_unreachable_target(self):
         document = dict(self.doc, min_tags=2, max_tags=4)
         counts = {length: 0 for length in range(2, 5)}

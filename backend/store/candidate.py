@@ -78,15 +78,30 @@ class SQLiteCandidateStore:
         weights = None
         with self.connect() as db:
             for tag in sorted(existing, key=lambda item: item["post_count"]):
-                neighbours = db.execute("""
-                    SELECT tag_b AS id,pmi FROM correlations WHERE tag_a=? AND pmi>=? AND count>=?
-                    UNION ALL
-                    SELECT tag_a AS id,pmi FROM correlations WHERE tag_b=? AND pmi>=? AND count>=?
-                """, (tag["id"], pmi_threshold, minimum, tag["id"], pmi_threshold, minimum))
-                current = {row["id"]: row["pmi"] for row in neighbours}
                 if weights is None:
-                    weights = current
+                    neighbours = db.execute("""
+                        SELECT tag_b AS id,pmi FROM correlations WHERE tag_a=? AND pmi>=? AND count>=?
+                        UNION ALL
+                        SELECT tag_a AS id,pmi FROM correlations WHERE tag_b=? AND pmi>=? AND count>=?
+                    """, (tag["id"], pmi_threshold, minimum, tag["id"], pmi_threshold, minimum))
+                    weights = {row["id"]: row["pmi"] for row in neighbours}
                 else:
+                    # Later anchors only need to check the surviving intersection.
+                    # Keep anchor order and sums unchanged for seed reproducibility.
+                    remaining = list(weights)
+                    current = {}
+                    for offset in range(0, len(remaining), 400):
+                        batch = remaining[offset:offset+400]
+                        marks = ",".join("?" for _ in batch)
+                        neighbours = db.execute(f"""
+                            SELECT tag_b AS id,pmi FROM correlations
+                            WHERE tag_a=? AND tag_b IN ({marks}) AND pmi>=? AND count>=?
+                            UNION ALL
+                            SELECT tag_a AS id,pmi FROM correlations
+                            WHERE tag_b=? AND tag_a IN ({marks}) AND pmi>=? AND count>=?
+                        """, [tag["id"], *batch, pmi_threshold, minimum,
+                              tag["id"], *batch, pmi_threshold, minimum])
+                        current.update((row["id"], row["pmi"]) for row in neighbours)
                     weights = {key: value + current[key] for key, value in weights.items() if key in current}
                 if not weights:
                     return []
