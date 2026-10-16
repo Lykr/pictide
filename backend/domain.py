@@ -19,6 +19,12 @@ class BackendError(Exception):
         self.uncertain = uncertain
 
 
+def roam_can_enqueue(state, target):
+    """Keep one prepared roam job ahead of the currently executing job."""
+    return (not state["paused"] and state["ready"] + state["roam_pending"] < target
+            and state["roam_pending"] < 2 and state["pending"] < 10)
+
+
 def feedback_value(value):
     if value is not None and (type(value) is not int or value != 1):
         raise ValidationError("喜欢状态必须是 1 或 null。")

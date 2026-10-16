@@ -199,13 +199,13 @@ HTTP 候选端点与请求字段见 [共现候选接口](cooccurrence-candidates
 | `PUT /api/settings/roam` | 输入必填整数 `prefetch_count`（`0`–`20`），可选 `max_history_images`（`0`–`100000`）、`backend_id`、`preset_id`；未传的选项保留当前值，空字符串自动选择。开启预取时检查显式选择存在，`0` 关闭预取时跳过存在性检查。保存立即检查清理，返回同 GET，并发布 `roam_settings` 事件。 |
 | `GET /api/roam/view` | 返回 `artifact_id`（图片 ID 或 `null`）和 `viewed_at`（最后保存的毫秒时间戳，未保存时为 `0`）。清理后的图片返回邻近可用漫游图片，无可用图返回 `null`。 |
 | `PUT /api/roam/view` | 必填 `artifact_id`（未清理的漫游图片 ID 或 `null`）及 `viewed_at`（非负安全整数毫秒时间戳）；只有严格较新时间戳更新，旧/相等请求忽略。返回同 GET，纯位置更新不发布 SSE；触发清理时发布产物变化事件。 |
-| `POST /api/roam/ensure` | 输入 `anchor_id`（图片 ID 或 `null`），可选布尔值 `demand` 表示主动请求下一张。返回 `enabled`、`prefetch_count`、`target`、`ready`、`pending`、`paused`、`preference_learning`（实际可用状态），按实际情况附 `job`、`error`、已解析的 `backend_id`、`preset_id`。 |
+| `POST /api/roam/ensure` | 输入 `anchor_id`（图片 ID 或 `null`），可选布尔值 `demand` 表示主动请求下一张。返回 `enabled`、`prefetch_count`、`target`、`ready`、`pending`、`roam_pending`、`paused`、`preference_learning`（实际可用状态），按实际情况附 `job`、`error`、已解析的 `backend_id`、`preset_id`。 |
 
-设置默认缓冲数量为 `0`，不自动补图。开启时，有 anchor 的目标 `target=N`，无 anchor 为 `N+1`；关闭时普通检查目标为 `0`，`demand: true` 则至少请求一张可前进的图片，不修改已保存缓冲数量。`max_history_images`（`1`–`100000`，`0` 关闭）只限制当前观看位置之前全部可见漫游历史，不调整上述预取目标。`ready` 只计未删除且未隐藏的漫游图片（有 anchor 时只数较新漫游图片），生成页图片不计入缓冲；将生成图片作为 anchor 会返回 404。`pending` 为全局排队、提交中及运行中的任务数。设置保存在数据目录的 主 SQLite 的 `roam_settings` 表，保存生成新版本以区分旧任务与当前暂停状态。
+设置默认缓冲数量为 `0`，不自动补图。开启时，有 anchor 的目标 `target=N`，无 anchor 为 `N+1`；关闭时普通检查目标为 `0`，`demand: true` 则至少请求一张可前进的图片，不修改已保存缓冲数量。`max_history_images`（`1`–`100000`，`0` 关闭）只限制当前观看位置之前全部可见漫游历史，不调整上述预取目标。`ready` 只计未删除且未隐藏的漫游图片（有 anchor 时只数较新漫游图片），生成页图片不计入缓冲；将生成图片作为 anchor 会返回 404。`pending` 为全局排队、提交中及运行中的任务数，`roam_pending` 只统计这些状态中的漫游任务（含旧设置版本）。设置保存在数据目录的 主 SQLite 的 `roam_settings` 表，保存生成新版本以区分旧任务与当前暂停状态。
 
 App 保存漫游设置后只执行漫游数量规则，不强制触发全局时间清理；保存观看位置后也调用已有懒清理。设置响应返回全局产物修订，清理事件通知前端重读观看窗口。`LazyCleanup` 将时间规则与漫游数量规则组合，存储接口 `trim_roam_artifacts` 读取已保存 `roam_view` 锚点，只对严格较旧的可见漫游图片统计总量，超限未喜欢图片标记墓碑，喜欢图片标记 `roam_hidden_at` 隐藏；当前和较新图片不计，无锚点时不进行数量清理，文件回收继续使用原安全队列；HTTP、任务与候选模块不执行清理 SQL。时间检查保留节流，开启的数量规则随已有请求触发检查，没有新增定时任务。默认关闭与文件损坏时不进行新的数量清理，待删除队列可继续重试。
 
-进入漫游、切图和状态更新时，前端调用 `POST /api/roam/ensure`，传入当前 `anchor_id`；空图库传 `null`。App 依据权威数据库状态计算当前图右侧较新图片的缺口，空图库先满足首图再补缓冲。每次至多提交一个预取任务；存在排队或运行任务时等待后续事件，不另设定时器或后台投喂循环。
+进入漫游、切图和状态更新时，前端调用 `POST /api/roam/ensure`，传入当前 `anchor_id`；空图库传 `null`。App 依据权威数据库状态计算当前图右侧较新图片的缺口，空图库先满足首图再补缓冲。每次至多提交一个预取任务，最多保留两个未完成漫游任务，让上一张出图与下一张候选生成/推荐评分重叠。`ready + roam_pending` 达到目标、漫游未完成任务达到 2 或全局未完成任务达到原创建容量 10 时等待后续事件；手动任务不占漫游额度。入队发布既有 jobs 事件以继续准备，不另设定时器或后台投喂循环。任务模块仍按原队列单任务出图。
 
 App 按已保存漫游设置解析后端和标签库，沿用 `CandidateProvider` 以 `random_each_run` 提供的合法组合池。App 在评分前重试已持久化的学习通知，将完整组合传给推荐服务 `score`，校验评分覆盖每个组合且数值有效后选择组合，再将实际正负文本提交到既有任务队列。模型不可用时保留默认候选并返回降级原因，不调用 GPU 做推荐。候选与当时标签快照通过 `roam_jobs` 持久关联，任务产物继续由原有任务/图片关系管理；批量结果按真实产物数计入缓冲。
 

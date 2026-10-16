@@ -11,7 +11,7 @@ import uuid
 from . import __version__
 from .contracts.recommendation import ScoreCandidate, ScoreRequest, ScoreTerm
 from .candidate.rounds import validate_options
-from .domain import GoneError, NotFoundError, ValidationError, feedback_value, generation_count, generation_fields
+from .domain import GoneError, NotFoundError, ValidationError, feedback_value, generation_count, generation_fields, roam_can_enqueue
 from .events import EventHub
 from .store.contracts import Storage
 from .store.roam_settings import max_history_images, prefetch_count, selection
@@ -396,7 +396,7 @@ class PictideApplication:
             if enabled:
                 await self.clean_history()
             state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], anchor if enabled else None, target)
-            if not enabled or state["paused"] or state["pending"] or state["ready"] >= target:
+            if not enabled or not roam_can_enqueue(state, target):
                 return base | state
             try:
                 backend_id, preset_id = await self._roam_options(document)

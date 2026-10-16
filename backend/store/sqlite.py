@@ -9,7 +9,7 @@ import uuid
 
 from .recommendation import initialize_recommendation, record_feedback
 
-from ..domain import ConflictError, NotFoundError, ValidationError, actual_seed, feedback_value, generation_count
+from ..domain import ConflictError, NotFoundError, ValidationError, actual_seed, feedback_value, generation_count, roam_can_enqueue
 
 
 def now():
@@ -328,7 +328,9 @@ class Repository:
             db.execute("INSERT OR IGNORE INTO roam_runs(epoch,error) VALUES (?,?)", (epoch, message[:1000]))
         pause = db.execute("SELECT error FROM roam_runs WHERE epoch=?", (epoch,)).fetchone()
         pending = db.execute("SELECT count(*) FROM jobs WHERE status IN ('queued','submitting','running')").fetchone()[0]
-        return {"ready": ready, "pending": pending, "paused": pause is not None,
+        roam_pending = db.execute("SELECT count(*) FROM jobs j JOIN roam_jobs r ON r.job_id=j.id "
+                                  "WHERE j.status IN ('queued','submitting','running')").fetchone()[0]
+        return {"ready": ready, "pending": pending, "roam_pending": roam_pending, "paused": pause is not None,
                 **({"error": pause["error"]} if pause else {})}
 
     def ensure_roam(self, epoch, anchor_id, target, payload=None, candidate=None):
@@ -340,11 +342,12 @@ class Repository:
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
             result = self._roam_state(db, epoch, anchor_id)
-            if payload is not None and target > result["ready"] and not result["pending"] and not result["paused"]:
+            if payload is not None and roam_can_enqueue(result, target):
                 identifier = self._create_job(db, payload)
                 db.execute("INSERT INTO roam_jobs(job_id,epoch,candidate,created_at) VALUES (?,?,?,?)",
                            (identifier, epoch, snapshot, now()))
                 result["pending"] += 1
+                result["roam_pending"] += 1
         if identifier is not None:
             result["job"] = self.job(identifier)
         return result
