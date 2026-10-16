@@ -1,0 +1,169 @@
+{
+  "random": {
+    "0": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.walk",
+        "scene.library",
+        "weather.cloud"
+      ],
+      "positive": "illustration, walking, library, cloudy",
+      "negative": "blurry",
+      "search_steps": 8
+    },
+    "1": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.stand",
+        "scene.street",
+        "weather.sun",
+        "prop.book"
+      ],
+      "positive": "illustration, standing, street, sunshine, book",
+      "negative": "blurry",
+      "search_steps": 7
+    },
+    "9": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.sit",
+        "scene.library",
+        "weather.cloud",
+        "prop.book"
+      ],
+      "positive": "illustration, sitting, library, cloudy, book",
+      "negative": "blurry",
+      "search_steps": 7
+    },
+    "42": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.walk",
+        "scene.library",
+        "weather.cloud"
+      ],
+      "positive": "illustration, walking, library, cloudy",
+      "negative": "blurry",
+      "search_steps": 8
+    },
+    "123": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.sit",
+        "scene.street",
+        "weather.cloud",
+        "prop.bag"
+      ],
+      "positive": "illustration, sitting, street, cloudy, bag",
+      "negative": "blurry",
+      "search_steps": 7
+    },
+    "999": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.walk",
+        "scene.street",
+        "weather.rain",
+        "prop.book"
+      ],
+      "positive": "illustration, walking, street, rain, book",
+      "negative": "blurry",
+      "search_steps": 7
+    }
+  },
+  "sequence": {
+    "0": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.sit",
+        "scene.street",
+        "weather.cloud",
+        "prop.bag"
+      ],
+      "positive": "illustration, sitting, street, cloudy, bag",
+      "negative": "blurry",
+      "search_steps": 7
+    },
+    "1": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.sit",
+        "scene.street",
+        "weather.rain",
+        "prop.book"
+      ],
+      "positive": "illustration, sitting, street, rain, book",
+      "negative": "blurry",
+      "search_steps": 3
+    },
+    "2": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.sit",
+        "scene.street",
+        "weather.cloud"
+      ],
+      "positive": "illustration, sitting, street, cloudy",
+      "negative": "blurry",
+      "search_steps": 4
+    },
+    "3": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.stand",
+        "scene.street",
+        "weather.rain"
+      ],
+      "positive": "illustration, standing, street, rain",
+      "negative": "blurry",
+      "search_steps": 6
+    },
+    "4": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.stand",
+        "scene.street",
+        "weather.sun",
+        "prop.book"
+      ],
+      "positive": "illustration, standing, street, sunshine, book",
+      "negative": "blurry",
+      "search_steps": 3
+    },
+    "9": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.walk",
+        "scene.street",
+        "weather.rain"
+      ],
+      "positive": "illustration, walking, street, rain",
+      "negative": "blurry",
+      "search_steps": 4
+    },
+    "15": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.stand",
+        "scene.street",
+        "weather.cloud"
+      ],
+      "positive": "illustration, standing, street, cloudy",
+      "negative": "blurry",
+      "search_steps": 3
+    }
+  }
+}

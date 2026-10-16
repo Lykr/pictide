@@ -1,0 +1,1054 @@
+{
+  "document": {
+    "version": 3,
+    "tags": [
+      {
+        "id": "style",
+        "text": "illustration"
+      },
+      {
+        "id": "pose.stand",
+        "text": "standing",
+        "categories": [
+          "pose"
+        ]
+      },
+      {
+        "id": "pose.sit",
+        "text": "sitting",
+        "categories": [
+          "pose"
+        ]
+      },
+      {
+        "id": "pose.walk",
+        "text": "walking",
+        "categories": [
+          "pose"
+        ]
+      },
+      {
+        "id": "scene.street",
+        "text": "street",
+        "categories": [
+          "scene"
+        ]
+      },
+      {
+        "id": "scene.garden",
+        "text": "garden",
+        "categories": [
+          "scene"
+        ]
+      },
+      {
+        "id": "scene.library",
+        "text": "library",
+        "categories": [
+          "scene"
+        ]
+      },
+      {
+        "id": "weather.rain",
+        "text": "rain",
+        "categories": [
+          "weather"
+        ]
+      },
+      {
+        "id": "weather.sun",
+        "text": "sunshine",
+        "categories": [
+          "weather"
+        ]
+      },
+      {
+        "id": "weather.cloud",
+        "text": "cloudy",
+        "categories": [
+          "weather"
+        ]
+      },
+      {
+        "id": "prop.umbrella",
+        "text": "umbrella",
+        "categories": [
+          "prop"
+        ],
+        "requires": [
+          "weather.rain",
+          "scene.street",
+          "pose.stand"
+        ]
+      },
+      {
+        "id": "prop.book",
+        "text": "book",
+        "categories": [
+          "prop"
+        ]
+      },
+      {
+        "id": "prop.bag",
+        "text": "bag",
+        "categories": [
+          "prop"
+        ]
+      },
+      {
+        "id": "negative.blur",
+        "text": "blurry",
+        "channel": "negative"
+      }
+    ],
+    "base_positive": [
+      "style"
+    ],
+    "base_negative": [
+      "negative.blur"
+    ],
+    "slots": [
+      {
+        "category": "pose",
+        "pick": 1,
+        "hold_frames": [
+          2,
+          4
+        ]
+      },
+      {
+        "category": "scene",
+        "pick": 1,
+        "locked": true
+      },
+      {
+        "category": "weather",
+        "pick": 1,
+        "change_budget": 2
+      },
+      {
+        "category": "prop",
+        "pick": [
+          0,
+          1
+        ]
+      }
+    ],
+    "change_budget": {
+      "slots": 2,
+      "tags": 4
+    }
+  },
+  "random": {
+    "0": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.walk",
+        "scene.library",
+        "weather.cloud"
+      ],
+      "slots": {
+        "pose": [
+          "pose.walk"
+        ],
+        "scene": [
+          "scene.library"
+        ],
+        "weather": [
+          "weather.cloud"
+        ],
+        "prop": []
+      },
+      "positive": "illustration, walking, library, cloudy",
+      "negative": "blurry",
+      "search_steps": 8
+    },
+    "1": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.stand",
+        "scene.street",
+        "weather.sun",
+        "prop.book"
+      ],
+      "slots": {
+        "pose": [
+          "pose.stand"
+        ],
+        "scene": [
+          "scene.street"
+        ],
+        "weather": [
+          "weather.sun"
+        ],
+        "prop": [
+          "prop.book"
+        ]
+      },
+      "positive": "illustration, standing, street, sunshine, book",
+      "negative": "blurry",
+      "search_steps": 7
+    },
+    "9": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.sit",
+        "scene.library",
+        "weather.cloud",
+        "prop.book"
+      ],
+      "slots": {
+        "pose": [
+          "pose.sit"
+        ],
+        "scene": [
+          "scene.library"
+        ],
+        "weather": [
+          "weather.cloud"
+        ],
+        "prop": [
+          "prop.book"
+        ]
+      },
+      "positive": "illustration, sitting, library, cloudy, book",
+      "negative": "blurry",
+      "search_steps": 7
+    },
+    "42": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.walk",
+        "scene.library",
+        "weather.cloud"
+      ],
+      "slots": {
+        "pose": [
+          "pose.walk"
+        ],
+        "scene": [
+          "scene.library"
+        ],
+        "weather": [
+          "weather.cloud"
+        ],
+        "prop": []
+      },
+      "positive": "illustration, walking, library, cloudy",
+      "negative": "blurry",
+      "search_steps": 8
+    },
+    "123": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.sit",
+        "scene.street",
+        "weather.cloud",
+        "prop.bag"
+      ],
+      "slots": {
+        "pose": [
+          "pose.sit"
+        ],
+        "scene": [
+          "scene.street"
+        ],
+        "weather": [
+          "weather.cloud"
+        ],
+        "prop": [
+          "prop.bag"
+        ]
+      },
+      "positive": "illustration, sitting, street, cloudy, bag",
+      "negative": "blurry",
+      "search_steps": 7
+    },
+    "999": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.walk",
+        "scene.street",
+        "weather.rain",
+        "prop.book"
+      ],
+      "slots": {
+        "pose": [
+          "pose.walk"
+        ],
+        "scene": [
+          "scene.street"
+        ],
+        "weather": [
+          "weather.rain"
+        ],
+        "prop": [
+          "prop.book"
+        ]
+      },
+      "positive": "illustration, walking, street, rain, book",
+      "negative": "blurry",
+      "search_steps": 7
+    }
+  },
+  "sequence": {
+    "0": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.sit",
+        "scene.street",
+        "weather.cloud",
+        "prop.bag"
+      ],
+      "slots": {
+        "pose": [
+          "pose.sit"
+        ],
+        "scene": [
+          "scene.street"
+        ],
+        "weather": [
+          "weather.cloud"
+        ],
+        "prop": [
+          "prop.bag"
+        ]
+      },
+      "positive": "illustration, sitting, street, cloudy, bag",
+      "negative": "blurry",
+      "search_steps": 7,
+      "sequence": {
+        "seed": 123,
+        "step": 0,
+        "frame_seed": 123,
+        "previous_step": null,
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        },
+        "slot_budgets": {
+          "weather": 2
+        },
+        "holds": {
+          "pose": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 3,
+            "age": 0,
+            "remaining_frames": 3,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "scene": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "locked"
+          },
+          "weather": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "prop": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          }
+        }
+      }
+    },
+    "1": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.sit",
+        "scene.street",
+        "weather.rain",
+        "prop.book"
+      ],
+      "slots": {
+        "pose": [
+          "pose.sit"
+        ],
+        "scene": [
+          "scene.street"
+        ],
+        "weather": [
+          "weather.rain"
+        ],
+        "prop": [
+          "prop.book"
+        ]
+      },
+      "positive": "illustration, sitting, street, rain, book",
+      "negative": "blurry",
+      "search_steps": 3,
+      "transition": {
+        "changed_slots": [
+          "weather",
+          "prop"
+        ],
+        "slot_changes": 2,
+        "added": [
+          "weather.rain",
+          "prop.book"
+        ],
+        "removed": [
+          "weather.cloud",
+          "prop.bag"
+        ],
+        "tag_changes": 4,
+        "by_slot": {
+          "pose": 0,
+          "scene": 0,
+          "weather": 2,
+          "prop": 2
+        },
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        }
+      },
+      "sequence": {
+        "seed": 123,
+        "step": 1,
+        "frame_seed": 7438826931741684,
+        "previous_step": 0,
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        },
+        "slot_budgets": {
+          "weather": 2
+        },
+        "holds": {
+          "pose": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 3,
+            "age": 1,
+            "remaining_frames": 2,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "scene": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 1,
+            "age": 1,
+            "remaining_frames": 0,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "locked"
+          },
+          "weather": {
+            "last_change_step": 1,
+            "change_count": 1,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "prop": {
+            "last_change_step": 1,
+            "change_count": 1,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          }
+        }
+      }
+    },
+    "2": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.sit",
+        "scene.street",
+        "weather.cloud"
+      ],
+      "slots": {
+        "pose": [
+          "pose.sit"
+        ],
+        "scene": [
+          "scene.street"
+        ],
+        "weather": [
+          "weather.cloud"
+        ],
+        "prop": []
+      },
+      "positive": "illustration, sitting, street, cloudy",
+      "negative": "blurry",
+      "search_steps": 4,
+      "transition": {
+        "changed_slots": [
+          "weather",
+          "prop"
+        ],
+        "slot_changes": 2,
+        "added": [
+          "weather.cloud"
+        ],
+        "removed": [
+          "weather.rain",
+          "prop.book"
+        ],
+        "tag_changes": 3,
+        "by_slot": {
+          "pose": 0,
+          "scene": 0,
+          "weather": 2,
+          "prop": 1
+        },
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        }
+      },
+      "sequence": {
+        "seed": 123,
+        "step": 2,
+        "frame_seed": 50482975451738,
+        "previous_step": 1,
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        },
+        "slot_budgets": {
+          "weather": 2
+        },
+        "holds": {
+          "pose": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 3,
+            "age": 2,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "scene": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 1,
+            "age": 2,
+            "remaining_frames": 0,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "locked"
+          },
+          "weather": {
+            "last_change_step": 2,
+            "change_count": 2,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "prop": {
+            "last_change_step": 2,
+            "change_count": 2,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          }
+        }
+      }
+    },
+    "3": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.stand",
+        "scene.street",
+        "weather.rain"
+      ],
+      "slots": {
+        "pose": [
+          "pose.stand"
+        ],
+        "scene": [
+          "scene.street"
+        ],
+        "weather": [
+          "weather.rain"
+        ],
+        "prop": []
+      },
+      "positive": "illustration, standing, street, rain",
+      "negative": "blurry",
+      "search_steps": 6,
+      "transition": {
+        "changed_slots": [
+          "pose",
+          "weather"
+        ],
+        "slot_changes": 2,
+        "added": [
+          "pose.stand",
+          "weather.rain"
+        ],
+        "removed": [
+          "pose.sit",
+          "weather.cloud"
+        ],
+        "tag_changes": 4,
+        "by_slot": {
+          "pose": 2,
+          "scene": 0,
+          "weather": 2,
+          "prop": 0
+        },
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        }
+      },
+      "sequence": {
+        "seed": 123,
+        "step": 3,
+        "frame_seed": 6078645348887942,
+        "previous_step": 2,
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        },
+        "slot_budgets": {
+          "weather": 2
+        },
+        "holds": {
+          "pose": {
+            "last_change_step": 3,
+            "change_count": 1,
+            "hold_frames": 3,
+            "age": 0,
+            "remaining_frames": 3,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "scene": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 1,
+            "age": 3,
+            "remaining_frames": 0,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "locked"
+          },
+          "weather": {
+            "last_change_step": 3,
+            "change_count": 3,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "prop": {
+            "last_change_step": 2,
+            "change_count": 2,
+            "hold_frames": 1,
+            "age": 1,
+            "remaining_frames": 0,
+            "waiting_frames": 0,
+            "eligible": true,
+            "status": "waiting"
+          }
+        }
+      }
+    },
+    "4": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.stand",
+        "scene.street",
+        "weather.sun",
+        "prop.book"
+      ],
+      "slots": {
+        "pose": [
+          "pose.stand"
+        ],
+        "scene": [
+          "scene.street"
+        ],
+        "weather": [
+          "weather.sun"
+        ],
+        "prop": [
+          "prop.book"
+        ]
+      },
+      "positive": "illustration, standing, street, sunshine, book",
+      "negative": "blurry",
+      "search_steps": 3,
+      "transition": {
+        "changed_slots": [
+          "weather",
+          "prop"
+        ],
+        "slot_changes": 2,
+        "added": [
+          "weather.sun",
+          "prop.book"
+        ],
+        "removed": [
+          "weather.rain"
+        ],
+        "tag_changes": 3,
+        "by_slot": {
+          "pose": 0,
+          "scene": 0,
+          "weather": 2,
+          "prop": 1
+        },
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        }
+      },
+      "sequence": {
+        "seed": 123,
+        "step": 4,
+        "frame_seed": 779428334770040,
+        "previous_step": 3,
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        },
+        "slot_budgets": {
+          "weather": 2
+        },
+        "holds": {
+          "pose": {
+            "last_change_step": 3,
+            "change_count": 1,
+            "hold_frames": 3,
+            "age": 1,
+            "remaining_frames": 2,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "scene": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 1,
+            "age": 4,
+            "remaining_frames": 0,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "locked"
+          },
+          "weather": {
+            "last_change_step": 4,
+            "change_count": 4,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "prop": {
+            "last_change_step": 4,
+            "change_count": 3,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          }
+        }
+      }
+    },
+    "9": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.walk",
+        "scene.street",
+        "weather.rain"
+      ],
+      "slots": {
+        "pose": [
+          "pose.walk"
+        ],
+        "scene": [
+          "scene.street"
+        ],
+        "weather": [
+          "weather.rain"
+        ],
+        "prop": []
+      },
+      "positive": "illustration, walking, street, rain",
+      "negative": "blurry",
+      "search_steps": 4,
+      "transition": {
+        "changed_slots": [
+          "weather"
+        ],
+        "slot_changes": 1,
+        "added": [
+          "weather.rain"
+        ],
+        "removed": [
+          "weather.cloud"
+        ],
+        "tag_changes": 2,
+        "by_slot": {
+          "pose": 0,
+          "scene": 0,
+          "weather": 2,
+          "prop": 0
+        },
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        }
+      },
+      "sequence": {
+        "seed": 123,
+        "step": 9,
+        "frame_seed": 4005311035571474,
+        "previous_step": 8,
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        },
+        "slot_budgets": {
+          "weather": 2
+        },
+        "holds": {
+          "pose": {
+            "last_change_step": 7,
+            "change_count": 2,
+            "hold_frames": 4,
+            "age": 2,
+            "remaining_frames": 2,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "scene": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 1,
+            "age": 9,
+            "remaining_frames": 0,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "locked"
+          },
+          "weather": {
+            "last_change_step": 9,
+            "change_count": 8,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "prop": {
+            "last_change_step": 8,
+            "change_count": 7,
+            "hold_frames": 1,
+            "age": 1,
+            "remaining_frames": 0,
+            "waiting_frames": 0,
+            "eligible": true,
+            "status": "waiting"
+          }
+        }
+      }
+    },
+    "15": {
+      "selected": [
+        "style",
+        "negative.blur",
+        "pose.stand",
+        "scene.street",
+        "weather.cloud"
+      ],
+      "slots": {
+        "pose": [
+          "pose.stand"
+        ],
+        "scene": [
+          "scene.street"
+        ],
+        "weather": [
+          "weather.cloud"
+        ],
+        "prop": []
+      },
+      "positive": "illustration, standing, street, cloudy",
+      "negative": "blurry",
+      "search_steps": 3,
+      "transition": {
+        "changed_slots": [
+          "pose",
+          "weather"
+        ],
+        "slot_changes": 2,
+        "added": [
+          "pose.stand",
+          "weather.cloud"
+        ],
+        "removed": [
+          "pose.sit",
+          "weather.rain"
+        ],
+        "tag_changes": 4,
+        "by_slot": {
+          "pose": 2,
+          "scene": 0,
+          "weather": 2,
+          "prop": 0
+        },
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        }
+      },
+      "sequence": {
+        "seed": 123,
+        "step": 15,
+        "frame_seed": 5640750586921351,
+        "previous_step": 14,
+        "locked_slots": [
+          "scene"
+        ],
+        "budget": {
+          "slots": 2,
+          "tags": 4
+        },
+        "slot_budgets": {
+          "weather": 2
+        },
+        "holds": {
+          "pose": {
+            "last_change_step": 15,
+            "change_count": 4,
+            "hold_frames": 3,
+            "age": 0,
+            "remaining_frames": 3,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "scene": {
+            "last_change_step": 0,
+            "change_count": 0,
+            "hold_frames": 1,
+            "age": 15,
+            "remaining_frames": 0,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "locked"
+          },
+          "weather": {
+            "last_change_step": 15,
+            "change_count": 13,
+            "hold_frames": 1,
+            "age": 0,
+            "remaining_frames": 1,
+            "waiting_frames": 0,
+            "eligible": false,
+            "status": "holding"
+          },
+          "prop": {
+            "last_change_step": 14,
+            "change_count": 12,
+            "hold_frames": 1,
+            "age": 1,
+            "remaining_frames": 0,
+            "waiting_frames": 0,
+            "eligible": true,
+            "status": "waiting"
+          }
+        }
+      }
+    }
+  }
+}

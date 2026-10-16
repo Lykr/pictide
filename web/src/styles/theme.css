@@ -1,0 +1,199 @@
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:is(.dark *));
+@source "../";
+
+/* Official preset b1VlIttI: radix-luma / neutral / Inter / Lucide. */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --success: oklch(0.43 0.1 150);
+  --warning: oklch(0.48 0.1 65);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
+  --font-sans: "Inter Variable", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "Cascadia Code", Consolas, monospace;
+  color-scheme: light;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * { box-sizing: border-box; border-color: var(--border);
+    @apply border-border outline-ring/50; }
+  body { margin: 0; background: var(--background); color: var(--foreground); font: 14px/1.5 var(--font-sans);
+    @apply bg-background text-foreground; }
+  button, input, textarea, select { font: inherit; }
+  button, summary { cursor: pointer; }
+  button:disabled { cursor: default; }
+  a { color: inherit; }
+  h1, h2, h3, p { margin: 0; }
+  h1 { font-size: 20px; font-weight: 600; letter-spacing: -.025em; }
+  h2 { font-size: 16px; font-weight: 600; }
+  h3 { font-size: 14px; font-weight: 600; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  small { color: var(--muted-foreground); font-size: 12px; line-height: 1.6; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+  input:invalid:not(:placeholder-shown):focus, textarea:invalid:focus, select:invalid:focus { border-color: var(--destructive); }
+  html {
+    scrollbar-gutter: stable;
+    @apply font-sans;
+  }
+}
+
+/* Application behavior only; Luma components own size, radius, fill and focus. */
+/* All ordinary workspaces share the liked-page content boundaries. */
+.workspace-content { width: 100%; max-width: 1200px; margin: 0 auto; min-width: 0; padding: 24px; }
+@media (max-width: 1024px) { .workspace-content { padding: 16px; } }
+[data-slot=textarea] { resize: vertical; }
+[data-slot=native-select-wrapper] { width: 100%; min-width: 0; }
+.notice { padding: 10px 12px; border: 1px solid var(--border); background: var(--secondary); border-radius: var(--radius); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.notice.error { color: var(--destructive); border-color: color-mix(in oklch, var(--destructive) 30%, var(--border)); background: color-mix(in oklch, var(--destructive) 5%, var(--card)); }
+.notice.warning { color: var(--warning); border-color: color-mix(in oklch, var(--warning) 30%, var(--border)); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+
+
+.field-label { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Controller state stays in hidden proxies; all visible interactions are shadcn. */
+[data-control-proxy] { display: none !important; }
+[data-control-host] { min-width: 0; }
+[data-control-host=select] { display: block; width: 100%; }
+[data-slot=multi-select] > [data-slot=label] { display: flex; align-items: center; gap: 8px; min-height: 24px; margin: 0; }
+[data-control-host=checkbox] { display: inline-flex; flex: none; vertical-align: middle; }
+[data-control-host=collapsible] { display: block; }
+[data-control-host=toggle] { display: inline-flex; flex: none; }
+[data-control-host=picker] { display: block; flex: 1; min-width: 0; }
+[data-control-host=workflow] { display: block; width: 100%; margin-bottom: 20px; }
+.workflow-picker [data-slot=command-input-wrapper] { padding: 0; }
+[data-control-host=dialog] { display: contents; }
+[data-slot=select-content], [data-slot=popover-content] { z-index: 70; }
+[data-slot=dialog-content] { max-height: calc(100dvh - 32px); overflow: auto; }
+.controller-dialog { display: block; }
+.controller-dialog[data-slot=dialog-content] { overflow: visible; max-height: none; }
+.controller-dialog > .dialog-scroll-content { max-height: calc(100dvh - 80px); overflow: auto; }
+.collapsible-label { justify-content: flex-start; max-width: 100%; white-space: normal; text-align: left; }
+.collapsible-label > svg { flex-shrink: 0; }
+.editor-tabs { display: flex; align-items: center; gap: 12px; padding: 8px 20px 12px; flex-wrap: wrap; }
+.editor-tabs .count { font-size: 11px; }
+.editor-page .config-control [data-slot=select-trigger] { min-width: 130px; max-width: 230px; }
+.editor-page .filters > [data-control-host=select] { flex: 0 1 160px; }
+.editor-page .library-workspace .filters > [data-control-host=select] { flex-basis: 110px; }
+.controller-dialog.prompt-add-dialog { width: min(680px, calc(100vw - 32px)); max-width: min(680px, calc(100vw - 32px)); }
+.controller-dialog.preview-dialog { width: min(1080px, calc(100vw - 32px)); max-width: min(1080px, calc(100vw - 32px)); }
+@media (max-width: 640px) {
+  .editor-tabs { padding: 12px; }
+  .editor-page .config-control [data-slot=select-trigger] { min-width: 0; }
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+.help-tip { vertical-align: middle; color: var(--muted-foreground); cursor: help; }
+.config-dialog form { display: flex; flex-direction: column; gap: 16px; }
+.config-dialog .field { margin: 0; }
+.config-dialog .actions { margin-top: 0; }

@@ -1,0 +1,62 @@
+.generated-viewer[data-slot="dialog-content"] {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  height: min(900px, calc(100dvh - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 12px;
+  gap: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--card);
+}
+.generated-viewer-heading { display: flex; justify-content: flex-end; gap: 4px; flex: 0 0 auto; }
+.generated-viewer-stage { position: relative; display: flex; align-items: center; justify-content: center; flex: 1 1 auto; min-height: 0; overflow: hidden; border-radius: var(--radius-lg); background: var(--secondary); }
+.generated-viewer-stage img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.generated-viewer-stage[data-privacy-blur="true"] img { filter: blur(24px); }
+.generated-viewer-loading, .generated-viewer-paging { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted-foreground); pointer-events: none; }
+.generated-viewer-loading { background: var(--secondary); }
+.generated-viewer-paging { z-index: 2; background: color-mix(in oklch, var(--card) 45%, transparent); }
+.generated-viewer-loading svg, .generated-viewer-paging svg { width: 24px; height: 24px; }
+.generated-viewer-navigation, .generated-viewer-details { display: flex; align-items: center; justify-content: center; gap: 0; }
+.generated-viewer-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; flex: 0 0 auto; width: 100%; }
+.generated-viewer-navigation { grid-column: 2; }
+.generated-viewer-details { grid-column: 3; justify-self: end; }
+.generated-viewer-details[hidden], .generated-viewer-toolbar [hidden] { display: none; }
+.generated-viewer-liked svg { fill: currentColor; }
+.generated-viewer-error { z-index: 4; padding: 8px 12px; color: var(--destructive); background: var(--card); font-size: 13px; overflow-wrap: anywhere; }
+.generated-viewer-info { z-index: 1100; width: min(420px, calc(100vw - 32px)); max-height: min(500px, 65dvh); overflow-y: auto; }
+.generated-viewer-info h3 { color: var(--muted-foreground); font-size: 12px; margin-bottom: 4px; }
+.generated-viewer-info pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; user-select: text; }
+.generated-viewer.image-card.immersive {
+  position: fixed;
+  inset: 0;
+  transform: none;
+  translate: none;
+  z-index: 1000;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--secondary);
+  animation: none;
+}
+.generated-viewer.image-card.immersive::backdrop { background: var(--secondary); }
+.generated-viewer.immersive .generated-viewer-stage { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; }
+.generated-viewer.immersive .generated-viewer-heading { display: none; }
+.generated-viewer.immersive .generated-viewer-navigation { gap: 4px; }
+.generated-viewer.immersive .generated-viewer-toolbar { position: absolute; z-index: 3; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; width: max-content; max-width: calc(100% - 24px); padding: 6px; border: 1px solid var(--border); border-radius: var(--radius-xl); background: color-mix(in oklch, var(--card) 85%, transparent); backdrop-filter: blur(16px); box-shadow: 0 4px 16px #0002; transition: opacity 150ms; }
+.generated-viewer.immersive .generated-viewer-error { position: absolute; top: 12px; left: 12px; right: 12px; border-radius: var(--radius-lg); }
+.generated-viewer.immersive-controls-hidden { cursor: none; }
+.generated-viewer.immersive-controls-hidden .generated-viewer-toolbar { opacity: 0; visibility: hidden; pointer-events: none; }
+@media (max-width: 450px) {
+  .generated-viewer[data-slot="dialog-content"] { width: calc(100vw - 16px); max-width: calc(100vw - 16px); height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); padding: 8px; }
+  .generated-viewer-toolbar [data-slot="button"] { width: 32px; height: 32px; }
+  .generated-viewer.image-card.immersive { width: 100vw; max-width: none; height: 100dvh; max-height: none; padding: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .generated-viewer.immersive .generated-viewer-toolbar { transition: none; } }

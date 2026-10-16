@@ -1,0 +1,15 @@
+{
+  "code": "b1VlIttI",
+  "style": "radix-luma",
+  "baseColor": "neutral",
+  "theme": "neutral",
+  "chartColor": "neutral",
+  "font": "inter",
+  "fontHeading": "inherit",
+  "iconLibrary": "lucide",
+  "radius": "default",
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "cli": "shadcn@4.21.4",
+  "url": "https://ui.shadcn.com/create?preset=b1VlIttI"
+}

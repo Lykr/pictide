@@ -1,0 +1,203 @@
+"""Offline Danbooru general tags -> frequency-filtered SQLite PMI vocabulary.
+
+Only metadata is read. Intermediate counts and import progress live in a
+separate SQLite file, never in the application's finished vocabulary.
+"""
+from __future__ import annotations
+
+import argparse
+from array import array
+from collections import Counter
+from pathlib import Path
+import sqlite3
+import time
+
+SOURCE = "Shio-Koube/Danbooru-2026-parquet-metadata"
+MIN_POST_COUNT = 100
+SCHEMA = """
+CREATE TABLE tags (
+ id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, post_count INTEGER NOT NULL
+);
+CREATE TABLE correlations (
+ tag_a INTEGER NOT NULL, tag_b INTEGER NOT NULL, pmi REAL NOT NULL,
+ count INTEGER NOT NULL, PRIMARY KEY(tag_a,tag_b)
+) WITHOUT ROWID;
+CREATE TABLE dataset (
+ id INTEGER PRIMARY KEY CHECK(id=1), source TEXT, revision TEXT,
+ post_count INTEGER, status TEXT
+);
+"""
+STATE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS source (source TEXT, revision TEXT);
+CREATE TABLE IF NOT EXISTS inputs (path TEXT PRIMARY KEY, bytes INTEGER);
+CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS frequencies (name TEXT PRIMARY KEY, count INTEGER) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS groups (
+ path TEXT, group_no INTEGER, phase INTEGER, next_block INTEGER DEFAULT 0,
+ complete INTEGER DEFAULT 0, PRIMARY KEY(path,group_no,phase)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS pair_posts (id INTEGER PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS pair_counts (
+ tag_a INTEGER, tag_b INTEGER, count INTEGER, PRIMARY KEY(tag_a,tag_b)
+) WITHOUT ROWID;
+"""
+
+
+def _summary(db):
+    result = dict(zip(("source", "revision", "post_count", "status"),
+                      db.execute("SELECT source,revision,post_count,status FROM dataset WHERE id=1").fetchone()))
+    result["tag_count"] = db.execute("SELECT count(*) FROM tags").fetchone()[0]
+    result["pair_count"] = db.execute("SELECT count(*) FROM correlations").fetchone()[0]
+    return result
+
+
+def import_parquet(paths, destination, *, source=SOURCE, revision="local",
+                   state_path=None, block_size=256, batch_size=16384, progress=print):
+    """Two passes: count general tags, then count retained tag pairs.
+
+    Post IDs are deduplicated across all inputs, keeping the first record.
+    Every unique post contributes to N, including posts with no retained tags.
+    Row groups / pair blocks resume from the separate state database.
+    """
+    import numpy as np
+    import pyarrow.parquet as pq
+    from scipy.sparse import csr_matrix
+
+    paths = [Path(path).resolve() for path in paths]
+    if not paths or block_size < 1 or batch_size < 1:
+        raise ValueError("Supply Parquet files and positive block/batch sizes")
+    destination = Path(destination).resolve()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        raise ValueError("Use a new destination database; intermediate state can be resumed")
+    state_path = Path(state_path or destination.with_name(destination.stem + "-state.sqlite3")).resolve()
+    if state_path == destination:
+        raise ValueError("Intermediate and application databases must be separate")
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    db = sqlite3.connect(state_path)
+    db.execute("PRAGMA journal_mode=WAL")
+    db.execute("PRAGMA synchronous=NORMAL")
+    db.execute("PRAGMA cache_size=-131072")
+    db.executescript(STATE_SCHEMA)
+    try:
+        identity = db.execute("SELECT source,revision FROM source").fetchone()
+        if identity and identity != (source, revision):
+            raise ValueError("Intermediate database belongs to another dataset version")
+        if not identity:
+            db.execute("INSERT INTO source VALUES(?,?)", (source, revision))
+        inputs = [(str(path), path.stat().st_size) for path in paths]
+        recorded = db.execute("SELECT path,bytes FROM inputs ORDER BY path").fetchall()
+        if recorded and recorded != sorted(inputs):
+            raise ValueError("Use the same input files when resuming an import")
+        db.executemany("INSERT OR IGNORE INTO inputs VALUES(?,?)", inputs)
+        db.commit()
+        units = [(path, group) for path in paths for group in range(pq.ParquetFile(path).num_row_groups)]
+
+        seen = {row[0] for row in db.execute("SELECT id FROM posts")}
+        for path, group in units:
+            key = (str(path), group, 1)
+            if db.execute("SELECT complete FROM groups WHERE path=? AND group_no=? AND phase=?", key).fetchone():
+                continue
+            frequencies = Counter()
+            new_posts = []
+            for batch in pq.ParquetFile(path).iter_batches(batch_size=batch_size, columns=["id", "tag_string_general"], row_groups=[group]):
+                data = batch.to_pydict()
+                for post_id, text in zip(data["id"], data["tag_string_general"]):
+                    if post_id is None:
+                        raise ValueError(f"Post without id in {path.name}")
+                    if post_id in seen:
+                        continue
+                    seen.add(post_id)
+                    new_posts.append(post_id)
+                    frequencies.update(set((text or "").split()))
+            with db:
+                db.executemany("INSERT INTO posts VALUES(?)", ((ident,) for ident in new_posts))
+                db.executemany("INSERT INTO frequencies VALUES(?,?) ON CONFLICT(name) DO UPDATE SET count=count+excluded.count", frequencies.items())
+                db.execute("INSERT INTO groups VALUES(?,?,?,0,1)", key)
+            progress(f"Frequency pass: {path.name}/group={group}, {len(new_posts):,} new posts")
+        del seen
+        tags = list(db.execute("SELECT name,count FROM frequencies WHERE count>=? ORDER BY name", (MIN_POST_COUNT,)))
+        tag_ids = {name: index for index, (name, _) in enumerate(tags)}
+        n_tags = len(tags)
+        n_posts = db.execute("SELECT count(*) FROM posts").fetchone()[0]
+        progress(f"Retained {n_tags:,} general tags with frequency >= {MIN_POST_COUNT}; N={n_posts:,}")
+
+        seen = {row[0] for row in db.execute("SELECT id FROM pair_posts")}
+        for path, group in units:
+            key = (str(path), group, 2)
+            state = db.execute("SELECT next_block,complete FROM groups WHERE path=? AND group_no=? AND phase=?", key).fetchone()
+            if state and state[1]:
+                continue
+            started = time.monotonic()
+            pointers = array("i", [0]); indices = array("i"); new_posts = []
+            for batch in pq.ParquetFile(path).iter_batches(batch_size=batch_size, columns=["id", "tag_string_general"], row_groups=[group]):
+                data = batch.to_pydict()
+                for post_id, text in zip(data["id"], data["tag_string_general"]):
+                    if post_id in seen:
+                        continue
+                    seen.add(post_id)
+                    new_posts.append(post_id)
+                    indices.extend(sorted({tag_ids[name] for name in (text or "").split() if name in tag_ids}))
+                    pointers.append(len(indices))
+            matrix = csr_matrix((np.ones(len(indices), dtype=np.int64), np.frombuffer(indices, dtype=np.int32), np.frombuffer(pointers, dtype=np.int32)), shape=(len(new_posts), n_tags))
+            columns_matrix = matrix.tocsc()
+            next_block = state[0] if state else 0
+            for first in range(next_block, n_tags, block_size):
+                last = min(first + block_size, n_tags)
+                result = (columns_matrix[:, first:last].T.tocsr() @ matrix).tocoo()
+                keep = result.row + first < result.col
+                rows, cols, values = result.row[keep] + first + 1, result.col[keep] + 1, result.data[keep]
+                with db:
+                    db.executemany("INSERT INTO pair_counts VALUES(?,?,?) ON CONFLICT(tag_a,tag_b) DO UPDATE SET count=count+excluded.count", ((int(a), int(b), int(count)) for a, b, count in zip(rows, cols, values)))
+                    db.execute("INSERT INTO groups VALUES(?,?,?,?,0) ON CONFLICT(path,group_no,phase) DO UPDATE SET next_block=excluded.next_block", (*key, last))
+                progress(f"{path.name}/group={group}: pair block {last:,}/{n_tags:,}")
+            with db:
+                db.executemany("INSERT INTO pair_posts VALUES(?)", ((ident,) for ident in new_posts))
+                db.execute("INSERT INTO groups VALUES(?,?,?,0,1) ON CONFLICT(path,group_no,phase) DO UPDATE SET complete=1", key)
+            db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            progress(f"Completed pair group: {time.monotonic()-started:.1f}s")
+            del matrix, columns_matrix, pointers, indices
+        db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        db.close()
+
+    output = sqlite3.connect(destination)
+    try:
+        output.executescript(SCHEMA)
+        output.executemany("INSERT INTO tags VALUES(?,?,?)", ((index + 1, name, count) for index, (name, count) in enumerate(tags)))
+        output.execute("INSERT INTO dataset VALUES(1,?,?,?,'importing')", (source, revision, n_posts))
+        output.commit()
+        output.execute("ATTACH DATABASE ? AS intermediate", (str(state_path),))
+        with output:
+            output.execute("""INSERT INTO correlations
+                SELECT p.tag_a,p.tag_b,
+                       log2((1.0*p.count*?)/(a.post_count*1.0*b.post_count)),p.count
+                FROM intermediate.pair_counts p
+                JOIN tags a ON a.id=p.tag_a JOIN tags b ON b.id=p.tag_b""", (n_posts,))
+        output.execute("CREATE INDEX correlations_b ON correlations(tag_b,tag_a)")
+        output.execute("CREATE INDEX tags_frequency ON tags(post_count DESC,name)")
+        output.execute("ANALYZE main")
+        with output:
+            output.execute("UPDATE dataset SET status='ready' WHERE id=1")
+        return _summary(output)
+    finally:
+        output.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("raw", type=Path, help="Directory containing downloaded Parquet shards")
+    parser.add_argument("database", type=Path, help="New finished candidate database, outside the running app")
+    parser.add_argument("--source", default=SOURCE)
+    parser.add_argument("--revision", required=True)
+    parser.add_argument("--state", type=Path, help="Intermediate SQLite path; defaults to <database-stem>-state.sqlite3")
+    parser.add_argument("--block-size", type=int, default=256)
+    args = parser.parse_args()
+    print(import_parquet(sorted(args.raw.glob("*.parquet")), args.database,
+                         source=args.source, revision=args.revision, state_path=args.state,
+                         block_size=args.block_size,
+                         progress=lambda message: print(message, flush=True)), flush=True)
+
+
+if __name__ == "__main__":
+    main()

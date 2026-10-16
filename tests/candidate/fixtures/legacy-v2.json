@@ -1,0 +1,136 @@
+{
+  "version": 2,
+  "prompts": [
+    {
+      "id": "style",
+      "text": "illustration"
+    },
+    {
+      "id": "pose.stand",
+      "text": "standing",
+      "tags": [
+        "pose"
+      ]
+    },
+    {
+      "id": "pose.sit",
+      "text": "sitting",
+      "tags": [
+        "pose"
+      ]
+    },
+    {
+      "id": "pose.walk",
+      "text": "walking",
+      "tags": [
+        "pose"
+      ]
+    },
+    {
+      "id": "scene.street",
+      "text": "street",
+      "tags": [
+        "scene"
+      ]
+    },
+    {
+      "id": "scene.garden",
+      "text": "garden",
+      "tags": [
+        "scene"
+      ]
+    },
+    {
+      "id": "scene.library",
+      "text": "library",
+      "tags": [
+        "scene"
+      ]
+    },
+    {
+      "id": "weather.rain",
+      "text": "rain",
+      "tags": [
+        "weather"
+      ]
+    },
+    {
+      "id": "weather.sun",
+      "text": "sunshine",
+      "tags": [
+        "weather"
+      ]
+    },
+    {
+      "id": "weather.cloud",
+      "text": "cloudy",
+      "tags": [
+        "weather"
+      ]
+    },
+    {
+      "id": "prop.umbrella",
+      "text": "umbrella",
+      "tags": [
+        "prop"
+      ],
+      "requires": [
+        "weather.rain",
+        "scene.street",
+        "pose.stand"
+      ]
+    },
+    {
+      "id": "prop.book",
+      "text": "book",
+      "tags": [
+        "prop"
+      ]
+    },
+    {
+      "id": "prop.bag",
+      "text": "bag",
+      "tags": [
+        "prop"
+      ]
+    },
+    {
+      "id": "negative.blur",
+      "text": "blurry",
+      "channel": "negative"
+    }
+  ],
+  "base_positive": [
+    "style"
+  ],
+  "base_negative": [
+    "negative.blur"
+  ],
+  "selections": [
+    {
+      "tag": "pose",
+      "pick": 1,
+      "hold_frames": 3
+    },
+    {
+      "tag": "scene",
+      "pick": 1,
+      "locked": true
+    },
+    {
+      "tag": "weather",
+      "pick": 1
+    },
+    {
+      "tag": "prop",
+      "pick": [
+        0,
+        1
+      ]
+    }
+  ],
+  "change_budget": {
+    "dimensions": 2,
+    "prompts": 4
+  }
+}
