@@ -98,8 +98,8 @@ class RecommendationCoreTests(unittest.TestCase):
     def score(self, candidates, seed=12, user="local"):
         return self.service.score(ScoreRequest("request", user, seed, tuple(candidates)))
 
-    def feedback(self, c=None, liked=True, revision=1, artifact="image", user="local"):
-        return self.service.apply_feedback(FeedbackUpdate(user, artifact, revision, liked, c or candidate(), self.version))
+    def feedback(self, c=None, value=1, revision=1, artifact="image", user="local"):
+        return self.service.apply_feedback(FeedbackUpdate(user, artifact, revision, value, c or candidate(), self.version))
 
     def test_score_covers_combinations_reproducibly(self):
         candidates = [candidate("a", ("forest", "standing")), candidate("b", ("forest", "sitting"))]
@@ -172,27 +172,27 @@ class RecommendationCoreTests(unittest.TestCase):
     def test_duplicate_and_stale_feedback_is_unchanged(self):
         self.feedback()
         self.assertEqual(self.feedback().status, "unchanged")
-        self.feedback(liked=False, revision=2)
+        self.feedback(value=None, revision=2)
         self.assertEqual(self.feedback(revision=1).status, "unchanged")
         self.assertEqual(self.store.load_policy("local", self.version).evidence_count, 0)
-        self.assertFalse(self.store.load_evidence("local", self.version)[0].liked)
+        self.assertIsNone(self.store.load_evidence("local", self.version)[0].value)
 
     def test_unlike_removes_only_that_image_and_can_relike(self):
         self.feedback(artifact="one")
         self.feedback(artifact="two")
-        self.feedback(liked=False, revision=2, artifact="one")
+        self.feedback(value=None, revision=2, artifact="one")
         record = self.store.load_policy("local", self.version)
         self.assertEqual(record.evidence_count, 1)
         keys, precision, reward = policy.unpack(record)
         x = dense_features(self.service.features.prepare([candidate()]), keys)[0]
         np.testing.assert_allclose(precision, np.eye(len(x)) + np.outer(x, x), atol=1e-12)
         np.testing.assert_allclose(reward, x, atol=1e-12)
-        self.feedback(liked=True, revision=3, artifact="one")
+        self.feedback(value=1, revision=3, artifact="one")
         self.assertEqual(self.store.load_policy("local", self.version).evidence_count, 2)
 
     def test_complete_withdrawal_restores_unit_prior(self):
         self.feedback()
-        self.feedback(liked=False, revision=2)
+        self.feedback(value=None, revision=2)
         record = self.store.load_policy("local", self.version)
         _, precision, reward = policy.unpack(record)
         np.testing.assert_allclose(precision, np.eye(len(reward)), atol=1e-12)
@@ -212,6 +212,56 @@ class RecommendationCoreTests(unittest.TestCase):
         self.assertGreater(scores[0], scores[1])
         self.assertGreater(scores[0], .8)
 
+    def test_like_dislike_withdraw_is_reversible_and_replay_safe(self):
+        self.feedback(value=1)
+        liked = self.store.load_policy("local", self.version)
+        self.assertEqual(self.feedback(value=-1, revision=2).status, "applied")
+        disliked = self.store.load_policy("local", self.version)
+        self.assertEqual(disliked.evidence_count, 1)
+        self.assertEqual(disliked.precision, liked.precision)
+        np.testing.assert_allclose(np.frombuffer(disliked.reward, dtype="<f8"),
+                                   -np.frombuffer(liked.reward, dtype="<f8"), atol=1e-12)
+        self.assertEqual(self.feedback(value=-1, revision=2).status, "unchanged")
+        self.assertEqual(self.feedback(value=1, revision=1).status, "unchanged")
+        self.assertEqual(self.store.load_policy("local", self.version), disliked)
+        self.service = RecommendationService(self.store, FakeEncoder())
+        self.feedback(value=None, revision=3)
+        restored = self.store.load_policy("local", self.version)
+        _, precision, reward = policy.unpack(restored)
+        np.testing.assert_allclose(precision, np.eye(len(reward)), atol=1e-12)
+        np.testing.assert_allclose(reward, 0, atol=1e-12)
+        self.assertEqual(restored.evidence_count, 0)
+
+    def test_dislike_lowers_center_and_rebuild_preserves_signed_evidence(self):
+        disliked = candidate("disliked", ("forest",))
+        other = candidate("other", ("beach",))
+        for index in range(3):
+            self.feedback(disliked, value=-1, artifact=str(index))
+        record = self.store.load_policy("local", self.version)
+        prepared = self.service.features.prepare([disliked, other])
+        keys, precision, reward = policy.unpack(record, {key for _, exact in prepared for key in exact})
+        factor = policy.validate(precision, reward)
+        center = policy._triangular_solve(factor.T, policy._triangular_solve(factor, reward, True), False)
+        scores = dense_features(prepared, keys) @ center
+        self.assertLess(scores[0], -.7)
+        self.assertLess(scores[0], scores[1])
+        self.store.states[("local", self.version)] = dataclasses.replace(record, precision=b"broken")
+        self.assertTrue(math.isfinite(self.score([disliked]).scores[0].score))
+        self.feedback(disliked, value=1, revision=2, artifact="0")
+        rebuilt = self.store.load_policy("local", self.version)
+        keys, precision, reward = policy.unpack(rebuilt)
+        vector = dense_features(self.service.features.prepare([disliked]), keys)[0]
+        np.testing.assert_allclose(precision, np.eye(len(vector)) + 3 * np.outer(vector, vector), atol=1e-12)
+        np.testing.assert_allclose(reward, -vector, atol=1e-12)
+        self.assertEqual(rebuilt.evidence_count, 3)
+
+    def test_feedback_rejects_non_signed_values_before_learning(self):
+        for value in (True, False, "1", "-1", 0, 1.0, -1.0):
+            with self.assertRaisesRegex(ValueError, "Feedback value"):
+                self.feedback(value=value)
+        self.assertEqual(self.store.states, {})
+        self.assertEqual(self.encoder.calls, [])
+
     def test_indices_extend_without_reordering_and_restart_recovers(self):
         self.feedback(candidate("z", ("zebra",)))
         before = self.store.load_policy("local", self.version).term_keys
@@ -225,7 +275,7 @@ class RecommendationCoreTests(unittest.TestCase):
         self.store.conflicts = 2
         self.assertEqual(self.feedback().status, "applied")
         self.assertEqual(self.score([candidate()], user="other").state_revision, 0)
-        update = FeedbackUpdate("local", "other", 1, True, candidate(), "different-version")
+        update = FeedbackUpdate("local", "other", 1, 1, candidate(), "different-version")
         self.assertEqual(self.service.apply_feedback(update).status, "pending")
         self.assertEqual(self.store.load_policy("local", self.version).evidence_count, 1)
 
@@ -235,7 +285,7 @@ class RecommendationCoreTests(unittest.TestCase):
         self.store.states[("local", self.version)] = dataclasses.replace(record, precision=b"broken")
         result = self.score([candidate()])
         self.assertTrue(math.isfinite(result.scores[0].score))
-        self.feedback(liked=False, revision=2)
+        self.feedback(value=None, revision=2)
         record = self.store.load_policy("local", self.version)
         _, precision, reward = policy.unpack(record)
         np.testing.assert_allclose(precision, np.eye(len(reward)), atol=1e-12)

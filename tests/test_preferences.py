@@ -21,13 +21,13 @@ class PreferenceInspectionTests(unittest.TestCase):
         self.service = RecommendationService(self.store, self.encoder)
         self.version = self.service.status().feature_version
 
-    def learn(self, terms=("forest",), negative=(), image="image", revision=1, liked=True):
+    def learn(self, terms=("forest",), negative=(), image="image", revision=1, value=1):
         item = candidate(positive=terms, negative=negative)
-        self.service.apply_feedback(FeedbackUpdate("local", image, revision, liked, item, self.version))
+        self.service.apply_feedback(FeedbackUpdate("local", image, revision, value, item, self.version))
 
     def test_view_is_readonly_posterior_center_and_per_image_counts(self):
         self.learn(("forest", "forest", "standing"), ("blurry",))
-        self.learn(("forest", "sitting"), image="second")
+        self.learn(("forest", "sitting"), image="second", value=-1)
         state = self.store.load_policy("local", self.version)
         keys, precision, reward = policy.unpack(state)
         factor = policy.validate(precision, reward)
@@ -55,7 +55,7 @@ class PreferenceInspectionTests(unittest.TestCase):
         self.assertEqual((len(first.terms), len(last.terms), last.page, last.total_pages), (15, 10, 2, 2))
         self.assertFalse(set(first.terms) & set(last.terms))
         self.assertEqual(self.service.preferences("local"), first)
-        self.learn(tuple(f"neutral {index:02}" for index in range(25)), liked=False, revision=2)
+        self.learn(tuple(f"neutral {index:02}" for index in range(25)), value=None, revision=2)
         empty = self.service.preferences("local")
         self.assertTrue(empty.available)
         self.assertEqual((empty.evidence_count, empty.term_count, empty.terms), (0, 0, ()))
@@ -97,7 +97,7 @@ class PreferenceInspectionTests(unittest.TestCase):
                 self.store.states.clear()
                 self.store.evidence.clear()
                 reset = ResetState(1, 1, "now")
-                update = FeedbackUpdate("local", "new", 2, True, candidate(positive=("new beach",)), self.version)
+                update = FeedbackUpdate("local", "new", 2, 1, candidate(positive=("new beach",)), self.version)
                 other.apply_feedback(update)
             return original(user, version)
         with patch.object(self.store, "get_reset_state", side_effect=lambda user: reset), \
@@ -111,7 +111,7 @@ class PreferenceInspectionTests(unittest.TestCase):
     def test_old_feedback_is_ignored_after_reset(self):
         item = candidate()
         with patch.object(self.store, "get_reset_state", return_value=ResetState(1, 4, "now")):
-            response = self.service.apply_feedback(FeedbackUpdate("local", "old", 4, True, item, self.version))
+            response = self.service.apply_feedback(FeedbackUpdate("local", "old", 4, -1, item, self.version))
         self.assertEqual(response.status, "unchanged")
         self.assertEqual(self.store.states, {})
         self.assertEqual(self.encoder.calls, [])

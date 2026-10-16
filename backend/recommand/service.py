@@ -1,4 +1,4 @@
-"""Combination scoring and reversible, revision-checked positive feedback."""
+"""Combination scoring and reversible, revision-checked signed feedback."""
 from collections import Counter
 import json
 from threading import RLock
@@ -75,7 +75,7 @@ class RecommendationService:
                 else:
                     reset = after_reset
                     return result(False, "偏好正在更新，请重试。")
-                active = [item for item in evidence if item.liked]
+                active = [item for item in evidence if item.value is not None]
                 if record is None:
                     if active:
                         raise ValueError("Missing learned policy")
@@ -153,7 +153,7 @@ class RecommendationService:
     def _rebuilt_record(self, user_id, version, record, evidence=None):
         import numpy as np
         evidence = self.store.load_evidence(user_id, version) if evidence is None else evidence
-        active = [item for item in evidence if item.liked]
+        active = [item for item in evidence if item.value is not None]
         prepared = self.features.prepare([item.candidate for item in active])
         keys = tuple(dict.fromkeys(record.term_keys if record else ()))
         extras = {key for _, exact in prepared for key in exact}
@@ -162,9 +162,9 @@ class RecommendationService:
         precision = np.eye(dimension, dtype=np.float64)
         reward = np.zeros(dimension, dtype=np.float64)
         vectors = dense_features(prepared, keys)
-        for vector in vectors:
+        for item, vector in zip(active, vectors):
             precision += np.outer(vector, vector)
-            reward += vector
+            reward += item.value * vector
         return policy.pack(keys, precision, reward, record.revision if record else 0, len(active))
 
     def apply_feedback(self, update):
@@ -173,8 +173,8 @@ class RecommendationService:
             self._identity(update.artifact_id, "artifact_id")
             if isinstance(update.revision, bool) or not isinstance(update.revision, int) or update.revision < 1:
                 raise ValueError("Feedback revision must be a positive integer")
-            if not isinstance(update.liked, bool):
-                raise ValueError("liked must be boolean")
+            if update.value is not None and (type(update.value) is not int or update.value not in (-1, 1)):
+                raise ValueError("Feedback value must be 1, -1 or null")
             validate_candidate(update.candidate)
             status = self.status()
             version = status.feature_version
@@ -194,17 +194,17 @@ class RecommendationService:
                 previous = next((item for item in evidence if item.artifact_id == update.artifact_id), None)
                 if previous and previous.revision >= update.revision:
                     return LearningResult(revision, "unchanged")
-                prepared = self.features.prepare([item.candidate for item in (previous, update) if item is not None and item.liked])
+                prepared = self.features.prepare([item.candidate for item in (previous, update) if item is not None and item.value is not None])
                 extras = {key for _, exact in prepared for key in exact}
                 try:
                     keys, precision, reward = policy.unpack(record, extras)
                     count = record.evidence_count if record else 0
                     vectors = iter(dense_features(prepared, keys))
                     for sign, item in ((-1, previous), (1, update)):
-                        if item is not None and item.liked:
+                        if item is not None and item.value is not None:
                             vector = next(vectors)
                             precision += sign * np.outer(vector, vector)
-                            reward += sign * vector
+                            reward += sign * item.value * vector
                             count += sign
                     if count < 0:
                         raise ValueError("Invalid evidence count")

@@ -44,7 +44,7 @@ class FeedbackUpdate:
     user_id: str
     artifact_id: str
     revision: int
-    liked: bool
+    value: int | None
     candidate: ScoreCandidate
     feature_version: str
 
