@@ -35,3 +35,9 @@ export function createRefillCoordinator({ active, anchor, request, result, error
   };
   return refill;
 }
+
+// Transport failures recover at the next existing page/SSE event, without a timer.
+export function isTemporaryRefillError(error) {
+  const status = error?.status;
+  return !Number.isInteger(status) || status === 0 || status === 408 || status === 429 || status >= 500;
+}

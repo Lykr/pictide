@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { prefetchCount, maxHistoryImages, createRefillCoordinator } from '../web/src/controllers/roam-controls.mjs';
+import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError } from '../web/src/controllers/roam-controls.mjs';
 
 test('prefetch counts accept disabled or bounded integer targets', () => {
   for (const value of [0, '0', 3, '20']) assert.equal(prefetchCount(value), Number(value));
@@ -44,4 +44,28 @@ test('settings changes invalidate old results, and failures do not self-retry', 
   const failure = new Error('offline');
   const failing = createRefillCoordinator({ active: () => true, anchor: () => 'a', request: async () => { calls++; throw failure; }, result: () => assert.fail(), error: error => errors.push(error) });
   await failing(); assert.equal(calls, 1); assert.deepEqual(errors, [failure]);
+});
+
+test('temporary refill failure resumes on a later event without self-retry', async () => {
+  let blocked = false, calls = 0;
+  const results = [];
+  const refill = createRefillCoordinator({ active: () => !blocked, anchor: () => 'a',
+    request: async () => { if (++calls === 1) throw Object.assign(new Error('restarting'), { status: 503 }); return { ready: 2 }; },
+    result: response => results.push(response), error: failure => { blocked = !isTemporaryRefillError(failure); } });
+  await refill();
+  assert.equal(calls, 1); assert.equal(blocked, false);
+  await refill(); // A subsequent healthy page refresh / SSE event.
+  assert.equal(calls, 2); assert.deepEqual(results, [{ ready: 2 }]);
+  assert.equal(isTemporaryRefillError(new TypeError('Failed to fetch')), true);
+  assert.equal(isTemporaryRefillError({ status: 429 }), true);
+  assert.equal(isTemporaryRefillError({ status: 400 }), false);
+});
+
+test('explicit server pause continues to block automatic refill', async () => {
+  let blocked = false, calls = 0;
+  const refill = createRefillCoordinator({ active: () => !blocked, anchor: () => 'a',
+    request: async () => { calls++; return { paused: true }; },
+    result: response => { blocked = response.paused; }, error: () => assert.fail() });
+  await refill(); await refill();
+  assert.equal(calls, 1); assert.equal(blocked, true);
 });

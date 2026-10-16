@@ -7,7 +7,7 @@ import { editableNodeInputs, changeNodeInput, workflowSaveFields } from './workf
 import { parseWorkflowDraft, retainedWorkflowBindings } from './workflow-panel.mjs';
 import { applyArtifactPage, observeArtifactRevision, retentionDays } from './history-controls.mjs';
 import { API_KEY_MASK, apiKeyFields, customWorkflowName } from './settings-controls.mjs';
-import { prefetchCount, maxHistoryImages, createRefillCoordinator } from './roam-controls.mjs';
+import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError } from './roam-controls.mjs';
 import { generationCount, generationRepetitions, artifactPath } from './generation-controls.mjs';
 import { createGalleryCursors, createNextImageWait, roamArtifactPath, roamBoundaryAction, resolveGalleryCursor } from './roam-navigation.mjs';
 import { createImmersiveViewer } from './immersive-controls.mjs';
@@ -80,12 +80,15 @@ const refillRoam = createRefillCoordinator({
     if (result.paused) {
       roamBlocked = true; nextImageWait.cancel(); renderArtifacts();
       if (result.error !== roamError) { roamError = result.error; showNotice(`预取已暂停：${result.error || '请检查任务状态'}。可在漫游设置中保存后重试。`, true); }
-    } else if (nextImageWait.current && result.ready > 0) refresh(true);
+    } else {
+      clearRoamError();
+      if (nextImageWait.current && result.ready > 0) refresh(true);
+    }
   },
   error: error => {
     if (error.status === 404 && !roamAnchorRetried) { roamAnchorRetried = true; refresh(true); return; }
-    roamBlocked = true; nextImageWait.cancel(); renderArtifacts();
-    if (error.message !== roamError) { roamError = error.message; showNotice(`预取未完成：${error.message}`, true); }
+    roamBlocked = !isTemporaryRefillError(error); nextImageWait.cancel(); renderArtifacts();
+    if (error.message !== roamError) { roamError = error.message; showNotice(`预取未完成：${error.message}${roamBlocked ? '' : '。后续页面事件会自动重试。'}`, true); }
   },
 });
 
@@ -564,7 +567,7 @@ async function refresh(force = false) {
   catch (error) {
     if (view === 'generate') { state.generatedError = `同步失败：${error.message}`; renderGeneratedResults(); }
     if (view === 'liked') { state.likedError = `同步失败：${error.message}`; renderLikedResults(); }
-    if (nextImageWait.current) { nextImageWait.cancel(); roamBlocked = true; renderArtifacts(); }
+    if (nextImageWait.current) { nextImageWait.cancel(); roamBlocked = !isTemporaryRefillError(error); renderArtifacts(); }
     showNotice(`同步失败：${error.message}`, true);
   }
   finally { state.polling = false; if (state.refreshQueued) { state.refreshQueued = false; await refresh(true); } else refillRoam(); }
