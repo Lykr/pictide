@@ -1,3 +1,4 @@
+import { loadTheme } from './theme.mjs';
 import { createButtonFeedback } from './button-feedback.mjs';
 import { decorateElement, createIcon } from "../dom-primitives";
 import { confirmAction } from '../components/confirm-action';
@@ -31,7 +32,7 @@ state.generatedError = '';
 state.generatedMutationPending = false;
 state.generatedMutationError = '';
 state.workflows = [];
-state.settingsSection = 'backend';
+state.settingsSection = 'general';
 state.pages = { feed: { hasMore: false, cursor: null, total: 0, loadedMore: false }, liked: { hasMore: false, cursor: null, total: 0, loadedMore: false }, generate: { hasMore: false, cursor: null, total: 0, loadedMore: false } };
 state.loadingMore = false;
 state.artifactRevision = 0;
@@ -157,7 +158,7 @@ function setView(route, updateUrl = true) {
   state.view = view;
   if (view === 'generate') { clearTimeout(noticeTimer); $('notice').hidden = true; }
   document.dispatchEvent(new Event('pictide:close-image-info'));
-  if (view === 'settings' && ['backend', 'roam', 'history', 'data'].includes(section)) state.settingsSection = section;
+  if (view === 'settings' && ['general', 'backend', 'roam', 'history', 'data'].includes(section)) state.settingsSection = section;
   const editor = view === 'prompts';
   document.querySelectorAll('[data-view]').forEach((button) => {
     const selected = button.dataset.view === view;
@@ -187,14 +188,14 @@ function setView(route, updateUrl = true) {
   refillRoam();
 }
 function setSettingsSection(section, updateUrl = true) {
-  if (!['backend', 'roam', 'history', 'data'].includes(section)) section = 'backend';
+  if (!['general', 'backend', 'roam', 'history', 'data'].includes(section)) section = 'general';
   state.settingsSection = section;
   document.querySelectorAll('[data-settings-section]').forEach((button) => {
     const active = button.dataset.settingsSection === section;
     button.classList.toggle('active', active);
     if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
   });
-  for (const name of ['backend', 'roam', 'history', 'data']) $(`settings-${name}`).hidden = name !== section;
+  for (const name of ['general', 'backend', 'roam', 'history', 'data']) $(`settings-${name}`).hidden = name !== section;
   if (section === 'roam' && !roamSettingsLoading) { if (!roamSettingsLoaded) loadRoamSettings(); else loadRoamConfigs(); }
   if (section === 'history' && !historyLoaded && !historyLoading) loadHistorySettings();
   if (updateUrl) history.replaceState(null, '', `${location.pathname}${location.search}#settings/${section}`);
@@ -1140,13 +1141,20 @@ await bootstrap();
 updateRuleControls();
 let realtimeConnected = false;
 let eventSource;
+function syncTheme() {
+  return loadTheme().catch(error => document.dispatchEvent(new CustomEvent('pictide:theme-error', { detail: `主题读取失败：${error.message}` })));
+}
 function connectEvents() {
   if (!window.EventSource || eventSource) return;
   eventSource = new EventSource('/api/events');
-  eventSource.addEventListener('open', () => { realtimeConnected = true; refresh(true); });
+  eventSource.addEventListener('open', () => { realtimeConnected = true; syncTheme(); refresh(true); });
   // Queue another refresh if a change arrives while the current read is in flight.
   eventSource.addEventListener('change', event => {
-    try { if (JSON.parse(event.data).topic === 'roam_settings') loadRoamSettings({ preserveDraft: true }); } catch {}
+    try {
+      const topic = JSON.parse(event.data).topic;
+      if (topic === 'roam_settings') loadRoamSettings({ preserveDraft: true });
+      if (topic === 'general_settings') syncTheme();
+    } catch {}
     refresh(true);
   });
   eventSource.addEventListener('error', () => { realtimeConnected = false; });

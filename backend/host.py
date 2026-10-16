@@ -18,6 +18,7 @@ from .recommand.encoder import MiniLMEncoder
 from .store.recommendation import SQLiteRecommendationStore
 from .store import Repository
 from .store.cleanup import LazyCleanup
+from .store.general_settings import GeneralSettings
 from .store.history_settings import HistorySettings
 from .store.roam_settings import RoamSettings
 from .store.workflow_library import WorkflowLibrary, MAX_BYTES
@@ -144,6 +145,11 @@ async def clear_generated(request):
         request.match_info.get("id"), await body(request)))
 
 
+async def general_settings(request):
+    return web.json_response(await request.app[APPLICATION].general_settings(
+        await body(request) if request.method == "PUT" else None))
+
+
 async def history_settings(request):
     return web.json_response(await request.app[APPLICATION].history_settings(
         await body(request) if request.method == "PUT" else None))
@@ -256,11 +262,12 @@ def create_app(data_dir=None, backend_factory=create_backend):
     app[APPLICATION] = PictideApplication(paths, storage, tasks,
         CandidateService(SQLiteCandidateStore(paths.candidate_database)), recommendation,
         history, LazyCleanup(storage, paths, history.retention, max_roam_history=roam.history_limit),
-        WorkflowLibrary(paths.workflows, tasks.connections.validate), roam, recommendation_store)
+        WorkflowLibrary(paths.workflows, tasks.connections.validate), roam, recommendation_store, GeneralSettings(paths))
     app.cleanup_ctx.append(lifecycle)
     app.on_shutdown.append(shutdown)
     app.add_routes([
         web.get("/api/bootstrap", bootstrap), web.get("/api/events", events),
+        web.get("/api/settings/general", general_settings), web.put("/api/settings/general", general_settings),
         web.get("/api/settings/history", history_settings), web.put("/api/settings/history", history_settings),
         web.get("/api/settings/roam", roam_settings), web.put("/api/settings/roam", roam_settings),
         web.get("/api/recommendation/preferences", preferences),

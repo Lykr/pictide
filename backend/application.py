@@ -25,12 +25,13 @@ def public_backend(config):
 
 class PictideApplication:
     def __init__(self, paths, storage: Storage, tasks, candidates, recommendation,
-                 history, cleanup, workflows, roam, recommendation_store=None):
+                 history, cleanup, workflows, roam, recommendation_store=None, general=None):
         self.paths, self.storage, self.tasks = paths, storage, tasks
         self.candidates, self.recommendation = candidates, recommendation
         self.history, self.cleanup, self.workflows = history, cleanup, workflows
         self.recommendation_store = recommendation_store
         self._recommendation_error = None
+        self.general = general
         self.roam = roam
         self._roam_lock = asyncio.Lock()
         self.events = EventHub()
@@ -278,6 +279,15 @@ class PictideApplication:
         revision = await asyncio.to_thread(self.storage.artifact_revision)
         self.events.publish("feedback")
         return {"artifact": artifact, "artifact_revision": revision}
+
+    async def general_settings(self, payload=None):
+        if payload is None:
+            return await asyncio.to_thread(self.general.get)
+        if "theme" not in payload:
+            raise ValidationError("请选择主题。")
+        document = await asyncio.to_thread(self.general.save, payload["theme"])
+        self.events.publish("general_settings")
+        return document
 
     async def history_settings(self, payload=None):
         if payload is not None:

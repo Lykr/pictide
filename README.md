@@ -24,6 +24,10 @@
 
 所有应用数据默认集中在项目下 `data/`：数据库、图片及提示词 JSON、日志、缓存、临时文件和 Python 运行环境。可用 `-DataDir` 或 `PICTIDE_DATA_DIR` 指定另一数据目录；旧 `PICTIDE_WEB_DATA_DIR` 仍用于保留自定义路径。详细布局与备份方式见 [数据目录](docs/data-layout.md)。数据目录已排除出 Git。
 
+## 通用设置
+
+「设置 → 通用」提供深色主题切换，立即生效并保存于 `data/pictide.sqlite3`，刷新和重启后保留；同一应用的其他已打开页面通过实时事件同步。默认浅色，所有栏目及浮层共用主题。接口说明见 [通用设置](docs/general-settings.md)。
+
 ## 接入 ComfyUI
 
 1. 启动 ComfyUI，打开 Pictide「设置 → 后端」，填写后端名称和实际地址，例如 `http://127.0.0.1:8188`。Desktop 的实际端口可能不同。

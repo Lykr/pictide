@@ -2,6 +2,7 @@ import { useState } from "react";
 import { EditorWorkspace } from "./editor";
 import { GeneratedResults } from "./components/generated-results";
 import { JobPageControls } from "./components/page-controls";
+import { GeneralSettings } from "./components/general-settings";
 import { PreferenceActions } from "./components/preference-actions";
 import { ImageInfo } from "./components/image-info";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings2, Database, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Upload } from "lucide-react";
@@ -17,7 +18,7 @@ import "./styles/theme.css";
 import "./styles/feed.css";
 
 // Mount once; the established controller owns form values and dynamic regions.
-export function FeedShell() {
+export function FeedShell({ themeError = "" }: { themeError?: string }) {
   const [privacyBlur, setPrivacyBlur] = useState(true);
   const privacyLabel = privacyBlur ? "关闭毛玻璃，显示图片" : "开启毛玻璃，模糊图片";
   return <div className={`feed-page${privacyBlur ? " privacy-blurred" : ""}`}>
@@ -198,12 +199,14 @@ export function FeedShell() {
 {"\n    "}</section>
 <section id="settings-view" className="settings-view" hidden>
 <nav className="settings-navigation" aria-label="设置分类">
+<Button data-settings-section="general" variant="ghost" type="button"><Settings2 aria-hidden="true" />通用</Button>
 <Button data-settings-section="backend" variant="ghost" type="button"><SlidersHorizontal aria-hidden="true" />后端</Button>
 <Button data-settings-section="roam" variant="ghost" type="button"><Compass aria-hidden="true" />漫游</Button>
 <Button data-settings-section="history" variant="ghost" type="button"><Trash2 aria-hidden="true" />历史清理</Button>
 <Button data-settings-section="data" variant="ghost" type="button"><Database aria-hidden="true" />数据位置</Button>
 </nav>
 <div className="settings-content">
+<section id="settings-general" className="settings-category"><GeneralSettings initialError={themeError} /></section>
 <section id="settings-backend" className="settings-category"><form id="settings-form">
 {"\n    "}<div className="form-grid">
 <div className="backend-picker"><div className="label-row"><Label htmlFor="edit-backend">已有后端</Label><IconButton id="delete-backend" icon={Trash2} label="删除后端配置" size="icon-xs" disabled /></div><NativeSelect id="edit-backend" size="sm">
