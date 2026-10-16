@@ -27,7 +27,11 @@
 .cooc-fixed { min-width: 0; }
 .cooc-section-heading { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
 .cooc-fixed-list { margin-top: 12px; display: grid; gap: 6px; }
-.cooc-fixed-row { display: flex; align-items: center; gap: 2px; }
+.cooc-fixed-picker, .cooc-fixed-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; align-items: center; gap: 4px; }
+.cooc-fixed-picker [data-slot=command-input-wrapper] { padding: 0; }
+.cooc-fixed-handle { cursor: grab; touch-action: none; color: var(--muted-foreground); }
+.cooc-fixed-handle:active { cursor: grabbing; }
+.cooc-fixed-ghost { opacity: 0.4; }
 .cooc-fixed-row input { min-width: 0; }
 .cooc-number-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .cooc-preview { }

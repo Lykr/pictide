@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, Check, ChevronsUpDown, Copy, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { GripVertical, Check, ChevronsUpDown, Copy, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./component
 import { HelpTip, IconButton } from "./components/actions";
 import { PageControls, DEFAULT_PAGE_SIZE } from "./components/page-controls";
 import { confirmAction } from "./components/confirm-action";
+import { sortFixedTags } from "./controllers/fixed-tags-sort.mjs";
 import { counterAfter } from "./controllers/rule-controls.mjs";
 import "./styles/theme.css";
 import "./styles/editor.css";
@@ -51,43 +52,57 @@ function FixedTags({ label, values, onChange, disabled }: { label: string; value
   const [matches, setMatches] = useState<Tag[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const list = useRef<HTMLDivElement>(null);
+  const navigating = useRef(false);
+  const move = (from: number, to: number) => {
+    const next = [...values];
+    next.splice(to, 0, next.splice(from, 1)[0]);
+    onChange(next);
+  };
+  useEffect(() => {
+    if (!list.current || disabled) return;
+    return sortFixedTags(list.current, move);
+  }, [values, disabled, onChange]);
   useEffect(() => {
     if (!open) return;
     const abort = new AbortController();
+    setLoading(true); setMatches([]); setError("");
     const timer = setTimeout(() => {
-      setLoading(true);
       api<TagPage>(`/api/candidate/tags?query=${encodeURIComponent(query)}&page=1&page_size=12`, { signal: abort.signal })
-        .then(data => { setMatches(data.tags); setError(""); }).catch(error => { if (!abort.signal.aborted) setError(message(error)); }).finally(() => { if (!abort.signal.aborted) setLoading(false); });
+        .then(data => { setMatches(data.tags); setError(""); }).catch(error => { if (!abort.signal.aborted) { setMatches([]); setError(message(error)); } }).finally(() => { if (!abort.signal.aborted) setLoading(false); });
     }, 180);
     return () => { clearTimeout(timer); abort.abort(); };
   }, [query, open]);
   const add = (text: string) => {
     const value = text.trim().replaceAll("_", " ");
     if (!value || values.some(item => normalized(item) === normalized(value))) return;
-    onChange([...values, value]); setQuery(""); setOpen(false);
+    onChange([...values, value]); setQuery(""); setOpen(false); navigating.current = false;
   };
   const options = matches.filter(item => !values.some(value => normalized(value) === normalized(item.name)));
   const custom = query.trim() && !matches.some(item => normalized(item.name) === normalized(query)) && !values.some(item => normalized(item) === normalized(query));
-  const move = (index: number, direction: number) => { const next = [...values]; [next[index], next[index + direction]] = [next[index + direction], next[index]]; onChange(next); };
   return <section className="cooc-fixed">
-    <div className="cooc-section-heading"><h2>{label}</h2><HelpTip text="输入完整标签，点击匹配项或回车加入。自由文本会保留；未匹配词库的正向词不参与共现计算。标签内部用空格，不按空格拆词。" /></div>
+    <div className="cooc-section-heading"><h2>{label}</h2><HelpTip text="输入完整提示词，回车直接添加；也可点击或用方向键选择词库匹配项。自由文本会保留，未匹配的正向词不参与共现计算。拖动手柄调整输出顺序，保存配置后生效。" /></div>
     <Command shouldFilter={false} className="h-auto overflow-visible bg-transparent p-0"><Popover open={open && !disabled} onOpenChange={setOpen}>
-      <PopoverAnchor asChild><div className="flex min-w-0 items-center gap-1"><div className="min-w-0 flex-1"><CommandInput disabled={disabled} value={query} placeholder="搜索标签或输入完整提示词" aria-label={`添加${label}`} onFocus={() => setOpen(true)} onClick={() => setOpen(true)} onValueChange={(value: string) => { setQuery(value); setOpen(true); }} onKeyDown={event => {
+      <PopoverAnchor asChild><div className="cooc-fixed-picker"><span aria-hidden="true" /><div className="min-w-0"><CommandInput disabled={disabled} value={query} placeholder="输入提示词，回车添加" aria-label={`添加${label}`} onFocus={() => setOpen(true)} onClick={() => setOpen(true)} onValueChange={(value: string) => { setQuery(value); setOpen(true); navigating.current = false; }} onKeyDown={event => {
         if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) { if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); } return; }
-        if (event.key === "Enter" && !options.length && query.trim()) { event.preventDefault(); add(query); }
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") navigating.current = true;
+        if (event.key === "Enter" && query.trim() && (!navigating.current || !options.length)) { event.preventDefault(); event.stopPropagation(); add(query); }
       }} /></div><PopoverTrigger asChild><IconButton disabled={disabled} icon={ChevronsUpDown} label={`展开${label}匹配项`} /></PopoverTrigger></div></PopoverAnchor>
       <PopoverContent className="min-w-72 p-0" align="start" onOpenAutoFocus={event => event.preventDefault()}><CommandList aria-label={`${label}匹配项`}>
-        <CommandEmpty>{loading ? "搜索中…" : "输入完整提示词并回车添加"}</CommandEmpty>
-        <CommandGroup>{options.map(tag => <CommandItem key={tag.id} value={String(tag.id)} onSelect={() => add(tag.name)}><span className="break-words">{tag.name}</span></CommandItem>)}
-          {custom && <CommandItem value="__custom" onSelect={() => add(query)}>使用输入文本：{query}</CommandItem>}</CommandGroup>
+        <CommandEmpty>{error ? "词库暂不可用，仍可输入提示词并回车添加" : loading ? "搜索中…" : "输入完整提示词并回车添加"}</CommandEmpty>
+        <CommandGroup>{custom && <CommandItem value="__custom" onSelect={() => add(query)}>添加：{query}</CommandItem>}
+          {options.map(tag => <CommandItem key={tag.id} value={String(tag.id)} onSelect={() => add(tag.name)}><span className="break-words">{tag.name}</span></CommandItem>)}</CommandGroup>
       </CommandList></PopoverContent>
     </Popover></Command>
-    {error && <p className="cooc-error" role="status">词库匹配不可用：{error}；仍可输入自由文本。</p>}
-    <div className="cooc-fixed-list">{values.map((value, index) => <div className="cooc-fixed-row" key={index}>
+    <div className="cooc-fixed-list" ref={list}>{values.map((value, index) => <div className="cooc-fixed-row" key={index}>
+      <IconButton className="cooc-fixed-handle" icon={GripVertical} label={`拖拽排序${label}第 ${index + 1} 项（↑/↓）`} disabled={disabled} onKeyDown={event => {
+        const to = index + (event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0);
+        if (to === index) return;
+        event.preventDefault(); event.stopPropagation();
+        if (to >= 0 && to < values.length) { move(index, to); (list.current?.children[to]?.querySelector(".cooc-fixed-handle") as HTMLButtonElement)?.focus(); }
+      }} />
       <Input aria-label={`${label}第 ${index + 1} 项`} value={value} disabled={disabled} onChange={event => onChange(values.map((item, position) => position === index ? event.target.value : item))} />
-      <IconButton icon={ArrowUp} label={`上移${label}第 ${index + 1} 项`} size="icon-xs" disabled={disabled || index === 0} onClick={() => move(index, -1)} />
-      <IconButton icon={ArrowDown} label={`下移${label}第 ${index + 1} 项`} size="icon-xs" disabled={disabled || index === values.length - 1} onClick={() => move(index, 1)} />
-      <IconButton icon={X} label={`移除${label}第 ${index + 1} 项`} size="icon-xs" disabled={disabled} onClick={() => onChange(values.filter((_, position) => position !== index))} />
+      <IconButton icon={X} label={`移除${label}第 ${index + 1} 项`} disabled={disabled} onClick={() => onChange(values.filter((_, position) => position !== index))} />
     </div>)}</div>
   </section>;
 }
