@@ -257,9 +257,9 @@ export function EditorWorkspace() {
             {numberField("max_tags", "标签数量上限", "包含固定正向词；上下限均可被抽中。固定词超过下限时，以固定词数量作为实际下限。", 1, 1000)}
             {numberField("pmi_threshold", "PMI 阈值", "PMI = log₂(共同次数 × 总图片数 ÷ 两个标签各自次数之积)。0 表示独立，正数表示更常共同出现，负数表示更少共同出现；可填写任意有限数。", undefined, undefined, "any")}
             {numberField("min_cooccurrence", "最低共现次数", "每对标签必须共同出现至少此次数；词库仅保留至少 10 次的关系，设为更小的值也不会恢复已裁剪关系。", 1, Number.MAX_SAFE_INTEGER)}
-            {numberField("change_budget", "连续变化预算", "用于连续序列与沿途漫游。相邻帧标签增删的总数上限；替换一个标签计 2，固定词保留。在预算可达的数量区间内均匀抽取目标，无法合法变化时保持上一帧。", 0, 1000)}
+            {numberField("change_budget", "连续变化预算", "用于连续序列与顺流漫游。相邻帧标签增删的总数上限；替换一个标签计 2，固定词保留。在预算可达的数量区间内均匀抽取目标，无法合法变化时保持上一帧。", 0, 1000)}
           </div>
-          <Field label="屏蔽关键词" help="每行一个关键词，跳过包含任一关键词的共现抽取标签；忽略大小写，空格与下划线等价。仅影响后续新抽取的正向标签，固定正负词不受影响；驻足保持的提示词不重新过滤。">
+          <Field label="屏蔽关键词" help="每行一个关键词，跳过包含任一关键词的共现抽取标签；忽略大小写，空格与下划线等价。仅影响后续新抽取的正向标签，固定正负词不受影响；停泊保持的提示词不重新过滤。">
             <Textarea aria-label="屏蔽关键词" placeholder={"每行一个关键词，例如：\nhair\nblack socks"} rows={3} disabled={busy} value={blockedText} onChange={event => {
               const text = event.target.value;
               setBlockedText(text);
