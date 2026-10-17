@@ -7,14 +7,17 @@ class CooccurrenceCandidateProvider:
     def __init__(self, service):
         self.service = service
 
-    def sample(self, context):
-        return self.service.generate(context)
+    def sample(self, context, *, allowed_positive_tag_ids=None):
+        return self.service.generate(context, allowed_positive_tag_ids=allowed_positive_tag_ids)
 
     def generate(self, context, constraints):
         count = integer(constraints.get("count", 1), "count", 1, 20)
         context = dict(context)
         if "document" not in context:
             context["document"] = self.service.load_preset(context["preset_id"])["document"]
+        allowed = constraints.get("allowed_positive_tags")
+        allowed_ids = None if allowed is None else frozenset(
+            tag["id"] for tag in self.service.store.find_tags(allowed))
         candidates = []
         for index in range(count):
             frame = dict(context)
@@ -22,7 +25,7 @@ class CooccurrenceCandidateProvider:
                 frame["sequence_step"] = min(MAX_SEQUENCE_STEP, frame.get("sequence_step", 0)+index)
             elif frame.get("mode") == "fixed_seed":
                 frame["seed"] = (frame.get("seed", 0)+index) % (MAX_SEED+1)
-            result = self.sample(frame)
+            result = self.sample(frame, allowed_positive_tag_ids=allowed_ids)
             terms = tuple(TagSnapshot(term["source_id"], term["id"], term["text"],
                                       tuple(term["categories"]), term["channel"])
                           for term in result["selected_tags"])
