@@ -8,12 +8,10 @@ export function playbackInterval(value) {
 /** One timeout per loaded picture; unavailable next images are resumed by gallery events. */
 export function createRoamPlayback({ advance, changed = () => {}, cancelWait = () => {}, schedule = setTimeout, cancel = clearTimeout, now = () => performance.now() }) {
   let playing = false, seconds = 5, timer, startedAt = null, cycle = 0;
-  let quickMode = false, quickFactor = 0.5;
-  const duration = () => seconds * 1000 * (quickMode ? quickFactor : 1);
   let imageId = null, ready = false, active = false, busy = false, blocked = false;
   let due = false, advancing = false, revision = 0;
   const clear = () => { if (timer !== undefined) cancel(timer); timer = undefined; startedAt = null; };
-  const notify = () => changed({ playing, canPlay: active && !!imageId && !blocked, startedAt, durationMs: duration(), quickMode, cycle, waiting: due });
+  const notify = () => changed({ playing, canPlay: active && !!imageId && !blocked, startedAt, durationMs: seconds * 1000, cycle, waiting: due });
   const go = async () => {
     if (!playing || !active || !ready || busy || blocked || advancing) return;
     advancing = true;
@@ -24,7 +22,7 @@ export function createRoamPlayback({ advance, changed = () => {}, cancelWait = (
   const arm = () => {
     if (timer !== undefined || !playing || !active || !ready || busy || blocked || due || !imageId) return;
     startedAt = now(); cycle++;
-    timer = schedule(() => { timer = undefined; startedAt = null; due = true; notify(); void go(); }, duration());
+    timer = schedule(() => { timer = undefined; startedAt = null; due = true; notify(); void go(); }, seconds * 1000);
   };
   function pause() {
     const ownedWait = playing && due;
@@ -51,13 +49,6 @@ export function createRoamPlayback({ advance, changed = () => {}, cancelWait = (
       clear(); due = false; revision++;
       if (ownedWait) cancelWait();
       arm(); notify();
-    },
-    setQuickMode(enabled, factor = 0.5) {
-      if (quickMode === enabled && quickFactor === factor) return;
-      const previousDuration = duration(), previousMode = quickMode;
-      quickMode = enabled; quickFactor = factor;
-      if (quickMode !== previousMode || duration() !== previousDuration) this.restart();
-      else notify();
     },
     setInterval(value) {
       const next = playbackInterval(value);

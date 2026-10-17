@@ -1,8 +1,5 @@
 """Materialize a standalone default txt2img graph before a job is persisted."""
 import copy
-import math
-
-from .comfyui import steps_binding
 
 from . import create_backend, validate_backend
 from .base import BackendError
@@ -17,7 +14,7 @@ def default_txt2img(checkpoint):
         "5":{"class_type":"KSampler","inputs":{"seed":0,"steps":28,"cfg":5.5,"sampler_name":"dpmpp_2m","scheduler":"karras","denoise":1.0,"model":["1",0],"positive":["2",0],"negative":["3",0],"latent_image":["4",0]}},
         "6":{"class_type":"VAEDecode","inputs":{"samples":["5",0],"vae":["1",2]}},
         "7":{"class_type":"PreviewImage","inputs":{"images":["6",0]}},
-    },"bindings":{"positive":{"node_id":"2","input":"text"},"negative":{"node_id":"3","input":"text"},"seed":{"node_id":"5","input":"seed"},"steps":{"node_id":"5","input":"steps"}},"output_nodes":["7"]}
+    },"bindings":{"positive":{"node_id":"2","input":"text"},"negative":{"node_id":"3","input":"text"},"seed":{"node_id":"5","input":"seed"}},"output_nodes":["7"]}
 
 
 def uses_default(config):
@@ -53,15 +50,3 @@ async def resolve_backend(config, session, backend_factory=create_backend):
     cleaned = validate_backend({**config,**default_txt2img(chosen)})
     cleaned.update(workflow_mode="default",default_checkpoint=chosen)
     return cleaned
-
-
-def quick_backend_snapshot(config, factor):
-    """Copy only this task's workflow; never mutate the saved normal backend."""
-    snapshot = copy.deepcopy(config)
-    binding = steps_binding(snapshot)
-    if binding is None:
-        raise BackendError("请先在所选漫游后端配置采样步数输入，再开启快速模式。")
-    inputs = snapshot["workflow"][binding["node_id"]]["inputs"]
-    inputs[binding["input"]] = max(1, math.floor(inputs[binding["input"]] * factor + 0.5))
-    snapshot["bindings"]["steps"] = binding
-    return snapshot

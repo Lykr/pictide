@@ -316,7 +316,7 @@ class Repository:
         return {"ready": ready, "pending": pending, "roam_pending": roam_pending, "paused": pause is not None,
                 **({"error": pause["error"]} if pause else {})}
 
-    def ensure_roam(self, epoch, anchor_id, target, payload=None, candidate=None, backend_snapshot=None):
+    def ensure_roam(self, epoch, anchor_id, target, payload=None, candidate=None):
         """Count authoritative images and atomically enqueue one associated job."""
         snapshot = json.dumps(candidate, ensure_ascii=False, allow_nan=False) if candidate is not None else None
         if payload is not None and snapshot is None:
@@ -327,13 +327,6 @@ class Repository:
             result = self._roam_state(db, epoch, anchor_id)
             if payload is not None and roam_can_enqueue(result, target):
                 identifier = self._create_job(db, payload)
-                if backend_snapshot is not None:
-                    if backend_snapshot["id"] != payload["backend_id"]:
-                        raise ValidationError("漫游工作流快照与任务后端不一致。")
-                    revision = str(uuid.uuid4())
-                    db.execute("INSERT INTO backend_revisions VALUES (?,?,?,?)",
-                               (revision, payload["backend_id"], encode(backend_snapshot), now()))
-                    db.execute("UPDATE jobs SET revision_id=? WHERE id=?", (revision, identifier))
                 db.execute("INSERT INTO roam_jobs(job_id,epoch,candidate,created_at) VALUES (?,?,?,?)",
                            (identifier, epoch, snapshot, now()))
                 result["pending"] += 1

@@ -8,9 +8,9 @@ import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { playbackInterval } from "../controllers/roam-playback.mjs";
 
-type PlaybackState = { playing: boolean; canPlay: boolean; quickMode: boolean; startedAt: number | null; durationMs: number; cycle: number; waiting: boolean };
+type PlaybackState = { playing: boolean; canPlay: boolean; startedAt: number | null; durationMs: number; cycle: number; waiting: boolean };
 function usePlaybackState() {
-  const [state, setState] = useState<PlaybackState>({ playing: false, canPlay: false, quickMode: false, startedAt: null, durationMs: 5000, cycle: 0, waiting: false });
+  const [state, setState] = useState<PlaybackState>({ playing: false, canPlay: false, startedAt: null, durationMs: 5000, cycle: 0, waiting: false });
   useEffect(() => {
     const receive = (event: Event) => setState((event as CustomEvent<PlaybackState>).detail);
     document.addEventListener("pictide:roam-playback-state", receive);
@@ -20,18 +20,9 @@ function usePlaybackState() {
 }
 export function RoamPlaybackButton({ menu = false, visible = true }: { menu?: boolean; visible?: boolean }) {
   const state = usePlaybackState();
-  const label = state.playing ? (state.quickMode ? "暂停快速播放" : "暂停播放") : (state.quickMode ? "快速播放" : "自动播放");
-  const clickTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const clearClick = () => { clearTimeout(clickTimer.current); clickTimer.current = undefined; };
-  useEffect(() => clearClick, []);
-  useEffect(() => { if (!visible || !state.canPlay) clearClick(); }, [visible, state.canPlay]);
-  const toggle = () => document.dispatchEvent(new Event("pictide:roam-playback-toggle"));
+  const label = state.playing ? "暂停播放" : "自动播放";
   const delay = useMemo(() => state.startedAt === null ? 0 : -Math.max(0, performance.now() - state.startedAt), [state.startedAt, state.cycle, visible]);
-  return <Button id={menu ? "roam-options-playback" : "roam-playback"} type="button" variant="ghost" size="icon-sm" className={`relative${state.quickMode ? " bg-accent text-accent-foreground" : ""}`} aria-label={label} data-tooltip={`${label} · 双击${state.quickMode ? "恢复普通" : "开启快速"}模式`} aria-pressed={state.playing} disabled={!state.canPlay} onClick={event => {
-      clearClick();
-      if (event.detail === 0) toggle();
-      else if (event.detail === 1) clickTimer.current = setTimeout(toggle, 350);
-    }} onDoubleClick={() => { clearClick(); document.dispatchEvent(new Event("pictide:roam-quick-toggle")); }}>
+  return <Button id={menu ? "roam-options-playback" : "roam-playback"} type="button" variant="ghost" size="icon-sm" className="relative" aria-label={label} data-tooltip={label} aria-pressed={state.playing} disabled={!state.canPlay} onClick={() => document.dispatchEvent(new Event("pictide:roam-playback-toggle"))}>
     {state.playing && <svg className="playback-progress absolute left-1/2 top-1/2 size-8 -translate-x-1/2 -translate-y-1/2 -rotate-90" viewBox="0 0 32 32" fill="none" aria-hidden="true">
       <circle cx="16" cy="16" r="13" stroke="currentColor" strokeWidth="1.5" opacity="0.15" />
       <circle key={`${state.cycle}-${visible}`} className="playback-progress-value" cx="16" cy="16" r="13" pathLength="1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ strokeDashoffset: state.waiting ? 0 : 1, animation: state.startedAt === null ? "none" : `playback-progress ${state.durationMs}ms linear ${delay}ms forwards` }} />

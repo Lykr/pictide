@@ -232,7 +232,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="settings-field-heading"><Label htmlFor="default-checkpoint"><span className="field-caption">模型<HelpTip text="从配置的 ComfyUI 读取模型，留空时自动选择第一个可用模型。" /></span></Label><IconButton id="load-models" icon={RefreshCw} label="读取后端模型" size="icon-xs" /></div>
 <NativeSelect id="default-checkpoint"><option value="">自动选择第一个可用模型</option></NativeSelect>
 </div>
-<div className="settings-field"><Label htmlFor="default-sampling-steps"><span className="field-caption">K 采样步数<HelpTip text="修改后读取默认工作流并保存为自定义草稿，步数与节点参数共用。" /></span></Label><Input id="default-sampling-steps" type="number" min="1" step="1" defaultValue="28" required /></div>
 <p id="model-note" className="hint" role="status" hidden />
 <Button id="edit-default-parameters" type="button" className="quiet" variant="outline" data-tooltip="将默认工作流展开为自定义草稿，编辑采样、尺寸等节点参数"><SlidersHorizontal aria-hidden="true" />节点参数</Button>
 </section>
@@ -254,8 +253,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="settings-field"><Label htmlFor="binding-positive">正向提示词输入</Label><NativeSelect id="binding-positive"><option value="">先导入工作流</option></NativeSelect></div>
 <div className="settings-field"><Label htmlFor="binding-negative">负向提示词输入</Label><NativeSelect id="binding-negative"><option value="">选择负向 text 输入</option></NativeSelect></div>
 <div className="settings-field"><Label htmlFor="binding-seed">图像种子输入（可选）</Label><NativeSelect id="binding-seed"><option value="">不绑定</option></NativeSelect></div>
-<div className="settings-field"><Label htmlFor="binding-steps"><span className="field-caption">采样步数输入（可选）<HelpTip text="绑定整数 steps 输入后，漫游快速模式才能调整采样步数。只有一个可选输入时自动选择。" /></span></Label><NativeSelect id="binding-steps"><option value="">不绑定</option></NativeSelect></div>
-<div className="settings-field"><Label htmlFor="sampling-steps">K 采样步数</Label><Input id="sampling-steps" type="number" min="1" step="1" required disabled /></div>
 </div>
 <div className="settings-field"><Label htmlFor="output-nodes"><span className="field-caption">输出节点<HelpTip text="可多选；留空时使用后端返回的图像输出。" /></span></Label><select id="output-nodes" data-slot="native-select" className={nativeSelectClassName} multiple size={3} /></div>
 </div>
@@ -275,13 +272,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="settings-field"><Label htmlFor="roam-max-history-images"><span className="field-caption">历史图片数量上限<HelpTip text="超限时从最早图片处理：未喜欢的永久删除本地图片及提示词 JSON；喜欢的仅从漫游隐藏，喜欢页保留。" /></span></Label><Input id="roam-max-history-images" data-tooltip="仅计算当前图片之前的漫游历史；当前、预取与生成页图片不计。0 关闭数量清理。" type="number" min="0" max="100000" step="1" defaultValue="0" required /></div>
 <div className="settings-field"><Label htmlFor="roam-playback-interval"><span className="field-caption">自动播放<HelpTip text="每张图片加载完成后开始计时；下一张未就绪时等待。" /></span></Label><InputGroup><InputGroupInput id="roam-playback-interval" aria-label="自动播放间隔（秒）" type="number" min="1" max="600" step="1" defaultValue="5" required /><InputGroupAddon align="inline-end">秒</InputGroupAddon></InputGroup></div>
 </div>
-<section className="settings-stack" aria-labelledby="roam-quick-heading">
-<h2 id="roam-quick-heading">快速模式</h2>
-<div className="form-grid">
-<div className="settings-field"><Label htmlFor="roam-quick-steps-factor"><span className="field-caption">采样步数系数<HelpTip text="双击播放键切换快速模式。新建漫游任务的步数乘以此系数，四舍五入且至少 1 步；已有预取和任务保留。" /></span></Label><Input id="roam-quick-steps-factor" type="number" min="0.01" max="1" step="any" defaultValue="0.5" required /></div>
-<div className="settings-field"><Label htmlFor="roam-quick-playback-factor"><span className="field-caption">展示时间系数<HelpTip text="快速模式的展示时长为正常自动播放间隔乘以此系数，保存后重新计时；普通模式不受影响。" /></span></Label><Input id="roam-quick-playback-factor" type="number" min="0.01" max="1" step="any" defaultValue="0.5" required /></div>
-</div>
-</section>
 </fieldset>
 <PreferenceActions />
 <div id="roam-result" className="notice" role="status" hidden />

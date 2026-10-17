@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseWorkflowDraft, retainedWorkflowBindings, selectedStepsBinding } from '../web/src/controllers/workflow-panel.mjs';
+import { parseWorkflowDraft, retainedWorkflowBindings } from '../web/src/controllers/workflow-panel.mjs';
 
 const graph = () => ({
   '2': { class_type: 'CLIPTextEncode', inputs: { text: 'positive', clip: ['1', 1] } },
@@ -24,17 +24,4 @@ test('JSON edits keep valid bindings and outputs while removing stale or differe
   assert.deepEqual(retainedWorkflowBindings(workflow, bindings, ['7', '8']), { bindings: { positive: bindings.positive, negative: null, seed: null }, output_nodes: ['7'] });
   assert.equal(bindings.negative.node_id, '3');
   assert.equal(bindings.seed.input, 'seed');
-});
-
-test('steps binding infers only a unique integer input and retains an explicit choice', () => {
-  const workflow = graph();
-  workflow['5'].inputs.steps = 29;
-  assert.deepEqual(selectedStepsBinding(workflow), { node_id: '5', input: 'steps' });
-  workflow['8'] = { class_type: 'KSampler', inputs: { steps: 12 } };
-  assert.equal(selectedStepsBinding(workflow), null);
-  assert.deepEqual(selectedStepsBinding(workflow, { node_id: '8', input: 'steps' }), { node_id: '8', input: 'steps' });
-  workflow['8'].inputs.steps = ['10', 0];
-  assert.deepEqual(selectedStepsBinding(workflow), { node_id: '5', input: 'steps' });
-  const result = retainedWorkflowBindings(workflow, { steps: { node_id: '8', input: 'steps' } });
-  assert.equal(result.bindings.steps, null);
 });
