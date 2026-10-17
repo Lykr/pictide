@@ -16,7 +16,17 @@ export function retainedWorkflowBindings(workflow, bindings = {}, outputNodes = 
     return (type === 'integer' ? Number.isInteger(value) : typeof value === type) ? binding : null;
   };
   return {
-    bindings: { positive: retain(bindings?.positive, 'string'), negative: retain(bindings?.negative, 'string'), seed: retain(bindings?.seed, 'integer') },
+    bindings: { positive: retain(bindings?.positive, 'string'), negative: retain(bindings?.negative, 'string'), seed: retain(bindings?.seed, 'integer'), ...(bindings?.steps ? { steps: bindings.steps.input === 'steps' ? retain(bindings.steps, 'integer') : null } : {}) },
     output_nodes: outputNodes.filter(id => workflow[id]?.class_type && workflow[id]?.inputs),
   };
+}
+
+/** Only scalar integer steps can be adjusted without replacing a connection. */
+export function workflowStepInputs(workflow) {
+  return Object.entries(workflow).filter(([, node]) => Number.isSafeInteger(node?.inputs?.steps)).map(([node_id]) => ({ node_id, input: 'steps' }));
+}
+
+export function selectedStepsBinding(workflow, binding = null) {
+  const choices = workflowStepInputs(workflow);
+  return choices.find(item => item.node_id === String(binding?.node_id) && item.input === binding?.input) || (choices.length === 1 ? choices[0] : null);
 }

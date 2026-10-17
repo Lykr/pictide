@@ -5,7 +5,7 @@ import { confirmAction } from '../components/confirm-action';
 import { destinationIndex, keyboardAction, feedbackValue, requestIdentity, configuredWorkflowMode, effectiveWorkflowMode } from './feed-controls.mjs';
 import { ruleVisibility, nextRuleCounters, submissionDecision, afterPromptEdit } from './rule-controls.mjs';
 import { editableNodeInputs, changeNodeInput, workflowSaveFields } from './workflow-controls.mjs';
-import { parseWorkflowDraft, retainedWorkflowBindings } from './workflow-panel.mjs';
+import { parseWorkflowDraft, retainedWorkflowBindings, selectedStepsBinding } from './workflow-panel.mjs';
 import { applyArtifactPage, observeArtifactRevision, retentionDays } from './history-controls.mjs';
 import { API_KEY_MASK, apiKeyFields, customWorkflowName } from './settings-controls.mjs';
 import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError, mergeRoamDraft, likedTagsWait, roamGenerationChanged } from './roam-controls.mjs';
@@ -65,7 +65,7 @@ let availabilityRevision = 0;
 let availabilitySignature = '';
 let hasSavedApiKey = false;
 let roamSettingsLoaded = false, roamSettingsLoading = false;
-let roamSettings = { prefetch_count: 0, max_history_images: 0, backend_id: '', preset_id: '', liked_tags_only: false, prompt_mode: 'random', playback_interval_seconds: 5 };
+let roamSettings = { prefetch_count: 0, max_history_images: 0, backend_id: '', preset_id: '', liked_tags_only: false, prompt_mode: 'random', playback_interval_seconds: 5, quick_mode: false, quick_steps_factor: 0.5, quick_playback_factor: 0.5 };
 let roamError = '';
 let roamAnchorRetried = false;
 let roamPageActive = true, roamVersion = 0;
@@ -86,6 +86,7 @@ function syncRoamPlayback(artifact = null) {
   });
 }
 function publishPlaybackInterval(settings) {
+  roamPlayback.setQuickMode(!!settings.quick_mode, settings.quick_playback_factor ?? 0.5);
   document.dispatchEvent(new CustomEvent('pictide:roam-playback-interval', { detail: settings.playback_interval_seconds ?? 5 }));
   document.dispatchEvent(new CustomEvent('pictide:roam-options-settings', { detail: settings }));
 }
@@ -630,6 +631,7 @@ async function loadMore() {
   finally { state.loadingMore = false; renderArtifacts(); }
 }
 function loadBackend(id) {
+  defaultStepsPending = Promise.resolve();
   // Discard stale template responses when a different backend is selected.
   workflowLoadRevision++;
   $('workflow-mode').disabled = false;
@@ -646,6 +648,7 @@ function loadBackend(id) {
   state.workflowId = backend?.workflow_id || null;
   state.workflowRevision = backend?.workflow_revision || null;
   $('default-checkpoint').replaceChildren(option('', '自动选择第一个可用模型'));
+  $('default-sampling-steps').value = '28';
   if (backend?.default_checkpoint) { $('default-checkpoint').append(option(backend.default_checkpoint, backend.default_checkpoint)); $('default-checkpoint').value = backend.default_checkpoint; }
   inlineStatus('model-note', '', false);
   $('settings-result').hidden = true;
@@ -662,6 +665,7 @@ function updateWorkflowControls() {
   const custom = $('workflow-mode').value !== 'default';
   $('custom-workflow').hidden = !custom; $('custom-workflow').disabled = !custom;
   $('default-workflow').hidden = custom;
+  $('default-sampling-steps').disabled = custom;
   const needsBindings = effectiveWorkflowMode($('workflow-mode').value === 'default' ? 'default' : 'custom', $('workflow-json').value) === 'custom';
   $('binding-positive').required = needsBindings; $('binding-negative').required = needsBindings;
   $('workflow-name').required = custom;
@@ -699,13 +703,13 @@ function setWorkflowPanelMode(mode, validate = true) {
   describeAction($('toggle-workflow-json'), json ? '返回节点参数' : '编辑 API 工作流 JSON');
 }
 function updateBindings(bindings = null, outputNodes = null) {
-  const previous = bindings || { positive: parseBinding($('binding-positive').value), negative: parseBinding($('binding-negative').value), seed: parseBinding($('binding-seed').value) };
+  const previous = bindings || { positive: parseBinding($('binding-positive').value), negative: parseBinding($('binding-negative').value), seed: parseBinding($('binding-seed').value), steps: parseBinding($('binding-steps').value) };
   const previousOutputs = outputNodes || [...$('output-nodes').selectedOptions].map((item) => item.value);
-  const positive = $('binding-positive'), negative = $('binding-negative'), seed = $('binding-seed'), outputs = $('output-nodes');
+  const positive = $('binding-positive'), negative = $('binding-negative'), seed = $('binding-seed'), steps = $('binding-steps'), outputs = $('output-nodes');
   try {
     const workflow = readWorkflow(); let textCount = 0;
     const retained = retainedWorkflowBindings(workflow, previous, previousOutputs);
-    positive.replaceChildren(option('', '选择正向 text 输入')); negative.replaceChildren(option('', '选择负向 text 输入')); seed.replaceChildren(option('', '不绑定')); outputs.replaceChildren();
+    positive.replaceChildren(option('', '选择正向 text 输入')); negative.replaceChildren(option('', '选择负向 text 输入')); seed.replaceChildren(option('', '不绑定')); steps.replaceChildren(option('', '不绑定')); outputs.replaceChildren();
     for (const [nodeId, node] of Object.entries(workflow)) {
       if (!node?.class_type || !node?.inputs) continue;
       const label = `${nodeId} · ${node._meta?.title || node.class_type}`;
@@ -714,9 +718,12 @@ function updateBindings(bindings = null, outputNodes = null) {
         const key = bindingValue({ node_id: nodeId, input });
         if (typeof value === 'string') { positive.append(option(key, `${label} → ${input}`)); negative.append(option(key, `${label} → ${input}`)); textCount++; }
         if (typeof value === 'number' && Number.isInteger(value)) seed.append(option(key, `${label} → ${input}`));
+        if (input === 'steps' && Number.isSafeInteger(value)) steps.append(option(key, `${label} → ${input}`));
       }
     }
     positive.value = bindingValue(retained.bindings.positive); negative.value = bindingValue(retained.bindings.negative); seed.value = bindingValue(retained.bindings.seed);
+    steps.value = bindingValue(selectedStepsBinding(workflow, retained.bindings.steps));
+    syncSamplingSteps();
     [...outputs.options].forEach((item) => { item.selected = retained.output_nodes.includes(item.value); });
     $('workflow-error').textContent = `${Object.keys(workflow).length} 个节点 · ${textCount} 个文本输入`;
     $('workflow-error').classList.add('valid');
@@ -726,13 +733,55 @@ function updateBindings(bindings = null, outputNodes = null) {
     $('workflow-error').classList.remove('valid');
     $('workflow-json').setAttribute('aria-invalid', 'true');
     if (bindings !== null) {
-      positive.replaceChildren(option('', '选择正向 text 输入')); negative.replaceChildren(option('', '选择负向 text 输入')); seed.replaceChildren(option('', '不绑定')); outputs.replaceChildren();
+      positive.replaceChildren(option('', '选择正向 text 输入')); negative.replaceChildren(option('', '选择负向 text 输入')); seed.replaceChildren(option('', '不绑定')); steps.replaceChildren(option('', '不绑定')); outputs.replaceChildren();
     }
     $('node-parameter-fields').replaceChildren();
+    $('sampling-steps').value = ''; $('sampling-steps').disabled = true;
     return false;
   }
   renderNodeParameters();
   return true;
+}
+
+function syncSamplingSteps() {
+  const control = $('sampling-steps');
+  const binding = parseBinding($('binding-steps').value);
+  control.disabled = !binding;
+  control.setCustomValidity('');
+  control.value = binding ? String(readWorkflow()[binding.node_id].inputs[binding.input]) : '';
+}
+$('binding-steps').addEventListener('change', syncSamplingSteps);
+$('sampling-steps').addEventListener('input', () => {
+  const control = $('sampling-steps'), binding = parseBinding($('binding-steps').value);
+  if (!binding) return;
+  try {
+    const value = ruleNumber('sampling-steps', 'K 采样步数', 1, Number.MAX_SAFE_INTEGER);
+    const workflow = changeNodeInput(readWorkflow(), binding.node_id, binding.input, value, 'integer');
+    $('workflow-json').value = JSON.stringify(workflow, null, 2);
+    control.setCustomValidity(''); renderNodeParameters();
+    $('workflow-error').textContent = '草稿已更新，保存后生效。'; $('workflow-error').classList.add('valid');
+  } catch (error) { control.setCustomValidity(error.message); }
+});
+let defaultStepsPending = Promise.resolve();
+$('default-sampling-steps').addEventListener('change', () => {
+  const control = $('default-sampling-steps');
+  defaultStepsPending = (async () => {
+    try {
+      const value = ruleNumber('default-sampling-steps', 'K 采样步数', 1, Number.MAX_SAFE_INTEGER);
+      control.disabled = true;
+      const template = await currentDefaultTemplate();
+      const binding = selectedStepsBinding(template.workflow, template.bindings?.steps);
+      if (!binding) throw new Error('默认工作流没有可调整的采样步数输入。');
+      changeNodeInput(template.workflow, binding.node_id, binding.input, value, 'integer');
+      applyWorkflowDraft({ ...template, bindings: { ...template.bindings, steps: binding } }, template.input_options || {});
+    } finally { control.disabled = $('workflow-mode').value !== 'default'; }
+  })();
+  defaultStepsPending.catch(error => settingsNotice(error.message, true));
+});
+function quickFactor(id) {
+  const value = Number($(id).value);
+  if (!$(id).value.trim() || !Number.isFinite(value) || value < 0.01 || value > 1) throw new Error('快速模式系数须为 0.01–1 之间的数值。');
+  return value;
 }
 
 function renderNodeParameters() {
@@ -765,6 +814,7 @@ function renderNodeParameters() {
           const updated = changeNodeInput(readWorkflow(), node.id, input.name, input.kind === 'boolean' ? control.checked : control.value, input.kind);
           control.setCustomValidity(''); $('workflow-json').value = JSON.stringify(updated, null, 2);
           $('workflow-error').textContent = '草稿已更新，保存后生效。'; $('workflow-error').classList.add('valid');
+          syncSamplingSteps();
         } catch (error) { control.setCustomValidity(error.message); }
       });
       decorateElement(control, control.tagName.toLowerCase(), { type: control.type }); label.append(control); grid.append(label);
@@ -808,6 +858,7 @@ async function loadWorkflowLibrary(selected = $('workflow-mode').value) {
   renderWorkflowLibrary(selected);
 }
 async function selectWorkflow() {
+  defaultStepsPending = Promise.resolve();
   const selected = $('workflow-mode').value;
   const revision = ++workflowLoadRevision;
   settingsDirty = true;
@@ -841,18 +892,19 @@ function connectionDraft() {
   Object.assign(draft, apiKeyFields($('backend-key').value, hasSavedApiKey));
   return draft;
 }
-function draftBackend({ saveWorkflow = false } = {}) {
+async function draftBackend({ saveWorkflow = false } = {}) {
+  await defaultStepsPending;
   const draft = connectionDraft();
   draft.workflow_mode = $('workflow-mode').value === 'default' ? 'default' : 'custom';
   if (draft.workflow_mode === 'default') { draft.default_checkpoint = $('default-checkpoint').value; return draft; }
   const invalidParameter = $('node-parameters').querySelector(':invalid');
   if (invalidParameter) { setNodeParametersExpanded(true); setWorkflowPanelMode('parameters', false); invalidParameter.reportValidity(); invalidParameter.focus(); throw new Error('请先修正节点参数中的无效输入。'); }
   const workflow = readWorkflow();
-  const positive = parseBinding($('binding-positive').value), negative = parseBinding($('binding-negative').value), seed = parseBinding($('binding-seed').value);
+  const positive = parseBinding($('binding-positive').value), negative = parseBinding($('binding-negative').value), seed = parseBinding($('binding-seed').value), steps = parseBinding($('binding-steps').value);
   if (!positive) throw new Error('请选择正向提示词输入。');
   if (!negative) throw new Error('请选择负向提示词输入，以便准确记录本次实际使用的提示词。');
   if (bindingValue(positive) === bindingValue(negative)) throw new Error('正向和负向提示词不能绑定同一个输入。');
-  const custom = { ...draft, workflow, bindings: { positive, negative, seed }, output_nodes: [...$('output-nodes').selectedOptions].map((item) => item.value) };
+  const custom = { ...draft, workflow, bindings: { positive, negative, seed, steps }, output_nodes: [...$('output-nodes').selectedOptions].map((item) => item.value) };
   return saveWorkflow ? { ...custom, ...workflowSaveFields(custom, $('workflow-name').value, state.workflowId ? { id: state.workflowId, revision: state.workflowRevision } : null) } : custom;
 }
 function openSettings() {
@@ -878,6 +930,7 @@ async function loadRoamConfigs() {
 const roamFields = {
   prefetch_count: 'roam-prefetch-count', max_history_images: 'roam-max-history-images',
   backend_id: 'roam-backend', preset_id: 'roam-config',
+  quick_steps_factor: 'roam-quick-steps-factor', quick_playback_factor: 'roam-quick-playback-factor',
   playback_interval_seconds: 'roam-playback-interval', liked_tags_only: 'roam-liked-tags-only', prompt_mode: 'roam-prompt-mode',
 };
 function roamDraftDirty() {
@@ -898,7 +951,7 @@ function finishRoamSwitch() {
   refillRoam();
 }
 async function applyRoamSettings(settings, savedFields = []) {
-  const next = { ...settings, prefetch_count: prefetchCount(settings.prefetch_count), max_history_images: maxHistoryImages(settings.max_history_images ?? 0), liked_tags_only: !!settings.liked_tags_only, prompt_mode: settings.prompt_mode ?? 'random', playback_interval_seconds: settings.playback_interval_seconds ?? 5 };
+  const next = { ...settings, prefetch_count: prefetchCount(settings.prefetch_count), max_history_images: maxHistoryImages(settings.max_history_images ?? 0), liked_tags_only: !!settings.liked_tags_only, prompt_mode: settings.prompt_mode ?? 'random', playback_interval_seconds: settings.playback_interval_seconds ?? 5, quick_mode: !!settings.quick_mode, quick_steps_factor: settings.quick_steps_factor ?? 0.5, quick_playback_factor: settings.quick_playback_factor ?? 0.5 };
   const switched = roamSettingsLoaded && roamGenerationChanged(roamSettings, next);
   if (switched) beginRoamSwitch();
   const draft = Object.fromEntries(Object.entries(roamFields).map(([key, id]) => [key, key === 'liked_tags_only' ? $(id).checked : $(id).value]));
@@ -969,8 +1022,10 @@ $('roam-form').addEventListener('submit', async event => {
   event.preventDefault(); if ($('roam-save').disabled) return;
   $('roam-save').disabled = true; $('roam-fields').disabled = true;
   try {
-    const payload = { prefetch_count: prefetchCount($('roam-prefetch-count').value), max_history_images: maxHistoryImages($('roam-max-history-images').value), backend_id: $('roam-backend').value, preset_id: $('roam-config').value, playback_interval_seconds: playbackInterval($('roam-playback-interval').value), liked_tags_only: $('roam-liked-tags-only').checked, prompt_mode: $('roam-prompt-mode').value };
-    await saveRoamSettings(payload);
+    const payload = { prefetch_count: prefetchCount($('roam-prefetch-count').value), max_history_images: maxHistoryImages($('roam-max-history-images').value), backend_id: $('roam-backend').value, preset_id: $('roam-config').value, playback_interval_seconds: playbackInterval($('roam-playback-interval').value), liked_tags_only: $('roam-liked-tags-only').checked, prompt_mode: $('roam-prompt-mode').value, quick_steps_factor: quickFactor('roam-quick-steps-factor'), quick_playback_factor: quickFactor('roam-quick-playback-factor') };
+    const changed = Object.fromEntries(Object.entries(payload).filter(([key, value]) => String(value) !== String(roamSettings[key])));
+    const fullSave = ['prefetch_count', 'max_history_images', 'backend_id', 'preset_id'].some(key => Object.hasOwn(changed, key));
+    if (Object.keys(changed).length) await saveRoamSettings(fullSave ? payload : changed);
     inlineStatus('roam-result', '已保存漫游设置。');
     await refresh(true);
   } catch (error) { inlineStatus('roam-result', error.message); }
@@ -1126,7 +1181,7 @@ $('load-models').addEventListener('click', async () => {
 });
 $('test-backend').addEventListener('click', async () => {
   const button = $('test-backend'); button.disabled = true; settingsNotice('正在测试连接…');
-  try { const draft = draftBackend(); const id = $('edit-backend').value === '__new__' ? 'new' : $('edit-backend').value; const result = await api(`/api/backends/${encodeURIComponent(id)}/check`, { method: 'POST', body: JSON.stringify(draft) }); settingsNotice(result.message || (result.ok ? '连接成功。' : '连接失败。'), !result.ok); if (id !== 'new' && result.ok) showBackendAvailability(true); }
+  try { const draft = await draftBackend(); const id = $('edit-backend').value === '__new__' ? 'new' : $('edit-backend').value; const result = await api(`/api/backends/${encodeURIComponent(id)}/check`, { method: 'POST', body: JSON.stringify(draft) }); settingsNotice(result.message || (result.ok ? '连接成功。' : '连接失败。'), !result.ok); if (id !== 'new' && result.ok) showBackendAvailability(true); }
   catch (error) { settingsNotice(error.message, true); }
   finally { button.disabled = false; }
 });
@@ -1137,7 +1192,7 @@ $('settings-form').addEventListener('submit', async (event) => {
   event.preventDefault(); if (state.saving) return;
   state.saving = true; $('save-backend').disabled = true; $('settings-form').inert = true;
   try {
-    const draft = draftBackend({ saveWorkflow: true });
+    const draft = await draftBackend({ saveWorkflow: true });
     const id = $('edit-backend').value === '__new__' ? crypto.randomUUID() : $('edit-backend').value;
     const result = await api(`/api/backends/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(draft) });
     const backend = result.backend || result;
@@ -1254,6 +1309,16 @@ document.addEventListener('pictide:liked-feedback', event => feedbackGenerated(e
 $('main-image').addEventListener('load', () => syncRoamPlayback(state.artifacts.find(item => item.id === state.activeId)));
 $('main-image').addEventListener('error', () => { $('image-error').hidden = false; roamPlayback.pause(); });
 document.addEventListener('pictide:roam-playback-toggle', () => roamPlayback.toggle());
+let quickTogglePending = false;
+document.addEventListener('pictide:roam-quick-toggle', async () => {
+  if (quickTogglePending || roamSettingsSaving) return;
+  quickTogglePending = true;
+  try {
+    await saveRoamSettings({ quick_mode: !roamSettings.quick_mode });
+    if (!roamPlayback.playing) roamPlayback.toggle();
+  } catch (error) { showNotice(error.message, true); }
+  finally { quickTogglePending = false; }
+});
 document.addEventListener('pictide:roam-playback-interval', event => {
   roamSettings.playback_interval_seconds = event.detail;
   roamPlayback.setInterval(event.detail);
