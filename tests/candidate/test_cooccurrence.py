@@ -96,12 +96,15 @@ class CooccurrenceSmoke(unittest.TestCase):
             db.execute("UPDATE correlations SET pmi=2 WHERE tag_a=1 AND tag_b=2")
             db.execute("UPDATE correlations SET pmi=-1 WHERE tag_a=1 AND tag_b=4")
         anchor = self.service.store.find_tag("blue_sky")
-        weights = {tag["id"]: weight for tag, weight in self.service.store.expansion_candidates([anchor], -1, 5)}
+        prepared = self.service._prepare_generation(dict(options, document=dict(self.doc, pmi_threshold=-1)))
+        weights = {tag["id"]: weight for tag, weight in prepared.expansion().choices()}
         self.assertEqual(set(weights), {2, 3, 4})  # High PMI with count=1 is still excluded.
         self.assertAlmostEqual(weights[2]/weights[3], 2.0)
         self.assertAlmostEqual(weights[2]/weights[4], 8.0)
         other = self.service.store.find_tag("green_grass")
-        self.assertNotIn(5, {tag["id"] for tag, _ in self.service.store.expansion_candidates([anchor, other], -10, 1)})
+        prepared = self.service._prepare_generation(dict(options, document=dict(self.doc,
+            base_positive=["blue sky", "green grass"], pmi_threshold=-10, min_cooccurrence=1)))
+        self.assertNotIn(5, {tag["id"] for tag, _ in prepared.expansion().choices()})
         negative_threshold = dict(self.doc, pmi_threshold=-1)
         self.assertTrue(self.service.generate(dict(options, document=negative_threshold))["positive"])
 
@@ -252,7 +255,9 @@ class CooccurrenceSmoke(unittest.TestCase):
                 *[(1, ident, .25, 100) for ident in range(2, 503)],
                 *[(ident, 1000, -.1 if ident == 5 else .75, 9 if ident == 3 else 100) for ident in range(2, 503)]])
         anchors = [self.service.store.find_tag(name) for name in ("anchor_low", "anchor_high")]
-        choices = self.service.store.expansion_candidates(anchors, 0, 10)
+        prepared = self.service._prepare_generation(dict(preset_id="test", mode="fixed_seed",
+            document=dict(self.doc, base_positive=["anchor low", "anchor high"], pmi_threshold=0, min_cooccurrence=10)))
+        choices = prepared.expansion().choices()
         self.assertEqual([tag["id"] for tag, _ in choices], [ident for ident in range(2, 503) if ident not in (3, 5)])
         self.assertTrue(all(weight == 1 for _, weight in choices))
 
@@ -366,7 +371,7 @@ class CooccurrenceSmoke(unittest.TestCase):
         self.assertEqual(result["report"]["unrecognized_fixed"],["gentle atmosphere"])
         result = self.service.generate(dict(preset_id="test",document=dict(self.doc,min_tags=5,max_tags=5),max_steps=8))
         self.assertEqual(result["report"]["tag_count"], 4)
-        with patch.object(self.service.store, "expansion_candidates", wraps=self.service.store.expansion_candidates) as candidates:
+        with patch.object(self.service.store, "qualified_relations", wraps=self.service.store.qualified_relations) as candidates:
             result = self.service.generate(dict(preset_id="test",document=dict(self.doc,pmi_threshold=2)))
             self.assertEqual(result["positive"], "blue sky")
             self.assertEqual(result["report"]["stop_reason"], "no_eligible_tags")
@@ -379,7 +384,7 @@ class CooccurrenceSmoke(unittest.TestCase):
         context = dict(preset_id="test", mode="fixed_seed", seed=19)
         expected = tuple(self.service.provider.generate(dict(context, seed=19+i), {"count": 1})[0]
                          for i in range(4))
-        original = self.service.generate
+        original = self.service._generate_prepared
         barrier = threading.Barrier(2)
         lock = threading.Lock()
         active, maximum = 0, 0
@@ -394,7 +399,7 @@ class CooccurrenceSmoke(unittest.TestCase):
             finally:
                 with lock:
                     active -= 1
-        with patch.object(self.service, "generate", side_effect=observed):
+        with patch.object(self.service, "_generate_prepared", side_effect=observed):
             actual = self.service.provider.generate(context, {"count": 4})
         self.assertEqual(actual, expected)
         self.assertGreaterEqual(maximum, 2)
@@ -407,9 +412,48 @@ class CooccurrenceSmoke(unittest.TestCase):
         expected = tuple(fresh.provider.generate(dict(context, sequence_step=2+i), {"count": 1})[0]
                          for i in range(3))
         self.assertEqual(pool, expected)
-        with patch.object(self.service, "generate", side_effect=CandidateError("smoke failure")):
+        with patch.object(self.service, "_generate_prepared", side_effect=CandidateError("smoke failure")):
             with self.assertRaisesRegex(CandidateError, "smoke failure"):
                 self.service.provider.generate(dict(context, mode="fixed_seed"), {"count": 3})
+
+
+    def test_incremental_batch_reuses_base_and_restores_dropped_candidates(self):
+        context = dict(preset_id="test", mode="fixed_seed", seed=19)
+        with patch.object(self.service.store, "generation_tags", wraps=self.service.store.generation_tags) as metadata, \
+             patch.object(self.service.store, "qualified_relations", wraps=self.service.store.qualified_relations) as relations:
+            pool = self.service.provider.generate(context, {"count": 4})
+        self.assertEqual(metadata.call_count, 1)
+        self.assertEqual(sum(call.args[0] == 1 for call in relations.call_args_list), 1)
+        self.assertLessEqual(relations.call_count, 5)
+        with self.service.store.connect() as db:
+            db.execute("DELETE FROM correlations WHERE tag_a=3 AND tag_b=4")
+        prepared = self.service._prepare_generation(context)
+        state = prepared.expansion()
+        state.add(self.service.store.find_tag("soft light"))
+        self.assertNotIn(4, {tag["id"] for tag, _ in state.choices()})
+        # Removing that constraint rebuilds from the unmodified batch base.
+        self.assertIn(4, {tag["id"] for tag, _ in prepared.expansion().choices()})
+        self.assertEqual(len(pool), 4)
+
+    def test_incremental_float_order_and_no_work_lazy_paths(self):
+        fixed = dict(preset_id="test", mode="fixed_seed", document=dict(self.doc, min_tags=1, max_tags=1))
+        with patch.object(self.service.store, "generation_tags", side_effect=AssertionError("unused metadata")), \
+             patch.object(self.service.store, "qualified_relations", side_effect=AssertionError("unused graph")):
+            self.assertEqual(self.service.generate(fixed)["positive"], "blue sky")
+        with self.service.store.connect() as db:
+            db.execute("DELETE FROM correlations")
+            db.execute("DELETE FROM tags")
+            db.executemany("INSERT INTO tags VALUES(?,?,?)", [(1,"anchor_a",300),(2,"anchor_b",100),
+                           (3,"anchor_c",200),(4,"option_d",100),(5,"option_e",100)])
+            db.executemany("INSERT INTO correlations VALUES(?,?,?,?)", [(1,3,0,100),(2,3,0,100),
+                (1,4,1,100),(2,4,1e16,100),(3,4,-1e16,100),(1,5,0,100),(2,5,0,100),(3,5,0,100)])
+        document = dict(self.doc, base_positive=["anchor a","anchor b"], pmi_threshold=-1e16)
+        prepared = self.service._prepare_generation(dict(preset_id="test", document=document))
+        state = prepared.expansion()
+        state.add(self.service.store.find_tag("anchor c"))
+        weights = {tag["id"]: weight for tag, weight in state.choices()}
+        self.assertEqual(weights[4], 1)
+        self.assertEqual(weights[5], 2.0 ** (-1/3))
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from collections import OrderedDict
 from collections.abc import Sequence
 
 from .errors import CandidateError
+from .expansion import PreparedGeneration
 from .rounds import integer, validate_options, prepare_rounds
 
 DEFAULT_DOCUMENT = dict(base_positive=[], base_negative=[], min_tags=5, max_tags=20,
@@ -163,15 +164,19 @@ class CandidateService:
             existing.append(tag)
         return variable
 
-    def _extend(self, document, fixed_count, anchors, variable, rng, cap, work, allowed_ids=None):
+    def _extend(self, document, fixed_count, anchors, variable, rng, cap, work, allowed_ids=None, prepared=None):
         variable = list(variable)
         reason = "target_length"
+        state = None
         while fixed_count + len(variable) < cap:
             if work[0] <= 0:
                 return variable, "search_limit"
             work[0] -= 1
-            choices = self.store.expansion_candidates([*anchors, *variable], document["pmi_threshold"],
-                                                       document["min_cooccurrence"], allowed_ids)
+            if state is None:
+                state = prepared.expansion()
+                for tag in variable:
+                    state.add(tag)
+            choices = state.choices()
             if document["blocked_keywords"]:
                 choices = [(tag, weight) for tag, weight in choices
                            if not matches_blocked_keyword(tag["name"], document["blocked_keywords"])]
@@ -179,13 +184,15 @@ class CandidateService:
                 return variable, "no_eligible_tags"
             chosen = rng.choices([item[0] for item in choices], [item[1] for item in choices], k=1)[0]
             variable.append(chosen)
+            if fixed_count + len(variable) < cap and work[0] > 0:
+                state.add(chosen)
         return variable, reason
 
-    def _initial(self, document, fixed_count, anchors, rng, limit, allowed_ids=None):
+    def _initial(self, document, fixed_count, anchors, rng, limit, allowed_ids=None, prepared=None):
         target = rng.randint(max(document["min_tags"], fixed_count), document["max_tags"])
-        return self._extend(document, fixed_count, anchors, [], rng, target, [limit], allowed_ids)
+        return self._extend(document, fixed_count, anchors, [], rng, target, [limit], allowed_ids, prepared)
 
-    def _advance(self, document, fixed_count, anchors, previous, rng, limit, allowed_ids=None):
+    def _advance(self, document, fixed_count, anchors, previous, rng, limit, allowed_ids=None, prepared=None):
         budget = document["change_budget"]
         if not budget:
             return list(previous), "budget_zero", 0
@@ -205,11 +212,11 @@ class CandidateService:
         removed = rng.randint(minimum_removed, maximum_removed)
         remove_ids = set(rng.sample([tag["id"] for tag in previous], removed))
         retained = [tag for tag in previous if tag["id"] not in remove_ids]
-        tags, reason = self._extend(document, fixed_count, anchors, retained, rng, target, [limit], allowed_ids)
+        tags, reason = self._extend(document, fixed_count, anchors, retained, rng, target, [limit], allowed_ids, prepared)
         changes = len(previous_ids ^ {tag["id"] for tag in tags})
         return tags, reason, changes
 
-    def _sequence(self, document, fixed_count, anchors, seed, step, limit, source_id, allowed_ids=None):
+    def _sequence(self, document, fixed_count, anchors, seed, step, limit, source_id, allowed_ids=None, prepared=None):
         """Cache only the latest frame; earlier frames and restarts replay deterministically."""
         key = document_key([document, seed, limit, source_id,
                             sorted(allowed_ids) if allowed_ids is not None else None])
@@ -218,40 +225,52 @@ class CandidateService:
             if cached and cached[0] <= step:
                 first, variable, reason, changes = cached
             else:
-                variable, reason = self._initial(document, fixed_count, anchors, random.Random(seed), limit, allowed_ids)
+                variable, reason = self._initial(document, fixed_count, anchors, random.Random(seed), limit, allowed_ids, prepared)
                 first, changes = 0, 0
             for frame in range(first+1, step+1):
                 frame_hash = document_key(["cooccurrence-sequence-v1", seed, frame])
                 variable, reason, changes = self._advance(document, fixed_count, anchors, variable,
-                                                          random.Random(int(frame_hash, 16)), limit, allowed_ids)
+                                                          random.Random(int(frame_hash, 16)), limit, allowed_ids, prepared)
             self._sequence_cache[key] = (step, variable, reason, changes)
             self._sequence_cache.move_to_end(key)
             while len(self._sequence_cache) > 8:
                 self._sequence_cache.popitem(last=False)
             return variable, reason, changes
 
-    def generate(self, payload, *, allowed_positive_tag_ids=None, previous_candidate=None):
+    def _prepare_generation(self, payload, allowed_positive_tag_ids=None, previous_candidate=None):
         options = validate_options(payload)
         document = validate_document(options.get("document") if "document" in options else
                                      self.load_preset(options["preset_id"])["document"])
         dataset = self.dataset_status()
         if dataset["status"] != "ready":
             raise CandidateError("共现数据尚未导入完成，请等待 dataset 状态为 ready 后再生成")
-        seed = secrets.randbits(53) if options["mode"] == "random_each_run" else options["seed"]
         source_id = "danbooru:pmi-v2:general+ratings:min100:pair10:" + (dataset.get("revision") or dataset.get("source") or "local")
         fixed, anchors = self._fixed(document["base_positive"], "positive", source_id)
         negative, _ = self._fixed(document["base_negative"], "negative", source_id)
-        limit = options.get("max_steps", 100)
-        step = options["sequence_step"] if options["mode"] == "sequence" else 0
         previous = (self._reference_variable(document, previous_candidate, fixed, anchors, allowed_positive_tag_ids)
                     if previous_candidate is not None else None)
+        return PreparedGeneration(self.store, document, source_id, fixed, anchors, negative,
+                                  allowed_positive_tag_ids, previous)
+
+    def generate(self, payload, *, allowed_positive_tag_ids=None, previous_candidate=None):
+        prepared = self._prepare_generation(payload, allowed_positive_tag_ids, previous_candidate)
+        return self._generate_prepared(prepared, payload)
+
+    def _generate_prepared(self, prepared, payload):
+        options = validate_options(payload)
+        document, source_id = prepared.document, prepared.source_id
+        fixed, anchors, negative = prepared.fixed, prepared.anchors, prepared.negative
+        allowed_ids, previous = prepared.allowed_ids, prepared.previous
+        seed = secrets.randbits(53) if options["mode"] == "random_each_run" else options["seed"]
+        limit = options.get("max_steps", 100)
+        step = options["sequence_step"] if options["mode"] == "sequence" else 0
         if previous is not None:
             variable, reason, changes = self._advance(document, len(fixed), anchors, previous,
-                                                      random.Random(seed), limit, allowed_positive_tag_ids)
+                                                      random.Random(seed), limit, allowed_ids, prepared)
         elif options["mode"] == "sequence":
-            variable, reason, changes = self._sequence(document, len(fixed), anchors, seed, step, limit, source_id, allowed_positive_tag_ids)
+            variable, reason, changes = self._sequence(document, len(fixed), anchors, seed, step, limit, source_id, allowed_ids, prepared)
         else:
-            variable, reason = self._initial(document, len(fixed), anchors, random.Random(seed), limit, allowed_positive_tag_ids)
+            variable, reason = self._initial(document, len(fixed), anchors, random.Random(seed), limit, allowed_ids, prepared)
             changes = 0
         generated = [dict(id=str(tag["id"]), text=tag["name"].replace("_", " "), categories=["rating" if tag["name"] in ("general", "sensitive", "questionable", "explicit") else "general"],
                           channel="positive", source_id=source_id) for tag in variable]

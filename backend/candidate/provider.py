@@ -43,9 +43,11 @@ class CooccurrenceCandidateProvider:
                 frame["seed"] = (frame.get("seed", 0)+index) % (MAX_SEED+1)
             frames.append(frame)
 
+        prepared = self.service._prepare_generation(
+            frames[0], allowed_ids, previous if prompt_mode == "along" else None)
+
         def generate_one(frame):
-            result = self.sample(frame, allowed_positive_tag_ids=allowed_ids,
-                                 previous_candidate=previous if prompt_mode == "along" else None)
+            result = self.service._generate_prepared(prepared, frame)
             terms = self._terms(result["selected_tags"])
             return Candidate(result["candidate_id"], result["positive"], result["negative"], terms=terms)
 

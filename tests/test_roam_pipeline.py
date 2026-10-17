@@ -209,9 +209,10 @@ class RoamPipelineTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_candidate_provider_accepts_full_strong_pool(self):
         from backend.candidate.provider import CooccurrenceCandidateProvider
-        provider = CooccurrenceCandidateProvider(SimpleNamespace())
-        provider.sample = lambda *args, **kwargs: {"candidate_id": "sample", "positive": "forest",
-                                                  "negative": "", "selected_tags": []}
+        provider = CooccurrenceCandidateProvider(SimpleNamespace(
+            _prepare_generation=lambda *args: None,
+            _generate_prepared=lambda *args: {"candidate_id": "sample", "positive": "forest",
+                                              "negative": "", "selected_tags": []}))
         pool = provider.generate({"document": {}}, {"count": 100})
         self.assertEqual(len(pool), 100)
         with self.assertRaises(ValueError):

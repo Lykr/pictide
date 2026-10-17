@@ -9,7 +9,6 @@ import uuid
 class SQLiteCandidateStore:
     def __init__(self, path):
         self.path = Path(path)
-        self._tags = None
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
             db.executescript("""
@@ -117,62 +116,6 @@ class SQLiteCandidateStore:
                 """, [anchor_id, *batch, pmi_threshold, minimum,
                       anchor_id, *batch, pmi_threshold, minimum]))
         return tuple(result)
-
-    def expansion_candidates(self, existing, pmi_threshold, minimum, allowed_ids=None):
-        """Intersect PMI-qualified indexed neighbours, weighted by geometric lift."""
-        if allowed_ids is not None and not allowed_ids:
-            return []
-        if not existing:
-            if self._tags is None:
-                with self.connect() as db:
-                    self._tags = [(dict(row), row["post_count"]) for row in db.execute(
-                        "SELECT id,name,post_count FROM tags ORDER BY id")]
-            return self._tags if allowed_ids is None else [
-                item for item in self._tags if item[0]["id"] in allowed_ids]
-        weights = None
-        with self.connect() as db:
-            for tag in sorted(existing, key=lambda item: item["post_count"]):
-                if weights is None:
-                    neighbours = db.execute("""
-                        SELECT tag_b AS id,pmi FROM correlations WHERE tag_a=? AND pmi>=? AND count>=?
-                        UNION ALL
-                        SELECT tag_a AS id,pmi FROM correlations WHERE tag_b=? AND pmi>=? AND count>=?
-                    """, (tag["id"], pmi_threshold, minimum, tag["id"], pmi_threshold, minimum))
-                    weights = {row["id"]: row["pmi"] for row in neighbours
-                               if allowed_ids is None or row["id"] in allowed_ids}
-                else:
-                    # Later anchors only need to check the surviving intersection.
-                    # Keep anchor order and sums unchanged for seed reproducibility.
-                    remaining = list(weights)
-                    current = {}
-                    for offset in range(0, len(remaining), 400):
-                        batch = remaining[offset:offset+400]
-                        marks = ",".join("?" for _ in batch)
-                        neighbours = db.execute(f"""
-                            SELECT tag_b AS id,pmi FROM correlations
-                            WHERE tag_a=? AND tag_b IN ({marks}) AND pmi>=? AND count>=?
-                            UNION ALL
-                            SELECT tag_a AS id,pmi FROM correlations
-                            WHERE tag_b=? AND tag_a IN ({marks}) AND pmi>=? AND count>=?
-                        """, [tag["id"], *batch, pmi_threshold, minimum,
-                              tag["id"], *batch, pmi_threshold, minimum])
-                        current.update((row["id"], row["pmi"]) for row in neighbours)
-                    weights = {key: value + current[key] for key, value in weights.items() if key in current}
-                if not weights:
-                    return []
-            selected = {tag["id"] for tag in existing}
-            keys = sorted(set(weights) - selected)
-            if not keys:
-                return []
-            # A shared subtraction preserves probability ratios and avoids overflow.
-            maximum = max(weights[key]/len(existing) for key in keys)
-            result = []
-            for offset in range(0, len(keys), 800):
-                batch = keys[offset:offset+800]
-                rows = db.execute("SELECT id,name,post_count FROM tags WHERE id IN ("
-                                  + ",".join("?" for _ in batch) + ") ORDER BY id", batch)
-                result.extend((dict(row), 2.0 ** (weights[row["id"]]/len(existing) - maximum)) for row in rows)
-        return result
 
     def list_presets(self):
         with self.connect() as db:
