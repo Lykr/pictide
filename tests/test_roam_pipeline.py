@@ -12,6 +12,7 @@ from aiohttp.test_utils import TestClient, TestServer
 from backend.candidate.contracts import Candidate, TagSnapshot
 from backend.contracts.recommendation import CandidateScore, RecommendationStatus, ScoreResult
 from backend.host import APPLICATION, create_app
+from backend.domain import BackendError
 from test_app import FakeBackend, configuration
 
 
@@ -95,6 +96,58 @@ class RoamPipelineTests(unittest.IsolatedAsyncioTestCase):
     def manual(self, number):
         return self.app.storage.create_job({"request_id": f"manual-{number:04}", "backend_id": "local",
                                            "positive": "landscape", "negative": "", "seed": 1})
+
+    async def test_backend_save_recovers_paused_roam_and_keeps_data_and_options(self):
+        before = self.app.roam.save(3, "", "neutral", 12, 17, False, "along", 7,
+            {"recommendation_strength": "strong", "strong_candidate_multiplier": 3})
+        completed = (await self.ensure())["job"]
+        self.app.storage.complete(completed["id"], [{"node_id": "9", "index": 0, "filename": "saved.png"}])
+        images = self.app.storage.artifacts(source="roam")
+        failed = (await self.ensure())["job"]
+        pending = (await self.ensure())["job"]
+        pending_backend = self.app.storage.job_backend(pending["id"])
+        with patch.object(self.backend, "submit", side_effect=BackendError("Checkpoint is unavailable")):
+            await self.app.tasks.tick()
+        self.assertEqual(self.app.storage.job(failed["id"])["status"], "failed")
+        self.assertTrue((await self.ensure())["paused"])
+        notifications = asyncio.Queue(maxsize=1)
+        self.app.events.subscribers.add(notifications)
+        try:
+            response = await self.client.put("/api/backends/local", json={**configuration(), "name": "Recovered backend"})
+            self.assertEqual(response.status, 200, await response.text())
+            self.assertEqual(notifications.get_nowait()["topic"], "roam_settings")
+        finally:
+            self.app.events.subscribers.remove(notifications)
+        after = self.app.roam.get()
+        self.assertNotEqual(after["epoch"], before["epoch"])
+        self.assertEqual({k:v for k,v in after.items() if k != "epoch"},
+                         {k:v for k,v in before.items() if k != "epoch"})
+        self.assertFalse((await self.app.roam_settings())["paused"])
+        self.assertEqual(self.app.storage.artifacts(source="roam"), images)
+        self.assertEqual(self.app.storage.job(pending["id"])["status"], "queued")
+        self.assertEqual(self.app.storage.job_backend(pending["id"]), pending_backend)
+        self.assertEqual(self.app.storage.job(failed["id"])["status"], "failed")
+        # Old failed jobs must not re-pause the new epoch, and are never resubmitted.
+        continued = await self.ensure()
+        self.assertFalse(continued["paused"])
+        self.assertIn("job", continued)
+        self.assertEqual(len(self.backend.submissions), 0)  # Mock submission above, no GPU requests.
+
+    async def test_backend_save_only_recovers_current_backend_after_success(self):
+        epoch = self.app.roam.get()["epoch"]
+        response = await self.client.put("/api/backends/local", json=configuration())
+        self.assertEqual(response.status, 200)
+        self.assertEqual(self.app.roam.get()["epoch"], epoch)
+        self.app.storage.save_backend({**configuration(), "id": "other"})
+        self.app.storage.pause_roam(epoch, "Backend unavailable")
+        response = await self.client.put("/api/backends/other", json=configuration())
+        self.assertEqual(response.status, 200)
+        self.assertEqual(self.app.roam.get()["epoch"], epoch)
+        self.assertTrue((await self.app.roam_settings())["paused"])
+        response = await self.client.put("/api/backends/local", json={**configuration(), "kind": "invalid"})
+        self.assertEqual(response.status, 400)
+        self.assertEqual(self.app.roam.get()["epoch"], epoch)
+        self.assertTrue((await self.app.roam_settings())["paused"])
 
     async def test_prompt_and_score_are_ready_while_previous_image_is_generating(self):
         first = await self.ensure()

@@ -146,6 +146,18 @@ class PictideApplication:
         else:
             saved = await asyncio.to_thread(self.storage.save_backend, draft)
         self.events.publish("backends")
+        async with self._roam_lock:
+            roam = await asyncio.to_thread(self.roam.get)
+            backends = await asyncio.to_thread(self.storage.backends)
+            active_backend = roam["backend_id"] or (backends[0]["id"] if backends else "")
+            if saved["id"] == active_backend:
+                state = await asyncio.to_thread(self.storage.ensure_roam, roam["epoch"], None, 0)
+                if state["paused"]:
+                    # A new epoch isolates old failures, retaining all options and queued work.
+                    await asyncio.to_thread(self.roam.save, roam["prefetch_count"], roam["backend_id"],
+                                            roam["preset_id"], roam["max_history_images"])
+                    # Publish last: the bounded event stream must retain the recovery signal.
+                    self.events.publish("roam_settings")
         return public_backend(saved)
 
     async def check_backend(self, identifier, payload):
