@@ -35,11 +35,11 @@ function CopyValue({ title, text, disabled = false }: { title: string; text: str
   </span>;
 }
 
-function PromptText({ title, text }: { title: string; text: string }) {
+function DetailField({ title, text, disabled = false }: { title: string; text: string; disabled?: boolean }) {
   return <section className="image-prompt-section" aria-label={title}>
     <div className="image-detail-heading">
       <h3>{title}</h3>
-      <CopyValue title={title} text={text} />
+      <CopyValue title={title} text={text} disabled={disabled} />
     </div>
     <pre className="image-prompt-text" tabIndex={text ? 0 : undefined}>{text || "（无）"}</pre>
   </section>;
@@ -55,12 +55,8 @@ export function ImagePromptDetails({ seed, positive, negative, actions }: {
       <h2>图片信息</h2>
       {actions}
     </div>
-    <div className="image-seed-row">
-      <h3>图像种子</h3>
-      <span className={hasSeed ? "image-seed-value" : "image-seed-unavailable"}>{seedText}</span>
-      <CopyValue title="图像种子" text={seedText} disabled={!hasSeed} />
-    </div>
-    <PromptText title="正向提示词" text={positive} />
-    <PromptText title="负向提示词" text={negative} />
+    <DetailField title="图像种子" text={seedText} disabled={!hasSeed} />
+    <DetailField title="正向提示词" text={positive} />
+    <DetailField title="负向提示词" text={negative} />
   </div>;
 }
