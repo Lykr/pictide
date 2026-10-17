@@ -86,9 +86,9 @@ function publishPlaybackInterval(settings) {
 }
 const immersive = createImmersiveViewer({
   card: $('image-card'), toolbar: document.querySelector('.image-toolbar'),
-  entry: $('roam-immersive'),
+  entry: $('roam-immersive'), focusReturn: $('roam-options'),
   eligible: () => state.view === 'feed' && !$('image-card').hidden && !!state.currentImage,
-  changed: active => { if (!active) $('roam-options').focus({ preventScroll: true }); },
+  changed: () => document.dispatchEvent(new Event('pictide:roam-options-close')),
 });
 const refillRoam = createRefillCoordinator({
   active: () => galleryCursors.ready && roamPageActive && roamSettingsLoaded && !roamBlocked && (roamSettings.prefetch_count > 0 || !!nextImageWait.current) && state.view === 'feed' && !document.hidden,

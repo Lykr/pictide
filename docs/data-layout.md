@@ -138,3 +138,7 @@ SQLite 在初始化时以 `CREATE TABLE IF NOT EXISTS` 增加漫游表，保留�
 ## 正负反馈表更新
 
 不喜欢反馈发布前先停止应用并备份 `pictide.sqlite3`，再执行 `python -m backend.store.feedback_upgrade <数据库绝对路径>`。这是针对当前安装的一次性离线转换，将推荐事件与证据的 `liked` 转为 `value`（喜欢 1、撤回 null），并允许图片反馈 -1；保留已有点赞、策略参数、向量缓存、修订与重置分界。不在应用启动时执行。转换后使用对应新版代码启动；需要回退时恢复完整数据库备份与旧代码。见 [不喜欢反馈](dislike-feedback.md)。
+
+## 喜欢图片标签范围
+
+`roam_settings.liked_tags_only` 为 0/1，默认 0；播放间隔与该开关复用同一设置行。当前安装发布前停止应用、备份主数据库，再离线执行 `ALTER TABLE roam_settings ADD COLUMN liked_tags_only INTEGER NOT NULL DEFAULT 0 CHECK(liked_tags_only IN (0,1))`。新建数据库直接包含该字段，不在启动时迁移；回退需恢复备份数据库与对应旧代码。喜欢图片的标签池按实际正向文本即时解析，不另存派生词库。接口与空池行为见 [喜欢图片标签漫游](roam-liked-tags.md)。

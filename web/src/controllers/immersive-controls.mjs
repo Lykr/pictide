@@ -15,7 +15,7 @@ export function createAutoHideControls({ visible, held, delay = 2000, schedule =
 }
 
 /** Reuse the mounted image and buttons in native fullscreen, with a viewport fallback. */
-export function createImmersiveViewer({ card, toolbar, entry, exit = /** @type {HTMLElement | null} */ (null), eligible, changed = () => {}, document: doc = document, window: win = window }) {
+export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entry, exit = /** @type {HTMLElement | null} */ (null), eligible, changed = () => {}, document: doc = document, window: win = window }) {
   let active = false, mode = null, revision = 0, hovered = false, keyboard = false;
   let restoreInert = [];
   const controls = createAutoHideControls({
@@ -46,7 +46,7 @@ export function createImmersiveViewer({ card, toolbar, entry, exit = /** @type {
   };
   const suspend = () => leave();
   const restoreFocus = () => {
-    if (entry.isConnected && !entry.hidden && !entry.disabled && !entry.closest('[hidden],[inert]')) entry.focus({ preventScroll: true });
+    if (focusReturn.isConnected && !focusReturn.hidden && !focusReturn.disabled && !focusReturn.closest('[hidden],[inert]')) focusReturn.focus({ preventScroll: true });
   };
   const leaveNative = () => {
     try { return Promise.resolve(doc.exitFullscreen()).catch(() => {}); }
