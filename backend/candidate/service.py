@@ -120,18 +120,19 @@ class CandidateService:
                 anchors.append(tag)
         return terms, anchors
 
-    def _reference_variable(self, document, reference, anchors, allowed_ids):
+    def _reference_variable(self, document, reference, fixed, anchors, allowed_ids):
         """Resolve the actual prior positive combination against today's preset and vocabulary."""
         texts = [term["text"].strip().replace("_", " ") for term in reference["terms"]
                  if term["channel"] == "positive"]
         if ", ".join(texts) != reference["positive"].strip().replace("_", " "):
             return None  # An edited text is not represented by its historical snapshot.
-        fixed = set(document["base_positive"])
-        names = list(dict.fromkeys(text.replace(" ", "_") for text in texts if text not in fixed))
+        fixed_texts = {term["text"] for term in fixed}
+        fixed_ids = {term["id"] for term in fixed}
+        names = list(dict.fromkeys(text.replace(" ", "_") for text in texts if text not in fixed_texts))
         resolved = {tag["name"]: tag for tag in self.store.find_tags(names)}
         if len(resolved) != len(names):
             return None
-        variable = [resolved[name] for name in names]
+        variable = [resolved[name] for name in names if str(resolved[name]["id"]) not in fixed_ids]
         if len(fixed) + len(variable) > document["max_tags"]:
             return None
         if allowed_ids is not None and any(tag["id"] not in allowed_ids for tag in variable):
@@ -223,7 +224,7 @@ class CandidateService:
         negative, _ = self._fixed(document["base_negative"], "negative", source_id)
         limit = options.get("max_steps", 100)
         step = options["sequence_step"] if options["mode"] == "sequence" else 0
-        previous = (self._reference_variable(document, previous_candidate, anchors, allowed_positive_tag_ids)
+        previous = (self._reference_variable(document, previous_candidate, fixed, anchors, allowed_positive_tag_ids)
                     if previous_candidate is not None else None)
         if previous is not None:
             variable, reason, changes = self._advance(document, len(fixed), anchors, previous,

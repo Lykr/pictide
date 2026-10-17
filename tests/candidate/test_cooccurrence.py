@@ -166,6 +166,20 @@ class CooccurrenceSmoke(unittest.TestCase):
             following = self.service.provider.generate(locked, dict(count=3, prompt_mode="along", previous_candidate=reference))
         self.assertTrue(all(item.positive == chosen.positive for item in following))
 
+    def test_roam_along_recognizes_normalized_deduplicated_fixed_terms(self):
+        document = dict(self.doc, base_positive=["blue_sky", "blue sky", "gentle_atmosphere", "gentle atmosphere"],
+                        min_tags=4, max_tags=4, change_budget=0)
+        context = dict(preset_id="test", mode="fixed_seed", seed=19, document=document)
+        initial = self.service.generate(context)
+        reference = dict(candidate_id=initial["candidate_id"], positive=initial["positive"],
+                         negative=initial["negative"], terms=initial["selected_tags"])
+        with patch.object(self.service, "_initial", side_effect=AssertionError("valid reference must not restart")), \
+             patch.object(self.service, "_advance", wraps=self.service._advance) as advance:
+            item = self.service.provider.generate(context, dict(prompt_mode="along", previous_candidate=reference))[0]
+        self.assertEqual(item.positive, initial["positive"])
+        self.assertEqual(advance.call_args.args[1], 2)  # Actual fixed terms, after normalization and deduplication.
+        self.assertEqual(len(advance.call_args.args[3]), 2)
+
     def test_roam_along_invalid_start_restarts_with_current_scope_and_fixed_terms(self):
         initial = self.service.generate(dict(preset_id="test", mode="fixed_seed", seed=19))
         reference = dict(candidate_id=initial["candidate_id"], positive=initial["positive"],
