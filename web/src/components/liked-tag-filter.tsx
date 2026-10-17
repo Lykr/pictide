@@ -48,7 +48,7 @@ export function LikedTagFilter({ visible, revision, disabled = false }: { visibl
   };
   const toggle = (text: string) => change(selected.includes(text) ? selected.filter(tag => tag !== text) : [...selected, text]);
 
-  return <div hidden={!visible} className="flex min-w-0 flex-wrap items-center gap-2">
+  return <div hidden={!visible} className="mb-4 flex min-w-0 flex-wrap items-center gap-2">
     <Popover open={open && !disabled} onOpenChange={next => { setOpen(next); if (next) setQuery(""); }}>
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" size="sm" disabled={disabled} aria-label="筛选喜欢图片的标签" data-tooltip="多选时仅显示同时包含全部所选标签的喜欢图片。">

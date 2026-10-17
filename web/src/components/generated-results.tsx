@@ -5,10 +5,11 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Toggle } from "./ui/toggle";
 import { IconButton } from "./actions";
+import { LikedTagFilter } from "./liked-tag-filter";
 import { GeneratedViewer, type GeneratedArtifact } from "./generated-viewer";
 
-type ResultState = { artifacts: GeneratedArtifact[]; total: number; hasMore: boolean; loading: boolean; error: string; pending: boolean; status: string; feedbackPending: boolean; mutationPending: boolean; visible: boolean; configured: boolean };
-const initial: ResultState = { artifacts: [], total: 0, hasMore: false, loading: true, error: "", pending: false, status: "", feedbackPending: false, mutationPending: false, visible: false, configured: false };
+type ResultState = { artifacts: GeneratedArtifact[]; total: number; hasMore: boolean; loading: boolean; error: string; pending: boolean; status: string; feedbackPending: boolean; mutationPending: boolean; visible: boolean; configured: boolean; tags: string[]; filterVersion: number; revision: number };
+const initial: ResultState = { artifacts: [], total: 0, hasMore: false, loading: true, error: "", pending: false, status: "", feedbackPending: false, mutationPending: false, visible: false, configured: false, tags: [], filterVersion: 0, revision: 0 };
 const emit = (name: string, detail?: unknown) => document.dispatchEvent(new CustomEvent(`pictide:${name}`, { detail }));
 const imagePath = (item: GeneratedArtifact) => `/api/artifacts/${encodeURIComponent(item.id)}/image`;
 const seedLabel = (item: GeneratedArtifact) => item.seed_applied === false ? "使用工作流种子设置" : `seed ${item.seed ?? "—"}`;
@@ -36,6 +37,7 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
     return () => document.removeEventListener(`pictide:${prefix}-results`, receive);
   }, [prefix]);
   useEffect(() => { if (!state.visible) setSelectedId(null); }, [state.visible]);
+  useEffect(() => { if (liked) setSelectedId(null); }, [liked, state.filterVersion]);
   const busy = state.feedbackPending || state.mutationPending;
   const like = (item: GeneratedArtifact, toggle = true) => emit(`${prefix}-feedback`, { id: item.id, toggle });
   const privacyLabel = privacyBlur ? "关闭毛玻璃 · 空格" : "开启毛玻璃 · 空格";
@@ -43,6 +45,7 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
   const privacyHost = liked ? document.getElementById("liked-privacy-controls") : null;
   return <section className="generated-results" aria-label={liked ? "喜欢的图片" : "生成结果"}>
     {liked && privacyHost && createPortal(privacyControl, privacyHost)}
+    {liked && <LikedTagFilter visible={state.visible} revision={state.revision} disabled={busy} />}
     {liked && state.loading && !state.artifacts.length && <div className="hint" role="status">加载中…</div>}
     {!liked && <div className="generated-results-heading">
       <h2>生成结果</h2>
@@ -53,7 +56,7 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
       </div>
     </div>}
     {state.error && <div className="notice error" role="status">{state.error}<Button variant="ghost" size="sm" type="button" disabled={busy || state.loading} onClick={() => emit(`${prefix}-refresh`)}>重试</Button></div>}
-    {!state.artifacts.length && !state.loading && !state.error && <div className="empty small"><ImageIcon aria-hidden="true" /><p>{liked ? "喜欢的图片会保存在这里。" : state.pending ? "正在生成，完成后会显示在这里。" : state.configured ? "生成图片后，在这里查看结果。" : "先配置生图后端。"}</p>{!liked && !state.configured && <Button variant="outline" type="button" onClick={() => emit("generated-configure")}>配置后端</Button>}</div>}
+    {!state.artifacts.length && !state.loading && !state.error && <div className="empty small"><ImageIcon aria-hidden="true" /><p>{liked ? state.tags.length ? "没有同时包含所选标签的喜欢图片。" : "喜欢的图片会保存在这里。" : state.pending ? "正在生成，完成后会显示在这里。" : state.configured ? "生成图片后，在这里查看结果。" : "先配置生图后端。"}</p>{!liked && !state.configured && <Button variant="outline" type="button" onClick={() => emit("generated-configure")}>配置后端</Button>}</div>}
     <div className={`generated-grid${privacyBlur ? " generated-privacy-blurred" : ""}`} aria-busy={state.loading || state.mutationPending}>{state.artifacts.map(item => <Card key={item.id} className="generated-card gap-0 overflow-hidden py-0">
       <Button type="button" variant="ghost" className="generated-image-button" aria-label={`查看${label} · ${seedLabel(item)}`} onClick={() => setSelectedId(item.id)}><ArtifactImage item={item} label={label} /></Button>
       <IconButton icon={Heart} className="generated-card-like" label={item.feedback === 1 ? "已喜欢，点击撤回" : "喜欢图片"} aria-pressed={item.feedback === 1} disabled={busy} onClick={() => like(item)} />

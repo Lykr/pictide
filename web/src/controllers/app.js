@@ -9,7 +9,7 @@ import { parseWorkflowDraft, retainedWorkflowBindings } from './workflow-panel.m
 import { applyArtifactPage, observeArtifactRevision, retentionDays } from './history-controls.mjs';
 import { API_KEY_MASK, apiKeyFields, customWorkflowName } from './settings-controls.mjs';
 import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError, mergeRoamDraft, likedTagsWait, roamGenerationChanged } from './roam-controls.mjs';
-import { generationCount, generationRepetitions, artifactPath } from './generation-controls.mjs';
+import { generationCount, generationRepetitions, artifactPath, matchesLikedTags } from './generation-controls.mjs';
 import { createGalleryCursors, createNextImageWait, roamArtifactPath, roamBoundaryAction, resolveGalleryCursor } from './roam-navigation.mjs';
 import { playbackInterval, createRoamPlayback } from './roam-playback.mjs';
 import { createImmersiveViewer } from './immersive-controls.mjs';
@@ -28,6 +28,8 @@ function selectImage(id, view = state.view) {
 }
 state.likedArtifacts = [];
 state.likedError = "";
+state.likedTags = [];
+let likedFilterVersion = 0;
 state.generatedArtifacts = [];
 state.generatedLoaded = false;
 state.generatedError = '';
@@ -435,7 +437,7 @@ async function feedback(value, toggle = true) {
   renderArtifacts();
   try {
     if (state.view === 'liked' && nextValue === null && !await confirmAction('确定取消喜欢这张图片？取消后将从喜欢页面移除，并受自动清理规则影响。')) return;
-    const result = await api(`/api/artifacts/${encodeURIComponent(artifact.id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value: nextValue }) }); state.feedbackRevision++; observeArtifactRevision(state, result.revision ?? result.artifact_revision); if (artifactRevision === state.artifactRevision) { const delta = Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); state.pages.liked.total += delta; replaceArtifact(result.artifact); } renderArtifacts();
+    const result = await api(`/api/artifacts/${encodeURIComponent(artifact.id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value: nextValue }) }); state.feedbackRevision++; observeArtifactRevision(state, result.revision ?? result.artifact_revision); if (artifactRevision === state.artifactRevision) { const delta = Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); if (matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += delta; replaceArtifact(result.artifact); } renderArtifacts();
   }
   catch (error) { showNotice(error.status === 404 || error.status === 410 ? '图片已清理或不可用，正在刷新列表。' : error.message, true); }
   finally { state.feedbackPending = false; renderArtifacts(); await refresh(true); }
@@ -443,7 +445,7 @@ async function feedback(value, toggle = true) {
 function replaceArtifact(artifact) {
   state.artifacts = state.artifacts.map((item) => item.id === artifact.id ? artifact : item);
   state.generatedArtifacts = state.generatedArtifacts.map((item) => item.id === artifact.id ? artifact : item);
-  if (artifact.feedback === 1) {
+  if (artifact.feedback === 1 && matchesLikedTags(artifact, state.likedTags)) {
     const index = state.likedArtifacts.findIndex((item) => item.id === artifact.id);
     if (index >= 0) state.likedArtifacts[index] = artifact;
     else state.likedArtifacts = [artifact, ...state.likedArtifacts].sort((a,b) => String(b.created_at).localeCompare(String(a.created_at)) || b.id.localeCompare(a.id));
@@ -515,6 +517,7 @@ function renderGeneratedResults() {
 function renderLikedResults() {
   document.dispatchEvent(new CustomEvent('pictide:liked-results', { detail: {
     artifacts: state.likedArtifacts, total: state.pages.liked.total,
+    tags: state.likedTags, filterVersion: likedFilterVersion, revision: state.feedbackRevision + state.artifactRevision,
     hasMore: state.pages.liked.hasMore, loading: !state.pages.liked.loaded && !state.likedError || state.loadingMore,
     error: state.likedError, feedbackPending: state.feedbackPending,
     mutationPending: state.generatedMutationPending, visible: state.view === 'liked', configured: state.backends.length > 0,
@@ -534,7 +537,7 @@ async function feedbackGenerated(id, toggle = true, view = 'generate') {
     const result = await api(`/api/artifacts/${encodeURIComponent(id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value }) });
     state.feedbackRevision++;
     observeArtifactRevision(state, result.revision ?? result.artifact_revision);
-    if (revision === state.artifactRevision) { state.pages.liked.total += Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); replaceArtifact(result.artifact); }
+    if (revision === state.artifactRevision) { if (matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); replaceArtifact(result.artifact); }
   } catch (error) { const message = error.status === 404 || error.status === 410 ? '图片已清理或不可用，正在刷新列表。' : error.message; if (view === 'liked') state.likedError = message; else state.generatedMutationError = message; }
   finally { state.feedbackPending = false; renderArtifacts(); await refresh(true); }
 }
@@ -574,15 +577,18 @@ async function refresh(force = false) {
   const feedbackRevision = state.feedbackRevision;
   const windowVersion = roamVersion;
   const view = pageView();
+  const filterVersion = likedFilterVersion;
   const anchor = galleryCursors.get('feed');
   try {
-    const [jobs, artifacts] = await Promise.all([api('/api/jobs'), api(view === 'feed' ? roamArtifactPath(anchor) : artifactPath(view)), state.view === 'jobs' ? jobPager.load() : Promise.resolve()]);
+    const [jobs, artifacts] = await Promise.all([api('/api/jobs'), api(view === 'feed' ? roamArtifactPath(anchor) : artifactPath(view, null, state.likedTags)), state.view === 'jobs' ? jobPager.load() : Promise.resolve()]);
     state.jobs = jobs.jobs;
     // Multi-round counters must come from the idempotent response, even if jobs
     // already appear in events. Retain the original request for a safe retry.
     for (const [key, request] of uncertainRequests) if (request.payload.repetitions === undefined && state.jobs.some((job) => job.request_id === request.payload.request_id)) uncertainRequests.delete(key);
     if (!state.feedbackPending && !state.generatedMutationPending && feedbackRevision === state.feedbackRevision) {
-      if (view !== 'feed') applyPage(view, artifacts, { replace: !state.pages[view].loaded });
+      if (view !== 'feed') {
+        if (view !== 'liked' || filterVersion === likedFilterVersion) applyPage(view, artifacts, { replace: !state.pages[view].loaded });
+      }
       else if (!roamSwitch && windowVersion === roamVersion && anchor === galleryCursors.get('feed')) {
         const applied = applyPage(view, artifacts, { replace: true });
         if (applied.accepted) {
@@ -597,11 +603,12 @@ async function refresh(force = false) {
       } else if (!roamSwitch) state.refreshQueued = true;
     }
     if (view === 'generate' && !state.generatedMutationPending) { state.generatedLoaded = true; state.generatedError = ''; }
-    if (view === 'liked') state.likedError = '';
+    if (view === 'liked' && filterVersion === likedFilterVersion) state.likedError = '';
     renderJobs(); renderArtifacts();
     if (state.view === 'feed') roamPlayback.retry();
   }
   catch (error) {
+    if (view === 'liked' && filterVersion !== likedFilterVersion) return;
     if (view === 'generate') { state.generatedError = `同步失败：${error.message}`; renderGeneratedResults(); }
     if (view === 'liked') { state.likedError = `同步失败：${error.message}`; renderLikedResults(); }
     if (nextImageWait.current) { nextImageWait.cancel(); roamBlocked = !isTemporaryRefillError(error); renderArtifacts(); }
@@ -614,8 +621,9 @@ async function loadMore() {
   const view = pageView(); const page = state.pages[view]; if (!page.hasMore || !page.cursor) return;
   state.loadingMore = true; const revision = state.feedbackRevision; renderArtifacts();
   const artifactRevision = state.artifactRevision;
-  try { const result = await api(artifactPath(view, page.cursor)); if (!state.feedbackPending && !state.generatedMutationPending && revision === state.feedbackRevision) { const applied = applyPage(view, result, { append: true, requestRevision: artifactRevision }); if (applied.refresh) await refresh(true); } }
-  catch (error) { if (view === 'generate') state.generatedError = `加载失败：${error.message}`; if (view === 'liked') state.likedError = `加载失败：${error.message}`; showNotice(`加载失败：${error.message}`, true); }
+  const filterVersion = likedFilterVersion;
+  try { const result = await api(artifactPath(view, page.cursor, state.likedTags)); if (!state.feedbackPending && !state.generatedMutationPending && revision === state.feedbackRevision && (view !== 'liked' || filterVersion === likedFilterVersion)) { const applied = applyPage(view, result, { append: true, requestRevision: artifactRevision }); if (applied.refresh) await refresh(true); } }
+  catch (error) { if (view === 'liked' && filterVersion !== likedFilterVersion) return; if (view === 'generate') state.generatedError = `加载失败：${error.message}`; if (view === 'liked') state.likedError = `加载失败：${error.message}`; showNotice(`加载失败：${error.message}`, true); }
   finally { state.loadingMore = false; renderArtifacts(); }
 }
 function loadBackend(id) {
@@ -1226,6 +1234,17 @@ document.addEventListener('pictide:generated-refresh', () => { state.generatedMu
 document.addEventListener('pictide:generated-configure', openSettings);
 document.addEventListener('pictide:generated-feedback', event => feedbackGenerated(event.detail.id, event.detail.toggle !== false));
 document.addEventListener('pictide:generated-clear', clearGenerated);
+document.addEventListener('pictide:liked-filter', event => {
+  if (state.feedbackPending || state.generatedMutationPending) return;
+  const tags = [...new Set(event.detail.tags)];
+  if (JSON.stringify(tags) === JSON.stringify(state.likedTags)) return;
+  state.likedTags = tags; likedFilterVersion++;
+  state.likedArtifacts = []; state.likedError = '';
+  state.pages.liked = { hasMore: false, cursor: null, total: 0, loadedMore: false, loaded: false };
+  $('liked-view').scrollTop = 0;
+  renderLikedResults(); refresh(true);
+});
+
 document.addEventListener('pictide:liked-more', () => { if (state.view === 'liked') loadMore(); });
 document.addEventListener('pictide:liked-refresh', () => { state.likedError = ''; refresh(true); });
 document.addEventListener('pictide:liked-feedback', event => feedbackGenerated(event.detail.id, event.detail.toggle !== false, 'liked'));
@@ -1272,6 +1291,11 @@ function connectEvents() {
       const topic = JSON.parse(event.data).topic;
       if (topic === 'roam_settings') loadRoamSettings({ preserveDraft: true });
       if (topic === 'general_settings') syncTheme();
+      if (topic === 'feedback') {
+        state.feedbackRevision++;
+        if (state.likedTags.length) { state.pages.liked.loaded = false; state.pages.liked.loadedMore = false; }
+        renderLikedResults();
+      }
     } catch {}
     refresh(true);
   });

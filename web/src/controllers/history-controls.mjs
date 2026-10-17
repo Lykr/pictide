@@ -44,7 +44,7 @@ export function applyArtifactPage(store, view, result, { append = false, replace
   if (result.counts) {
     if (Number.isSafeInteger(result.counts.roam)) store.pages.feed.total = result.counts.roam;
     else if (Number.isSafeInteger(result.counts.artifacts)) store.pages.feed.total = result.counts.artifacts;
-    if (Number.isSafeInteger(result.counts.liked)) store.pages.liked.total = result.counts.liked;
+    if (!store.likedTags?.length && Number.isSafeInteger(result.counts.liked)) store.pages.liked.total = result.counts.liked;
     if (store.pages.generate && Number.isSafeInteger(result.counts.generate)) store.pages.generate.total = result.counts.generate;
   }
   return { accepted: true, reset, refresh: false };
