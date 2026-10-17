@@ -319,7 +319,6 @@ class PictideApplication:
                 document = await asyncio.to_thread(self.roam.save_options, payload.get("liked_tags_only"),
                                                    payload.get("playback_interval_seconds"), payload.get("prompt_mode"))
                 self.events.publish("roam_settings")
-                self.events.publish("jobs")
             else:
                 if "prefetch_count" not in payload:
                     raise ValidationError("请填写漫游预取数量。")
@@ -341,7 +340,6 @@ class PictideApplication:
                                                    payload.get("playback_interval_seconds"), payload.get("liked_tags_only"), payload.get("prompt_mode"))
                 await self.clean_history(force=True, roam_only=True)
                 self.events.publish("roam_settings")
-                self.events.publish("jobs")
             state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
             return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode")} | {
                 "artifact_revision": await asyncio.to_thread(self.storage.artifact_revision),

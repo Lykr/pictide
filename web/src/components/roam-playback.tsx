@@ -52,8 +52,8 @@ export function RoamSettingsChoices() {
     return () => document.removeEventListener("pictide:roam-settings-draft", receive);
   }, []);
   return <>
-    <input id="roam-liked-tags-only" type="checkbox" aria-hidden="true" hidden />
-    <input id="roam-prompt-mode" type="hidden" defaultValue="random" />
+    <input id="roam-liked-tags-only" type="checkbox" aria-hidden="true" hidden checked={value.liked_tags_only} readOnly />
+    <input id="roam-prompt-mode" type="hidden" value={value.prompt_mode} readOnly />
     <RoamChoices value={value} onChange={patch => {
       const next = { ...value, ...patch }; setValue(next);
       (document.getElementById("roam-liked-tags-only") as HTMLInputElement).checked = next.liked_tags_only;
