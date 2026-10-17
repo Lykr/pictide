@@ -8,7 +8,7 @@ import { editableNodeInputs, changeNodeInput, workflowSaveFields } from './workf
 import { parseWorkflowDraft, retainedWorkflowBindings } from './workflow-panel.mjs';
 import { applyArtifactPage, observeArtifactRevision, retentionDays } from './history-controls.mjs';
 import { API_KEY_MASK, apiKeyFields, customWorkflowName } from './settings-controls.mjs';
-import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError, mergeRoamDraft, likedTagsWait } from './roam-controls.mjs';
+import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError, mergeRoamDraft, likedTagsWait, roamGenerationChanged } from './roam-controls.mjs';
 import { generationCount, generationRepetitions, artifactPath } from './generation-controls.mjs';
 import { createGalleryCursors, createNextImageWait, roamArtifactPath, roamBoundaryAction, resolveGalleryCursor } from './roam-navigation.mjs';
 import { playbackInterval, createRoamPlayback } from './roam-playback.mjs';
@@ -21,9 +21,10 @@ const galleryCursors = createGalleryCursors();
 const nextImageWait = createNextImageWait();
 Object.defineProperty(state, 'activeId', { get: () => galleryCursors.get(state.view), set: id => selectImage(id) });
 let roamWindowLoading = false, roamBlocked = false, viewRevision = 0;
+let roamViewPending = Promise.resolve();
 function selectImage(id, view = state.view) {
   const record = galleryCursors.select(view, id);
-  if (record) api('/api/roam/view', { method: 'PUT', keepalive: true, body: JSON.stringify(record) }).catch(error => showNotice(`观看位置保存失败：${error.message}`, true));
+  if (record) roamViewPending = api('/api/roam/view', { method: 'PUT', keepalive: true, body: JSON.stringify(record) }).catch(error => showNotice(`观看位置保存失败：${error.message}`, true));
 }
 state.likedArtifacts = [];
 state.likedError = "";
@@ -61,10 +62,11 @@ let availabilityRevision = 0;
 let availabilitySignature = '';
 let hasSavedApiKey = false;
 let roamSettingsLoaded = false, roamSettingsLoading = false;
-let roamSettings = { prefetch_count: 0, max_history_images: 0, backend_id: '', preset_id: '', liked_tags_only: false, playback_interval_seconds: 5 };
+let roamSettings = { prefetch_count: 0, max_history_images: 0, backend_id: '', preset_id: '', liked_tags_only: false, prompt_mode: 'random', playback_interval_seconds: 5 };
 let roamError = '';
 let roamAnchorRetried = false;
 let roamPageActive = true, roamVersion = 0;
+let roamSettingsSaving = false, roamSwitch = null;
 const roamPlayback = createRoamPlayback({
   advance: current => moveImage('newer', current),
   changed: detail => document.dispatchEvent(new CustomEvent('pictide:roam-playback-state', { detail })),
@@ -75,9 +77,9 @@ function syncRoamPlayback(artifact = null) {
   roamPlayback.update({ imageId: artifact?.id || null,
     ready: !!artifact && state.currentImage === artifact.id && image.complete && image.naturalWidth > 0 && $('image-error').hidden,
     active: state.view === 'feed' && roamPageActive && !document.hidden,
-    busy: !!nextImageWait.current || roamWindowLoading || state.feedbackPending,
+    busy: !!nextImageWait.current || roamWindowLoading || !!roamSwitch || state.feedbackPending,
     // A paused generator must not disable playback of already saved pictures.
-    blocked: !$('image-error').hidden,
+    blocked: !!roamSwitch || !$('image-error').hidden,
   });
 }
 function publishPlaybackInterval(settings) {
@@ -91,7 +93,7 @@ const immersive = createImmersiveViewer({
   changed: () => document.dispatchEvent(new Event('pictide:roam-options-close')),
 });
 const refillRoam = createRefillCoordinator({
-  active: () => galleryCursors.ready && roamPageActive && roamSettingsLoaded && !roamBlocked && (roamSettings.prefetch_count > 0 || !!nextImageWait.current) && state.view === 'feed' && !document.hidden,
+  active: () => galleryCursors.ready && roamPageActive && roamSettingsLoaded && !roamSwitch && !roamBlocked && (roamSettings.prefetch_count > 0 || !!nextImageWait.current) && state.view === 'feed' && !document.hidden,
   version: () => `${roamVersion}:${nextImageWait.current?.token || 0}`,
   anchor: () => state.activeId || null,
   request: anchor_id => api('/api/roam/ensure', { method: 'POST', body: JSON.stringify({ anchor_id, demand: !!nextImageWait.current }) }),
@@ -105,7 +107,7 @@ const refillRoam = createRefillCoordinator({
     } else {
       if (likedTagsWait(result, !!nextImageWait.current)) {
         roamBlocked = false; nextImageWait.cancel(); roamPlayback.pause(); renderArtifacts();
-        showNotice('喜欢图片中暂无可用标签，请先喜欢图片或关闭此开关');
+        showNotice('喜欢图片中暂无可用标签，请先喜欢图片或将偏好范围设为全部');
         return;
       }
       clearRoamError();
@@ -343,7 +345,7 @@ function renderArtifacts() {
   const selection = resolveGalleryCursor(items, state.activeId, page.loaded);
   if (selection.loading) { renderGalleryLoading(); return; }
   const roam = state.view === 'feed';
-  const waiting = roam && (!!nextImageWait.current || roamWindowLoading);
+  const waiting = roam && (!!nextImageWait.current || roamWindowLoading || !!roamSwitch);
   $('load-more').hidden = roam || !page.hasMore;
   $('load-more').disabled = state.loadingMore || state.feedbackPending;
   $('load-more').textContent = state.loadingMore ? '加载中…' : '更早图片';
@@ -376,7 +378,7 @@ function renderArtifacts() {
   $('dislike').setAttribute('aria-pressed', String(artifact.feedback === -1));
   describeAction($('dislike'), artifact.feedback === -1 ? '已不喜欢，点击撤回' : '不喜欢 · ↓');
   $('like').disabled = state.feedbackPending; $('dislike').disabled = state.feedbackPending;
-  $('previous').disabled = (index >= items.length - 1 && !page.hasMore) || state.feedbackPending || roamWindowLoading;
+  $('previous').disabled = (index >= items.length - 1 && !page.hasMore) || state.feedbackPending || roamWindowLoading || !!roamSwitch;
   $('next').disabled = (!roam && index <= 0) || state.feedbackPending || waiting;
   syncRoamPlayback(artifact);
 }
@@ -385,13 +387,13 @@ function advanceWaitingImage() {
   if (next) selectImage(next);
 }
 function requestNextRoamImage() {
-  if (!galleryCursors.ready || nextImageWait.current || state.view !== 'feed') return;
+  if (!galleryCursors.ready || roamSwitch || nextImageWait.current || state.view !== 'feed') return;
   if (!state.backends.length) { roamPlayback.pause(); showNotice('请先在设置中配置生图后端。', true); return; }
   clearRoamError();
   nextImageWait.begin(state.activeId); renderArtifacts(); refillRoam();
 }
 async function moveImage(direction, automatic = null) {
-  if (state.feedbackPending || !galleryCursors.ready || roamWindowLoading) return;
+  if (state.feedbackPending || !galleryCursors.ready || roamWindowLoading || roamSwitch) return;
   if (automatic && !automatic()) return;
   if (!automatic && state.view === 'feed') roamPlayback.restart();
   if (!state.pages[pageView()].loaded) { refresh(true); return; }
@@ -570,6 +572,7 @@ async function refresh(force = false) {
   if (document.hidden && !force || state.polling) { if (force) state.refreshQueued = true; return; }
   state.polling = true;
   const feedbackRevision = state.feedbackRevision;
+  const windowVersion = roamVersion;
   const view = pageView();
   const anchor = galleryCursors.get('feed');
   try {
@@ -580,7 +583,7 @@ async function refresh(force = false) {
     for (const [key, request] of uncertainRequests) if (request.payload.repetitions === undefined && state.jobs.some((job) => job.request_id === request.payload.request_id)) uncertainRequests.delete(key);
     if (!state.feedbackPending && !state.generatedMutationPending && feedbackRevision === state.feedbackRevision) {
       if (view !== 'feed') applyPage(view, artifacts, { replace: !state.pages[view].loaded });
-      else if (anchor === galleryCursors.get('feed')) {
+      else if (!roamSwitch && windowVersion === roamVersion && anchor === galleryCursors.get('feed')) {
         const applied = applyPage(view, artifacts, { replace: true });
         if (applied.accepted) {
           if (anchor && !state.artifacts.some(item => item.id === anchor) && artifacts.anchor_id !== undefined) {
@@ -591,7 +594,7 @@ async function refresh(force = false) {
         } else {
           state.refreshQueued = true;
         }
-      } else state.refreshQueued = true;
+      } else if (!roamSwitch) state.refreshQueued = true;
     }
     if (view === 'generate' && !state.generatedMutationPending) { state.generatedLoaded = true; state.generatedError = ''; }
     if (view === 'liked') state.likedError = '';
@@ -864,13 +867,29 @@ async function loadRoamConfigs() {
 const roamFields = {
   prefetch_count: 'roam-prefetch-count', max_history_images: 'roam-max-history-images',
   backend_id: 'roam-backend', preset_id: 'roam-config',
-  playback_interval_seconds: 'roam-playback-interval', liked_tags_only: 'roam-liked-tags-only',
+  playback_interval_seconds: 'roam-playback-interval', liked_tags_only: 'roam-liked-tags-only', prompt_mode: 'roam-prompt-mode',
 };
 function roamDraftDirty() {
   return Object.entries(roamFields).some(([key, id]) => String(key === 'liked_tags_only' ? $(id).checked : $(id).value) !== String(roamSettings[key]));
 }
-function applyRoamSettings(settings, savedFields = []) {
-  const next = { ...settings, prefetch_count: prefetchCount(settings.prefetch_count), max_history_images: maxHistoryImages(settings.max_history_images ?? 0), liked_tags_only: !!settings.liked_tags_only, playback_interval_seconds: settings.playback_interval_seconds ?? 5 };
+function beginRoamSwitch() {
+  if (roamSwitch) return;
+  roamSwitch = { resume: roamPlayback.playing, view: viewRevision };
+  roamVersion++; viewRevision++;
+  roamSwitch.view = viewRevision;
+  roamPlayback.pause(); nextImageWait.cancel(); roamWindowLoading = false;
+  renderArtifacts();
+}
+function finishRoamSwitch() {
+  const transition = roamSwitch; roamSwitch = null;
+  renderArtifacts();
+  if (transition?.resume && transition.view === viewRevision && state.view === 'feed' && !document.hidden && !roamBlocked && !roamPlayback.playing) roamPlayback.toggle();
+  refillRoam();
+}
+async function applyRoamSettings(settings, savedFields = []) {
+  const next = { ...settings, prefetch_count: prefetchCount(settings.prefetch_count), max_history_images: maxHistoryImages(settings.max_history_images ?? 0), liked_tags_only: !!settings.liked_tags_only, prompt_mode: settings.prompt_mode ?? 'random', playback_interval_seconds: settings.playback_interval_seconds ?? 5 };
+  const switched = roamSettingsLoaded && roamGenerationChanged(roamSettings, next);
+  if (switched) beginRoamSwitch();
   const draft = Object.fromEntries(Object.entries(roamFields).map(([key, id]) => [key, key === 'liked_tags_only' ? $(id).checked : $(id).value]));
   const merged = mergeRoamDraft(roamSettings, next, draft, savedFields);
   for (const key of ['backend_id', 'preset_id']) {
@@ -881,31 +900,66 @@ function applyRoamSettings(settings, savedFields = []) {
     if (key === 'liked_tags_only') $(id).checked = merged[key];
     else $(id).value = String(merged[key] ?? '');
   }
+  document.dispatchEvent(new CustomEvent('pictide:roam-settings-draft', { detail: merged }));
   roamSettings = next; roamSettingsLoaded = true; roamVersion++;
   publishPlaybackInterval(next);
   if (settings.paused) { roamBlocked = true; roamPlayback.pause(); } else clearRoamError();
   roamAnchorRetried = false;
-  if (observeArtifactRevision(state, settings.artifact_revision) || state.view === 'feed') renderArtifacts();
-  refillRoam();
+  const current = state.artifacts.find(item => item.id === galleryCursors.get('feed'));
+  const reset = observeArtifactRevision(state, settings.artifact_revision);
+  if (roamSwitch) {
+    // Keep the current picture visible while reading the new window. No old
+    // request may merge its future images after this settings transition.
+    if (reset) { state.artifacts = current ? [current] : []; state.pages.feed.loaded = true; state.currentImage = current?.id || null; }
+    const version = roamVersion, anchor = galleryCursors.get('feed');
+    try {
+      const window = await api(roamArtifactPath(anchor));
+      if (version === roamVersion) {
+        const applied = applyPage('feed', window, { replace: true });
+        if (applied.accepted && anchor && !state.artifacts.some(item => item.id === anchor) && window.anchor_id !== undefined) selectImage(window.anchor_id, 'feed');
+      }
+    } finally { finishRoamSwitch(); }
+  } else {
+    if (reset || state.view === 'feed') renderArtifacts();
+    if (reset) await refresh(true);
+    refillRoam();
+  }
 }
 async function loadRoamSettings({ preserveDraft = false } = {}) {
-  if (roamSettingsLoading) return;
+  if (roamSettingsLoading || roamSettingsSaving) return;
   roamSettingsLoading = true;
+  const version = roamVersion;
   try {
     const settings = await api('/api/settings/roam');
-    applyRoamSettings(settings, preserveDraft ? [] : Object.keys(roamFields));
+    if (roamSettingsSaving || version !== roamVersion) return;
+    await applyRoamSettings(settings, preserveDraft ? [] : Object.keys(roamFields));
     renderRoamBackends(); await loadRoamConfigs();
   } catch (error) { inlineStatus('roam-result', `设置读取失败：${error.message}`); }
   finally { roamSettingsLoading = false; }
 }
-document.addEventListener('pictide:roam-settings-saved', event => applyRoamSettings(event.detail.settings, event.detail.fields));
+async function saveRoamSettings(patch) {
+  if (roamSettingsSaving) throw new Error('正在保存漫游设置，请稍候。');
+  roamSettingsSaving = true;
+  const switched = roamGenerationChanged(roamSettings, { ...roamSettings, ...patch });
+  if (switched) beginRoamSwitch();
+  try {
+    if (switched) await roamViewPending; // Store clears the window after the persisted current picture.
+    const result = await api('/api/settings/roam', { method: 'PUT', body: JSON.stringify(patch) });
+    await applyRoamSettings(result, Object.keys(patch));
+    return result;
+  } catch (error) { if (roamSwitch) finishRoamSwitch(); throw error; }
+  finally { roamSettingsSaving = false; }
+}
+document.addEventListener('pictide:roam-settings-save', event => {
+  const { patch, resolve, reject } = event.detail;
+  saveRoamSettings(patch).then(resolve, reject);
+});
 $('roam-form').addEventListener('submit', async event => {
   event.preventDefault(); if ($('roam-save').disabled) return;
   $('roam-save').disabled = true; $('roam-fields').disabled = true;
   try {
-    const payload = { prefetch_count: prefetchCount($('roam-prefetch-count').value), max_history_images: maxHistoryImages($('roam-max-history-images').value), backend_id: $('roam-backend').value, preset_id: $('roam-config').value, playback_interval_seconds: playbackInterval($('roam-playback-interval').value), liked_tags_only: $('roam-liked-tags-only').checked };
-    const result = await api('/api/settings/roam', { method: 'PUT', body: JSON.stringify(payload) });
-    applyRoamSettings(result, Object.keys(roamFields));
+    const payload = { prefetch_count: prefetchCount($('roam-prefetch-count').value), max_history_images: maxHistoryImages($('roam-max-history-images').value), backend_id: $('roam-backend').value, preset_id: $('roam-config').value, playback_interval_seconds: playbackInterval($('roam-playback-interval').value), liked_tags_only: $('roam-liked-tags-only').checked, prompt_mode: $('roam-prompt-mode').value };
+    await saveRoamSettings(payload);
     inlineStatus('roam-result', '已保存漫游设置。');
     await refresh(true);
   } catch (error) { inlineStatus('roam-result', error.message); }
@@ -919,6 +973,7 @@ async function bootstrap() {
     state.pages.feed.loaded = true; state.pages.feed.total = data.counts?.roam ?? state.artifacts.length; state.pages.feed.hasMore = data.artifact_page?.has_more ?? state.pages.feed.total > state.artifacts.length; state.pages.feed.hasNewer = !!data.artifact_page?.has_newer; state.pages.feed.cursor = data.artifact_page?.next_cursor ?? state.artifacts.at(-1)?.id ?? null; state.pages.liked.total = data.counts?.liked ?? 0; state.pages.generate.total = data.counts?.generate ?? 0;
     if (data.backend_types?.length) $('backend-kind').replaceChildren(...data.backend_types.map((type) => option(type.kind, type.label)));
     renderBackends(); renderJobs(); renderArtifacts();
+    if (data.roam_settings) await applyRoamSettings(data.roam_settings, Object.keys(roamFields));
     if (state.view === 'jobs') jobPager.load();
     $('data-directory').textContent = state.dataDirectory || '服务尚未返回数据目录';
     $('database-path').textContent = state.databasePath || '服务尚未返回数据库路径';

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError, mergeRoamDraft, likedTagsWait } from '../web/src/controllers/roam-controls.mjs';
+import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError, mergeRoamDraft, likedTagsWait, roamGenerationChanged } from '../web/src/controllers/roam-controls.mjs';
 
 test('prefetch counts accept disabled or bounded integer targets', () => {
   for (const value of [0, '0', 3, '20']) assert.equal(prefetchCount(value), Number(value));
@@ -87,4 +87,20 @@ test('empty liked pool only stops an actual next-image wait with no ready pictur
   assert.equal(likedTagsWait({ waiting_for_liked_tags: true, ready: 0 }, false), false);
   assert.equal(likedTagsWait({ waiting_for_liked_tags: true, ready: 2 }, true), false);
   assert.equal(likedTagsWait({ ready: 0 }, true), false);
+});
+
+
+test('only prompt-affecting options invalidate the prefetched window', () => {
+  const previous = { liked_tags_only: false, prompt_mode: 'random', backend_id: 'a', preset_id: 'one', playback_interval_seconds: 5, prefetch_count: 2 };
+  for (const patch of [{ prompt_mode: 'along' }, { prompt_mode: 'stay' }, { liked_tags_only: true }, { backend_id: 'b' }, { preset_id: 'two' }]) {
+    assert.equal(roamGenerationChanged(previous, { ...previous, ...patch }), true);
+  }
+  assert.equal(roamGenerationChanged(previous, { ...previous, playback_interval_seconds: 10, prefetch_count: 4 }), false);
+});
+
+test('saved mode synchronizes without overwriting an unrelated scope draft', () => {
+  const previous = { prompt_mode: 'random', liked_tags_only: false, prefetch_count: 0 };
+  const saved = { prompt_mode: 'stay', liked_tags_only: false, prefetch_count: 0 };
+  const draft = { prompt_mode: 'random', liked_tags_only: true, prefetch_count: '3' };
+  assert.deepEqual(mergeRoamDraft(previous, saved, draft, ['prompt_mode']), { prompt_mode: 'stay', liked_tags_only: true, prefetch_count: '3' });
 });

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pause, Play, Settings2 } from "lucide-react";
-import { IconButton } from "./actions";
+import { IconButton, HelpTip } from "./actions";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
 import { Label } from "./ui/label";
-import { Checkbox } from "./ui/checkbox";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { playbackInterval } from "../controllers/roam-playback.mjs";
 
@@ -23,13 +23,51 @@ export function RoamPlaybackButton({ menu = false }: { menu?: boolean }) {
   return <IconButton id={menu ? "roam-options-playback" : "roam-playback"} icon={state.playing ? Pause : Play} label={label} aria-pressed={state.playing} disabled={!state.canPlay} onClick={() => document.dispatchEvent(new Event("pictide:roam-playback-toggle"))} />;
 }
 
-type RoamSettings = { playback_interval_seconds: number; liked_tags_only: boolean };
+type PromptMode = "random" | "along" | "stay";
+type RoamSettings = { playback_interval_seconds: number; liked_tags_only: boolean; prompt_mode: PromptMode };
+type ModeChoices = { liked_tags_only: boolean; prompt_mode: PromptMode };
+function RoamChoices({ value, disabled = false, onChange, compact = false }: {
+  value: ModeChoices; disabled?: boolean; onChange: (patch: Partial<ModeChoices>) => void; compact?: boolean;
+}) {
+  return <div className={compact ? "grid gap-1" : "grid gap-4 sm:grid-cols-2"}>
+    <div className={compact ? "flex min-h-8 items-center justify-between gap-2" : "grid content-start gap-2"}>
+      <span className="field-caption whitespace-nowrap">偏好范围<HelpTip text={value.prompt_mode === "stay" ? "驻足保持当前提示词，暂不重新抽取；范围选择会保留。" : "全部：从完整词库抽取；喜欢：仅从喜欢图片的标签中抽取。固定词与 PMI 条件保持。"} /></span>
+      <ToggleGroup type="single" size="sm" value={value.liked_tags_only ? "liked" : "all"} disabled={disabled || value.prompt_mode === "stay"} aria-label="偏好范围" onValueChange={next => { if (next) onChange({ liked_tags_only: next === "liked" }); }}>
+        <ToggleGroupItem value="all" aria-label="全部">全部</ToggleGroupItem><ToggleGroupItem value="liked" aria-label="喜欢">喜欢</ToggleGroupItem>
+      </ToggleGroup>
+    </div>
+    <div className={compact ? "flex min-h-8 items-center justify-between gap-2" : "grid content-start gap-2"}>
+      <span className="field-caption whitespace-nowrap">漫游方式<HelpTip text="随心：每张重新抽取；沿途：从当前组合逐步变化，变化预算取自所选候选预设；驻足：保持整组提示词，图像种子仍随机。切换后保留当前图，重新准备后续图片。" /></span>
+      <ToggleGroup type="single" size="sm" value={value.prompt_mode} disabled={disabled} aria-label="漫游方式" onValueChange={next => { if (next) onChange({ prompt_mode: next as PromptMode }); }}>
+        <ToggleGroupItem value="random" aria-label="随心">随心</ToggleGroupItem><ToggleGroupItem value="along" aria-label="沿途">沿途</ToggleGroupItem><ToggleGroupItem value="stay" aria-label="驻足">驻足</ToggleGroupItem>
+      </ToggleGroup>
+    </div>
+  </div>;
+}
+export function RoamSettingsChoices() {
+  const [value, setValue] = useState<ModeChoices>({ liked_tags_only: false, prompt_mode: "random" });
+  useEffect(() => {
+    const receive = (event: Event) => setValue((event as CustomEvent<ModeChoices>).detail);
+    document.addEventListener("pictide:roam-settings-draft", receive);
+    return () => document.removeEventListener("pictide:roam-settings-draft", receive);
+  }, []);
+  return <>
+    <input id="roam-liked-tags-only" type="checkbox" aria-hidden="true" hidden />
+    <input id="roam-prompt-mode" type="hidden" defaultValue="random" />
+    <RoamChoices value={value} onChange={patch => {
+      const next = { ...value, ...patch }; setValue(next);
+      (document.getElementById("roam-liked-tags-only") as HTMLInputElement).checked = next.liked_tags_only;
+      const mode = document.getElementById("roam-prompt-mode") as HTMLInputElement; mode.value = next.prompt_mode;
+      mode.dispatchEvent(new Event("change", { bubbles: true }));
+    }} />
+  </>;
+}
 export function RoamOptions({ privacy, immersive }: { privacy: ReactNode; immersive: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const [settings, setSettings] = useState<RoamSettings>({ playback_interval_seconds: 5, liked_tags_only: false });
+  const [settings, setSettings] = useState<RoamSettings>({ playback_interval_seconds: 5, liked_tags_only: false, prompt_mode: "random" });
   const [ready, setReady] = useState(false);
   const [draft, setDraft] = useState("5");
-  const [saving, setSaving] = useState({ interval: false, liked: false });
+  const [saving, setSaving] = useState({ interval: false, choices: false });
   const intervalPending = useRef(false);
   const [error, setError] = useState("");
   const dirty = useRef(false);
@@ -47,18 +85,15 @@ export function RoamOptions({ privacy, immersive }: { privacy: ReactNode; immers
       document.removeEventListener("pictide:roam-options-close", close);
     };
   }, []);
-  const save = async (kind: "interval" | "liked", liked?: boolean) => {
+  const save = async (kind: "interval" | "choices", choices?: Partial<ModeChoices>) => {
     if (kind === "interval" && (!ready || !dirty.current || intervalPending.current)) return;
     setError("");
     try {
-      const patch = kind === "interval" ? { playback_interval_seconds: playbackInterval(draft) } : { liked_tags_only: liked };
+      const patch = kind === "interval" ? { playback_interval_seconds: playbackInterval(draft) } : choices;
       if (kind === "interval") intervalPending.current = true;
       setSaving(value => ({ ...value, [kind]: true }));
-      const response = await fetch("/api/settings/roam", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `请求失败（${response.status}）`);
+      const data = await new Promise<RoamSettings>((resolve, reject) => document.dispatchEvent(new CustomEvent("pictide:roam-settings-save", { detail: { patch, resolve, reject } })));
       if (kind === "interval") { dirty.current = false; setDraft(String(data.playback_interval_seconds)); }
-      document.dispatchEvent(new CustomEvent("pictide:roam-settings-saved", { detail: { settings: data, fields: Object.keys(patch) } }));
     } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
     finally {
       if (kind === "interval") intervalPending.current = false;
@@ -70,7 +105,7 @@ export function RoamOptions({ privacy, immersive }: { privacy: ReactNode; immers
     if (next) { dirty.current = false; setDraft(String(settings.playback_interval_seconds)); setError(""); }
   }}>
     <PopoverTrigger asChild><IconButton id="roam-options" icon={Settings2} label="漫游选项" /></PopoverTrigger>
-    <PopoverContent forceMount hidden={!open} align="end" className="w-64 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
+    <PopoverContent forceMount hidden={!open} align="end" className="w-72 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
       <div className="grid grid-cols-[minmax(0,1fr)_2rem] items-center gap-x-2 gap-y-1">
         <form className="col-span-2 grid grid-cols-[minmax(0,1fr)_5.5rem_2rem] items-center gap-2" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
           <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap font-normal">自动播放</Label>
@@ -80,10 +115,7 @@ export function RoamOptions({ privacy, immersive }: { privacy: ReactNode; immers
           </InputGroup>
           <RoamPlaybackButton menu />
         </form>
-        <Label htmlFor="roam-options-liked-tags" className="col-span-2 mb-0! grid grid-cols-subgrid items-center font-normal">
-          <span data-tooltip="仅从喜欢图片中抽取标签；固定词保持不变。">仅用喜欢标签</span>
-          <span className="flex size-8 items-center justify-center"><Checkbox id="roam-options-liked-tags" checked={settings.liked_tags_only} disabled={!ready || saving.liked} onCheckedChange={value => void save("liked", value === true)} /></span>
-        </Label>
+        <div className="col-span-2"><RoamChoices compact value={settings} disabled={!ready || saving.choices} onChange={patch => void save("choices", patch)} /></div>
         <span>毛玻璃</span>{privacy}
         <span>沉浸模式</span>{immersive}
       </div>
