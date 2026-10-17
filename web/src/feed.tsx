@@ -279,7 +279,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <Label htmlFor="roam-config"><span className="field-caption">候选预设<HelpTip text="候选模块提供完整提示词组合，推荐根据有效点赞评分；模型不可用时使用默认候选。图像种子随机。" /></span><NativeSelect id="roam-config"><option value="">自动选择预设</option></NativeSelect></Label>
 </div>
 <div className="form-grid">
-<Label htmlFor="roam-playback-interval"><span className="field-caption">每张展示（秒）<HelpTip text="自动播放时每张图片的展示时间；下一张未生成完成时等待，范围 1–600 秒。" /></span><Input id="roam-playback-interval" type="number" min="1" max="600" step="1" defaultValue="5" required /></Label>
+<Label htmlFor="roam-playback-interval"><span className="field-caption">自动播放间隔（秒）<HelpTip text="自动播放时每张图片的展示时间；下一张未生成完成时等待，范围 1–600 秒。" /></span><Input id="roam-playback-interval" type="number" min="1" max="600" step="1" defaultValue="5" required /></Label>
 <Label className="checkbox-label self-center"><input id="roam-liked-tags-only" type="checkbox" />仅从喜欢图片中抽取标签<HelpTip text="只限制随机抽取的正向标签，固定词照常输出；没有可用标签时等待，不回退全词库。" /></Label>
 </div>
 </fieldset>
