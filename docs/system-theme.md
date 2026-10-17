@@ -23,3 +23,5 @@ GET/PUT /api/settings/general 的 theme 从 light | dark 扩展为 system | ligh
 ## 实施验证
 
 2 个 HTTP 冒烟、1 个系统外观事件冒烟、前端类型检查与构建通过。隔离浏览器确认默认选中跟随系统、黑白切换、SSE 跨页面同步、刷新保留，以及模拟保存失败回退 system；未提交生图任务。
+
+已发布至主目录并重启 8189；备份位于 `data/backups/system-theme-20261017-151450/`，验证证据在同名 `data/verification/`。发布后 20 张表原有记录一致，正式页面保留已有黑色选择。
