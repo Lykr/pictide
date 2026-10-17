@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, Settings2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { IconButton, HelpTip } from "./actions";
@@ -73,7 +73,7 @@ export function RoamSettingsChoices() {
     }} />
   </>;
 }
-export function RoamOptions({ privacy, immersive }: { privacy: ReactNode; immersive: ReactNode }) {
+export function RoamOptions() {
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState<RoamSettings>({ playback_interval_seconds: 5, liked_tags_only: false, prompt_mode: "random" });
   const [ready, setReady] = useState(false);
@@ -127,8 +127,6 @@ export function RoamOptions({ privacy, immersive }: { privacy: ReactNode; immers
           <RoamPlaybackButton menu visible={open} />
         </form>
         <div className="col-span-2"><RoamChoices compact value={settings} disabled={!ready || saving.choices} onChange={patch => void save("choices", patch)} /></div>
-        <span>毛玻璃</span>{privacy}
-        <span>沉浸模式</span>{immersive}
       </div>
       {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
     </PopoverContent>
