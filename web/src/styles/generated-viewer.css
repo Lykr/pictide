@@ -26,9 +26,7 @@
 .generated-viewer-details[hidden], .generated-viewer-toolbar [hidden] { display: none; }
 .generated-viewer-liked svg { fill: currentColor; }
 .generated-viewer-error { z-index: 4; padding: 8px 12px; color: var(--destructive); background: var(--card); font-size: 13px; overflow-wrap: anywhere; }
-.generated-viewer-info { z-index: 1100; width: min(420px, calc(100vw - 32px)); max-height: min(500px, 65dvh); overflow-y: auto; }
-.generated-viewer-info h3 { color: var(--muted-foreground); font-size: 12px; margin-bottom: 4px; }
-.generated-viewer-info pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; user-select: text; }
+.generated-viewer-info { z-index: 1100; }
 .generated-viewer.image-card.immersive {
   position: fixed;
   inset: 0;

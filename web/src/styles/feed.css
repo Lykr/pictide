@@ -44,10 +44,6 @@
 .feed-page .image-navigation { display: flex; align-items: center; justify-content: center; gap: 4px; grid-column: 2; }
 .feed-page .image-info { display: flex; align-items: center; gap: 4px; grid-column: 3; justify-self: end; }
 .feed-page .roam-active .image-meta { display: none; }
-.image-info-popover[data-slot=popover-content] { width: min(480px, calc(100vw - 32px)); max-height: 70dvh; overflow-y: auto; gap: 12px; }
-.image-info-popover h3 { font-size: 12px; color: var(--muted-foreground); }
-.image-info-popover pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.6 var(--font-mono); }
-.image-info-popover .label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .feed-page .feedback[aria-pressed=true]:not(:where(.editor-page, .editor-page *)) { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
 .feed-page .prompt-details:not(:where(.editor-page, .editor-page *)) { border-top: 1px solid var(--border); }
 .feed-page summary:not(:where(.editor-page, .editor-page *)) { padding: 12px 16px; font-size: 13px; color: var(--muted-foreground); }
