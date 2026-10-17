@@ -118,7 +118,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="generation-form-panel">
 {"\n      "}<div className="compose-heading">
 <h2>{"图像生成"}</h2>
-<HelpTip text="任务提交后由后端继续执行，关闭网页不会取消任务。" />
 </div>
 {"\n      "}<form id="generate-form">
 {"\n        "}<Label>{"后端"}<NativeSelect id="generate-backend" required size="sm">
@@ -152,7 +151,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
     </div>
     <div className="rule-field">
       <Label htmlFor="rule-seed-control--control">种子生成后</Label>
-      <NativeSelect id="rule-seed-control" aria-label="种子生成后">
+      <NativeSelect id="rule-seed-control" aria-label="种子生成后" data-tooltip="每轮抽取后更新提示词种子，供下一轮使用。">
         <option value="fixed">固定</option><option value="increment">递增</option><option value="decrement">递减</option><option value="randomize">随机</option>
       </NativeSelect>
     </div>
@@ -164,17 +163,17 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
     </div>
     <div className="rule-field">
       <Label htmlFor="sequence-control--control">帧序号生成后</Label>
-      <NativeSelect id="sequence-control" aria-label="帧序号生成后">
+      <NativeSelect id="sequence-control" aria-label="帧序号生成后" data-tooltip="每轮抽取后更新帧序号；递增可衔接下一帧。">
         <option value="increment">递增</option><option value="fixed">固定</option><option value="decrement">递减</option><option value="randomize">随机</option>
       </NativeSelect>
     </div>
   </fieldset>
   <details className="rule-advanced">
     <summary>搜索设置</summary>
-    <div className="rule-field"><Label htmlFor="rule-max-steps"><span className="field-caption">搜索上限<HelpTip text="所有模式共用，限制寻找满足共现门槛的组合的搜索步数。" /></span></Label><Input id="rule-max-steps" type="number" min="1" max="1000000" step="1" required defaultValue="100" /></div>
+    <div className="rule-field"><Label htmlFor="rule-max-steps"><span className="field-caption">搜索上限<HelpTip text="限制共现搜索步数，适用于所有抽取模式。" /></span></Label><Input id="rule-max-steps" type="number" min="1" max="1000000" step="1" required defaultValue="100" /></div>
   </details>
   <div className="rule-actions">
-    <Label className="checkbox-label auto-prompts"><input id="auto-prompts" type="checkbox" defaultChecked />生图前自动抽取<HelpTip text="手动编辑提示词会关闭自动抽取，下次生图使用当前文本。重新勾选即可恢复。" /></Label>
+    <Label className="checkbox-label auto-prompts"><input id="auto-prompts" type="checkbox" defaultChecked />生图前自动抽取<HelpTip text="开启后每轮重新抽取提示词；手动编辑会关闭此项，改用当前文本。" /></Label>
     <Button id="generate-prompts" type="button" variant="secondary" size="sm"><Sparkles aria-hidden="true" />抽取提示词</Button>
   </div>
   <p id="rule-generation-note" className="hint" role="status" hidden />
@@ -187,14 +186,14 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </Textarea>
 <small id="negative-binding-note" hidden>{"当前后端未绑定负向输入，请保持为空，或在后端设置中绑定。"}</small>
 </Label>
-{"\n        "}<div className="generation-plan-fields"><Label><span className="field-caption">{"图像种子"}<HelpTip id="seed-note" text="-1 为随机，每次使用的实际种子会保留。" /></span><Input id="seed" type="number" min="-1" max="9007199254740991" step="1" defaultValue="-1" />
+{"\n        "}<div className="generation-plan-fields"><Label><span className="field-caption">{"图像种子"}<HelpTip id="seed-note" text="-1 每个任务随机；非负值按任务递增，跨轮延续。实际种子随图片保存。" /></span><Input id="seed" type="number" min="-1" max="9007199254740991" step="1" defaultValue="-1" />
 
 </Label>
 <div className="form-grid">
-<Label htmlFor="generation-count"><span className="field-caption">每次数量<HelpTip text="每轮执行 1–10 次工作流，同一轮共享提示词。自定义工作流可能输出多张图片，全部保留。" /></span><Input id="generation-count" type="number" min="1" max="10" step="1" defaultValue="1" required /></Label>
-<Label htmlFor="generation-repetitions"><span className="field-caption">生成次数<HelpTip text="生成 1–10 轮；启用自动抽取时，每轮刷新提示词，并按生成后控制推进提示词种子和序列帧。图像种子 -1 每张随机，固定值跨轮逐张递增。整批提交后关闭网页仍会继续执行。" /></span><Input id="generation-repetitions" type="number" min="1" max="10" step="1" defaultValue="1" required /></Label>
+<Label htmlFor="generation-count"><span className="field-caption">每次数量<HelpTip text="每轮执行的工作流次数，同轮共用提示词；单次工作流可能输出多张图片。" /></span><Input id="generation-count" type="number" min="1" max="10" step="1" defaultValue="1" required /></Label>
+<Label htmlFor="generation-repetitions"><span className="field-caption">生成次数<HelpTip text="整批生成的轮数；每轮包含左侧设置的工作流次数。" /></span><Input id="generation-repetitions" type="number" min="1" max="10" step="1" defaultValue="1" required /></Label>
 </div></div>
-{"\n        "}<div className="generation-actions"><Button id="generate" className="primary" type="submit" variant="default"><Sparkles aria-hidden="true" />{"生成图片"}</Button>
+{"\n        "}<div className="generation-actions"><Button id="generate" className="primary" type="submit" variant="default" data-tooltip="提交整批任务；关闭网页不会取消已提交任务。"><Sparkles aria-hidden="true" />{"生成图片"}</Button>
 <Button id="cancel-pending" type="button" variant="outline" data-tooltip="取消生成页全部待执行任务；保留已开始的任务和漫游预取。"><CircleSlash aria-hidden="true" />取消待执行任务</Button></div>
 
 {"\n      "}</form>
@@ -271,15 +270,15 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <section id="settings-roam" className="settings-category" hidden><form id="roam-form">
 <fieldset id="roam-fields">
 <div className="form-grid">
-<Label htmlFor="roam-prefetch-count"><span className="field-caption">预取数量<HelpTip text="保持当前图片之后有 N 张较新的图片可查看；不足时自动生成，0 关闭。仅在漫游页可见时补图，生成需要时间。" /></span><Input id="roam-prefetch-count" type="number" min="0" max="20" step="1" defaultValue="0" required /></Label>
-<Label htmlFor="roam-max-history-images"><span className="field-caption">历史图片数量上限<HelpTip text="0 关闭数量清理。计算当前图片之前的所有漫游图片，超限时优先清理最早的图片：未喜欢的删除本地图片及提示词 JSON，无法撤回；喜欢的仅从漫游隐藏，喜欢页保留。当前、预取及生成页图片不计入上限。" /></span><Input id="roam-max-history-images" type="number" min="0" max="100000" step="1" defaultValue="0" required /></Label>
+<Label htmlFor="roam-prefetch-count"><span className="field-caption">预取数量<HelpTip text="在当前图片后预备的张数；漫游页打开时按需补足，0 关闭自动预取。" /></span><Input id="roam-prefetch-count" type="number" min="0" max="20" step="1" defaultValue="0" required /></Label>
+<Label htmlFor="roam-max-history-images"><span className="field-caption">历史图片数量上限<HelpTip text="超限时从最早图片处理：未喜欢的永久删除本地图片及提示词 JSON；喜欢的仅从漫游隐藏，喜欢页保留。" /></span><Input id="roam-max-history-images" data-tooltip="仅计算当前图片之前的漫游历史；当前、预取与生成页图片不计。0 关闭数量清理。" type="number" min="0" max="100000" step="1" defaultValue="0" required /></Label>
 </div>
 <div className="form-grid">
 <Label htmlFor="roam-backend"><span className="field-caption h-6">生图后端</span><NativeSelect id="roam-backend"><option value="">自动选择后端</option></NativeSelect></Label>
-<Label htmlFor="roam-config"><span className="field-caption">候选预设<HelpTip text="候选模块提供完整提示词组合，推荐根据有效点赞评分；模型不可用时使用默认候选。图像种子随机。" /></span><NativeSelect id="roam-config"><option value="">自动选择预设</option></NativeSelect></Label>
+<Label htmlFor="roam-config"><span className="field-caption">候选预设<HelpTip text="使用该预设的固定词、共现规则和顺流变化预算。" /></span><NativeSelect id="roam-config"><option value="">自动选择预设</option></NativeSelect></Label>
 </div>
 <div className="form-grid">
-<Label htmlFor="roam-playback-interval"><span className="field-caption">自动播放间隔（秒）<HelpTip text="自动播放时每张图片的展示时间；下一张未生成完成时等待，范围 1–600 秒。" /></span><Input id="roam-playback-interval" type="number" min="1" max="600" step="1" defaultValue="5" required /></Label>
+<Label htmlFor="roam-playback-interval"><span className="field-caption">自动播放间隔（秒）<HelpTip text="每张图片加载完成后开始计时；下一张未就绪时等待。" /></span><Input id="roam-playback-interval" type="number" min="1" max="600" step="1" defaultValue="5" required /></Label>
 </div>
 <RoamSettingsChoices />
 </fieldset>
@@ -289,17 +288,17 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </form></section>
 <section id="settings-history" className="settings-category" hidden><form id="history-form">
 {"\n    "}<fieldset id="history-fields">
-<Label><span className="field-caption">{"保留天数"}<HelpTip text="默认 1 天（24 小时）。设为 0 关闭自动清理，已喜欢的图片长期保留。" /></span><Input id="history-retention-days" type="number" min="0" max="3650" step="1" required defaultValue="1" />
+<Label><span className="field-caption">{"保留天数"}<HelpTip text="从图片入库起计时，默认 1 天；0 关闭过期清理，喜欢的图片保留。" /></span><Input id="history-retention-days" type="number" min="0" max="3650" step="1" required defaultValue="1" />
 
 </Label>
 </fieldset>
-{"\n    "}<p className="hint retention-warning">{"到期且未喜欢的图片及提示词将自动删除。"}<HelpTip text="从图片进入 Feed 起计时，在启动、浏览或生成时清理，生成记录保留。取消喜欢后，过期图片也会被清理。仅影响 Pictide 本地历史，ComfyUI 文件由后端管理。" /></p>
+{"\n    "}<p className="hint retention-warning">{"到期且未喜欢的本地图片及提示词 JSON 将永久删除。"}<HelpTip text="取消喜欢后，已过期图片也会被清理。任务记录和 ComfyUI 文件保留。" /></p>
 {"\n    "}
 {"\n    "}<div id="history-result" className="notice" role="status" hidden>
 </div>
 <div className="dialog-footer">
 
-<Button id="history-save" type="submit" className="primary" variant="default">{"保存设置"}</Button>
+<Button id="history-save" type="submit" className="primary" variant="default" data-tooltip="保存后立即检查；之后在启动、浏览或生成等操作时按需清理。">{"保存设置"}</Button>
 </div>
 {"\n  "}</form></section>
 <section id="settings-data" className="settings-category" hidden>

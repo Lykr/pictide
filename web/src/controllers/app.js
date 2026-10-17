@@ -244,7 +244,7 @@ function updateGenerationHints() {
   const backend = state.backends.find((item) => item.id === $('generate-backend').value);
   const noSeed = !!backend && !backend.bindings?.seed;
   $('seed').disabled = noSeed;
-  describeAction($('seed-note'), noSeed ? '未绑定种子输入，将使用工作流自身的种子设置。' : '-1 为随机，每次使用的实际种子会保留。');
+  describeAction($('seed-note'), noSeed ? '未绑定种子输入，将使用工作流自身的种子设置。' : '-1 每个任务随机；非负值按任务递增，跨轮延续。实际种子随图片保存。');
   $('negative-binding-note').hidden = !backend || !!backend.bindings?.negative;
 }
 
@@ -456,7 +456,7 @@ function createJobCard(job) {
   const summary = document.createElement('summary');
   const label = statusNames[job.status] || job.status;
   summary.setAttribute('aria-label', `${label} · ${job.id} · ${dateLabel(job.created_at)} · 任务详情`);
-  summary.dataset.tooltip = `${label} · ${job.id} · ${dateLabel(job.created_at)}`;
+  summary.dataset.tooltip = '展开或收起任务详情';
   const iconName = { queued: 'Clock', submitting: 'LoaderCircle', running: 'LoaderCircle', completed: 'CircleCheck', failed: 'CircleX', cancelled: 'CircleSlash' }[job.status] || 'CircleHelp';
   const status = document.createElement('span'); status.className = `job-status job-status-${job.status}`; status.dataset.tooltip = label;
   status.setAttribute('role', 'img'); status.setAttribute('aria-label', label); status.append(createIcon(iconName));
