@@ -6,7 +6,7 @@ import { GeneralSettings } from "./components/general-settings";
 import { PreferenceActions } from "./components/preference-actions";
 import { ImageInfo } from "./components/image-info";
 import { RoamPlaybackButton, RoamOptions, RoamSettingsChoices } from "./components/roam-playback";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings2, Database, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings, Settings2, Database, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown, ChevronRight } from "lucide-react";
 import { IconButton, HelpTip } from "./components/actions";
 import { Card } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -46,7 +46,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <Button className="nav" data-view="jobs" variant="ghost" type="button"><History aria-hidden="true" />{"任务"}</Button>
 <Button className="nav" data-view="prompts" variant="ghost" type="button"><ListFilter aria-hidden="true" />{"提示词"}</Button>
 <div className="sidebar-foot">
-<Button className="nav" data-view="settings" variant="ghost" type="button"><Settings2 aria-hidden="true" />设置</Button>
+<Button className="nav" data-view="settings" variant="ghost" type="button"><Settings aria-hidden="true" />设置</Button>
 </div>
 </nav>
 {"\n    "}<main id="feed-main" className="main workspace-content">
