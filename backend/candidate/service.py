@@ -120,6 +120,32 @@ class CandidateService:
                 anchors.append(tag)
         return terms, anchors
 
+    def _reference_variable(self, document, reference, anchors, allowed_ids):
+        """Resolve the actual prior positive combination against today's preset and vocabulary."""
+        texts = [term["text"].strip().replace("_", " ") for term in reference["terms"]
+                 if term["channel"] == "positive"]
+        if ", ".join(texts) != reference["positive"].strip().replace("_", " "):
+            return None  # An edited text is not represented by its historical snapshot.
+        fixed = set(document["base_positive"])
+        names = list(dict.fromkeys(text.replace(" ", "_") for text in texts if text not in fixed))
+        resolved = {tag["name"]: tag for tag in self.store.find_tags(names)}
+        if len(resolved) != len(names):
+            return None
+        variable = [resolved[name] for name in names]
+        if len(fixed) + len(variable) > document["max_tags"]:
+            return None
+        if allowed_ids is not None and any(tag["id"] not in allowed_ids for tag in variable):
+            return None
+        existing = list(anchors)
+        for tag in variable:
+            pairs = self.store.pair_relations(tag["id"], [other["id"] for other in existing])
+            if any(other["id"] not in pairs or
+                   pairs[other["id"]]["pmi"] < document["pmi_threshold"] or
+                   pairs[other["id"]]["count"] < document["min_cooccurrence"] for other in existing):
+                return None
+            existing.append(tag)
+        return variable
+
     def _extend(self, document, fixed_count, anchors, variable, rng, cap, work, allowed_ids=None):
         variable = list(variable)
         reason = "target_length"
@@ -184,7 +210,7 @@ class CandidateService:
                 self._sequence_cache.popitem(last=False)
             return variable, reason, changes
 
-    def generate(self, payload, *, allowed_positive_tag_ids=None):
+    def generate(self, payload, *, allowed_positive_tag_ids=None, previous_candidate=None):
         options = validate_options(payload)
         document = validate_document(options.get("document") if "document" in options else
                                      self.load_preset(options["preset_id"])["document"])
@@ -197,7 +223,12 @@ class CandidateService:
         negative, _ = self._fixed(document["base_negative"], "negative", source_id)
         limit = options.get("max_steps", 100)
         step = options["sequence_step"] if options["mode"] == "sequence" else 0
-        if options["mode"] == "sequence":
+        previous = (self._reference_variable(document, previous_candidate, anchors, allowed_positive_tag_ids)
+                    if previous_candidate is not None else None)
+        if previous is not None:
+            variable, reason, changes = self._advance(document, len(fixed), anchors, previous,
+                                                      random.Random(seed), limit, allowed_positive_tag_ids)
+        elif options["mode"] == "sequence":
             variable, reason, changes = self._sequence(document, len(fixed), anchors, seed, step, limit, source_id, allowed_positive_tag_ids)
         else:
             variable, reason = self._initial(document, len(fixed), anchors, random.Random(seed), limit, allowed_positive_tag_ids)

@@ -120,6 +120,70 @@ class CooccurrenceSmoke(unittest.TestCase):
                 self.assertLessEqual(len(ids ^ previous_ids), 2)
             previous_ids = ids
 
+    def test_roam_stay_preserves_complete_text_and_snapshot(self):
+        reference = dict(candidate_id="original-combination", positive="custom phrase, blue sky",
+                         negative="(blurry:1.2), old negative", terms=[
+            dict(source_id="old-source", id="text:custom", text="custom phrase", categories=[], channel="positive"),
+            dict(source_id="old-source", id="1", text="blue sky", categories=["general"], channel="positive"),
+            dict(source_id="old-source", id="text:negative", text="(blurry:1.2), old negative", categories=[], channel="negative")])
+        context = dict(preset_id="test", mode="sequence", sequence_step=999)
+        with patch.object(self.service, "generate", side_effect=AssertionError("stay must not draw tags")):
+            pool = self.service.provider.generate(context, dict(count=4, prompt_mode="stay",
+                        previous_candidate=reference, allowed_positive_tags=[]))
+        self.assertEqual(len(pool), 1)
+        self.assertEqual((pool[0].id, pool[0].positive, pool[0].negative),
+                         (reference["candidate_id"], reference["positive"], reference["negative"]))
+        self.assertEqual([(term.source_id, term.id, term.text, term.categories, term.channel) for term in pool[0].terms],
+                         [(term["source_id"], term["id"], term["text"], tuple(term["categories"]), term["channel"])
+                          for term in reference["terms"]])
+        with patch.object(self.service, "_sequence", side_effect=AssertionError("roam must not replay a sequence")):
+            first = self.service.provider.generate(context, dict(prompt_mode="stay", previous_candidate=None))[0]
+        self.assertTrue(first.positive.startswith("blue sky, "))
+        self.assertEqual(first.negative, "blurry")
+
+    def test_roam_along_pool_uses_same_selected_reference_and_budget(self):
+        from dataclasses import asdict
+        context = dict(preset_id="test", mode="fixed_seed", seed=19)
+        initial = self.service.generate(context)
+        reference = dict(candidate_id=initial["candidate_id"], positive=initial["positive"],
+                         negative=initial["negative"], terms=initial["selected_tags"])
+        previous = {term["text"] for term in reference["terms"] if term["channel"] == "positive"}
+        with patch.object(self.service, "_advance", wraps=self.service._advance) as advance:
+            pool = self.service.provider.generate(context, dict(count=4, prompt_mode="along", previous_candidate=reference))
+        self.assertEqual(advance.call_count, 4)
+        starts = [{tag["id"] for tag in call.args[3]} for call in advance.call_args_list]
+        self.assertTrue(all(start == starts[0] for start in starts))
+        for item in pool:
+            positive = {term.text for term in item.terms if term.channel == "positive"}
+            self.assertLessEqual(len(positive ^ previous), self.doc["change_budget"])
+            self.assertEqual(item.negative, "blurry")
+        # Choose an arbitrary scored member, not the pool's last member; it alone is next's origin.
+        chosen = pool[1]
+        reference = dict(candidate_id=chosen.id, positive=chosen.positive, negative=chosen.negative,
+                         terms=[asdict(term) for term in chosen.terms])
+        locked = dict(context, mode="sequence", sequence_step=999, document=dict(self.doc, change_budget=0))
+        with patch.object(self.service, "_sequence", side_effect=AssertionError("roam must not replay a sequence")):
+            following = self.service.provider.generate(locked, dict(count=3, prompt_mode="along", previous_candidate=reference))
+        self.assertTrue(all(item.positive == chosen.positive for item in following))
+
+    def test_roam_along_invalid_start_restarts_with_current_scope_and_fixed_terms(self):
+        initial = self.service.generate(dict(preset_id="test", mode="fixed_seed", seed=19))
+        reference = dict(candidate_id=initial["candidate_id"], positive=initial["positive"],
+                         negative=initial["negative"], terms=initial["selected_tags"])
+        context = dict(preset_id="test", mode="fixed_seed", seed=19, document=dict(self.doc, change_budget=0))
+        # Scope no longer contains any old variable: restart, retaining the fixed anchor outside scope.
+        with patch.object(self.service, "_advance", side_effect=AssertionError("out-of-scope start")):
+            pool = self.service.provider.generate(context, dict(count=2, prompt_mode="along",
+                        previous_candidate=reference, allowed_positive_tags=["night"]))
+        self.assertTrue(all(item.positive == "blue sky" for item in pool))
+        # Changed PMI invalidates the old variable combination too; return the valid partial result.
+        with self.service.store.connect() as db:
+            db.execute("DELETE FROM correlations")
+        with patch.object(self.service, "_advance", side_effect=AssertionError("invalid PMI start")):
+            item = self.service.provider.generate(context, dict(prompt_mode="along", previous_candidate=reference))[0]
+        self.assertEqual(item.positive, "blue sky")
+        self.assertEqual(item.negative, "blurry")
+
     def test_intersection_handles_large_pool_and_reverse_index(self):
         with self.service.store.connect() as db:
             db.execute("DELETE FROM correlations")
