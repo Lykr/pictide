@@ -14,7 +14,8 @@ from .candidate.rounds import validate_options
 from .domain import GoneError, NotFoundError, ValidationError, feedback_value, generation_count, generation_fields, roam_can_enqueue
 from .events import EventHub
 from .store.contracts import Storage
-from .store.roam_settings import max_history_images, prefetch_count, selection
+from .store.roam_settings import QUICK_DEFAULTS, max_history_images, prefetch_count, quick_settings, selection
+from .generation.workflows import quick_backend_snapshot
 
 
 def public_backend(config):
@@ -318,12 +319,20 @@ class PictideApplication:
         if payload is not None and "prompt_mode" in payload:
             from .store.roam_settings import prompt_mode_value
             prompt_mode_value(payload["prompt_mode"])
+        quick = quick_settings(payload or {})
         async with self._roam_lock:
+            previous = await asyncio.to_thread(self.roam.get)
+            if payload is not None:
+                effective = previous | payload
+                if effective["quick_mode"]:
+                    await self._roam_quick_backend(effective)
             if payload is None:
                 document = await asyncio.to_thread(self.roam.get)
-            elif payload and set(payload) <= {"playback_interval_seconds", "liked_tags_only", "prompt_mode"}:
+            elif payload and (set(payload) <= {"playback_interval_seconds", "liked_tags_only", "prompt_mode", *QUICK_DEFAULTS}
+                              or (quick and all(effective[key] == previous[key] for key in
+                                  ("prefetch_count", "max_history_images", "backend_id", "preset_id", "liked_tags_only", "prompt_mode")))):
                 document = await asyncio.to_thread(self.roam.save_options, payload.get("liked_tags_only"),
-                                                   payload.get("playback_interval_seconds"), payload.get("prompt_mode"))
+                                                   payload.get("playback_interval_seconds"), payload.get("prompt_mode"), quick)
                 self.events.publish("roam_settings")
             else:
                 if "prefetch_count" not in payload:
@@ -343,14 +352,23 @@ class PictideApplication:
                     if preset_id and preset_id not in {item["id"] for item in (await asyncio.to_thread(self.candidates.list_presets))["presets"]}:
                         raise ValidationError("漫游候选预设不存在，请重新选择。")
                 document = await asyncio.to_thread(self.roam.save, count, backend_id, preset_id, max_history,
-                                                   payload.get("playback_interval_seconds"), payload.get("liked_tags_only"), payload.get("prompt_mode"))
+                                                   payload.get("playback_interval_seconds"), payload.get("liked_tags_only"), payload.get("prompt_mode"), quick)
                 await self.clean_history(force=True, roam_only=True)
                 self.events.publish("roam_settings")
             state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
-            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode")} | {
+            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode", *QUICK_DEFAULTS)} | {
                 "artifact_revision": await asyncio.to_thread(self.storage.artifact_revision),
                 "paused": state["paused"], "preference_learning": await self._learning_available(),
                 **({"error": state["error"]} if state.get("error") else {})}
+
+    async def _roam_quick_backend(self, document, backend_id=None):
+        if backend_id is None:
+            backends = await asyncio.to_thread(self.storage.backends)
+            backend_id = document["backend_id"] or (backends[0]["id"] if backends else "")
+        config = await asyncio.to_thread(self.storage.backend, backend_id)
+        if config is None:
+            raise ValidationError("请先选择并配置漫游后端的采样步数输入，再开启快速模式。")
+        return quick_backend_snapshot(config, document["quick_steps_factor"])
 
     async def _roam_options(self, document):
         backends = await asyncio.to_thread(self.storage.backends)
@@ -429,6 +447,7 @@ class PictideApplication:
             try:
                 backend_id, preset_id = await self._roam_options(document)
                 base.update(backend_id=backend_id, preset_id=preset_id)
+                backend_snapshot = await self._roam_quick_backend(document, backend_id) if document["quick_mode"] else None
                 context = {"kind": "roam", "anchor_id": anchor, "prefetch_count": count,
                            "backend_id": backend_id, "preset_id": preset_id, "epoch": document["epoch"],
                            "liked_tags_only": document["liked_tags_only"], "prompt_mode": document["prompt_mode"]}
@@ -440,7 +459,7 @@ class PictideApplication:
                     base["recommendation_error"] = self._recommendation_error
                 fields = generation_fields({"backend_id": backend_id, "request_id": "roam-" + uuid.uuid4().hex,
                                             "positive": chosen.positive, "negative": chosen.negative, "seed": -1})
-                state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], anchor, target, fields, snapshot)
+                state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], anchor, target, fields, snapshot, backend_snapshot)
             except NotFoundError:
                 raise
             except Exception as exc:

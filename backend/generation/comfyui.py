@@ -36,6 +36,24 @@ def _string(value, label, maximum=200):
     return value.strip()
 
 
+def steps_binding(config):
+    """Resolve the saved integer steps input; infer only an unambiguous input."""
+    workflow = config.get("workflow", {})
+    binding = config.get("bindings", {}).get("steps")
+    if binding is None:
+        choices = [{"node_id": node_id, "input": "steps"} for node_id, node in workflow.items()
+                   if type(node.get("inputs", {}).get("steps")) is int and node["inputs"]["steps"] >= 1]
+        return choices[0] if len(choices) == 1 else None
+    if not isinstance(binding, dict):
+        raise BackendError("采样步数绑定须指定节点和 steps 输入。")
+    node_id, input_name = binding.get("node_id"), binding.get("input")
+    node = workflow.get(node_id) if isinstance(node_id, str) else None
+    value = node.get("inputs", {}).get(input_name) if node and isinstance(input_name, str) else None
+    if input_name != "steps" or type(value) is not int or value < 1:
+        raise BackendError("采样步数绑定须指向整数 steps 输入，不能指向连线。")
+    return {"node_id": node_id, "input": input_name}
+
+
 def validate_comfyui(config: dict) -> dict:
     if not isinstance(config, dict):
         raise BackendError("Backend configuration must be an object")
@@ -98,6 +116,9 @@ def validate_comfyui(config: dict) -> dict:
         result["bindings"][role] = {"node_id": node_id, "input": input_name}
     if result["bindings"]["positive"] == result["bindings"]["negative"]:
         raise BackendError("Positive and negative bindings must target different inputs")
+    steps = steps_binding(config)
+    if steps is not None:
+        result["bindings"]["steps"] = steps
     outputs = config.get("output_nodes", [])
     if outputs is None:
         outputs = []
@@ -377,7 +398,8 @@ class ComfyBackend:
         request_id = _string(request_id, "request_id")
         workflow = copy.deepcopy(self.config["workflow"])
         for role, binding in self.config["bindings"].items():
-            workflow[binding["node_id"]]["inputs"][binding["input"]] = plan[role]
+            if role != "steps":
+                workflow[binding["node_id"]]["inputs"][binding["input"]] = plan[role]
         response = await self._json("POST", "/prompt", payload={"prompt": workflow,
                                     "extra_data": {"pictide_request_id": request_id}}, uncertain=True)
         prompt_id = response.get("prompt_id")
