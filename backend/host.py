@@ -133,7 +133,11 @@ async def artifacts(request):
     except ValueError:
         raise ValidationError("分页数量必须是整数。") from None
     return web.json_response(await request.app[APPLICATION].artifacts(
-        request.query.get("liked") == "1", limit, request.query.get("before"), request.query.get("source", "all"), request.query.get("around")))
+        request.query.get("liked") == "1", limit, request.query.get("before"), request.query.get("source", "all"), request.query.get("around"), tuple(request.query.getall("tag", []))))
+
+
+async def liked_tags(request):
+    return web.json_response(await request.app[APPLICATION].liked_tags())
 
 
 async def feedback(request):
@@ -279,6 +283,7 @@ def create_app(data_dir=None, backend_factory=create_backend):
         web.post("/api/backends/{id}/{action:check|models|template}", connection),
         web.get("/api/jobs", jobs), web.post("/api/jobs", jobs), web.post("/api/jobs/cancel-pending", cancel_pending_jobs),
         web.post("/api/jobs/{id}/cancel", cancel_job),
+        web.get("/api/liked/tags", liked_tags),
         web.get("/api/artifacts", artifacts), web.put("/api/artifacts/{id}/feedback", feedback),
         web.delete("/api/generated", clear_generated), web.delete("/api/generated/{id}", clear_generated),
         web.get("/api/artifacts/{id}/image", image), web.get("/api/artifacts/{id}/prompts", prompts),

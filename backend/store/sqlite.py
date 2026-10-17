@@ -1,4 +1,5 @@
 """SQLite repository; no HTTP or generation-backend dependency."""
+from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
@@ -28,6 +29,11 @@ def utc_timestamp(value):
         return parsed.astimezone(timezone.utc).isoformat(timespec="microseconds")
     except (TypeError,ValueError,AttributeError):
         return None
+
+
+def prompt_tags(positive):
+    """Historical comma-separated terms; preserve text and direction semantics."""
+    return {term.strip() for term in positive.split(",") if term.strip()}
 
 
 class Repository:
@@ -471,6 +477,16 @@ class Repository:
                               "ORDER BY j.positive", (actor_id,)).fetchall()
         return [row["positive"] for row in rows]
 
+    def liked_tags(self):
+        with self.connection() as db:
+            counts = Counter()
+            rows = db.execute("SELECT j.positive FROM feedback f "
+                              "JOIN artifacts a ON a.id=f.artifact_id JOIN jobs j ON j.id=a.job_id "
+                              "WHERE f.actor_id='local' AND f.value=1 AND a.deleted_at IS NULL")
+            for row in rows:
+                counts.update(prompt_tags(row["positive"]))
+        return [{"text": text, "count": counts[text]} for text in sorted(counts)]
+
     def artifacts(self, liked=False, limit=200, before=None, source="all"):
         return self.artifact_page(liked=liked,limit=limit,before=before,source=source)["artifacts"]
 
@@ -512,7 +528,10 @@ class Repository:
             anchor = self._roam_anchor(db, saved["artifact_id"]) if saved["artifact_id"] else None
             return {"artifact_id": anchor["id"] if anchor else None, "viewed_at": saved["viewed_at"]}
 
-    def artifact_page(self, liked=False, limit=200, before=None, source="all", around=None):
+    def artifact_page(self, liked=False, limit=200, before=None, source="all", around=None, tags=()):
+        if tags and not liked:
+            raise ValidationError("标签筛选仅用于喜欢图片。")
+        selected_tags = set(tags)
         if type(limit) is not int or not 1 <= limit <= 200:
             raise ValidationError("图片分页数量必须为 1 到 200。")
         if source not in ("all", "roam", "generate"):
@@ -521,6 +540,10 @@ class Repository:
             raise ValidationError("around 仅用于漫游图片，不能与 before 或喜欢筛选同时使用。")
         with self.connection() as db:
             db.execute("BEGIN")
+            where_tags = "1"
+            if selected_tags:
+                db.create_function("has_prompt_tags", 1, lambda positive: selected_tags <= prompt_tags(positive), deterministic=True)
+                where_tags = "has_prompt_tags(j.positive)"
             where_source = "1" if source == "all" else ("EXISTS" if source == "roam" else "NOT EXISTS") + " (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id)"
             # Keep hidden/deleted markers usable for stable pagination, but never
             # return them as generated results (all/liked still retain hidden likes).
@@ -545,7 +568,7 @@ class Repository:
                 FROM artifacts a JOIN jobs j ON j.id=a.job_id
                 JOIN backend_revisions r ON r.id=j.revision_id
                 LEFT JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local'
-                WHERE a.deleted_at IS NULL AND {where_source} AND {where_visible} AND (?=0 OR f.value=1)
+                WHERE a.deleted_at IS NULL AND {where_source} AND {where_visible} AND {where_tags} AND (?=0 OR f.value=1)
                 AND (?=0 OR a.created_at<? OR (a.created_at=? AND a.id<?))
                 ORDER BY a.created_at DESC,a.id DESC LIMIT ? OFFSET ?""",
                 (int(liked),int(marker is not None),marker["created_at"] if marker else "",marker["created_at"] if marker else "",marker["id"] if marker else "",limit+1,offset))
@@ -553,8 +576,8 @@ class Repository:
             has_more = len(items) > limit
             items = items[:limit]
             counts = self._counts(db)
-            total = db.execute(f"SELECT count(*) FROM artifacts a LEFT JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local' "
-                               f"WHERE a.deleted_at IS NULL AND {where_source} AND {where_visible} AND (?=0 OR f.value=1)", (int(liked),)).fetchone()[0]
+            total = db.execute(f"SELECT count(*) FROM artifacts a JOIN jobs j ON j.id=a.job_id LEFT JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local' "
+                               f"WHERE a.deleted_at IS NULL AND {where_source} AND {where_visible} AND {where_tags} AND (?=0 OR f.value=1)", (int(liked),)).fetchone()[0]
             return {"artifacts":items,"has_more":has_more,"has_newer":offset > 0 if around is not None else marker is not None,
                     "anchor_id":anchor["id"] if anchor else None,
                     "next_cursor":items[-1]["id"] if has_more else None,

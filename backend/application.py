@@ -236,11 +236,17 @@ class PictideApplication:
             raise NotFoundError()
         return {"job": job}
 
-    async def artifacts(self, liked=False, limit=200, before=None, source="all", around=None):
+    async def artifacts(self, liked=False, limit=200, before=None, source="all", around=None, tags=()):
         if type(limit) is not int or not 1 <= limit <= 200:
             raise ValidationError("分页数量必须在 1 至 200 之间。")
+        if tags and not liked:
+            raise ValidationError("标签筛选仅用于喜欢图片。")
         await self.clean_history()
-        return await asyncio.to_thread(self.storage.artifact_page, liked, limit, before, source, around)
+        return await asyncio.to_thread(self.storage.artifact_page, liked, limit, before, source, around, tuple(dict.fromkeys(tags)))
+
+    async def liked_tags(self):
+        return {"tags": await asyncio.to_thread(self.storage.liked_tags),
+                "revision": await asyncio.to_thread(self.storage.artifact_revision)}
 
     async def roam_view(self, payload=None):
         if payload is not None:
