@@ -247,7 +247,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </section>
 <fieldset id="custom-workflow" hidden disabled>
 <Collapsible id="node-parameters" className="node-parameters" data-editor-mode="parameters" open={nodeParametersOpen} onOpenChange={setNodeParametersOpen}>
-<div className="node-parameters-heading"><h3><CollapsibleTrigger asChild><Button id="toggle-node-parameters" type="button" variant="ghost" size="sm" className="gap-2 px-0"><ChevronRight className={nodeParametersOpen ? "rotate-90" : ""} aria-hidden="true" />节点参数</Button></CollapsibleTrigger></h3><div className="node-parameters-actions">
+<div className="node-parameters-heading"><h3><CollapsibleTrigger asChild><Button id="toggle-node-parameters" type="button" variant="ghost" size="sm" className="justify-start gap-2 rounded-none bg-transparent px-0 font-semibold hover:bg-transparent aria-expanded:bg-transparent dark:hover:bg-transparent"><ChevronRight className={nodeParametersOpen ? "rotate-90" : ""} aria-hidden="true" />节点参数</Button></CollapsibleTrigger></h3><div className="node-parameters-actions">
 <Button id="toggle-workflow-json" type="button" variant="ghost" size="sm" aria-pressed="false" aria-controls="node-parameter-fields workflow-json-editor" aria-label="编辑 API 工作流 JSON" data-tooltip="编辑 API 工作流 JSON">JSON</Button>
 <IconButton icon={Download} label="导入 ComfyUI API 工作流 JSON" onClick={() => document.getElementById("workflow-file")?.click()} />
 <input id="workflow-file" type="file" accept=".json,application/json" hidden />
