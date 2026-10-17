@@ -226,3 +226,7 @@ body.pictide-immersive { overflow: hidden; }
   .feed-page .prompt-details summary span:not(:where(.editor-page, .editor-page *)) { float: none; display: block; max-width: 100%; }
   .feed-page .dialog-footer:not(:where(.editor-page, .editor-page *)) { flex-wrap: wrap; }
 }
+
+/* A CSS clock mirrors the single playback timeout without per-frame React updates. */
+.playback-progress-value { stroke-dasharray: 1; }
+@keyframes playback-progress { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }

@@ -61,3 +61,26 @@ test('interval accepts integers from 1 to 600 and rejects blanks and invalid val
   assert.equal(playbackInterval('1'), 1); assert.equal(playbackInterval(600), 600);
   for (const value of ['', ' ', 0, 601, 1.5, true, null]) assert.throws(() => playbackInterval(value));
 });
+
+test('progress shares the deadline, restarts on repeated likes, and stays full while awaiting a next image', async () => {
+  let clock = 100, state;
+  const timers = new Map(); let serial = 0, cancelled = 0;
+  const playback = createRoamPlayback({ now: () => clock, changed: next => state = next,
+    advance: () => {}, cancelWait: () => cancelled++,
+    schedule: run => { timers.set(++serial, run); return serial; }, cancel: id => timers.delete(id) });
+  const picture = { imageId: 'a', ready: true, active: true, busy: false, blocked: false };
+  playback.update(picture); playback.toggle();
+  assert.equal(state.startedAt, 100); assert.equal(state.durationMs, 5000);
+  const firstCycle = state.cycle;
+  clock = 1100; playback.update(picture);
+  assert.equal(state.startedAt, 100); assert.equal(state.cycle, firstCycle);
+  playback.restart();
+  assert.equal(state.startedAt, 1100); assert.equal(state.cycle, firstCycle + 1); assert.equal(timers.size, 1);
+  clock = 2100; playback.restart();
+  assert.equal(state.startedAt, 2100); assert.equal(timers.size, 1);
+  const [id, run] = timers.entries().next().value; timers.delete(id); run(); await Promise.resolve();
+  assert.equal(state.waiting, true); assert.equal(state.startedAt, null);
+  clock = 8000; playback.restart();
+  assert.equal(cancelled, 1); assert.equal(state.waiting, false); assert.equal(state.startedAt, 8000);
+  playback.pause(); assert.equal(state.playing, false); assert.equal(state.startedAt, null); assert.equal(timers.size, 0);
+});

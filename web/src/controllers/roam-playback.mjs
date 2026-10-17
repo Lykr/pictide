@@ -6,12 +6,12 @@ export function playbackInterval(value) {
 }
 
 /** One timeout per loaded picture; unavailable next images are resumed by gallery events. */
-export function createRoamPlayback({ advance, changed = () => {}, cancelWait = () => {}, schedule = setTimeout, cancel = clearTimeout }) {
-  let playing = false, seconds = 5, timer;
+export function createRoamPlayback({ advance, changed = () => {}, cancelWait = () => {}, schedule = setTimeout, cancel = clearTimeout, now = () => performance.now() }) {
+  let playing = false, seconds = 5, timer, startedAt = null, cycle = 0;
   let imageId = null, ready = false, active = false, busy = false, blocked = false;
   let due = false, advancing = false, revision = 0;
-  const clear = () => { if (timer !== undefined) cancel(timer); timer = undefined; };
-  const notify = () => changed({ playing, canPlay: active && !!imageId && !blocked });
+  const clear = () => { if (timer !== undefined) cancel(timer); timer = undefined; startedAt = null; };
+  const notify = () => changed({ playing, canPlay: active && !!imageId && !blocked, startedAt, durationMs: seconds * 1000, cycle, waiting: due });
   const go = async () => {
     if (!playing || !active || !ready || busy || blocked || advancing) return;
     advancing = true;
@@ -21,7 +21,8 @@ export function createRoamPlayback({ advance, changed = () => {}, cancelWait = (
   };
   const arm = () => {
     if (timer !== undefined || !playing || !active || !ready || busy || blocked || due || !imageId) return;
-    timer = schedule(() => { timer = undefined; due = true; void go(); }, seconds * 1000);
+    startedAt = now(); cycle++;
+    timer = schedule(() => { timer = undefined; startedAt = null; due = true; notify(); void go(); }, seconds * 1000);
   };
   function pause() {
     const ownedWait = playing && due;
@@ -47,14 +48,15 @@ export function createRoamPlayback({ advance, changed = () => {}, cancelWait = (
       const ownedWait = playing && due;
       clear(); due = false; revision++;
       if (ownedWait) cancelWait();
-      arm();
+      arm(); notify();
     },
     setInterval(value) {
       const next = playbackInterval(value);
       if (next === seconds) return;
       seconds = next;
       if (!due) { clear(); arm(); }
+      notify();
     },
-    retry() { if (due) void go(); else arm(); },
+    retry() { if (due) void go(); else arm(); notify(); },
   };
 }

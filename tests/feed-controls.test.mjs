@@ -121,3 +121,10 @@ test('liked grid leaves arrow navigation to its opened image viewer', () => {
   assert.equal(keyboardAction({ key: ' ' }, liked), 'privacy');
   assert.equal(keyboardAction({ key: ' ', dialogOpen: true }, { ...liked, dialogOpen:true }), null);
 });
+
+test('holding up can renew roam viewing time while other repeated shortcuts and editing stay ignored', () => {
+  assert.equal(keyboardAction({ key: 'ArrowUp', repeat: true }, context), 'like');
+  assert.equal(keyboardAction({ key: 'ArrowUp', repeat: true }, { ...context, immersive: true }), 'like');
+  assert.equal(keyboardAction({ key: 'ArrowUp', repeat: true }, { ...context, editing: true }), null);
+  assert.equal(keyboardAction({ key: 'ArrowUp', repeat: true, ctrlKey: true }, context), null);
+});

@@ -7,7 +7,7 @@ export function destinationIndex(index, length, direction) {
 }
 
 export function keyboardAction(event, context) {
-  if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || context.editing || context.dialogOpen || !['feed', 'liked', 'generate'].includes(context.view) || context.feedbackPending) return null;
+  if ((event.repeat && !(event.key === 'ArrowUp' && context.view === 'feed')) || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || context.editing || context.dialogOpen || !['feed', 'liked', 'generate'].includes(context.view) || context.feedbackPending) return null;
   if (['feed', 'generate', 'liked'].includes(context.view) && (event.key === ' ' || event.key === 'Spacebar')) return 'privacy';
   if (['generate', 'liked'].includes(context.view)) return null;
   return { ArrowLeft: 'older', ArrowRight: 'newer', ArrowUp: 'like', ArrowDown: 'dislike' }[event.key] || null;
