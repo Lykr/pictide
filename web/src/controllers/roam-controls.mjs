@@ -53,3 +53,8 @@ export function mergeRoamDraft(previous, saved, draft, savedFields = []) {
 export function likedTagsWait(result, waitingForNext) {
   return !!result.waiting_for_liked_tags && waitingForNext && !(result.ready > 0);
 }
+
+// These fields change future prompts/images and invalidate the prefetched window.
+export function roamGenerationChanged(previous, next) {
+  return ['liked_tags_only', 'prompt_mode', 'backend_id', 'preset_id'].some(key => previous[key] !== next[key]);
+}

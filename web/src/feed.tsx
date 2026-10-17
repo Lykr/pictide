@@ -5,7 +5,7 @@ import { JobPageControls } from "./components/page-controls";
 import { GeneralSettings } from "./components/general-settings";
 import { PreferenceActions } from "./components/preference-actions";
 import { ImageInfo } from "./components/image-info";
-import { RoamPlaybackButton, RoamOptions } from "./components/roam-playback";
+import { RoamPlaybackButton, RoamOptions, RoamSettingsChoices } from "./components/roam-playback";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings2, Database, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown, ChevronRight } from "lucide-react";
 import { IconButton, HelpTip } from "./components/actions";
 import { Card } from "./components/ui/card";
@@ -280,8 +280,8 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 <div className="form-grid">
 <Label htmlFor="roam-playback-interval"><span className="field-caption">自动播放间隔（秒）<HelpTip text="自动播放时每张图片的展示时间；下一张未生成完成时等待，范围 1–600 秒。" /></span><Input id="roam-playback-interval" type="number" min="1" max="600" step="1" defaultValue="5" required /></Label>
-<Label className="checkbox-label self-center"><input id="roam-liked-tags-only" type="checkbox" />仅从喜欢图片中抽取标签<HelpTip text="只限制随机抽取的正向标签，固定词照常输出；没有可用标签时等待，不回退全词库。" /></Label>
 </div>
+<RoamSettingsChoices />
 </fieldset>
 <PreferenceActions />
 <div id="roam-result" className="notice" role="status" hidden />
