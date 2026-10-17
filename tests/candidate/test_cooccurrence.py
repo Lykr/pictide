@@ -61,6 +61,65 @@ class CooccurrenceSmoke(unittest.TestCase):
         negative_threshold = dict(self.doc, pmi_threshold=-1)
         self.assertTrue(self.service.generate(dict(options, document=negative_threshold))["positive"])
 
+    def test_liked_pool_resolves_exactly_and_keeps_fixed_terms(self):
+        pool = self.service.resolve_tag_pool([
+            " blue sky , green_grass, blue_sky, (soft light:1.2), unknown, GREEN_GRASS",
+            "soft_light, green grass"])
+        self.assertEqual(pool, ("blue_sky", "green_grass", "soft_light"))
+        self.assertEqual(self.service.resolve_tag_pool(["unknown", "(blue_sky:1.2)"]), ())
+        document = dict(self.doc, base_positive=["blue sky", "gentle atmosphere"],
+                        base_negative=["green grass", "blurry"], min_tags=4, max_tags=4)
+        context = dict(preset_id="test", mode="fixed_seed", seed=19, document=document)
+        with patch.object(self.service.store, "find_tags", wraps=self.service.store.find_tags) as resolve:
+            candidates = self.service.provider.generate(context, {
+                "count": 4, "allowed_positive_tags": ["soft_light"]})
+            self.assertEqual(resolve.call_count, 1)  # Resolve IDs once for the whole combination pool.
+        for candidate in candidates:
+            self.assertEqual(candidate.positive, "blue sky, gentle atmosphere, soft light")
+            self.assertEqual(candidate.negative, "green grass, blurry")
+        # Only scope was supplied internally; saved/shared presets remain unchanged.
+        self.assertEqual(self.service.load_preset("test")["document"], self.doc)
+
+    def test_scope_none_empty_and_first_draw_preserve_partial_results(self):
+        context = dict(preset_id="test", mode="fixed_seed", seed=19)
+        expected = self.service.generate(context)
+        unlimited = self.service.provider.generate(context, {"allowed_positive_tags": None})[0]
+        self.assertEqual((unlimited.positive, unlimited.negative), (expected["positive"], expected["negative"]))
+        empty = self.service.provider.generate(context, {"allowed_positive_tags": []})[0]
+        self.assertEqual((empty.positive, empty.negative), ("blue sky", "blurry"))
+        no_anchor = dict(context, document=dict(self.doc, base_positive=[]))
+        first = self.service.provider.generate(no_anchor, {"allowed_positive_tags": ["wide_view"]})[0]
+        self.assertEqual(first.positive, "wide view")
+        self.assertEqual(self.service.provider.generate(no_anchor, {"allowed_positive_tags": []})[0].positive, "")
+        # A pool member must still meet the fixed anchor's PMI/support threshold.
+        incompatible = self.service.provider.generate(context, {"allowed_positive_tags": ["night"]})[0]
+        self.assertEqual(incompatible.positive, "blue sky")
+        partial = self.service.generate(dict(context, max_steps=1), allowed_positive_tag_ids=frozenset((2, 3)))
+        self.assertEqual(partial["report"]["tag_count"], 2)
+        self.assertEqual(partial["report"]["stop_reason"], "search_limit")
+
+    def test_sequence_cache_is_scoped_and_replays_with_budget(self):
+        options = dict(preset_id="test", mode="sequence", seed=9,
+                       document=dict(self.doc, change_budget=0))
+        previous = self.service.provider.generate(options, {"allowed_positive_tags": ["green_grass"]})[0]
+        changed = self.service.provider.generate(dict(options, sequence_step=7), {
+            "allowed_positive_tags": ["soft_light"]})[0]
+        self.assertEqual(previous.positive, "blue sky, green grass")
+        self.assertEqual(changed.positive, "blue sky, soft light")
+        fresh = CandidateService(SQLiteCandidateStore(self.path))
+        self.assertEqual(changed, fresh.provider.generate(dict(options, sequence_step=7), {
+            "allowed_positive_tags": ["soft_light"]})[0])
+        scoped = dict(options, document=dict(self.doc, min_tags=2, max_tags=3))
+        previous_ids = None
+        for step in range(4):
+            frame = self.service.generate(dict(scoped, sequence_step=step),
+                                          allowed_positive_tag_ids=frozenset((2, 3)))
+            ids = {int(tag["id"]) for tag in frame["selected_tags"] if tag["channel"] == "positive"}
+            self.assertTrue(ids <= {1, 2, 3})
+            if previous_ids is not None:
+                self.assertLessEqual(len(ids ^ previous_ids), 2)
+            previous_ids = ids
+
     def test_intersection_handles_large_pool_and_reverse_index(self):
         with self.service.store.connect() as db:
             db.execute("DELETE FROM correlations")
