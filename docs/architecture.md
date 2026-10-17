@@ -230,3 +230,7 @@ App 按已保存漫游设置解析后端和标签库，沿用 `CandidateProvider
 ## 共现候选替换
 
 候选模块用数据集共现统计扩展固定正向锚点，所有组合仍通过 App 交给推荐评分。筛选后的 general 原名词库、词频、PMI/共现次数、预设存于 candidate.sqlite3，SQLite 适配器由 Host 注入，不在候选域导入存储实现。离线导入完整本地 Parquet，不放入请求或启动调用链。连续模式保留种子＋帧重放和标签增删预算；旧槽位、可编辑词库与 JSON 配置接口删除，不做迁移兼容。新的接口、流程和停止语义见 [共现候选](cooccurrence-candidates-v1.md)。漫游预设与设置使用主 SQLite 的 roam_settings 表。
+
+## 漫游方式
+
+偏好范围限定候选词池；随心、沿途、驻足控制完整提示词组合的生成方式。Application 从 Store 获取实际参考组合，再交 Candidate 生成完整候选，由 Recommendation 评分；Task 只执行选定组合。沿途池内各候选来自同一个已选参考，不串接未选中的候选。设置切换与旧预取失效由 Store 同事务保存，迟到结果直接隐藏。接口、参考顺序与界面约定见 [漫游方式](roam-modes.md)。

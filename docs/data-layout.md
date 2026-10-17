@@ -142,3 +142,7 @@ SQLite 在初始化时以 `CREATE TABLE IF NOT EXISTS` 增加漫游表，保留�
 ## 喜欢图片标签范围
 
 `roam_settings.liked_tags_only` 为 0/1，默认 0；播放间隔与该开关复用同一设置行。当前安装发布前停止应用、备份主数据库，再离线执行 `ALTER TABLE roam_settings ADD COLUMN liked_tags_only INTEGER NOT NULL DEFAULT 0 CHECK(liked_tags_only IN (0,1))`。新建数据库直接包含该字段，不在启动时迁移；回退需恢复备份数据库与对应旧代码。喜欢图片的标签池按实际正向文本即时解析，不另存派生词库。接口与空池行为见 [喜欢图片标签漫游](roam-liked-tags.md)。
+
+## 漫游方式与预取失效
+
+发布前停止应用并备份主库，离线增加 `roam_settings.prompt_mode TEXT NOT NULL DEFAULT 'random' CHECK(prompt_mode IN ('random','along','stay'))` 和 `roam_jobs.discarded_at TEXT`；新库直接包含，不在启动时迁移。前者保存漫游方式，后者保存未完成旧任务的失效时间。切换设置事务复用 `roam_hidden_at` 隐藏当前图之后的旧缓存，喜欢和图片文件保留；迟到产物入库时直接隐藏。沿途与驻足参考来自既有任务快照和观看位置，不新增状态表。完整接口见 [漫游方式](roam-modes.md)。
