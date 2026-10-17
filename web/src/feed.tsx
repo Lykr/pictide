@@ -194,8 +194,8 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <section id="settings-view" className="settings-view" hidden>
 <nav className="settings-navigation" aria-label="设置分类">
 <Button data-settings-section="general" variant="ghost" type="button"><Settings2 aria-hidden="true" />通用</Button>
-<Button data-settings-section="backend" variant="ghost" type="button"><SlidersHorizontal aria-hidden="true" />后端</Button>
 <Button data-settings-section="roam" variant="ghost" type="button"><Compass aria-hidden="true" />漫游</Button>
+<Button data-settings-section="backend" variant="ghost" type="button"><SlidersHorizontal aria-hidden="true" />后端</Button>
 <Button data-settings-section="history" variant="ghost" type="button"><History aria-hidden="true" />历史</Button>
 </nav>
 <div className="settings-content">
