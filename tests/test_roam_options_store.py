@@ -66,7 +66,7 @@ class RoamOptionsStoreTests(unittest.TestCase):
                 repo.rate(image['id'], -1)
             if index == 2:
                 with repo.connection() as db:
-                    db.execute('INSERT INTO roam_jobs VALUES(?,?,?,?)', (job['id'], 'epoch', '{}', image['created_at']))
+                    db.execute('INSERT INTO roam_jobs(job_id,epoch,candidate,created_at) VALUES(?,?,?,?)', (job['id'], 'epoch', '{}', image['created_at']))
         with repo.connection() as db:
             db.execute("UPDATE artifacts SET generated_hidden_at='hidden' WHERE id=?", (images[0],))
             db.execute("UPDATE artifacts SET roam_hidden_at='hidden' WHERE id=?", (images[2],))

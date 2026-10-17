@@ -76,7 +76,7 @@ class Repository:
                 PRIMARY KEY(artifact_id,local_path));
             CREATE TABLE IF NOT EXISTS roam_jobs (
                 job_id TEXT PRIMARY KEY REFERENCES jobs(id),
-                epoch TEXT NOT NULL, candidate TEXT NOT NULL, created_at TEXT NOT NULL);
+                epoch TEXT NOT NULL, candidate TEXT NOT NULL, created_at TEXT NOT NULL, discarded_at TEXT);
             CREATE INDEX IF NOT EXISTS roam_jobs_epoch ON roam_jobs(epoch);
             CREATE TABLE IF NOT EXISTS roam_runs (
                 epoch TEXT PRIMARY KEY, error TEXT NOT NULL);
@@ -298,7 +298,7 @@ class Repository:
                                "AND (a.created_at>? OR (a.created_at=? AND a.id>?))",
                                (anchor["created_at"], anchor["created_at"], anchor["id"])).fetchone()[0]
         failure = db.execute("SELECT j.status,j.error FROM roam_jobs r JOIN jobs j ON j.id=r.job_id "
-                             "WHERE r.epoch=? AND j.status IN ('failed','unknown','cancelled') "
+                             "WHERE r.epoch=? AND r.discarded_at IS NULL AND j.status IN ('failed','unknown','cancelled') "
                              "ORDER BY j.created_at DESC,j.id DESC LIMIT 1", (epoch,)).fetchone()
         if failure:
             message = failure["error"] or "漫游生成失败或已取消，请在漫游设置中保存后重试。"
@@ -306,7 +306,7 @@ class Repository:
         pause = db.execute("SELECT error FROM roam_runs WHERE epoch=?", (epoch,)).fetchone()
         pending = db.execute("SELECT count(*) FROM jobs WHERE status IN ('queued','submitting','running')").fetchone()[0]
         roam_pending = db.execute("SELECT count(*) FROM jobs j JOIN roam_jobs r ON r.job_id=j.id "
-                                  "WHERE j.status IN ('queued','submitting','running')").fetchone()[0]
+                                  "WHERE r.discarded_at IS NULL AND j.status IN ('queued','submitting','running')").fetchone()[0]
         return {"ready": ready, "pending": pending, "roam_pending": roam_pending, "paused": pause is not None,
                 **({"error": pause["error"]} if pause else {})}
 
@@ -337,6 +337,45 @@ class Repository:
         with self.connection() as db:
             row = db.execute("SELECT candidate FROM roam_jobs WHERE job_id=?", (job_id,)).fetchone()
             return json.loads(row["candidate"]) if row else None
+
+    @staticmethod
+    def discard_roam_prefetch(db):
+        """Called inside the settings transaction; keep the saved cursor and older images."""
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='roam_jobs'").fetchone() is None:
+            return
+        timestamp = now()
+        anchor = db.execute("SELECT a.created_at,a.id FROM roam_view v JOIN artifacts a ON a.id=v.artifact_id "
+                            "WHERE v.actor_id='local' AND a.deleted_at IS NULL AND a.roam_hidden_at IS NULL").fetchone()
+        newer = " AND (created_at>? OR (created_at=? AND id>?))" if anchor else ""
+        parameters = (anchor["created_at"], anchor["created_at"], anchor["id"]) if anchor else ()
+        db.execute("UPDATE artifacts SET roam_hidden_at=? WHERE deleted_at IS NULL AND roam_hidden_at IS NULL "
+                   "AND EXISTS (SELECT 1 FROM roam_jobs r WHERE r.job_id=artifacts.job_id)" + newer,
+                   (timestamp, *parameters))
+        db.execute("UPDATE roam_jobs SET discarded_at=? WHERE discarded_at IS NULL "
+                   "AND job_id IN (SELECT id FROM jobs WHERE status IN ('queued','submitting','running','unknown'))", (timestamp,))
+        db.execute("UPDATE jobs SET status='cancelled',error=?,updated_at=? "
+                   "WHERE status='queued' AND backend_prompt_id IS NULL "
+                   "AND EXISTS (SELECT 1 FROM roam_jobs r WHERE r.job_id=jobs.id AND r.discarded_at IS NOT NULL)",
+                   ("漫游设置已切换，取消旧预取任务。", timestamp))
+
+    def roam_prompt_reference(self, epoch, anchor_id):
+        with self.connection() as db:
+            db.execute("BEGIN")
+            row = db.execute("SELECT r.candidate,j.positive,j.negative FROM roam_jobs r JOIN jobs j ON j.id=r.job_id "
+                             "WHERE r.epoch=? AND r.discarded_at IS NULL AND j.status IN ('queued','submitting','running','completed') "
+                             "ORDER BY j.created_at DESC,j.id DESC LIMIT 1", (epoch,)).fetchone()
+            if row is None:
+                if anchor_id is None:
+                    saved = db.execute("SELECT artifact_id FROM roam_view WHERE actor_id='local'").fetchone()
+                    anchor_id = saved["artifact_id"] if saved else None
+                row = db.execute("SELECT r.candidate,j.positive,j.negative FROM artifacts a JOIN jobs j ON j.id=a.job_id "
+                                 "JOIN roam_jobs r ON r.job_id=j.id WHERE a.id=? AND a.deleted_at IS NULL "
+                                 "AND a.roam_hidden_at IS NULL AND r.discarded_at IS NULL", (anchor_id,)).fetchone()
+            if row is None:
+                return None
+            snapshot = json.loads(row["candidate"])
+            return {"candidate_id": snapshot.get("candidate_id", ""), "positive": row["positive"],
+                    "negative": row["negative"], "terms": snapshot.get("terms", [])}
 
     def next_job(self):
         with self.connection() as db:
@@ -383,7 +422,7 @@ class Repository:
     def complete(self, iid, outputs):
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
-            job = db.execute("SELECT status FROM jobs WHERE id=?", (iid,)).fetchone()
+            job = db.execute("SELECT j.status,r.discarded_at FROM jobs j LEFT JOIN roam_jobs r ON r.job_id=j.id WHERE j.id=?", (iid,)).fetchone()
             # A late retry may have copied an expired output again. Never revive it.
             for item in outputs:
                 old = db.execute("SELECT id FROM artifacts WHERE job_id=? AND node_id=? AND output_index=? AND deleted_at IS NOT NULL",
@@ -393,7 +432,7 @@ class Repository:
             if not job or job["status"] in ("cancelled", "failed", "completed"):
                 return
             for item in outputs:
-                db.execute("INSERT OR IGNORE INTO artifacts (id,job_id,node_id,output_index,descriptor,created_at,local_path,content_type) VALUES (?,?,?,?,?,?,?,?)", (str(uuid.uuid4()),iid,str(item["node_id"]),item["index"],encode(item),now(),item.get("local_path"),item.get("content_type")))
+                db.execute("INSERT OR IGNORE INTO artifacts (id,job_id,node_id,output_index,descriptor,created_at,local_path,content_type,roam_hidden_at) VALUES (?,?,?,?,?,?,?,?,?)", (str(uuid.uuid4()),iid,str(item["node_id"]),item["index"],encode(item),now(),item.get("local_path"),item.get("content_type"),job["discarded_at"]))
             db.execute("UPDATE jobs SET status='completed',error=NULL,updated_at=? WHERE id=?", (now(),iid))
 
     def recover_submissions(self):
