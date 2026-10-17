@@ -12,7 +12,7 @@ Pictide 的唯一浏览器入口。漫游、喜欢、任务、生成、提示词
 
 React 壳层与既有 DOM 控制器管理展示和草稿，控制器在页面生命周期内只初始化一次。共享控件层通过 portals 接入官方 shadcn/Radix 组件，保持单一 React 根；隐藏的表单状态接口用于衔接旧控制器，不能作为可见的原生控件。新增功能复用该层，不创建独立页面入口或按控件创建 React 根。
 
-浏览器路由使用 `#feed`（漫游）、`#liked`（喜欢）、`#jobs`（任务）、`#generate`（生成）、`#prompts`（提示词）及 `#settings/backend|roam|history|data`（设置分类），深链接和刷新仍加载同一 HTML。漫游与喜欢页不显示生成面板；方向键只作用于图片视图，输入、菜单及弹窗中不触发图片快捷键。提示词保存快捷键只在编辑器视图有效。
+浏览器路由使用 `#feed`（漫游）、`#liked`（喜欢）、`#generate`（生成）、`#prompts`（提示词）及 `#settings/general|backend|roam|history`（设置分类），深链接和刷新仍加载同一 HTML。漫游与喜欢页不显示生成面板；方向键只作用于图片视图，输入、菜单及弹窗中不触发图片快捷键。提示词保存快捷键只在编辑器视图有效。
 
 图片反馈只提交 `value: 1`（喜欢）或 `value: null`（撤回喜欢），上方向键幂等点赞，左/右方向键切换图片；下方向键不绑定反馈。
 
@@ -53,3 +53,5 @@ Node.js 仅用于构建。产物在 `web/dist/`，由后端静态服务提供 `/
 依赖实体保存在项目根 `data/runtime/frontend/node_modules/`，本目录 `node_modules` 仅为 Windows Junction；pnpm、Vite 和 TypeScript 缓存都放在项目根 `data/cache/`。构建脚本会建立所需 Junction，避免在源码目录中散落运行数据。
 
 Feed CSS 使用显式的 `:not(:where(.editor-page, .editor-page *))` 目标排除规则隔离嵌入编辑器的布局，避免同名的 `.workspace`、表单与弹窗样式跨工作区生效；不依赖 CSS `@scope`。
+
+任务记录位于设置的历史分区；通用分区显示主题与数据位置，历史分区同时保留图片清理设置。

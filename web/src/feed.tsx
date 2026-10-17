@@ -6,7 +6,7 @@ import { GeneralSettings } from "./components/general-settings";
 import { PreferenceActions } from "./components/preference-actions";
 import { ImageInfo } from "./components/image-info";
 import { RoamPlaybackButton, RoamOptions, RoamSettingsChoices } from "./components/roam-playback";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings, Settings2, Database, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings, Settings2, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown, ChevronRight } from "lucide-react";
 import { IconButton, HelpTip } from "./components/actions";
 import { Card } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -43,7 +43,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <Button className="nav" data-view="generate" variant="ghost" type="button"><Sparkles aria-hidden="true" />生成</Button>
 <Button className="nav" data-view="liked" variant="ghost" type="button"><Heart aria-hidden="true" />喜欢
 </Button>
-<Button className="nav" data-view="jobs" variant="ghost" type="button"><History aria-hidden="true" />{"任务"}</Button>
 <Button className="nav" data-view="prompts" variant="ghost" type="button"><ListFilter aria-hidden="true" />{"提示词"}</Button>
 <div className="sidebar-foot">
 <Button className="nav" data-view="settings" variant="ghost" type="button"><Settings aria-hidden="true" />设置</Button>
@@ -104,16 +103,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 {"\n      "}</section>
 {"\n      "}<section id="liked-view" hidden><GeneratedResults collection="liked" /></section>
-{"\n      "}<section id="jobs-view" hidden>
-<div id="jobs-empty" className="empty small" hidden>
-<h2>{"还没有生成任务"}</h2>
 
-</div>
-<div id="job-list" className="job-list">
-</div>
-<p id="jobs-page-message" className="hint" role="status" hidden />
-<JobPageControls />
-</section>
 {"\n    "}<section id="compose" className="compose" hidden>
 <div className="generation-form-panel">
 {"\n      "}<div className="compose-heading">
@@ -205,11 +195,13 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <Button data-settings-section="general" variant="ghost" type="button"><Settings2 aria-hidden="true" />通用</Button>
 <Button data-settings-section="backend" variant="ghost" type="button"><SlidersHorizontal aria-hidden="true" />后端</Button>
 <Button data-settings-section="roam" variant="ghost" type="button"><Compass aria-hidden="true" />漫游</Button>
-<Button data-settings-section="history" variant="ghost" type="button"><Trash2 aria-hidden="true" />历史清理</Button>
-<Button data-settings-section="data" variant="ghost" type="button"><Database aria-hidden="true" />数据位置</Button>
+<Button data-settings-section="history" variant="ghost" type="button"><History aria-hidden="true" />历史</Button>
 </nav>
 <div className="settings-content">
-<section id="settings-general" className="settings-category"><GeneralSettings initialError={themeError} /></section>
+<section id="settings-general" className="settings-category space-y-6"><GeneralSettings initialError={themeError} /><section aria-label="数据位置">
+<h2>数据位置</h2>
+<dl className="data-locations"><dt>数据目录</dt><dd id="data-directory">读取中…</dd><dt>数据库</dt><dd id="database-path">读取中…</dd></dl>
+</section></section>
 <section id="settings-backend" className="settings-category"><form id="settings-form">
 <div className="form-grid">
 <div className="settings-field">
@@ -286,7 +278,10 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div id="roam-result" className="notice" role="status" hidden />
 <div className="dialog-footer"><Button id="roam-save" type="submit">保存设置</Button></div>
 </form></section>
-<section id="settings-history" className="settings-category" hidden><form id="history-form">
+<section id="settings-history" className="settings-category space-y-6" hidden>
+<Collapsible>
+<CollapsibleTrigger asChild><Button type="button" variant="ghost" size="sm" className="group gap-2 rounded-none bg-transparent px-0 font-semibold hover:bg-transparent aria-expanded:bg-transparent dark:hover:bg-transparent"><ChevronRight className="transition-transform group-data-[state=open]:rotate-90" aria-hidden="true" />图片清理</Button></CollapsibleTrigger>
+<CollapsibleContent forceMount className="pt-4 data-[state=closed]:hidden"><form id="history-form">
 {"\n    "}<fieldset id="history-fields">
 <Label><span className="field-caption">{"保留天数"}<HelpTip text="从图片入库起计时，默认 1 天；0 关闭过期清理，喜欢的图片保留。" /></span><Input id="history-retention-days" type="number" min="0" max="3650" step="1" required defaultValue="1" />
 
@@ -300,10 +295,20 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 
 <Button id="history-save" type="submit" className="primary" variant="default" data-tooltip="保存后立即检查；之后在启动、浏览或生成等操作时按需清理。">{"保存设置"}</Button>
 </div>
-{"\n  "}</form></section>
-<section id="settings-data" className="settings-category" hidden>
-<dl className="data-locations"><dt>数据目录</dt><dd id="data-directory">读取中…</dd><dt>数据库</dt><dd id="database-path">读取中…</dd></dl>
+{"\n  "}</form></CollapsibleContent></Collapsible>
+<section id="jobs-view" aria-label="任务记录">
+<h2 className="mb-4">任务记录</h2>
+<div id="jobs-empty" className="empty small" hidden>
+<h2>{"还没有生成任务"}</h2>
+
+</div>
+<div id="job-list" className="job-list">
+</div>
+<p id="jobs-page-message" className="hint" role="status" hidden />
+<JobPageControls />
 </section>
+</section>
+
 </div>
 </section>
 </main>

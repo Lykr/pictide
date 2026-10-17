@@ -59,7 +59,8 @@ let historyLoaded = false;
 let historyLoading = false;
 let workflowLoadRevision = 0;
 const expandedJobs = new Set();
-const jobPager = createJobPager({ request: page => api(`/api/jobs?page=${page}`), changed: renderJobPage, active: () => state.view === 'jobs' });
+const viewingHistory = () => state.view === 'settings' && state.settingsSection === 'history';
+const jobPager = createJobPager({ request: page => api(`/api/jobs?page=${page}`), changed: renderJobPage, active: viewingHistory });
 let availabilityRevision = 0;
 let availabilitySignature = '';
 let hasSavedApiKey = false;
@@ -179,7 +180,7 @@ function pageView() { return ['liked', 'generate'].includes(state.view) ? state.
 function applyPage(view, result, append = false) {
   return applyArtifactPage(state, view, result, typeof append === 'object' ? append : { append });
 }
-const viewTitles = { feed: '漫游', generate: '生成', liked: '喜欢', jobs: '任务', prompts: '提示词', settings: '设置' };
+const viewTitles = { feed: '漫游', generate: '生成', liked: '喜欢', prompts: '提示词', settings: '设置' };
 function setView(route, updateUrl = true) {
   const [requested, section] = String(route || 'feed').split('/');
   const view = Object.hasOwn(viewTitles, requested) ? requested : 'feed';
@@ -188,7 +189,7 @@ function setView(route, updateUrl = true) {
   state.view = view;
   if (view === 'generate') { clearTimeout(noticeTimer); $('notice').hidden = true; }
   document.dispatchEvent(new Event('pictide:close-image-info'));
-  if (view === 'settings' && ['general', 'backend', 'roam', 'history', 'data'].includes(section)) state.settingsSection = section;
+  if (view === 'settings' && ['general', 'backend', 'roam', 'history'].includes(section)) state.settingsSection = section;
   const editor = view === 'prompts';
   document.querySelectorAll('[data-view]').forEach((button) => {
     const selected = button.dataset.view === view;
@@ -210,7 +211,6 @@ function setView(route, updateUrl = true) {
   $('liked-privacy-controls').hidden = view !== 'liked';
   $('roam-options-controls').hidden = view !== 'feed';
   if (view !== 'feed') document.dispatchEvent(new Event('pictide:roam-options-close'));
-  $('jobs-view').hidden = view !== 'jobs';
   if (view === 'settings') setSettingsSection(state.settingsSection, false);
   if (updateUrl) history.replaceState(null, '', `${location.pathname}${location.search}#${view}${view === 'settings' ? `/${state.settingsSection}` : ''}`);
   // Keep controllers and their inputs mounted: navigation never discards drafts.
@@ -218,16 +218,19 @@ function setView(route, updateUrl = true) {
   refillRoam();
 }
 function setSettingsSection(section, updateUrl = true) {
-  if (!['general', 'backend', 'roam', 'history', 'data'].includes(section)) section = 'general';
+  if (!['general', 'backend', 'roam', 'history'].includes(section)) section = 'general';
   state.settingsSection = section;
   document.querySelectorAll('[data-settings-section]').forEach((button) => {
     const active = button.dataset.settingsSection === section;
     button.classList.toggle('active', active);
     if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
   });
-  for (const name of ['general', 'backend', 'roam', 'history', 'data']) $(`settings-${name}`).hidden = name !== section;
+  for (const name of ['general', 'backend', 'roam', 'history']) $(`settings-${name}`).hidden = name !== section;
   if (section === 'roam' && !roamSettingsLoading) { if (!roamSettingsLoaded) loadRoamSettings(); else loadRoamConfigs(); }
-  if (section === 'history' && !historyLoaded && !historyLoading) loadHistorySettings();
+  if (section === 'history') {
+    if (!historyLoaded && !historyLoading) loadHistorySettings();
+    jobPager.load();
+  }
   if (updateUrl) history.replaceState(null, '', `${location.pathname}${location.search}#settings/${section}`);
 }
 function renderBackends() {
@@ -567,7 +570,7 @@ async function clearGenerated() {
 }
 async function cancelJob(id, button) {
   button.disabled = true;
-  try { const result = await api(`/api/jobs/${encodeURIComponent(id)}/cancel`, { method: 'POST', body: '{}' }); state.jobs = state.jobs.map((job) => job.id === id ? result.job : job); renderJobs(); if (state.view === 'jobs') await jobPager.load(); }
+  try { const result = await api(`/api/jobs/${encodeURIComponent(id)}/cancel`, { method: 'POST', body: '{}' }); state.jobs = state.jobs.map((job) => job.id === id ? result.job : job); renderJobs(); if (viewingHistory()) await jobPager.load(); }
   catch (error) { showNotice(error.message, true); button.disabled = false; }
 }
 async function refresh(force = false) {
@@ -580,7 +583,7 @@ async function refresh(force = false) {
   const filterVersion = likedFilterVersion;
   const anchor = galleryCursors.get('feed');
   try {
-    const [jobs, artifacts] = await Promise.all([api('/api/jobs'), api(view === 'feed' ? roamArtifactPath(anchor) : artifactPath(view, null, state.likedTags)), state.view === 'jobs' ? jobPager.load() : Promise.resolve()]);
+    const [jobs, artifacts] = await Promise.all([api('/api/jobs'), api(view === 'feed' ? roamArtifactPath(anchor) : artifactPath(view, null, state.likedTags)), viewingHistory() ? jobPager.load() : Promise.resolve()]);
     state.jobs = jobs.jobs;
     // Multi-round counters must come from the idempotent response, even if jobs
     // already appear in events. Retain the original request for a safe retry.
@@ -982,7 +985,7 @@ async function bootstrap() {
     if (data.backend_types?.length) $('backend-kind').replaceChildren(...data.backend_types.map((type) => option(type.kind, type.label)));
     renderBackends(); renderJobs(); renderArtifacts();
     if (data.roam_settings) await applyRoamSettings(data.roam_settings, Object.keys(roamFields));
-    if (state.view === 'jobs') jobPager.load();
+    if (viewingHistory()) jobPager.load();
     $('data-directory').textContent = state.dataDirectory || '服务尚未返回数据目录';
     $('database-path').textContent = state.databasePath || '服务尚未返回数据库路径';
     await loadWorkflowLibrary();
