@@ -111,6 +111,31 @@ class RecommendationCoreTests(unittest.TestCase):
         self.assertNotEqual(first.scores[0].score, first.scores[1].score)
         self.assertEqual(self.store.states, {}, "Scoring must not persist a learned policy")
 
+    def test_mean_strategy_uses_learned_center_without_randomness(self):
+        liked = candidate("liked", ("forest",))
+        other = candidate("other", ("beach",))
+        self.feedback(liked)
+        record = self.store.load_policy("local", self.version)
+        prepared = self.service.features.prepare([liked, other])
+        keys, precision, reward = policy.unpack(record, {key for _, exact in prepared for key in exact})
+        vectors = dense_features(prepared, keys)
+        learned_vector = vectors[0]
+        # One unit-prior observation has center x / (1 + x.T @ x).
+        expected = vectors @ (learned_vector / (1 + learned_vector @ learned_vector))
+        with patch("numpy.random.default_rng", side_effect=AssertionError("Mean scoring must not sample")):
+            first = self.service.score(ScoreRequest("first", "local", 1, (liked, other), "mean"))
+            second = self.service.score(ScoreRequest("second", "local", 999, (liked, other), "mean"))
+        self.assertEqual(first, second)
+        np.testing.assert_allclose([item.score for item in first.scores], expected)
+        self.assertGreater(first.scores[0].score, first.scores[1].score)
+        self.assertEqual(self.store.load_policy("local", self.version), record)
+
+    def test_invalid_scoring_strategy_is_rejected_before_encoding(self):
+        for strategy in ("random", "", None, True, ["mean"]):
+            with self.assertRaisesRegex(ValueError, "strategy"):
+                self.service.score(ScoreRequest("request", "local", 1, (candidate(),), strategy))
+        self.assertEqual(self.encoder.calls, [])
+
     def test_identical_combinations_share_parameters(self):
         result = self.score([candidate("a"), candidate("b")])
         self.assertEqual(result.scores[0].score, result.scores[1].score)

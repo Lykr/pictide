@@ -23,6 +23,7 @@ class ScoreRequest:
     user_id: str
     sampling_seed: int
     candidates: tuple[ScoreCandidate, ...]
+    strategy: str = "thompson"
 
 
 @dataclass(frozen=True)

@@ -51,10 +51,23 @@ def _triangular_solve(matrix, values, lower):
     return result
 
 
+def _posterior_mean(factor, reward):
+    import numpy as np
+    center = _triangular_solve(factor.T, _triangular_solve(factor, reward, True), False)
+    if not np.isfinite(center).all():
+        raise ValueError("Non-finite preference center")
+    return center
+
+
+def mean(precision, reward):
+    """Return the posterior center without sampling or an exploration term."""
+    return _posterior_mean(validate(precision, reward), reward)
+
+
 def sample(precision, reward, seed):
     import numpy as np
     factor = validate(precision, reward)
-    center = _triangular_solve(factor.T, _triangular_solve(factor, reward, True), False)
+    center = _posterior_mean(factor, reward)
     noise = np.random.default_rng(seed).standard_normal(len(reward))
     # L^-T z has covariance (L L^T)^-1, retaining all feature correlations.
     parameters = center + _triangular_solve(factor.T, noise, False)

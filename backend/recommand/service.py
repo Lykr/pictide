@@ -89,12 +89,7 @@ class RecommendationService:
                 keys, precision, reward = policy.unpack(record)
                 if not counts.keys() <= set(keys):
                     raise ValueError("Missing preference content indices")
-                factor = policy.validate(precision, reward)
-                center = policy._triangular_solve(factor.T,
-                    policy._triangular_solve(factor, reward, True), False)
-                import numpy as np
-                if not np.isfinite(center).all():
-                    raise ValueError("Non-finite preference center")
+                center = policy.mean(precision, reward)
                 terms = []
                 for index, key in enumerate(keys):
                     if counts[key]:
@@ -122,6 +117,8 @@ class RecommendationService:
             self._identity(request.user_id, "user_id")
             if isinstance(request.sampling_seed, bool) or not isinstance(request.sampling_seed, int) or request.sampling_seed < 0:
                 raise ValueError("sampling_seed must be a non-negative integer")
+            if request.strategy not in ("thompson", "mean"):
+                raise ValueError("strategy must be thompson or mean")
             for candidate in request.candidates:
                 validate_candidate(candidate)
             ids = [c.candidate_id for c in request.candidates]
@@ -142,7 +139,8 @@ class RecommendationService:
             except ValueError:
                 record = self._rebuilt_record(request.user_id, version, record)
                 keys, precision, reward = policy.unpack(record, extra_keys)
-            parameters = policy.sample(precision, reward, request.sampling_seed)
+            parameters = (policy.mean(precision, reward) if request.strategy == "mean"
+                          else policy.sample(precision, reward, request.sampling_seed))
             values = dense_features(prepared, keys) @ parameters
             import numpy as np
             if not np.isfinite(values).all():
