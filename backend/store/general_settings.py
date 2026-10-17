@@ -25,12 +25,15 @@ class GeneralSettings:
     def get(self):
         with self.connect() as db:
             row = db.execute("SELECT theme FROM general_settings WHERE id=1").fetchone()
-        return {"theme": row[0] if row else "light"}
+        return {"theme": row[0] if row else "system"}
 
     def save(self, theme):
-        if theme not in ("light", "dark"):
-            raise ValidationError("主题须为 light 或 dark。")
+        if theme not in ("system", "light", "dark"):
+            raise ValidationError("主题须为 system、light 或 dark。")
         with self.connect() as db:
-            db.execute("INSERT INTO general_settings VALUES(1,?) ON CONFLICT(id) "
-                       "DO UPDATE SET theme=excluded.theme", (theme,))
+            if theme == "system":
+                db.execute("DELETE FROM general_settings WHERE id=1")
+            else:
+                db.execute("INSERT INTO general_settings VALUES(1,?) ON CONFLICT(id) "
+                           "DO UPDATE SET theme=excluded.theme", (theme,))
         return {"theme": theme}

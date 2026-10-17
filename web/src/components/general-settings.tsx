@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { LoaderCircle, Moon, Sun } from "lucide-react";
-import { Toggle } from "./ui/toggle";
+import { LoaderCircle, Monitor, Moon, Sun } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { Label } from "./ui/label";
 import { applyTheme, currentTheme, saveTheme } from "../controllers/theme.mjs";
 
@@ -15,20 +15,24 @@ export function GeneralSettings({ initialError = "" }: { initialError?: string }
     document.addEventListener("pictide:theme-error", failed);
     return () => { document.removeEventListener("pictide:theme-changed", sync); document.removeEventListener("pictide:theme-error", failed); };
   }, []);
-  const change = async (dark: boolean) => {
+  const change = async (next: string) => {
+    if (!next || saving || next === theme) return;
     const previous = theme;
-    const next = dark ? "dark" : "light";
     setSaving(true); setError(""); applyTheme(next);
     try { await saveTheme(next); }
     catch (failure) { applyTheme(previous); setError(`主题保存失败：${failure instanceof Error ? failure.message : String(failure)}`); }
     finally { setSaving(false); }
   };
   return <div className="max-w-md space-y-3">
-    <div className="flex items-center justify-between gap-4">
-      <Label htmlFor="theme-toggle" className="mb-0!">深色主题</Label>
-      <Toggle id="theme-toggle" variant="outline" pressed={theme === "dark"} onPressedChange={change} disabled={saving} aria-label="深色主题" data-tooltip={theme === "dark" ? "切换为浅色主题" : "切换为深色主题"}>
-        {saving ? <LoaderCircle className="animate-spin" /> : theme === "dark" ? <Moon /> : <Sun />}
-      </Toggle>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <Label id="theme-label" className="mb-0!">主题</Label>
+      <ToggleGroup type="single" size="sm" value={theme} onValueChange={change} disabled={saving} aria-labelledby="theme-label" aria-busy={saving}>
+        {([{ value: "system", label: "跟随系统", icon: Monitor }, { value: "dark", label: "黑色", icon: Moon }, { value: "light", label: "白色", icon: Sun }] as const).map(({ value, label, icon: Icon }) =>
+          <ToggleGroupItem key={value} value={value} aria-label={label}>
+            {saving && theme === value ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Icon aria-hidden="true" />}{label}
+          </ToggleGroupItem>
+        )}
+      </ToggleGroup>
     </div>
     {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
   </div>;

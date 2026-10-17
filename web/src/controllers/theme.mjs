@@ -1,11 +1,26 @@
+const systemAppearance = window.matchMedia('(prefers-color-scheme: dark)');
+let selectedTheme = 'system';
+
+/** Return the saved choice, independently of the current system appearance. */
 export function currentTheme() {
-  return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  return selectedTheme;
+}
+
+function renderTheme() {
+  const dark = selectedTheme === 'dark' || (selectedTheme === 'system' && systemAppearance.matches);
+  document.documentElement.classList.toggle('dark', dark);
+  document.dispatchEvent(new Event('pictide:theme-changed'));
 }
 
 export function applyTheme(theme) {
-  document.documentElement.classList.toggle('dark', theme === 'dark');
-  document.dispatchEvent(new Event('pictide:theme-changed'));
+  selectedTheme = theme;
+  renderTheme();
 }
+
+systemAppearance.addEventListener('change', () => {
+  if (selectedTheme === 'system') renderTheme();
+});
+renderTheme();
 
 async function requestTheme(options = {}) {
   const response = await fetch('/api/settings/general', options);
