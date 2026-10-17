@@ -54,9 +54,9 @@ export function createRoamPlayback({ advance, changed = () => {}, cancelWait = (
     },
     setQuickMode(enabled, factor = 0.5) {
       if (quickMode === enabled && quickFactor === factor) return;
-      const previousDuration = duration();
+      const previousDuration = duration(), previousMode = quickMode;
       quickMode = enabled; quickFactor = factor;
-      if (duration() !== previousDuration) this.restart();
+      if (quickMode !== previousMode || duration() !== previousDuration) this.restart();
       else notify();
     },
     setInterval(value) {
