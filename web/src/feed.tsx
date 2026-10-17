@@ -57,7 +57,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 <div className="roam-heading-actions">
 <span id="liked-privacy-controls" hidden />
-<span id="roam-options-controls"><RoamOptions privacy={<Toggle id="roam-privacy" size="sm" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={`${privacyLabel} · 空格。刷新页面后默认开启。`}>
+<span id="roam-options-controls"><RoamOptions privacy={<Toggle id="roam-privacy" size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={`${privacyLabel} · 空格。刷新页面后默认开启。`}>
 {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
 </Toggle>} immersive={<IconButton id="roam-immersive" icon={Maximize} label="进入沉浸模式" aria-controls="image-card" aria-pressed="false" disabled onClick={() => document.dispatchEvent(new Event("pictide:roam-options-close"))} />} /></span>
 </div>

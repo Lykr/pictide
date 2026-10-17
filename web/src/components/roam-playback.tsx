@@ -65,18 +65,21 @@ export function RoamOptions({ privacy, immersive }: { privacy: ReactNode; immers
     if (next) { dirty.current = false; setDraft(String(settings.playback_interval_seconds)); setError(""); setSaved(false); }
   }}>
     <PopoverTrigger asChild><IconButton id="roam-options" icon={Settings2} label="漫游选项" /></PopoverTrigger>
-    <PopoverContent forceMount hidden={!open} align="end" className="w-72" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
-      <div className="flex items-center justify-between"><span className="font-medium">自动播放</span><RoamPlaybackButton menu /></div>
-      <form className="space-y-2" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
-        <Label htmlFor="roam-playback-seconds" className="mb-0!">每张展示（秒）</Label>
-        <div className="flex items-center gap-2">
-          <Input id="roam-playback-seconds" type="number" min={1} max={600} step={1} value={draft} disabled={!ready || saving !== null} onChange={event => { dirty.current = true; setDraft(event.target.value); setSaved(false); }} />
+    <PopoverContent forceMount hidden={!open} align="end" className="w-64 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
+      <div className="grid grid-cols-[minmax(0,1fr)_4.5rem_2rem] items-center gap-x-2 gap-y-1">
+        <span className="col-span-2">自动播放</span><RoamPlaybackButton menu />
+        <form className="col-span-3 grid grid-cols-subgrid items-center" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
+          <Label htmlFor="roam-playback-seconds" className="mb-0! font-normal">间隔（秒）</Label>
+          <Input id="roam-playback-seconds" className="h-8 px-3 text-center tabular-nums" type="number" min={1} max={600} step={1} value={draft} disabled={!ready || saving !== null} onChange={event => { dirty.current = true; setDraft(event.target.value); setSaved(false); }} />
           <IconButton icon={saving === "interval" ? LoaderCircle : saved ? Check : Save} label={saved ? "已保存播放间隔" : "保存播放间隔"} type="submit" disabled={!ready || saving !== null || Number(draft) === settings.playback_interval_seconds} />
-        </div>
-      </form>
-      <Label htmlFor="roam-options-liked-tags" className="mb-0! flex items-center justify-between gap-3 leading-relaxed"><span>仅从喜欢图片中抽取标签</span><Checkbox id="roam-options-liked-tags" checked={settings.liked_tags_only} disabled={!ready || saving !== null} onCheckedChange={value => void save("liked", value === true)} /></Label>
-      <div className="flex items-center justify-between"><span>毛玻璃</span>{privacy}</div>
-      <div className="flex items-center justify-between"><span>沉浸模式</span>{immersive}</div>
+        </form>
+        <Label htmlFor="roam-options-liked-tags" className="col-span-3 mb-0! grid grid-cols-subgrid items-center font-normal">
+          <span className="col-span-2" data-tooltip="仅从喜欢图片中抽取标签；固定词保持不变。">仅用喜欢标签</span>
+          <span className="flex size-8 items-center justify-center"><Checkbox id="roam-options-liked-tags" checked={settings.liked_tags_only} disabled={!ready || saving !== null} onCheckedChange={value => void save("liked", value === true)} /></span>
+        </Label>
+        <span className="col-span-2">毛玻璃</span>{privacy}
+        <span className="col-span-2">沉浸模式</span>{immersive}
+      </div>
       {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
     </PopoverContent>
   </Popover>;
