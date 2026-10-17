@@ -85,7 +85,7 @@ class PictideApplication:
                 "backend_types": self.tasks.connections.backend_types(),
                 "backends": [public_backend(config) for config in await asyncio.to_thread(self.storage.backends)],
                 "jobs": await self.list_jobs(), "artifacts": page["artifacts"],
-                "roam_view": view,
+                "roam_view": view, "roam_settings": await self.roam_settings(),
                 "artifact_revision": page["revision"], "counts": page["counts"],
                 "artifact_page": {key: page[key] for key in ("has_more", "has_newer", "anchor_id", "next_cursor", "total", "revision")},
                 "recommendation": asdict(recommendation) | {"error": self._recommendation_error or recommendation.error},
@@ -304,11 +304,17 @@ class PictideApplication:
                     artifact_revision=await asyncio.to_thread(self.storage.artifact_revision))
 
     async def roam_settings(self, payload=None):
+        if payload is not None and "liked_tags_only" in payload and type(payload["liked_tags_only"]) is not bool:
+            raise ValidationError("仅从喜欢图片抽取标签须为布尔值。")
+        if payload is not None and "playback_interval_seconds" in payload:
+            from .store.roam_settings import playback_interval_seconds
+            playback_interval_seconds(payload["playback_interval_seconds"])
         async with self._roam_lock:
             if payload is None:
                 document = await asyncio.to_thread(self.roam.get)
-            elif set(payload) == {"playback_interval_seconds"}:
-                document = await asyncio.to_thread(self.roam.save_playback_interval, payload["playback_interval_seconds"])
+            elif payload and set(payload) <= {"playback_interval_seconds", "liked_tags_only"}:
+                document = await asyncio.to_thread(self.roam.save_options, payload.get("liked_tags_only"),
+                                                   payload.get("playback_interval_seconds"))
                 self.events.publish("roam_settings")
             else:
                 if "prefetch_count" not in payload:
@@ -327,16 +333,12 @@ class PictideApplication:
                         raise ValidationError("漫游生图后端不存在，请重新选择。")
                     if preset_id and preset_id not in {item["id"] for item in (await asyncio.to_thread(self.candidates.list_presets))["presets"]}:
                         raise ValidationError("漫游候选预设不存在，请重新选择。")
-                if "playback_interval_seconds" in payload:
-                    # Validate before saving either part of a combined settings request.
-                    from .store.roam_settings import playback_interval_seconds
-                    playback_interval_seconds(payload["playback_interval_seconds"])
                 document = await asyncio.to_thread(self.roam.save, count, backend_id, preset_id, max_history,
-                                                   payload.get("playback_interval_seconds"))
+                                                   payload.get("playback_interval_seconds"), payload.get("liked_tags_only"))
                 await self.clean_history(force=True, roam_only=True)
                 self.events.publish("roam_settings")
             state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
-            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds")} | {
+            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only")} | {
                 "artifact_revision": await asyncio.to_thread(self.storage.artifact_revision),
                 "paused": state["paused"], "preference_learning": await self._learning_available(),
                 **({"error": state["error"]} if state.get("error") else {})}
@@ -355,7 +357,14 @@ class PictideApplication:
 
     def _roam_candidate(self, context):
         # Candidate generation remains entirely owned by the candidate module.
-        pool = self.candidates.provider.generate({"preset_id": context["preset_id"], "mode": "random_each_run"}, {"count": 4})
+        constraints = {"count": 4}
+        if context.get("liked_tags_only"):
+            prompts = self.storage.liked_positive_prompts()
+            allowed = self.candidates.resolve_tag_pool(prompts)
+            if not allowed:
+                return None, None
+            constraints["allowed_positive_tags"] = allowed
+        pool = self.candidates.provider.generate({"preset_id": context["preset_id"], "mode": "random_each_run"}, constraints)
         if not pool:
             raise ValidationError("候选模块未提供合法提示词组合。")
         status = self._sync_recommendation()
@@ -399,7 +408,7 @@ class PictideApplication:
             count = document["prefetch_count"]
             enabled = bool(count) or demand
             target = (count + (anchor is None) if count else 1) if enabled else 0
-            base = {"enabled": enabled, "prefetch_count": count, "target": target,
+            base = {"enabled": enabled, "prefetch_count": count, "target": target, "waiting_for_liked_tags": False,
                     "preference_learning": await self._learning_available()}
             if enabled:
                 await self.clean_history()
@@ -410,8 +419,11 @@ class PictideApplication:
                 backend_id, preset_id = await self._roam_options(document)
                 base.update(backend_id=backend_id, preset_id=preset_id)
                 context = {"kind": "roam", "anchor_id": anchor, "prefetch_count": count,
-                           "backend_id": backend_id, "preset_id": preset_id, "epoch": document["epoch"]}
+                           "backend_id": backend_id, "preset_id": preset_id, "epoch": document["epoch"],
+                           "liked_tags_only": document["liked_tags_only"]}
                 chosen, snapshot = await asyncio.to_thread(self._roam_candidate, context)
+                if chosen is None:
+                    return base | state | {"waiting_for_liked_tags": True}
                 base["preference_learning"] = await self._learning_available()
                 if self._recommendation_error:
                     base["recommendation_error"] = self._recommendation_error
