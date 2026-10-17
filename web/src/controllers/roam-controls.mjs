@@ -6,6 +6,13 @@ export function prefetchCount(value) {
   return count;
 }
 
+export function candidateCount(value) {
+  if (!['number', 'string'].includes(typeof value) || typeof value === 'string' && !value.trim()) throw new Error('请输入候选组合数量。');
+  const count = Number(value);
+  if (!Number.isInteger(count) || count < 1 || count > 20) throw new Error('候选组合数量须为 1–20 之间的整数。');
+  return count;
+}
+
 export function maxHistoryImages(value) {
   if (!['number', 'string'].includes(typeof value) || typeof value === 'string' && !value.trim()) {
     throw new Error('请输入历史图片数量上限。');

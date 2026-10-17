@@ -271,6 +271,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="settings-field"><Label htmlFor="roam-prefetch-count"><span className="field-caption">预取数量<HelpTip text="在当前图片后预备的张数；漫游页打开时按需补足，0 关闭自动预取。" /></span></Label><Input id="roam-prefetch-count" type="number" min="0" max="20" step="1" defaultValue="0" required /></div>
 <div className="settings-field"><Label htmlFor="roam-max-history-images"><span className="field-caption">历史图片数量上限<HelpTip text="超限时从最早图片处理：未喜欢的永久删除本地图片及提示词 JSON；喜欢的仅从漫游隐藏，喜欢页保留。" /></span></Label><Input id="roam-max-history-images" data-tooltip="仅计算当前图片之前的漫游历史；当前、预取与生成页图片不计。0 关闭数量清理。" type="number" min="0" max="100000" step="1" defaultValue="0" required /></div>
 <div className="settings-field"><Label htmlFor="roam-playback-interval"><span className="field-caption">自动播放<HelpTip text="每张图片加载完成后开始计时；下一张未就绪时等待。" /></span></Label><InputGroup><InputGroupInput id="roam-playback-interval" aria-label="自动播放间隔（秒）" type="number" min="1" max="600" step="1" defaultValue="5" required /><InputGroupAddon align="inline-end">秒</InputGroupAddon></InputGroup></div>
+<div className="settings-field"><Label htmlFor="roam-candidate-count"><span className="field-caption">候选组合数量<HelpTip text="每次准备的提示词组合数，由推荐评分后择一生图；越多通常等待越久。停泊已有提示词时不使用。" /></span></Label><Input id="roam-candidate-count" type="number" min="1" max="20" step="1" defaultValue="4" required /></div>
 </div>
 </fieldset>
 <PreferenceActions />

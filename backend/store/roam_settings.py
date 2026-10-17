@@ -19,6 +19,12 @@ def prefetch_count(value):
     return value
 
 
+def candidate_count_value(value):
+    if type(value) is not int or not 1 <= value <= 20:
+        raise ValidationError("候选组合数量须为 1–20 之间的整数。")
+    return value
+
+
 def playback_interval_seconds(value):
     if type(value) is not int or not 1 <= value <= 600:
         raise ValidationError("自动播放间隔须为 1–600 秒之间的整数。")
@@ -57,6 +63,9 @@ class RoamSettings:
             db.execute("CREATE TABLE IF NOT EXISTS roam_playback_settings (id INTEGER PRIMARY KEY CHECK(id=1), "
                        "interval_seconds INTEGER NOT NULL CHECK(interval_seconds BETWEEN 1 AND 600))")
 
+            db.execute("CREATE TABLE IF NOT EXISTS roam_candidate_settings (id INTEGER PRIMARY KEY CHECK(id=1), "
+                       "candidate_count INTEGER NOT NULL CHECK(candidate_count BETWEEN 1 AND 20))")
+
     @contextmanager
     def connect(self):
         db = sqlite3.connect(self.path, timeout=30)
@@ -68,7 +77,7 @@ class RoamSettings:
 
     @staticmethod
     def defaults():
-        return {"prefetch_count": 0, "max_history_images": 0, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 5, "liked_tags_only": False, "prompt_mode": "random"}
+        return {"prefetch_count": 0, "max_history_images": 0, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 5, "liked_tags_only": False, "prompt_mode": "random", "candidate_count": 4}
 
     @classmethod
     def _get(cls, db):
@@ -79,6 +88,8 @@ class RoamSettings:
         document = dict(row) if row else cls.defaults()
         document["liked_tags_only"] = bool(document["liked_tags_only"])
         document["playback_interval_seconds"] = playback[0] if playback else 5
+        candidate = db.execute("SELECT candidate_count FROM roam_candidate_settings WHERE id=1").fetchone()
+        document["candidate_count"] = candidate[0] if candidate else 4
         return document
 
     def get(self):
@@ -98,7 +109,7 @@ class RoamSettings:
     def history_limit(self):
         return self.get()["max_history_images"]
 
-    def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None):
+    def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None):
         document = {"prefetch_count": prefetch_count(count), "backend_id": selection(backend_id, "生图后端"),
                     "max_history_images": max_history_images(max_history),
                     "preset_id": selection(preset_id, "候选预设"), "epoch": uuid.uuid4().hex}
@@ -108,16 +119,23 @@ class RoamSettings:
             liked_tags_only_value(liked_tags_only)
         if prompt_mode is not None:
             prompt_mode_value(prompt_mode)
+        if candidate_count is not None:
+            candidate_count_value(candidate_count)
         with self.lock, self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             previous = self._get(db)
             document["liked_tags_only"] = previous["liked_tags_only"] if liked_tags_only is None else liked_tags_only
             document["prompt_mode"] = previous["prompt_mode"] if prompt_mode is None else prompt_mode
+            if candidate_count is not None and all(document[key] == previous[key] for key in
+                    ("prefetch_count", "max_history_images", "backend_id", "preset_id", "liked_tags_only", "prompt_mode")) and (playback_interval is None or playback_interval == previous["playback_interval_seconds"]):
+                document["epoch"] = previous["epoch"]
             if any(document[key] != previous[key] for key in ("liked_tags_only", "prompt_mode", "backend_id", "preset_id")):
                 Repository.discard_roam_prefetch(db)
             self._save_settings(db, document)
             if playback_interval is not None:
                 self._save_playback(db, playback_interval)
+            if candidate_count is not None:
+                self._save_candidate_count(db, candidate_count)
             document = self._get(db)
         return document
 
@@ -126,13 +144,20 @@ class RoamSettings:
         db.execute("INSERT INTO roam_playback_settings VALUES(1,?) ON CONFLICT(id) DO UPDATE SET "
                    "interval_seconds=excluded.interval_seconds", (seconds,))
 
-    def save_options(self, liked_tags_only=None, playback_interval=None, prompt_mode=None):
+    @staticmethod
+    def _save_candidate_count(db, count):
+        db.execute("INSERT INTO roam_candidate_settings VALUES(1,?) ON CONFLICT(id) DO UPDATE SET "
+                   "candidate_count=excluded.candidate_count", (count,))
+
+    def save_options(self, liked_tags_only=None, playback_interval=None, prompt_mode=None, candidate_count=None):
         if liked_tags_only is not None:
             liked_tags_only_value(liked_tags_only)
         if playback_interval is not None:
             playback_interval_seconds(playback_interval)
         if prompt_mode is not None:
             prompt_mode_value(prompt_mode)
+        if candidate_count is not None:
+            candidate_count_value(candidate_count)
         with self.lock, self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             document = self._get(db)
@@ -148,6 +173,8 @@ class RoamSettings:
                 self._save_settings(db, document)
             if playback_interval is not None:
                 self._save_playback(db, playback_interval)
+            if candidate_count is not None:
+                self._save_candidate_count(db, candidate_count)
             return self._get(db)
 
     def save_playback_interval(self, seconds):

@@ -160,3 +160,21 @@ class RoamPipelineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sum("job" in r for r in results), 2)
         self.assertEqual(repo.ensure_roam(epoch, None, 20)["roam_pending"], 2)
         self.assertEqual(len(repo.jobs()), 2)
+
+    async def test_configured_candidate_pool_is_fully_scored_without_clearing_jobs(self):
+        def generate(context, constraints):
+            self.assertEqual(constraints["count"], 7)
+            return tuple(Candidate(f"option-{i}", f"forest {i}", "",
+                         terms=(TagSnapshot("smoke", f"forest-{i}", f"forest {i}"),))
+                         for i in range(constraints["count"]))
+        self.pool.generate = generate
+        epoch = self.app.roam.get()["epoch"]
+        response = await self.client.put("/api/settings/roam", json={"candidate_count": 7})
+        self.assertEqual(response.status, 200)
+        first = await self.ensure()
+        self.assertEqual(len(self.scorer.requests[0].candidates), 7)
+        self.assertEqual(first["job"]["positive"], "forest 0")
+        response = await self.client.put("/api/settings/roam", json={"candidate_count": 3})
+        self.assertEqual(response.status, 200)
+        self.assertEqual(self.app.roam.get()["epoch"], epoch)
+        self.assertEqual(self.app.storage.job(first["job"]["id"])["status"], "queued")

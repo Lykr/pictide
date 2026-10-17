@@ -318,12 +318,15 @@ class PictideApplication:
         if payload is not None and "prompt_mode" in payload:
             from .store.roam_settings import prompt_mode_value
             prompt_mode_value(payload["prompt_mode"])
+        if payload is not None and "candidate_count" in payload:
+            from .store.roam_settings import candidate_count_value
+            candidate_count_value(payload["candidate_count"])
         async with self._roam_lock:
             if payload is None:
                 document = await asyncio.to_thread(self.roam.get)
-            elif payload and set(payload) <= {"playback_interval_seconds", "liked_tags_only", "prompt_mode"}:
+            elif payload and set(payload) <= {"playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count"}:
                 document = await asyncio.to_thread(self.roam.save_options, payload.get("liked_tags_only"),
-                                                   payload.get("playback_interval_seconds"), payload.get("prompt_mode"))
+                                                   payload.get("playback_interval_seconds"), payload.get("prompt_mode"), payload.get("candidate_count"))
                 self.events.publish("roam_settings")
             else:
                 if "prefetch_count" not in payload:
@@ -343,11 +346,12 @@ class PictideApplication:
                     if preset_id and preset_id not in {item["id"] for item in (await asyncio.to_thread(self.candidates.list_presets))["presets"]}:
                         raise ValidationError("漫游候选预设不存在，请重新选择。")
                 document = await asyncio.to_thread(self.roam.save, count, backend_id, preset_id, max_history,
-                                                   payload.get("playback_interval_seconds"), payload.get("liked_tags_only"), payload.get("prompt_mode"))
-                await self.clean_history(force=True, roam_only=True)
+                                                   payload.get("playback_interval_seconds"), payload.get("liked_tags_only"), payload.get("prompt_mode"), payload.get("candidate_count"))
+                if document["epoch"] != previous["epoch"]:
+                    await self.clean_history(force=True, roam_only=True)
                 self.events.publish("roam_settings")
             state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
-            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode")} | {
+            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count")} | {
                 "artifact_revision": await asyncio.to_thread(self.storage.artifact_revision),
                 "paused": state["paused"], "preference_learning": await self._learning_available(),
                 **({"error": state["error"]} if state.get("error") else {})}
@@ -368,7 +372,7 @@ class PictideApplication:
         # Candidate generation remains entirely owned by the candidate module.
         mode = context.get("prompt_mode", "random")
         previous = self.storage.roam_prompt_reference(context["epoch"], context.get("anchor_id")) if mode != "random" else None
-        constraints = {"count": 4, "prompt_mode": mode, "previous_candidate": previous}
+        constraints = {"count": context.get("candidate_count", 4), "prompt_mode": mode, "previous_candidate": previous}
         if context.get("liked_tags_only") and not (mode == "stay" and previous):
             prompts = self.storage.liked_positive_prompts()
             allowed = self.candidates.resolve_tag_pool(prompts)
@@ -431,7 +435,8 @@ class PictideApplication:
                 base.update(backend_id=backend_id, preset_id=preset_id)
                 context = {"kind": "roam", "anchor_id": anchor, "prefetch_count": count,
                            "backend_id": backend_id, "preset_id": preset_id, "epoch": document["epoch"],
-                           "liked_tags_only": document["liked_tags_only"], "prompt_mode": document["prompt_mode"]}
+                           "liked_tags_only": document["liked_tags_only"], "prompt_mode": document["prompt_mode"],
+                           "candidate_count": document["candidate_count"]}
                 chosen, snapshot = await asyncio.to_thread(self._roam_candidate, context)
                 if chosen is None:
                     return base | state | {"waiting_for_liked_tags": True}

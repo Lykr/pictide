@@ -84,3 +84,26 @@ class RoamPlaybackSettingsTests(unittest.IsolatedAsyncioTestCase):
         saved = await self.put({"prefetch_count": 0, "playback_interval_seconds": 8})
         self.assertEqual(saved["playback_interval_seconds"], 8)
         self.assertEqual(self.app.storage.jobs(), [])
+
+    async def test_candidate_count_persists_and_preserves_pause(self):
+        response = await self.client.get("/api/settings/roam")
+        self.assertEqual((await response.json())["candidate_count"], 4)
+        previous = self.app.roam.save(0, "selected-backend", "selected-preset", 25)
+        self.app.storage.pause_roam(previous["epoch"], "Paused smoke")
+        saved = await self.put({"candidate_count": 7})
+        self.assertEqual(saved["candidate_count"], 7)
+        self.assertTrue(saved["paused"])
+        self.assertEqual(self.app.roam.get()["epoch"], previous["epoch"])
+        saved = await self.put({"prefetch_count": 0, "max_history_images": 25,
+                               "candidate_count": 12})
+        self.assertTrue(saved["paused"])
+        self.assertEqual(self.app.roam.get()["epoch"], previous["epoch"])
+        for value in (0, 21, 1.5, True, None, "4"):
+            response = await self.client.put("/api/settings/roam", json={"candidate_count": value})
+            self.assertEqual(response.status, 400)
+        self.assertEqual(self.app.roam.get()["candidate_count"], 12)
+        await self.client.close()
+        await self.open_app()
+        response = await self.client.get("/api/settings/roam")
+        self.assertEqual((await response.json())["candidate_count"], 12)
+        self.assertEqual(self.app.storage.jobs(), [])
