@@ -7,7 +7,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 from backend.candidate.errors import CandidateError
-from backend.candidate.service import CandidateService
+from backend.candidate.service import CandidateService, validate_document
 from backend.store.candidate import SQLiteCandidateStore
 
 
@@ -28,11 +28,55 @@ class CooccurrenceSmoke(unittest.TestCase):
                 (1,2,1.0,80),(1,3,1.0,80),(1,4,1.0,80),(2,3,1.0,80),(2,4,1.0,80),(3,4,1.0,80),(1,5,10.0,1)])
         self.doc = dict(base_positive=["blue sky"],base_negative=["blurry"],
                         min_tags=3,max_tags=3,pmi_threshold=0.5,min_cooccurrence=5,
-                        change_budget=2)
+                        change_budget=2, blocked_keywords=[])
         self.service.save_preset(dict(id="test",name="neutral",document=self.doc))
 
     def tearDown(self):
         self.directory.cleanup()
+
+    def test_blocked_keywords_normalize_validate_and_preserve_fixed(self):
+        document = dict(self.doc, base_negative=["soft light", "blurry"],
+                        blocked_keywords=["  BLUE_SKY  ", "blue sky", "", "  ", "SOFT__LIGHT", "VIEW"])
+        normalized = validate_document(document)
+        self.assertEqual(normalized["blocked_keywords"], ["blue sky", "soft light", "view"])
+        saved = self.service.save_preset(dict(id="blocked", name="blocked", document=document))
+        self.assertEqual(saved["document"], normalized)
+        result = self.service.generate(dict(preset_id="blocked", mode="fixed_seed", seed=19))
+        self.assertEqual(result["positive"], "blue sky, green grass")
+        self.assertEqual(result["negative"], "soft light, blurry")
+        self.assertEqual(result["report"]["stop_reason"], "no_eligible_tags")
+        for invalid in (None, "hair", [1], [None], {}):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(CandidateError, "blocked_keywords"):
+                validate_document(dict(self.doc, blocked_keywords=invalid))
+
+    def test_blocked_keywords_filter_first_draw_and_keep_partial_results(self):
+        document = dict(self.doc, base_positive=[], blocked_keywords=["sky", "grass", "light", "night"])
+        result = self.service.generate(dict(preset_id="test", document=document, mode="fixed_seed", seed=19))
+        self.assertEqual(result["positive"], "wide view")
+        self.assertEqual(result["report"]["stop_reason"], "no_eligible_tags")
+        document["blocked_keywords"].append("view")
+        empty = self.service.generate(dict(preset_id="test", document=document, mode="fixed_seed", seed=19))
+        self.assertEqual(empty["positive"], "")
+        self.assertEqual(empty["negative"], "blurry")
+
+    def test_blocked_keywords_restart_along_and_invalidate_sequence_cache(self):
+        options = dict(preset_id="test", mode="sequence", seed=9,
+                       document=dict(self.doc, change_budget=0))
+        initial = self.service.generate(dict(options, sequence_step=5))
+        variables = [term["text"] for term in initial["selected_tags"]
+                     if term["channel"] == "positive" and term["text"] != "blue sky"]
+        blocked = dict(options, document=dict(options["document"], blocked_keywords=variables))
+        frame = self.service.generate(dict(blocked, sequence_step=5))
+        self.assertTrue(all(text not in frame["positive"] for text in variables))
+        fresh = CandidateService(SQLiteCandidateStore(self.path))
+        self.assertEqual(frame, fresh.generate(dict(blocked, sequence_step=5)))
+        reference = dict(candidate_id=initial["candidate_id"], positive=initial["positive"],
+                         negative=initial["negative"], terms=initial["selected_tags"])
+        with patch.object(self.service, "_advance", side_effect=AssertionError("blocked reference must restart")):
+            along = self.service.provider.generate(blocked, dict(prompt_mode="along", previous_candidate=reference))[0]
+        self.assertTrue(all(text not in along.positive for text in variables))
+        stay = self.service.provider.generate(blocked, dict(prompt_mode="stay", previous_candidate=reference))[0]
+        self.assertEqual(stay.positive, initial["positive"])
 
     def test_anchor_pmi_and_seed(self):
         options = dict(preset_id="test",mode="fixed_seed",seed=19)

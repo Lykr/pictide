@@ -12,12 +12,21 @@ from .errors import CandidateError
 from .rounds import integer, validate_options, prepare_rounds
 
 DEFAULT_DOCUMENT = dict(base_positive=[], base_negative=[], min_tags=5, max_tags=20,
-                        pmi_threshold=0, min_cooccurrence=10, change_budget=2)
+                        pmi_threshold=0, min_cooccurrence=10, change_budget=2, blocked_keywords=[])
 
 
 def document_key(document):
     return hashlib.sha256(json.dumps(document, sort_keys=True, ensure_ascii=False,
                                      allow_nan=False).encode()).hexdigest()
+
+
+def keyword_text(text):
+    return " ".join(text.replace("_", " ").casefold().split())
+
+
+def matches_blocked_keyword(name, keywords):
+    text = keyword_text(name)
+    return any(keyword in text for keyword in keywords)
 
 
 def validate_document(document):
@@ -29,6 +38,11 @@ def validate_document(document):
         if not isinstance(values, list) or any(not isinstance(v, str) or not v.strip() for v in values):
             raise CandidateError(f"{key} 必须是完整且非空的标签文本列表")
         result[key] = list(dict.fromkeys(v.strip().replace("_", " ") for v in values))
+    keywords = result["blocked_keywords"]
+    if not isinstance(keywords, list) or any(not isinstance(value, str) for value in keywords):
+        raise CandidateError("blocked_keywords 必须是字符串列表")
+    result["blocked_keywords"] = list(dict.fromkeys(
+        keyword_text(value) for value in keywords if keyword_text(value)))
     integer(result["min_tags"], "min_tags", 1, 1000)
     integer(result["max_tags"], "max_tags", result["min_tags"], 1000)
     integer(result["min_cooccurrence"], "min_cooccurrence", 1, 2**53-1)
@@ -137,6 +151,8 @@ class CandidateService:
             return None
         if allowed_ids is not None and any(tag["id"] not in allowed_ids for tag in variable):
             return None
+        if any(matches_blocked_keyword(tag["name"], document["blocked_keywords"]) for tag in variable):
+            return None
         existing = list(anchors)
         for tag in variable:
             pairs = self.store.pair_relations(tag["id"], [other["id"] for other in existing])
@@ -156,6 +172,9 @@ class CandidateService:
             work[0] -= 1
             choices = self.store.expansion_candidates([*anchors, *variable], document["pmi_threshold"],
                                                        document["min_cooccurrence"], allowed_ids)
+            if document["blocked_keywords"]:
+                choices = [(tag, weight) for tag, weight in choices
+                           if not matches_blocked_keyword(tag["name"], document["blocked_keywords"])]
             if not choices:
                 return variable, "no_eligible_tags"
             chosen = rng.choices([item[0] for item in choices], [item[1] for item in choices], k=1)[0]
