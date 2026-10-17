@@ -763,18 +763,21 @@ $('sampling-steps').addEventListener('input', () => {
   } catch (error) { control.setCustomValidity(error.message); }
 });
 let defaultStepsPending = Promise.resolve();
-$('default-sampling-steps').addEventListener('change', () => {
+async function prepareDefaultSteps(value) {
   const control = $('default-sampling-steps');
+  try {
+    control.disabled = true;
+    const template = await currentDefaultTemplate();
+    const binding = selectedStepsBinding(template.workflow, template.bindings?.steps);
+    if (!binding) throw new Error('默认工作流没有可调整的采样步数输入。');
+    changeNodeInput(template.workflow, binding.node_id, binding.input, value, 'integer');
+    applyWorkflowDraft({ ...template, bindings: { ...template.bindings, steps: binding } }, template.input_options || {});
+  } finally { control.disabled = $('workflow-mode').value !== 'default'; }
+}
+$('default-sampling-steps').addEventListener('change', () => {
   defaultStepsPending = (async () => {
-    try {
-      const value = ruleNumber('default-sampling-steps', 'K 采样步数', 1, Number.MAX_SAFE_INTEGER);
-      control.disabled = true;
-      const template = await currentDefaultTemplate();
-      const binding = selectedStepsBinding(template.workflow, template.bindings?.steps);
-      if (!binding) throw new Error('默认工作流没有可调整的采样步数输入。');
-      changeNodeInput(template.workflow, binding.node_id, binding.input, value, 'integer');
-      applyWorkflowDraft({ ...template, bindings: { ...template.bindings, steps: binding } }, template.input_options || {});
-    } finally { control.disabled = $('workflow-mode').value !== 'default'; }
+    const value = ruleNumber('default-sampling-steps', 'K 采样步数', 1, Number.MAX_SAFE_INTEGER);
+    await prepareDefaultSteps(value);
   })();
   defaultStepsPending.catch(error => settingsNotice(error.message, true));
 });
@@ -894,6 +897,11 @@ function connectionDraft() {
 }
 async function draftBackend({ saveWorkflow = false } = {}) {
   await defaultStepsPending;
+  // Read the visible field on submission as well: input/autofill may not emit change.
+  if ($('workflow-mode').value === 'default') {
+    const steps = ruleNumber('default-sampling-steps', 'K 采样步数', 1, Number.MAX_SAFE_INTEGER);
+    if (steps !== 28) await prepareDefaultSteps(steps);
+  }
   const draft = connectionDraft();
   draft.workflow_mode = $('workflow-mode').value === 'default' ? 'default' : 'custom';
   if (draft.workflow_mode === 'default') { draft.default_checkpoint = $('default-checkpoint').value; return draft; }
