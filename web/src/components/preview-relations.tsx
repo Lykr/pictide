@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Copy, LoaderCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
-import { IconButton } from "./actions";
+import { HelpTip, IconButton } from "./actions";
 
 export type PreviewTerm = { id: string; text: string; channel: "positive" | "negative" };
 type Relation = { text: string; known: boolean; pmi: number | null; count: number | null };
@@ -52,17 +52,17 @@ export function PreviewPrompts({ terms, positive, negative }: { terms: PreviewTe
     {(["positive", "negative"] as const).map(channel => {
       const label = channel === "positive" ? "正向提示词" : "负向提示词";
       const items = terms.map((term, index) => ({ term, index })).filter(({ term }) => term.channel === channel);
-      return <section key={channel}><div className="cooc-section-heading"><h2>{label}</h2><span className="spacer" /><CopyText text={channel === "positive" ? positive : negative} label={label} /></div>
+      return <section key={channel}><div className="cooc-section-heading"><h2>{label}</h2>{channel === "negative" && <HelpTip text="负向词交给生图模型排除内容，不参与共现扩展筛选。" />}<span className="spacer" /><CopyText text={channel === "positive" ? positive : negative} label={label} /></div>
         <p className="cooc-prompt">{items.length ? items.map(({ term, index }, position) => <span key={`${channel}:${index}`}>
           <Tooltip open={active === index} onOpenChange={open => { if (open) load(index); else setActive(current => current === index ? null : current); }}>
             <TooltipTrigger asChild><Button variant="ghost" size="sm" className="cooc-preview-term" data-relation={anchor === normalized(term.text) ? "anchor" : tone(relations.get(normalized(term.text)), query?.data?.anchor.known)} aria-label={`查看 ${term.text} 与其他提示词的相关性`} onClick={event => { event.preventDefault(); load(index); }}>{term.text}</Button></TooltipTrigger>
             <TooltipContent side="bottom" align="start" sideOffset={6} className="cooc-relations-tooltip">
               <strong>{term.text}</strong>
               {!query || !query.data && !query.error ? <p role="status"><LoaderCircle className="size-3 animate-spin" />读取相关性…</p> : query.error ? <p role="status">读取失败：{query.error}。移开后重试。</p> : !query.data!.anchor.known ? <p>自定义词，无统计；不参与 PMI 比较。</p> : !query.data!.relations.length ? <p>当前组合没有其他词项。</p> : <>
-                <div className="cooc-relations-scroll"><table><thead><tr><th>提示词</th><th>PMI</th><th>共现次数</th></tr></thead><tbody>{query.data!.relations.map(relation => <tr key={relation.text}>
+                <div className="cooc-relations-scroll"><table><thead><tr><th>提示词</th><th>PMI</th><th>共现次数（≥10）</th></tr></thead><tbody>{query.data!.relations.map(relation => <tr key={relation.text}>
                   <td>{relation.text}</td><td>{!relation.known ? "无统计" : relation.count === null ? "未保留统计" : relation.pmi!.toFixed(2)}</td><td>{!relation.known ? "—" : relation.count === null ? "<10" : relation.count.toLocaleString()}</td>
                 </tr>)}</tbody></table></div>
-                <p className="cooc-relations-note">仅保留共现 ≥10 次的关系；未保留关系可能是零共现或不足 10 次。PMI 不等于协调或冲突；负向词不参与生成筛选。</p>
+                <p className="cooc-relations-note">PMI 表示统计关联，不代表画面协调或冲突。</p>
               </>}
             </TooltipContent>
           </Tooltip>{position < items.length - 1 ? ", " : ""}
