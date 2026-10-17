@@ -84,3 +84,16 @@ test('progress shares the deadline, restarts on repeated likes, and stays full w
   assert.equal(cancelled, 1); assert.equal(state.waiting, false); assert.equal(state.startedAt, 8000);
   playback.pause(); assert.equal(state.playing, false); assert.equal(state.startedAt, null); assert.equal(timers.size, 0);
 });
+
+test('quick playback scales the base interval and preserves pause state and normal duration', () => {
+  const f = fixture(); f.update({ready:true}); f.playback.setInterval(5); f.playback.toggle();
+  assert.equal([...f.timers.values()][0].delay,5000);
+  f.playback.setQuickMode(true,0.5);
+  assert.equal([...f.timers.values()][0].delay,2500);
+  f.playback.restart(); assert.equal([...f.timers.values()][0].delay,2500);
+  f.playback.setQuickMode(true,0.25);
+  assert.equal([...f.timers.values()][0].delay,1250);
+  f.playback.pause(); f.playback.setQuickMode(false,0.25);
+  assert.equal(f.playback.playing,false); assert.equal(f.timers.size,0);
+  f.playback.toggle(); assert.equal([...f.timers.values()][0].delay,5000);
+});
