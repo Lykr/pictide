@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pause, Play, Settings2 } from "lucide-react";
 import { IconButton } from "./actions";
-import { Input } from "./ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -70,12 +70,14 @@ export function RoamOptions({ privacy, immersive }: { privacy: ReactNode; immers
     if (next) { dirty.current = false; setDraft(String(settings.playback_interval_seconds)); setError(""); }
   }}>
     <PopoverTrigger asChild><IconButton id="roam-options" icon={Settings2} label="漫游选项" /></PopoverTrigger>
-    <PopoverContent forceMount hidden={!open} align="end" className="w-72 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
+    <PopoverContent forceMount hidden={!open} align="end" className="w-64 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
       <div className="grid grid-cols-[minmax(0,1fr)_2rem] items-center gap-x-2 gap-y-1">
-        <form className="col-span-2 grid grid-cols-[auto_auto_minmax(0,1fr)_2rem] items-center gap-2" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
-          <span className="whitespace-nowrap">自动播放</span>
-          <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap text-xs font-normal text-muted-foreground">间隔（秒）</Label>
-          <Input id="roam-playback-seconds" aria-label="自动播放间隔（秒）" aria-busy={saving.interval} className="h-8 min-w-0 px-2 text-center tabular-nums" type="number" min={1} max={600} step={1} value={draft} disabled={!ready || saving.interval} onChange={event => { dirty.current = true; setDraft(event.target.value); }} onBlur={() => void save("interval")} />
+        <form className="col-span-2 grid grid-cols-[minmax(0,1fr)_5.5rem_2rem] items-center gap-2" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
+          <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap font-normal">自动播放</Label>
+          <InputGroup className="h-8" data-disabled={!ready || saving.interval}>
+          <InputGroupInput id="roam-playback-seconds" aria-label="自动播放间隔（秒）" aria-busy={saving.interval} className="h-8 min-w-0 pl-3 text-right tabular-nums" type="number" min={1} max={600} step={1} value={draft} disabled={!ready || saving.interval} onChange={event => { dirty.current = true; setDraft(event.target.value); }} onBlur={() => void save("interval")} />
+          <InputGroupAddon align="inline-end" className="py-0 text-xs" aria-hidden="true">秒</InputGroupAddon>
+          </InputGroup>
           <RoamPlaybackButton menu />
         </form>
         <Label htmlFor="roam-options-liked-tags" className="col-span-2 mb-0! grid grid-cols-subgrid items-center font-normal">
