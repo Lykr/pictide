@@ -19,21 +19,23 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
   let active = false, mode = null, revision = 0, hovered = false, keyboard = false;
   let restoreInert = [];
   const controls = createAutoHideControls({
-    held: () => hovered || (keyboard && toolbar.contains(doc.activeElement)),
+    held: () => hovered || (keyboard && (toolbar.contains(doc.activeElement) || exit === doc.activeElement)),
     visible: show => {
-      if (!show && toolbar.contains(doc.activeElement)) card.focus({ preventScroll: true });
+      if (!show && (toolbar.contains(doc.activeElement) || exit === doc.activeElement)) card.focus({ preventScroll: true });
       card.classList.toggle('immersive-controls-hidden', !show);
       toolbar.inert = !show;
       toolbar.setAttribute('aria-hidden', String(!show));
+      if (exit) { exit.inert = !show; exit.setAttribute('aria-hidden', String(!show)); }
     },
   });
   const pointerMove = () => controls.wake();
   const pointerDown = event => {
     keyboard = false;
+    if (event.pointerType === 'touch') hovered = false;
     if (!toolbar.contains(event.target)) card.focus({ preventScroll: true });
     controls.wake();
   };
-  const enterToolbar = () => { hovered = true; controls.wake(); };
+  const enterToolbar = event => { if (event.pointerType !== 'touch') { hovered = true; controls.wake(); } };
   const leaveToolbar = () => { hovered = false; controls.wake(); };
   const focus = () => controls.wake();
   const key = event => {

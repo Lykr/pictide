@@ -13,6 +13,7 @@ import { generationCount, generationRepetitions, artifactPath, matchesLikedTags 
 import { createGalleryCursors, createNextImageWait, roamArtifactPath, roamBoundaryAction, resolveGalleryCursor } from './roam-navigation.mjs';
 import { playbackInterval, createRoamPlayback } from './roam-playback.mjs';
 import { createImmersiveViewer } from './immersive-controls.mjs';
+import { bindTouchNavigation } from './touch-navigation.mjs';
 import { createJobPager } from './job-pages.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -91,9 +92,13 @@ function publishPlaybackInterval(settings) {
 }
 const immersive = createImmersiveViewer({
   card: $('image-card'), toolbar: document.querySelector('.image-toolbar'),
-  entry: $('roam-immersive'), focusReturn: $('roam-options'),
+  entry: $('roam-immersive'), focusReturn: $('roam-options'), exit: $('roam-immersive-exit'),
   eligible: () => state.view === 'feed' && !$('image-card').hidden && !!state.currentImage,
   changed: () => document.dispatchEvent(new Event('pictide:roam-options-close')),
+});
+bindTouchNavigation(document.querySelector('#image-card .image-stage'), {
+  navigate: direction => moveImage(direction),
+  enabled: () => state.view === 'feed' && !!state.currentImage && !state.feedbackPending && !document.querySelector('[role=dialog][data-state=open],[role=alertdialog],[data-slot=popover-content][data-state=open]'),
 });
 const refillRoam = createRefillCoordinator({
   active: () => galleryCursors.ready && roamPageActive && roamSettingsLoaded && !roamSwitch && !roamBlocked && (roamSettings.prefetch_count > 0 || !!nextImageWait.current) && state.view === 'feed' && !document.hidden,
