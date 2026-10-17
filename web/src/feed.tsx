@@ -5,7 +5,7 @@ import { JobPageControls } from "./components/page-controls";
 import { GeneralSettings } from "./components/general-settings";
 import { PreferenceActions } from "./components/preference-actions";
 import { ImageInfo } from "./components/image-info";
-import { RoamPlaybackButton, RoamPlaybackSettings } from "./components/roam-playback";
+import { RoamPlaybackButton, RoamOptions } from "./components/roam-playback";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings2, Database, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown, ChevronRight } from "lucide-react";
 import { IconButton, HelpTip } from "./components/actions";
 import { Card } from "./components/ui/card";
@@ -57,11 +57,9 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 <div className="roam-heading-actions">
 <span id="liked-privacy-controls" hidden />
-<span id="roam-playback-settings"><RoamPlaybackSettings /></span>
-<span id="roam-privacy-controls"><Toggle id="roam-privacy" size="sm" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={`${privacyLabel} · 空格。刷新页面后默认开启。`}>
+<span id="roam-options-controls"><RoamOptions privacy={<Toggle id="roam-privacy" size="sm" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={`${privacyLabel} · 空格。刷新页面后默认开启。`}>
 {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-</Toggle></span>
-<span id="roam-immersive-controls"><IconButton id="roam-immersive" icon={Maximize} label="沉浸模式" aria-controls="image-card" aria-pressed="false" disabled /></span>
+</Toggle>} immersive={<IconButton id="roam-immersive" icon={Maximize} label="进入沉浸模式" aria-controls="image-card" aria-pressed="false" disabled onClick={() => document.dispatchEvent(new Event("pictide:roam-options-close"))} />} /></span>
 </div>
 </div>
 {"\n      "}<div id="notice" role="status" className="notice" hidden>
@@ -279,6 +277,10 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="form-grid">
 <Label htmlFor="roam-backend"><span className="field-caption h-6">生图后端</span><NativeSelect id="roam-backend"><option value="">自动选择后端</option></NativeSelect></Label>
 <Label htmlFor="roam-config"><span className="field-caption">候选预设<HelpTip text="候选模块提供完整提示词组合，推荐根据有效点赞评分；模型不可用时使用默认候选。图像种子随机。" /></span><NativeSelect id="roam-config"><option value="">自动选择预设</option></NativeSelect></Label>
+</div>
+<div className="form-grid">
+<Label htmlFor="roam-playback-interval"><span className="field-caption">每张展示（秒）<HelpTip text="自动播放时每张图片的展示时间；下一张未生成完成时等待，范围 1–600 秒。" /></span><Input id="roam-playback-interval" type="number" min="1" max="600" step="1" defaultValue="5" required /></Label>
+<Label className="checkbox-label self-center"><input id="roam-liked-tags-only" type="checkbox" />仅从喜欢图片中抽取标签<HelpTip text="只限制随机抽取的正向标签，固定词照常输出；没有可用标签时等待，不回退全词库。" /></Label>
 </div>
 </fieldset>
 <PreferenceActions />

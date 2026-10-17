@@ -8,10 +8,10 @@ import { editableNodeInputs, changeNodeInput, workflowSaveFields } from './workf
 import { parseWorkflowDraft, retainedWorkflowBindings } from './workflow-panel.mjs';
 import { applyArtifactPage, observeArtifactRevision, retentionDays } from './history-controls.mjs';
 import { API_KEY_MASK, apiKeyFields, customWorkflowName } from './settings-controls.mjs';
-import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError } from './roam-controls.mjs';
+import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError, mergeRoamDraft, likedTagsWait } from './roam-controls.mjs';
 import { generationCount, generationRepetitions, artifactPath } from './generation-controls.mjs';
 import { createGalleryCursors, createNextImageWait, roamArtifactPath, roamBoundaryAction, resolveGalleryCursor } from './roam-navigation.mjs';
-import { createRoamPlayback } from './roam-playback.mjs';
+import { playbackInterval, createRoamPlayback } from './roam-playback.mjs';
 import { createImmersiveViewer } from './immersive-controls.mjs';
 import { createJobPager } from './job-pages.mjs';
 
@@ -60,8 +60,8 @@ const jobPager = createJobPager({ request: page => api(`/api/jobs?page=${page}`)
 let availabilityRevision = 0;
 let availabilitySignature = '';
 let hasSavedApiKey = false;
-let roamSettingsLoaded = false, roamSettingsLoading = false, roamDirty = false;
-let roamSettings = { prefetch_count: 0, max_history_images: 0, backend_id: '', preset_id: '' };
+let roamSettingsLoaded = false, roamSettingsLoading = false;
+let roamSettings = { prefetch_count: 0, max_history_images: 0, backend_id: '', preset_id: '', liked_tags_only: false, playback_interval_seconds: 5 };
 let roamError = '';
 let roamAnchorRetried = false;
 let roamPageActive = true, roamVersion = 0;
@@ -82,11 +82,13 @@ function syncRoamPlayback(artifact = null) {
 }
 function publishPlaybackInterval(settings) {
   document.dispatchEvent(new CustomEvent('pictide:roam-playback-interval', { detail: settings.playback_interval_seconds ?? 5 }));
+  document.dispatchEvent(new CustomEvent('pictide:roam-options-settings', { detail: settings }));
 }
 const immersive = createImmersiveViewer({
   card: $('image-card'), toolbar: document.querySelector('.image-toolbar'),
   entry: $('roam-immersive'),
   eligible: () => state.view === 'feed' && !$('image-card').hidden && !!state.currentImage,
+  changed: active => { if (!active) $('roam-options').focus({ preventScroll: true }); },
 });
 const refillRoam = createRefillCoordinator({
   active: () => galleryCursors.ready && roamPageActive && roamSettingsLoaded && !roamBlocked && (roamSettings.prefetch_count > 0 || !!nextImageWait.current) && state.view === 'feed' && !document.hidden,
@@ -101,6 +103,11 @@ const refillRoam = createRefillCoordinator({
       roamBlocked = true; roamPlayback.pause(); nextImageWait.cancel(); renderArtifacts();
       if (result.error !== roamError) { roamError = result.error; showNotice(`预取已暂停：${result.error || '请检查任务状态'}。可在漫游设置中保存后重试。`, true); }
     } else {
+      if (likedTagsWait(result, !!nextImageWait.current)) {
+        roamBlocked = false; nextImageWait.cancel(); roamPlayback.pause(); renderArtifacts();
+        showNotice('喜欢图片中暂无可用标签，请先喜欢图片或关闭此开关');
+        return;
+      }
       clearRoamError();
       if (nextImageWait.current && result.ready > 0) refresh(true);
     }
@@ -113,7 +120,7 @@ const refillRoam = createRefillCoordinator({
 });
 
 function clearRoamError() {
-  if (/^预取(?:已暂停|未完成)：/.test($('notice').textContent)) $('notice').hidden = true;
+  if (/^(?:预取(?:已暂停|未完成)：|喜欢图片中暂无可用标签)/.test($('notice').textContent)) $('notice').hidden = true;
   roamError = '';
   roamBlocked = false;
 }
@@ -197,9 +204,8 @@ function setView(route, updateUrl = true) {
   $('gallery-view').hidden = view !== 'feed';
   $('liked-view').hidden = view !== 'liked';
   $('liked-privacy-controls').hidden = view !== 'liked';
-  $('roam-privacy-controls').hidden = view !== 'feed';
-  $('roam-playback-settings').hidden = view !== 'feed';
-  $('roam-immersive-controls').hidden = view !== 'feed';
+  $('roam-options-controls').hidden = view !== 'feed';
+  if (view !== 'feed') document.dispatchEvent(new Event('pictide:roam-options-close'));
   $('jobs-view').hidden = view !== 'jobs';
   if (view === 'settings') setSettingsSection(state.settingsSection, false);
   if (updateUrl) history.replaceState(null, '', `${location.pathname}${location.search}#${view}${view === 'settings' ? `/${state.settingsSection}` : ''}`);
@@ -855,43 +861,51 @@ async function loadRoamConfigs() {
     $('roam-config').value = selected;
   } catch (error) { inlineStatus('roam-result', `预设读取失败：${error.message}`); }
 }
+const roamFields = {
+  prefetch_count: 'roam-prefetch-count', max_history_images: 'roam-max-history-images',
+  backend_id: 'roam-backend', preset_id: 'roam-config',
+  playback_interval_seconds: 'roam-playback-interval', liked_tags_only: 'roam-liked-tags-only',
+};
+function roamDraftDirty() {
+  return Object.entries(roamFields).some(([key, id]) => String(key === 'liked_tags_only' ? $(id).checked : $(id).value) !== String(roamSettings[key]));
+}
+function applyRoamSettings(settings, savedFields = []) {
+  const next = { ...settings, prefetch_count: prefetchCount(settings.prefetch_count), max_history_images: maxHistoryImages(settings.max_history_images ?? 0), liked_tags_only: !!settings.liked_tags_only, playback_interval_seconds: settings.playback_interval_seconds ?? 5 };
+  const draft = Object.fromEntries(Object.entries(roamFields).map(([key, id]) => [key, key === 'liked_tags_only' ? $(id).checked : $(id).value]));
+  const merged = mergeRoamDraft(roamSettings, next, draft, savedFields);
+  for (const key of ['backend_id', 'preset_id']) {
+    const control = $(roamFields[key]);
+    if (merged[key] && ![...control.options].some(item => item.value === merged[key])) control.append(option(merged[key], merged[key]));
+  }
+  for (const [key, id] of Object.entries(roamFields)) {
+    if (key === 'liked_tags_only') $(id).checked = merged[key];
+    else $(id).value = String(merged[key] ?? '');
+  }
+  roamSettings = next; roamSettingsLoaded = true; roamVersion++;
+  publishPlaybackInterval(next);
+  if (settings.paused) { roamBlocked = true; roamPlayback.pause(); } else clearRoamError();
+  roamAnchorRetried = false;
+  if (observeArtifactRevision(state, settings.artifact_revision) || state.view === 'feed') renderArtifacts();
+  refillRoam();
+}
 async function loadRoamSettings({ preserveDraft = false } = {}) {
   if (roamSettingsLoading) return;
   roamSettingsLoading = true;
   try {
     const settings = await api('/api/settings/roam');
-    roamSettings = { ...settings, prefetch_count: prefetchCount(settings.prefetch_count), max_history_images: maxHistoryImages(settings.max_history_images ?? 0) };
-    roamVersion++;
-    roamSettingsLoaded = true;
-    publishPlaybackInterval(settings);
-    if (!preserveDraft || !roamDirty) {
-      $('roam-prefetch-count').value = String(roamSettings.prefetch_count);
-      $('roam-max-history-images').value = String(roamSettings.max_history_images);
-      if (roamSettings.backend_id && ![...$('roam-backend').options].some(item => item.value === roamSettings.backend_id)) $('roam-backend').append(option(roamSettings.backend_id, roamSettings.backend_id));
-      $('roam-backend').value = roamSettings.backend_id || '';
-      if (roamSettings.preset_id && ![...$('roam-config').options].some(item => item.value === roamSettings.preset_id)) $('roam-config').append(option(roamSettings.preset_id, roamSettings.preset_id));
-      $('roam-config').value = roamSettings.preset_id || '';
-      roamDirty = false;
-    }
+    applyRoamSettings(settings, preserveDraft ? [] : Object.keys(roamFields));
     renderRoamBackends(); await loadRoamConfigs();
-    if (settings.paused) { roamBlocked = true; roamPlayback.pause(); } else clearRoamError();
-    roamAnchorRetried = false; if (state.view === 'feed') renderArtifacts(); refillRoam();
   } catch (error) { inlineStatus('roam-result', `设置读取失败：${error.message}`); }
   finally { roamSettingsLoading = false; }
 }
-$('roam-form').addEventListener('input', () => { roamDirty = true; });
-$('roam-form').addEventListener('change', () => { roamDirty = true; });
+document.addEventListener('pictide:roam-settings-saved', event => applyRoamSettings(event.detail.settings, event.detail.fields));
 $('roam-form').addEventListener('submit', async event => {
   event.preventDefault(); if ($('roam-save').disabled) return;
   $('roam-save').disabled = true; $('roam-fields').disabled = true;
   try {
-    const payload = { prefetch_count: prefetchCount($('roam-prefetch-count').value), max_history_images: maxHistoryImages($('roam-max-history-images').value), backend_id: $('roam-backend').value, preset_id: $('roam-config').value };
+    const payload = { prefetch_count: prefetchCount($('roam-prefetch-count').value), max_history_images: maxHistoryImages($('roam-max-history-images').value), backend_id: $('roam-backend').value, preset_id: $('roam-config').value, playback_interval_seconds: playbackInterval($('roam-playback-interval').value), liked_tags_only: $('roam-liked-tags-only').checked };
     const result = await api('/api/settings/roam', { method: 'PUT', body: JSON.stringify(payload) });
-    roamSettings = { ...result, prefetch_count: prefetchCount(result.prefetch_count), max_history_images: maxHistoryImages(result.max_history_images ?? 0) }; roamSettingsLoaded = true; roamDirty = false;
-    roamVersion++;
-    publishPlaybackInterval(result);
-    clearRoamError(); roamAnchorRetried = false;
-    if (observeArtifactRevision(state, result.artifact_revision)) renderArtifacts();
+    applyRoamSettings(result, Object.keys(roamFields));
     inlineStatus('roam-result', '已保存漫游设置。');
     await refresh(true);
   } catch (error) { inlineStatus('roam-result', error.message); }
@@ -1146,7 +1160,7 @@ for (const id of ['positive', 'negative']) $(id).addEventListener('input', () =>
 });
 $('generate-form').addEventListener('input', () => { composeDirty = true; });
 $('generate-form').addEventListener('change', () => { composeDirty = true; });
-window.addEventListener('beforeunload', (event) => { if (composeDirty || settingsDirty || roamDirty || uncertainRequests.size) { event.preventDefault(); event.returnValue = ''; } });
+window.addEventListener('beforeunload', (event) => { if (composeDirty || settingsDirty || roamDraftDirty() || uncertainRequests.size) { event.preventDefault(); event.returnValue = ''; } });
 $('like').addEventListener('click', () => feedback(1));
 $('dislike').addEventListener('click', () => feedback(-1));
 $('generate-backend').addEventListener('change', updateGenerationHints);
@@ -1172,7 +1186,7 @@ $('settings-form').addEventListener('change', () => { settingsDirty = true; });
 document.querySelectorAll('[data-settings-section]').forEach((button) => button.addEventListener('click', () => setSettingsSection(button.dataset.settingsSection)));
 document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
 document.addEventListener('keydown', (event) => {
-  const action = keyboardAction(event, { editing: !!event.target.closest('input,textarea,select,[data-help],[role=combobox],[role=listbox],[role=option],[role=checkbox],[role=radio],[role=tab],[role=dialog],[data-slot=select-content],[contenteditable]:not([contenteditable="false"])'), dialogOpen: !!document.querySelector('dialog[open],[role=dialog][data-state=open],[role=alertdialog]'), view: state.view, immersive: immersive.active, feedbackPending: state.feedbackPending });
+  const action = keyboardAction(event, { editing: !!event.target.closest('input,textarea,select,[data-help],[role=combobox],[role=listbox],[role=option],[role=checkbox],[role=radio],[role=tab],[role=dialog],[data-slot=select-content],[data-slot=popover-content],[contenteditable]:not([contenteditable="false"])'), dialogOpen: !!document.querySelector('dialog[open],[role=dialog][data-state=open],[role=alertdialog]'), view: state.view, immersive: immersive.active, feedbackPending: state.feedbackPending });
   if (!action) return;
   event.preventDefault();
   if (action === 'like') feedback(1, false);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError } from '../web/src/controllers/roam-controls.mjs';
+import { prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError, mergeRoamDraft, likedTagsWait } from '../web/src/controllers/roam-controls.mjs';
 
 test('prefetch counts accept disabled or bounded integer targets', () => {
   for (const value of [0, '0', 3, '20']) assert.equal(prefetchCount(value), Number(value));
@@ -68,4 +68,23 @@ test('explicit server pause continues to block automatic refill', async () => {
     result: response => { blocked = response.paused; }, error: () => assert.fail() });
   await refill(); await refill();
   assert.equal(calls, 1); assert.equal(blocked, true);
+});
+
+
+test('menu saves and SSE retain unrelated drafts while synchronizing unchanged fields', () => {
+  const previous = { prefetch_count: 2, playback_interval_seconds: 5, liked_tags_only: false, backend_id: 'a' };
+  const saved = { prefetch_count: 2, playback_interval_seconds: 9, liked_tags_only: true, backend_id: 'a' };
+  const draft = { prefetch_count: '7', playback_interval_seconds: '5', liked_tags_only: false, backend_id: 'draft' };
+  assert.deepEqual(mergeRoamDraft(previous, saved, draft, ['liked_tags_only']), {
+    prefetch_count: '7', playback_interval_seconds: 9, liked_tags_only: true, backend_id: 'draft',
+  });
+  assert.equal(mergeRoamDraft(previous, saved, { playback_interval_seconds: '11' }).playback_interval_seconds, '11');
+  assert.equal(mergeRoamDraft(previous, saved, { playback_interval_seconds: '11' }, ['playback_interval_seconds']).playback_interval_seconds, 9);
+});
+
+test('empty liked pool only stops an actual next-image wait with no ready pictures', () => {
+  assert.equal(likedTagsWait({ waiting_for_liked_tags: true, ready: 0 }, true), true);
+  assert.equal(likedTagsWait({ waiting_for_liked_tags: true, ready: 0 }, false), false);
+  assert.equal(likedTagsWait({ waiting_for_liked_tags: true, ready: 2 }, true), false);
+  assert.equal(likedTagsWait({ ready: 0 }, true), false);
 });

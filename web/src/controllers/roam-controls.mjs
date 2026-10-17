@@ -41,3 +41,15 @@ export function isTemporaryRefillError(error) {
   const status = error?.status;
   return !Number.isInteger(status) || status === 0 || status === 408 || status === 429 || status >= 500;
 }
+
+// A saved field may change from the roam menu or another tab. Only replace an
+// untouched draft, unless this tab explicitly saved that same field.
+export function mergeRoamDraft(previous, saved, draft, savedFields = []) {
+  return Object.fromEntries(Object.keys(draft).map(key => [key,
+    savedFields.includes(key) || String(draft[key]) === String(previous[key]) ? saved[key] : draft[key],
+  ]));
+}
+
+export function likedTagsWait(result, waitingForNext) {
+  return !!result.waiting_for_liked_tags && waitingForNext && !(result.ready > 0);
+}
