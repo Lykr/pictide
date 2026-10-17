@@ -31,15 +31,18 @@ function RoamChoices({ value, disabled = false, onChange, compact = false }: {
 }) {
   return <div className={compact ? "grid gap-1" : "grid gap-4 sm:grid-cols-2"}>
     <div className={compact ? "flex min-h-8 items-center justify-between gap-2" : "grid content-start gap-2"}>
-      <span className="field-caption whitespace-nowrap">偏好范围<HelpTip text={value.prompt_mode === "stay" ? "停泊保持当前提示词，暂不重新抽取；范围选择会保留。" : "全部：从完整词库抽取；喜欢：仅从喜欢图片的标签中抽取。固定词与 PMI 条件保持。"} /></span>
+      <span className="field-caption whitespace-nowrap">偏好范围<HelpTip text={value.prompt_mode === "stay" ? "停泊不重新抽取，暂不能切换范围；原选择会保留。" : "切换后保留当前图，清空旧预取并重新准备后续图片。"} /></span>
       <ToggleGroup type="single" size="sm" value={value.liked_tags_only ? "liked" : "all"} disabled={disabled || value.prompt_mode === "stay"} aria-label="偏好范围" onValueChange={next => { if (next) onChange({ liked_tags_only: next === "liked" }); }}>
-        <ToggleGroupItem value="all" aria-label="全部">全部</ToggleGroupItem><ToggleGroupItem value="liked" aria-label="喜欢">喜欢</ToggleGroupItem>
+        <ToggleGroupItem value="all" aria-label="全部" data-tooltip="从完整词库抽取；固定词和 PMI 条件保持。">全部</ToggleGroupItem>
+        <ToggleGroupItem value="liked" aria-label="喜欢" data-tooltip="仅从喜欢图片的标签中抽取；固定词和 PMI 条件保持。">喜欢</ToggleGroupItem>
       </ToggleGroup>
     </div>
     <div className={compact ? "flex min-h-8 items-center justify-between gap-2" : "grid content-start gap-2"}>
-      <span className="field-caption whitespace-nowrap">漫游方式<HelpTip text="漂流：每张重新抽取；顺流：从当前组合逐步变化，变化预算取自所选候选预设；停泊：保持整组提示词，图像种子仍随机。切换后保留当前图，重新准备后续图片。" /></span>
+      <span className="field-caption whitespace-nowrap">漫游方式<HelpTip text="切换后保留当前图，清空旧预取并重新准备后续图片。" /></span>
       <ToggleGroup type="single" size="sm" value={value.prompt_mode} disabled={disabled} aria-label="漫游方式" onValueChange={next => { if (next) onChange({ prompt_mode: next as PromptMode }); }}>
-        <ToggleGroupItem value="random" aria-label="漂流">漂流</ToggleGroupItem><ToggleGroupItem value="along" aria-label="顺流">顺流</ToggleGroupItem><ToggleGroupItem value="stay" aria-label="停泊">停泊</ToggleGroupItem>
+        <ToggleGroupItem value="random" aria-label="漂流" data-tooltip="每张重新随机抽取提示词组合。">漂流</ToggleGroupItem>
+        <ToggleGroupItem value="along" aria-label="顺流" data-tooltip="从当前组合逐步变化；变化预算取自所选候选预设。">顺流</ToggleGroupItem>
+        <ToggleGroupItem value="stay" aria-label="停泊" data-tooltip="保持整组正负提示词，图像种子仍随机。">停泊</ToggleGroupItem>
       </ToggleGroup>
     </div>
   </div>;

@@ -165,7 +165,7 @@ export function PreferenceActions() {
         <div className="flex min-h-0 flex-col gap-4" aria-busy={loading}>
           {result && <>
             <dl className="flex flex-wrap gap-x-6 gap-y-2 text-xs">
-              <div><dt className="text-muted-foreground">有效学习反馈</dt><dd className="mt-1 text-sm font-medium">{result.evidence_count}</dd></div>
+              <div><dt className="text-muted-foreground inline-flex items-center gap-1">有效学习反馈<HelpTip text="当前参与偏好学习的图片反馈数量。" /></dt><dd className="mt-1 text-sm font-medium">{result.evidence_count}</dd></div>
               <div><dt className="text-muted-foreground">学习标签</dt><dd className="mt-1 text-sm font-medium">{result.term_count}</dd></div>
               <div><dt className="text-muted-foreground">上次重置</dt><dd className="mt-1">{timeLabel(result.reset_at)}</dd></div>
             </dl>
@@ -175,13 +175,13 @@ export function PreferenceActions() {
                 <thead className="border-b border-border text-muted-foreground"><tr>
                   <th className="py-2 pr-3 font-normal">标签</th>
                   <th className="px-2 py-2 font-normal">方向</th>
-                  <th className="px-2 py-2 text-right font-normal"><span className="inline-flex items-center gap-1">关联权重<HelpTip text="喜欢与不喜欢反馈形成的偏好参数中心值。正值倾向提高评分，负值倾向降低评分；不是喜欢概率，也不表示标签被永久禁用。" /></span></th>
-                  <th className="py-2 pl-3 text-right font-normal">证据次数</th>
+                  <th className="px-2 py-2 text-right font-normal"><span className="inline-flex items-center gap-1">关联权重<HelpTip text="反馈形成的偏好参数中心值，不是喜欢概率。" /></span></th>
+                  <th className="py-2 pl-3 text-right font-normal"><span className="inline-flex items-center gap-1">证据次数<HelpTip text="包含该标签的有效学习反馈数量。" /></span></th>
                 </tr></thead>
                 <tbody>{result.terms.map((term) => <tr key={`${term.channel}:${term.text}`} className="border-b border-border/60 last:border-0">
                   <td className="max-w-64 break-words py-2 pr-3">{term.text}</td>
                   <td className="px-2 py-2"><Badge variant="outline">{term.channel === "positive" ? "正向" : "负向"}</Badge></td>
-                  <td className="px-2 py-2 text-right tabular-nums">{term.weight.toFixed(4)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums"><span tabIndex={0} data-tooltip={term.weight > 0 ? "正值倾向提高组合评分。" : term.weight < 0 ? "负值倾向降低组合评分，不会永久屏蔽标签。" : "零值不提高或降低组合评分。"}>{term.weight.toFixed(4)}</span></td>
                   <td className="py-2 pl-3 text-right tabular-nums">{term.evidence_count}</td>
                 </tr>)}</tbody>
               </table>
