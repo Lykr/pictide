@@ -424,6 +424,14 @@ class Repository:
         return {"artifacts": total, "roam": roam, "generate": generated,
                 "liked":db.execute("SELECT count(*) FROM feedback f JOIN artifacts a ON a.id=f.artifact_id WHERE a.deleted_at IS NULL AND f.actor_id='local' AND f.value=1").fetchone()[0]}
 
+    def liked_positive_prompts(self, actor_id="local"):
+        with self.connection() as db:
+            rows = db.execute("SELECT DISTINCT j.positive FROM feedback f "
+                              "JOIN artifacts a ON a.id=f.artifact_id JOIN jobs j ON j.id=a.job_id "
+                              "WHERE f.actor_id=? AND f.value=1 AND a.deleted_at IS NULL "
+                              "ORDER BY j.positive", (actor_id,)).fetchall()
+        return [row["positive"] for row in rows]
+
     def artifacts(self, liked=False, limit=200, before=None, source="all"):
         return self.artifact_page(liked=liked,limit=limit,before=before,source=source)["artifacts"]
 
