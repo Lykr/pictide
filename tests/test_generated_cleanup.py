@@ -71,7 +71,7 @@ class GeneratedStorageTests(CleanupFixture, unittest.TestCase):
     def test_roam_rejected_and_bulk_does_not_touch_roam(self):
         roam, image, job = self.artifact()
         with self.repo.connection() as db:
-            db.execute("INSERT INTO roam_jobs VALUES (?,?,?,?)", (job["id"], "epoch", "{}", "2026-01-01"))
+            db.execute("INSERT INTO roam_jobs(job_id,epoch,candidate,created_at) VALUES (?,?,?,?)", (job["id"], "epoch", "{}", "2026-01-01"))
         generated = self.artifact()[0]
         with self.assertRaises(ValidationError):
             self.repo.clear_generated(roam)
@@ -208,7 +208,7 @@ class GeneratedApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await (await self.client.delete("/api/generated/missing", json={})).json())["removed"], 0)
         roam, roam_path = await self.artifact()
         with self.repo.connection() as db:
-            db.execute("INSERT INTO roam_jobs VALUES (?,?,?,?)", (roam["job_id"], "epoch", "{}", "2026-01-01"))
+            db.execute("INSERT INTO roam_jobs(job_id,epoch,candidate,created_at) VALUES (?,?,?,?)", (roam["job_id"], "epoch", "{}", "2026-01-01"))
         self.assertEqual((await self.client.delete(f"/api/generated/{roam['id']}", json={})).status, 400)
         self.assertTrue(roam_path.exists())
 

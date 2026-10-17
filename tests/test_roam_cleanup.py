@@ -9,7 +9,7 @@ class RoamCleanupFixture(CleanupFixture):
     def roam_artifact(self, timestamp=None):
         identifier, image, job = self.artifact(timestamp)
         with self.repo.connection() as db:
-            db.execute("INSERT INTO roam_jobs VALUES (?,?,?,?)", (job["id"], "test", "{}", job["created_at"]))
+            db.execute("INSERT INTO roam_jobs(job_id,epoch,candidate,created_at) VALUES (?,?,?,?)", (job["id"], "test", "{}", job["created_at"]))
         return identifier, image, job
 
     def view(self, identifier):

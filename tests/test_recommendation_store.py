@@ -32,7 +32,7 @@ class RecommendationStoreTests(unittest.TestCase):
                     {'id':str(n),'source_id':'old','text':t.text,'channel':t.channel,'tags':['private']}
                     for n,t in enumerate(self.candidate.terms)]}
             with self.repo.connection() as db:
-                db.execute('INSERT INTO roam_jobs VALUES (?,?,?,?)',(job['id'],'epoch',json.dumps(candidate),'2026-01-01'))
+                db.execute('INSERT INTO roam_jobs(job_id,epoch,candidate,created_at) VALUES (?,?,?,?)',(job['id'],'epoch',json.dumps(candidate),'2026-01-01'))
         return next(a['id'] for a in self.repo.artifacts() if a['job_id']==job['id'])
     def state(self,revision,count=1):
         return PolicyRecord(revision,('positive:forest',),struct.pack('<4d',1,0,0,1),struct.pack('<2d',1,2),count)

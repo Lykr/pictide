@@ -20,7 +20,7 @@ class RoamViewStorageTests(unittest.TestCase):
         self.repo.complete(job["id"], [{"node_id": "9", "index": n} for n in range(count)])
         with self.repo.connection() as db:
             if roam:
-                db.execute("INSERT INTO roam_jobs VALUES (?,'fixture','{}','2026-10-14')", (job["id"],))
+                db.execute("INSERT INTO roam_jobs(job_id,epoch,candidate,created_at) VALUES (?,'fixture','{}','2026-10-14')", (job["id"],))
             rows = db.execute("SELECT id FROM artifacts WHERE job_id=? ORDER BY output_index", (job["id"],)).fetchall()
             for n, row in enumerate(rows):
                 db.execute("UPDATE artifacts SET id=?,created_at='2026-10-14T12:00:00+00:00' WHERE id=?", (f"{'r' if roam else 'g'}-{n:04}", row["id"]))

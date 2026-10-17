@@ -19,7 +19,7 @@ def queued(repo, status="queued", roam=False, external=None):
     with repo.connection() as db:
         iid = repo._create_job(db, payload, capacity=1000)
         if roam:
-            db.execute("INSERT INTO roam_jobs VALUES (?,?,?,?)", (iid, "epoch", "{}", "2026-10-16"))
+            db.execute("INSERT INTO roam_jobs(job_id,epoch,candidate,created_at) VALUES (?,?,?,?)", (iid, "epoch", "{}", "2026-10-16"))
     if external:
         repo.attach_prompt(iid, external)
     if status != "queued":

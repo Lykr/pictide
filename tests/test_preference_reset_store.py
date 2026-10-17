@@ -31,7 +31,7 @@ class PreferenceResetStoreTests(unittest.TestCase):
                                     'positive': 'forest', 'negative': 'blurry', 'seed': 1})
         self.repo.complete(job['id'], [{'node_id': '9', 'index': 0, 'filename': 'image.png'}])
         with self.repo.connection() as db:
-            db.execute('INSERT INTO roam_jobs VALUES (?,?,?,?)',
+            db.execute('INSERT INTO roam_jobs(job_id,epoch,candidate,created_at) VALUES (?,?,?,?)',
                        (job['id'], 'epoch', json.dumps(asdict(self.candidate)), '2026-01-01'))
         return next(a['id'] for a in self.repo.artifacts() if a['job_id'] == job['id'])
 
