@@ -374,6 +374,43 @@ class CooccurrenceSmoke(unittest.TestCase):
         self.service.save_preset(dict(id="test",name="edited",document=self.doc))
         self.assertEqual(self.service.load_preset("test")["name"],"edited")
 
+    def test_parallel_fixed_pool_preserves_seed_order_and_uses_multiple_workers(self):
+        import threading
+        context = dict(preset_id="test", mode="fixed_seed", seed=19)
+        expected = tuple(self.service.provider.generate(dict(context, seed=19+i), {"count": 1})[0]
+                         for i in range(4))
+        original = self.service.generate
+        barrier = threading.Barrier(2)
+        lock = threading.Lock()
+        active, maximum = 0, 0
+        def observed(*args, **kwargs):
+            nonlocal active, maximum
+            with lock:
+                active += 1
+                maximum = max(maximum, active)
+            try:
+                barrier.wait(timeout=3)
+                return original(*args, **kwargs)
+            finally:
+                with lock:
+                    active -= 1
+        with patch.object(self.service, "generate", side_effect=observed):
+            actual = self.service.provider.generate(context, {"count": 4})
+        self.assertEqual(actual, expected)
+        self.assertGreaterEqual(maximum, 2)
+
+    def test_sequence_pool_stays_ordered_and_worker_errors_propagate(self):
+        context = dict(preset_id="test", mode="sequence", seed=19, sequence_step=2)
+        with patch("backend.candidate.provider.ThreadPoolExecutor", side_effect=AssertionError("sequence must stay serial")):
+            pool = self.service.provider.generate(context, {"count": 3})
+        fresh = CandidateService(SQLiteCandidateStore(self.path))
+        expected = tuple(fresh.provider.generate(dict(context, sequence_step=2+i), {"count": 1})[0]
+                         for i in range(3))
+        self.assertEqual(pool, expected)
+        with patch.object(self.service, "generate", side_effect=CandidateError("smoke failure")):
+            with self.assertRaisesRegex(CandidateError, "smoke failure"):
+                self.service.provider.generate(dict(context, mode="fixed_seed"), {"count": 3})
+
 
 if __name__ == "__main__":
     unittest.main()

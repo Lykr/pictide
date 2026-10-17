@@ -1,4 +1,6 @@
 """Provide complete cooccurrence combinations without consulting preference policy."""
+from concurrent.futures import ThreadPoolExecutor
+
 from .contracts import Candidate, TagSnapshot
 from .rounds import integer, MAX_SEED, MAX_SEQUENCE_STEP
 
@@ -29,7 +31,7 @@ class CooccurrenceCandidateProvider:
         allowed = constraints.get("allowed_positive_tags")
         allowed_ids = None if allowed is None else frozenset(
             tag["id"] for tag in self.service.store.find_tags(allowed))
-        candidates = []
+        frames = []
         for index in range(count):
             frame = dict(context)
             if prompt_mode in ("along", "stay"):
@@ -39,8 +41,17 @@ class CooccurrenceCandidateProvider:
                 frame["sequence_step"] = min(MAX_SEQUENCE_STEP, frame.get("sequence_step", 0)+index)
             elif frame.get("mode") == "fixed_seed":
                 frame["seed"] = (frame.get("seed", 0)+index) % (MAX_SEED+1)
+            frames.append(frame)
+
+        def generate_one(frame):
             result = self.sample(frame, allowed_positive_tag_ids=allowed_ids,
                                  previous_candidate=previous if prompt_mode == "along" else None)
             terms = self._terms(result["selected_tags"])
-            candidates.append(Candidate(result["candidate_id"], result["positive"], result["negative"], terms=terms))
-        return tuple(candidates)
+            return Candidate(result["candidate_id"], result["positive"], result["negative"], terms=terms)
+
+        # Sequence replay shares an ordered frame cache; independent roam options do not.
+        if count == 1 or frames[0].get("mode") == "sequence":
+            return tuple(map(generate_one, frames))
+        with ThreadPoolExecutor(max_workers=min(4, count), thread_name_prefix="candidate") as pool:
+            # map preserves seed/frame order even when workers finish out of order.
+            return tuple(pool.map(generate_one, frames))
