@@ -8,7 +8,7 @@ import { editableNodeInputs, changeNodeInput, workflowSaveFields } from './workf
 import { parseWorkflowDraft, retainedWorkflowBindings } from './workflow-panel.mjs';
 import { applyArtifactPage, observeArtifactRevision, retentionDays } from './history-controls.mjs';
 import { API_KEY_MASK, apiKeyFields, customWorkflowName } from './settings-controls.mjs';
-import { candidateCount, prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError, mergeRoamDraft, likedTagsWait, roamGenerationChanged } from './roam-controls.mjs';
+import { candidateCount, strongCandidateMultiplier, prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError, mergeRoamDraft, likedTagsWait, roamGenerationChanged } from './roam-controls.mjs';
 import { generationCount, generationRepetitions, artifactPath, matchesLikedTags } from './generation-controls.mjs';
 import { createGalleryCursors, createNextImageWait, roamArtifactPath, roamBoundaryAction, resolveGalleryCursor } from './roam-navigation.mjs';
 import { playbackInterval, createRoamPlayback } from './roam-playback.mjs';
@@ -65,7 +65,7 @@ let availabilityRevision = 0;
 let availabilitySignature = '';
 let hasSavedApiKey = false;
 let roamSettingsLoaded = false, roamSettingsLoading = false;
-let roamSettings = { prefetch_count: 0, max_history_images: 0, backend_id: '', preset_id: '', liked_tags_only: false, prompt_mode: 'random', playback_interval_seconds: 5, candidate_count: 4 };
+let roamSettings = { prefetch_count: 0, max_history_images: 0, backend_id: '', preset_id: '', liked_tags_only: false, prompt_mode: 'random', playback_interval_seconds: 5, candidate_count: 4, recommendation_strength: 'standard', strong_candidate_multiplier: 2 };
 let roamError = '';
 let roamAnchorRetried = false;
 let roamPageActive = true, roamVersion = 0;
@@ -876,6 +876,7 @@ async function loadRoamConfigs() {
   } catch (error) { inlineStatus('roam-result', `预设读取失败：${error.message}`); }
 }
 const roamFields = {
+  recommendation_strength: 'roam-recommendation-strength', strong_candidate_multiplier: 'roam-strong-candidate-multiplier',
   candidate_count: 'roam-candidate-count', prefetch_count: 'roam-prefetch-count', max_history_images: 'roam-max-history-images',
   backend_id: 'roam-backend', preset_id: 'roam-config',
   playback_interval_seconds: 'roam-playback-interval', liked_tags_only: 'roam-liked-tags-only', prompt_mode: 'roam-prompt-mode',
@@ -898,7 +899,7 @@ function finishRoamSwitch() {
   refillRoam();
 }
 async function applyRoamSettings(settings, savedFields = []) {
-  const next = { ...settings, candidate_count: candidateCount(settings.candidate_count ?? 4), prefetch_count: prefetchCount(settings.prefetch_count), max_history_images: maxHistoryImages(settings.max_history_images ?? 0), liked_tags_only: !!settings.liked_tags_only, prompt_mode: settings.prompt_mode ?? 'random', playback_interval_seconds: settings.playback_interval_seconds ?? 5 };
+  const next = { ...settings, recommendation_strength: settings.recommendation_strength ?? 'standard', strong_candidate_multiplier: strongCandidateMultiplier(settings.strong_candidate_multiplier ?? 2), candidate_count: candidateCount(settings.candidate_count ?? 4), prefetch_count: prefetchCount(settings.prefetch_count), max_history_images: maxHistoryImages(settings.max_history_images ?? 0), liked_tags_only: !!settings.liked_tags_only, prompt_mode: settings.prompt_mode ?? 'random', playback_interval_seconds: settings.playback_interval_seconds ?? 5 };
   const switched = roamSettingsLoaded && roamGenerationChanged(roamSettings, next);
   if (switched) beginRoamSwitch();
   const draft = Object.fromEntries(Object.entries(roamFields).map(([key, id]) => [key, key === 'liked_tags_only' ? $(id).checked : $(id).value]));
@@ -969,7 +970,7 @@ $('roam-form').addEventListener('submit', async event => {
   event.preventDefault(); if ($('roam-save').disabled) return;
   $('roam-save').disabled = true; $('roam-fields').disabled = true;
   try {
-    const payload = { candidate_count: candidateCount($('roam-candidate-count').value), prefetch_count: prefetchCount($('roam-prefetch-count').value), max_history_images: maxHistoryImages($('roam-max-history-images').value), backend_id: $('roam-backend').value, preset_id: $('roam-config').value, playback_interval_seconds: playbackInterval($('roam-playback-interval').value), liked_tags_only: $('roam-liked-tags-only').checked, prompt_mode: $('roam-prompt-mode').value };
+    const payload = { recommendation_strength: $('roam-recommendation-strength').value, strong_candidate_multiplier: strongCandidateMultiplier($('roam-strong-candidate-multiplier').value), candidate_count: candidateCount($('roam-candidate-count').value), prefetch_count: prefetchCount($('roam-prefetch-count').value), max_history_images: maxHistoryImages($('roam-max-history-images').value), backend_id: $('roam-backend').value, preset_id: $('roam-config').value, playback_interval_seconds: playbackInterval($('roam-playback-interval').value), liked_tags_only: $('roam-liked-tags-only').checked, prompt_mode: $('roam-prompt-mode').value };
     await saveRoamSettings(payload);
     inlineStatus('roam-result', '已保存漫游设置。');
     await refresh(true);

@@ -32,8 +32,9 @@ export function RoamPlaybackButton({ menu = false, visible = true }: { menu?: bo
 }
 
 type PromptMode = "random" | "along" | "stay";
-type RoamSettings = { playback_interval_seconds: number; liked_tags_only: boolean; prompt_mode: PromptMode };
-type ModeChoices = { liked_tags_only: boolean; prompt_mode: PromptMode };
+type RecommendationStrength = "standard" | "strong";
+type ModeChoices = { liked_tags_only: boolean; prompt_mode: PromptMode; recommendation_strength: RecommendationStrength };
+type RoamSettings = ModeChoices & { playback_interval_seconds: number };
 function RoamChoices({ value, disabled = false, onChange, compact = false }: {
   value: ModeChoices; disabled?: boolean; onChange: (patch: Partial<ModeChoices>) => void; compact?: boolean;
 }) {
@@ -53,10 +54,17 @@ function RoamChoices({ value, disabled = false, onChange, compact = false }: {
         <ToggleGroupItem value="stay" aria-label="停泊" data-tooltip="保持整组正负提示词，图像种子仍随机。">停泊</ToggleGroupItem>
       </ToggleGroup>
     </div>
+    <div className={compact ? "flex min-h-8 items-center justify-between gap-2" : "settings-field"}>
+      <span className="field-caption whitespace-nowrap">推荐力度<HelpTip text="只影响新任务，保留已有预取。停泊已有提示词时不参与评分。" /></span>
+      <ToggleGroup type="single" size="sm" value={value.recommendation_strength} disabled={disabled} aria-label="推荐力度" onValueChange={next => { if (next) onChange({ recommendation_strength: next as RecommendationStrength }); }}>
+        <ToggleGroupItem value="standard" aria-label="标准" data-tooltip="保留探索，发现更多可能喜欢的组合。">标准</ToggleGroupItem>
+        <ToggleGroupItem value="strong" aria-label="强力" data-tooltip="比较更多候选，按当前偏好评分择优，不引入探索。">强力</ToggleGroupItem>
+      </ToggleGroup>
+    </div>
   </div>;
 }
 export function RoamSettingsChoices() {
-  const [value, setValue] = useState<ModeChoices>({ liked_tags_only: false, prompt_mode: "random" });
+  const [value, setValue] = useState<ModeChoices>({ liked_tags_only: false, prompt_mode: "random", recommendation_strength: "standard" });
   useEffect(() => {
     const receive = (event: Event) => setValue((event as CustomEvent<ModeChoices>).detail);
     document.addEventListener("pictide:roam-settings-draft", receive);
@@ -65,17 +73,19 @@ export function RoamSettingsChoices() {
   return <>
     <input id="roam-liked-tags-only" type="checkbox" aria-hidden="true" hidden checked={value.liked_tags_only} readOnly />
     <input id="roam-prompt-mode" type="hidden" value={value.prompt_mode} readOnly />
+    <input id="roam-recommendation-strength" type="hidden" value={value.recommendation_strength} readOnly />
     <RoamChoices value={value} onChange={patch => {
       const next = { ...value, ...patch }; setValue(next);
       (document.getElementById("roam-liked-tags-only") as HTMLInputElement).checked = next.liked_tags_only;
       const mode = document.getElementById("roam-prompt-mode") as HTMLInputElement; mode.value = next.prompt_mode;
+      (document.getElementById("roam-recommendation-strength") as HTMLInputElement).value = next.recommendation_strength;
       mode.dispatchEvent(new Event("change", { bubbles: true }));
     }} />
   </>;
 }
 export function RoamOptions() {
   const [open, setOpen] = useState(false);
-  const [settings, setSettings] = useState<RoamSettings>({ playback_interval_seconds: 5, liked_tags_only: false, prompt_mode: "random" });
+  const [settings, setSettings] = useState<RoamSettings>({ playback_interval_seconds: 5, liked_tags_only: false, prompt_mode: "random", recommendation_strength: "standard" });
   const [ready, setReady] = useState(false);
   const [draft, setDraft] = useState("5");
   const [saving, setSaving] = useState({ interval: false, choices: false });

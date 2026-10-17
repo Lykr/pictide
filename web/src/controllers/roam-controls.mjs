@@ -13,6 +13,13 @@ export function candidateCount(value) {
   return count;
 }
 
+export function strongCandidateMultiplier(value) {
+  if (!['number', 'string'].includes(typeof value) || typeof value === 'string' && !value.trim()) throw new Error('请输入强力候选倍数。');
+  const count = Number(value);
+  if (!Number.isInteger(count) || count < 1 || count > 5) throw new Error('强力候选倍数须为 1–5 之间的整数。');
+  return count;
+}
+
 export function maxHistoryImages(value) {
   if (!['number', 'string'].includes(typeof value) || typeof value === 'string' && !value.trim()) {
     throw new Error('请输入历史图片数量上限。');
