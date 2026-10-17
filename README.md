@@ -22,6 +22,22 @@
 & '.\start.ps1' -Port 8189 -DataDir 'E:\PictideData'
 ```
 
+### 局域网访问
+
+双击 `start-lan.cmd`，或执行 `& '.\start.ps1' -Lan`。本机仍通过 `http://127.0.0.1:8189` 使用，其他设备通过启动窗口列出的电脑局域网 IP 访问，例如 `http://192.168.50.50:8189`；电脑 IP 变化后使用新地址。普通 `start.cmd` 保持仅本机访问。
+
+Windows 首次使用需在管理员 PowerShell 添加防火墙规则，仅放行专用网络的本地子网：
+
+```powershell
+New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8189 -Profile Private -RemoteAddress LocalSubnet
+```
+
+电脑网络需为可信的“专用网络”，设备需处于可互通的局域网；不需开放 ComfyUI 端口。使用其他端口时同步修改防火墙规则。不配置路由器端口转发。
+
+局域网启动监听 IPv4 所有接口，但 HTTP 仅接受本机回环地址或请求实际到达的本机内网 IP，保留同源修改校验。局域网设备共用图库、设置、任务和偏好，没有账号隔离，能够生成、评价及删除图片。只给可信设备开放。
+
+手机通过普通 HTTP 访问时，浏览器可能限制剪贴板复制及原生全屏；浏览、生图和页面内沉浸布局不依赖这些权限。
+
 所有应用数据默认集中在项目下 `data/`：数据库、图片及提示词 JSON、日志、缓存、临时文件和 Python 运行环境。可用 `-DataDir` 或 `PICTIDE_DATA_DIR` 指定另一数据目录；旧 `PICTIDE_WEB_DATA_DIR` 仍用于保留自定义路径。详细布局与备份方式见 [数据目录](docs/data-layout.md)。数据目录已排除出 Git。
 
 ## 通用设置

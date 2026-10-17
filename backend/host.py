@@ -1,5 +1,6 @@
 """HTTP, event transport and process lifecycle. Use cases live in application.py."""
 import argparse
+import ipaddress
 import json
 import math
 from pathlib import Path
@@ -26,6 +27,7 @@ from .task import JobService
 
 STATIC = Path(__file__).resolve().parent.parent / "web" / "dist"
 APPLICATION = web.AppKey("application", PictideApplication)
+ALLOW_LAN = web.AppKey("allow_lan", bool)
 CSP = "default-src 'self'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
 
 
@@ -37,8 +39,13 @@ async def boundary(request, handler):
             local = urlsplit("http://" + request.host).hostname
         except ValueError:
             local = None
-        if local not in {"127.0.0.1", "localhost", "::1"}:
-            raise web.HTTPForbidden(text="请通过 localhost 或回环地址访问本地应用。")
+        allowed = local in {"127.0.0.1", "localhost", "::1"}
+        if not allowed and request.app.get(ALLOW_LAN, False):
+            address = request.transport.get_extra_info("sockname") if request.transport else None
+            if address and local == address[0]:
+                allowed = ipaddress.ip_address(local).is_private
+        if not allowed:
+            raise web.HTTPForbidden(text="请通过本机地址访问；局域网访问需要使用局域网启动入口。")
         if request.path.startswith("/api/") and request.method not in ("GET", "HEAD"):
             origin = request.headers.get("Origin")
             if origin and origin != f"{request.scheme}://{request.host}":
@@ -253,9 +260,10 @@ async def shutdown(app):
     app[APPLICATION].events.close()
 
 
-def create_app(data_dir=None, backend_factory=create_backend):
+def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False):
     """Composition root: adapters are assembled here, outside request handlers."""
     app = web.Application(middlewares=[boundary], client_max_size=MAX_BYTES)
+    app[ALLOW_LAN] = allow_lan
     paths = DataPaths(data_dir).ensure()
     storage = Repository(paths.database)
     recommendation_store = SQLiteRecommendationStore(storage)
@@ -301,12 +309,12 @@ def create_app(data_dir=None, backend_factory=create_backend):
 
 def main():
     parser = argparse.ArgumentParser(description="Pictide")
-    parser.add_argument("--host", default="127.0.0.1", choices=["127.0.0.1", "localhost", "::1"])
+    parser.add_argument("--host", default="127.0.0.1", choices=["127.0.0.1", "localhost", "::1", "0.0.0.0"])
     parser.add_argument("--port", type=int, default=8189)
     parser.add_argument("--data-dir", default=None)
     args = parser.parse_args()
     paths = DataPaths(args.data_dir).configure_runtime()
-    web.run_app(create_app(paths.root), host=args.host, port=args.port, access_log=None)
+    web.run_app(create_app(paths.root, allow_lan=args.host == "0.0.0.0"), host=args.host, port=args.port, access_log=None)
 
 
 if __name__ == "__main__":

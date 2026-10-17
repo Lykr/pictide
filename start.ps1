@@ -1,6 +1,7 @@
 param(
     [ValidateRange(1, 65535)][int]$Port = 8189,
-    [string]$DataDir = ""
+    [string]$DataDir = "",
+    [switch]$Lan
 )
 $ErrorActionPreference = 'Stop'
 $projectPath = $PSScriptRoot
@@ -48,8 +49,14 @@ if ($LASTEXITCODE -ne 0) {
     & $venvPython -m pip install -r (Join-Path $projectPath 'requirements.txt')
     if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
 }
-$appArguments = @('-m', 'backend.host', '--port', "$Port", '--data-dir', $dataRoot)
+$listenAddress = if ($Lan) { '0.0.0.0' } else { '127.0.0.1' }
+$appArguments = @('-m', 'backend.host', '--host', $listenAddress, '--port', "$Port", '--data-dir', $dataRoot)
 Write-Host "Pictide: http://127.0.0.1:$Port"
+if ($Lan) {
+    Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object { $_.IPAddress -match '^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)' } |
+        ForEach-Object { Write-Host "LAN: http://$($_.IPAddress):$Port" }
+}
 Write-Host "Data directory: $dataRoot"
 Write-Host 'Close this terminal or press Ctrl+C to stop the Web application.'
 Push-Location -LiteralPath $projectPath
