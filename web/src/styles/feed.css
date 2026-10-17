@@ -69,7 +69,7 @@
 .feed-page .generated-card { position: relative; }
 .feed-page .generated-image-button { width: 100%; height: auto; padding: 0; border-radius: 0; display: block; overflow: hidden; }
 .generated-thumbnail { position: relative; min-width: 0; aspect-ratio: 3 / 4; background: var(--secondary); overflow: hidden; isolation: isolate; }
-.generated-thumbnail img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.generated-thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
 .generated-privacy-blurred .generated-thumbnail img { filter: blur(24px); }
 .generated-privacy-blurred .generated-thumbnail::after { content: ""; position: absolute; inset: 0; background: color-mix(in oklch, var(--card) 40%, transparent); pointer-events: none; }
 .generated-image-state { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: var(--secondary); color: var(--muted-foreground); white-space: normal; font-size: 12px; }
