@@ -79,6 +79,45 @@ class SQLiteCandidateStore:
                 result.update((row["id"], dict(pmi=row["pmi"], count=row["count"])) for row in rows)
         return result
 
+    def generation_tags(self):
+        """Read immutable tag metadata once for a generation batch."""
+        with self.connect() as db:
+            cursor = db.cursor()
+            cursor.row_factory = None
+            return tuple(cursor.execute("SELECT id,name,post_count FROM tags ORDER BY id"))
+
+    def qualified_relations(self, anchor_id, pmi_threshold, minimum, candidate_ids=None):
+        """Read indexed qualified neighbours, optionally restricted to remaining IDs."""
+        if candidate_ids is not None:
+            candidate_ids = sorted(set(candidate_ids) - {anchor_id})
+            if not candidate_ids:
+                return ()
+        with self.connect() as db:
+            cursor = db.cursor()
+            cursor.row_factory = None
+            if candidate_ids is None:
+                return tuple(cursor.execute("""
+                    SELECT tag_b,pmi FROM correlations
+                    WHERE tag_a=? AND tag_b!=? AND pmi>=? AND count>=?
+                    UNION ALL
+                    SELECT tag_a,pmi FROM correlations
+                    WHERE tag_b=? AND tag_a!=? AND pmi>=? AND count>=?
+                """, (anchor_id, anchor_id, pmi_threshold, minimum,
+                      anchor_id, anchor_id, pmi_threshold, minimum)))
+            result = []
+            for offset in range(0, len(candidate_ids), 400):
+                batch = candidate_ids[offset:offset+400]
+                marks = ",".join("?" for _ in batch)
+                result.extend(cursor.execute(f"""
+                    SELECT tag_b,pmi FROM correlations
+                    WHERE tag_a=? AND tag_b IN ({marks}) AND pmi>=? AND count>=?
+                    UNION ALL
+                    SELECT tag_a,pmi FROM correlations
+                    WHERE tag_b=? AND tag_a IN ({marks}) AND pmi>=? AND count>=?
+                """, [anchor_id, *batch, pmi_threshold, minimum,
+                      anchor_id, *batch, pmi_threshold, minimum]))
+        return tuple(result)
+
     def expansion_candidates(self, existing, pmi_threshold, minimum, allowed_ids=None):
         """Intersect PMI-qualified indexed neighbours, weighted by geometric lift."""
         if allowed_ids is not None and not allowed_ids:
