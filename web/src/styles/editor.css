@@ -5,7 +5,8 @@
 .editor-page p { margin: 0; }
 .editor-page .spacer { flex: 1; }
 .editor-toolbar, .editor-tabs { display: flex; align-items: center; gap: 8px; padding: 0; margin-bottom: 16px; flex-wrap: wrap; }
-.editor-page main { min-width: 0; }
+.editor-page main { flex: 1; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.editor-toolbar, .editor-tabs { flex-shrink: 0; }
 .editor-page .notice { margin: 0 0 12px; padding: 10px 12px; background: var(--muted); border-radius: var(--radius); overflow-wrap: anywhere; }
 .editor-page .error, .cooc-error { color: var(--destructive); font-size: 12px; }
 .cooc-library-filters { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }

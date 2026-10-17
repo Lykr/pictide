@@ -109,12 +109,18 @@
   [hidden] { display: none !important; }
   input:invalid:not(:placeholder-shown):focus, textarea:invalid:focus, select:invalid:focus { border-color: var(--destructive); }
   html {
-    scrollbar-gutter: stable;
     @apply font-sans;
   }
 }
 
 /* Application behavior only; Luma components own size, radius, fill and focus. */
+html, body { height: 100%; overflow: hidden; }
+body { position: fixed; inset: 0; }
+#root { position: fixed; inset: 0; height: 100dvh; overflow: clip; }
+.feed-page { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+#feed-main { display: flex; flex-direction: column; min-height: 0; overflow: clip; }
+#feed-main > .section-heading, #feed-main > .notice { flex-shrink: 0; }
+#feed-main > section { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; align-content: start; }
 /* All ordinary workspaces share the liked-page content boundaries. */
 .workspace-content { width: 100%; max-width: 1200px; margin: 0 auto; min-width: 0; padding: 24px; }
 @media (max-width: 1024px) { .workspace-content { padding: 16px; } }
