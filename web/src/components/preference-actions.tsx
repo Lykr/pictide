@@ -144,7 +144,7 @@ export function PreferenceActions() {
   };
 
   const busy = loading || resetting;
-  return <div className="mt-4 flex flex-col gap-2">
+  return <div className="settings-preferences flex flex-col gap-2">
     <div className="flex items-center justify-between gap-3">
       <span className="text-sm font-medium">用户偏好</span>
       <div className="flex items-center gap-1">

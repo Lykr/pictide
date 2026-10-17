@@ -11,6 +11,7 @@ import { IconButton, HelpTip } from "./components/actions";
 import { Card } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "./components/ui/input-group";
 import { Textarea } from "./components/ui/textarea";
 import { Label } from "./components/ui/label";
 import { Toggle } from "./components/ui/toggle";
@@ -198,9 +199,9 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <Button data-settings-section="history" variant="ghost" type="button"><History aria-hidden="true" />历史</Button>
 </nav>
 <div className="settings-content">
-<section id="settings-general" className="settings-category space-y-6"><GeneralSettings initialError={themeError} /><section aria-label="数据位置">
+<section id="settings-general" className="settings-category space-y-6"><GeneralSettings initialError={themeError} /><section className="settings-data-section" aria-label="数据位置">
 <h2>数据位置</h2>
-<dl className="data-locations"><dt>数据目录</dt><dd id="data-directory">读取中…</dd><dt>数据库</dt><dd id="database-path">读取中…</dd></dl>
+<dl className="data-locations"><div><dt>数据目录</dt><dd id="data-directory">读取中…</dd></div><div><dt>数据库</dt><dd id="database-path">读取中…</dd></div></dl>
 </section></section>
 <section id="settings-backend" className="settings-category"><form id="settings-form">
 <div className="form-grid">
@@ -259,20 +260,18 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div id="settings-result" className="notice" role="status" hidden />
 <div className="dialog-footer"><Button id="test-backend" type="button" className="quiet" variant="outline">测试连接</Button><Button id="save-backend" type="submit" className="primary" variant="default">保存后端</Button></div>
 </form></section>
-<section id="settings-roam" className="settings-category" hidden><form id="roam-form">
-<fieldset id="roam-fields">
+<section id="settings-roam" className="settings-category" hidden><form id="roam-form" className="settings-stack">
+<fieldset id="roam-fields" className="settings-stack">
 <div className="form-grid">
-<Label htmlFor="roam-prefetch-count"><span className="field-caption">预取数量<HelpTip text="在当前图片后预备的张数；漫游页打开时按需补足，0 关闭自动预取。" /></span><Input id="roam-prefetch-count" type="number" min="0" max="20" step="1" defaultValue="0" required /></Label>
-<Label htmlFor="roam-max-history-images"><span className="field-caption">历史图片数量上限<HelpTip text="超限时从最早图片处理：未喜欢的永久删除本地图片及提示词 JSON；喜欢的仅从漫游隐藏，喜欢页保留。" /></span><Input id="roam-max-history-images" data-tooltip="仅计算当前图片之前的漫游历史；当前、预取与生成页图片不计。0 关闭数量清理。" type="number" min="0" max="100000" step="1" defaultValue="0" required /></Label>
-</div>
-<div className="form-grid">
-<Label htmlFor="roam-backend"><span className="field-caption h-6">生图后端</span><NativeSelect id="roam-backend"><option value="">自动选择后端</option></NativeSelect></Label>
-<Label htmlFor="roam-config"><span className="field-caption">候选预设<HelpTip text="使用该预设的固定词、共现规则和顺流变化预算。" /></span><NativeSelect id="roam-config"><option value="">自动选择预设</option></NativeSelect></Label>
-</div>
-<div className="form-grid">
-<Label htmlFor="roam-playback-interval"><span className="field-caption">自动播放间隔（秒）<HelpTip text="每张图片加载完成后开始计时；下一张未就绪时等待。" /></span><Input id="roam-playback-interval" type="number" min="1" max="600" step="1" defaultValue="5" required /></Label>
+<div className="settings-field"><Label htmlFor="roam-backend">生图后端</Label><NativeSelect id="roam-backend"><option value="">自动选择后端</option></NativeSelect></div>
+<div className="settings-field"><Label htmlFor="roam-config"><span className="field-caption">候选预设<HelpTip text="使用该预设的固定词、共现规则和顺流变化预算。" /></span></Label><NativeSelect id="roam-config"><option value="">自动选择预设</option></NativeSelect></div>
 </div>
 <RoamSettingsChoices />
+<div className="form-grid">
+<div className="settings-field"><Label htmlFor="roam-prefetch-count"><span className="field-caption">预取数量<HelpTip text="在当前图片后预备的张数；漫游页打开时按需补足，0 关闭自动预取。" /></span></Label><Input id="roam-prefetch-count" type="number" min="0" max="20" step="1" defaultValue="0" required /></div>
+<div className="settings-field"><Label htmlFor="roam-max-history-images"><span className="field-caption">历史图片数量上限<HelpTip text="超限时从最早图片处理：未喜欢的永久删除本地图片及提示词 JSON；喜欢的仅从漫游隐藏，喜欢页保留。" /></span></Label><Input id="roam-max-history-images" data-tooltip="仅计算当前图片之前的漫游历史；当前、预取与生成页图片不计。0 关闭数量清理。" type="number" min="0" max="100000" step="1" defaultValue="0" required /></div>
+<div className="settings-field"><Label htmlFor="roam-playback-interval"><span className="field-caption">自动播放<HelpTip text="每张图片加载完成后开始计时；下一张未就绪时等待。" /></span></Label><InputGroup><InputGroupInput id="roam-playback-interval" aria-label="自动播放间隔（秒）" type="number" min="1" max="600" step="1" defaultValue="5" required /><InputGroupAddon align="inline-end">秒</InputGroupAddon></InputGroup></div>
+</div>
 </fieldset>
 <PreferenceActions />
 <div id="roam-result" className="notice" role="status" hidden />
@@ -281,11 +280,10 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <section id="settings-history" className="settings-category space-y-6" hidden>
 <Collapsible>
 <CollapsibleTrigger asChild><Button type="button" variant="ghost" size="sm" className="group gap-2 rounded-none bg-transparent px-0 font-semibold hover:bg-transparent aria-expanded:bg-transparent dark:hover:bg-transparent"><ChevronRight className="transition-transform group-data-[state=open]:rotate-90" aria-hidden="true" />图片清理</Button></CollapsibleTrigger>
-<CollapsibleContent forceMount className="pt-4 data-[state=closed]:hidden"><form id="history-form">
+<CollapsibleContent forceMount className="pt-4 data-[state=closed]:hidden"><form id="history-form" className="settings-stack">
 {"\n    "}<fieldset id="history-fields">
-<Label><span className="field-caption">{"保留天数"}<HelpTip text="从图片入库起计时，默认 1 天；0 关闭过期清理，喜欢的图片保留。" /></span><Input id="history-retention-days" type="number" min="0" max="3650" step="1" required defaultValue="1" />
-
-</Label>
+<div className="settings-field"><Label htmlFor="history-retention-days"><span className="field-caption">{"保留天数"}<HelpTip text="从图片入库起计时，默认 1 天；0 关闭过期清理，喜欢的图片保留。" /></span></Label><Input id="history-retention-days" type="number" min="0" max="3650" step="1" required defaultValue="1" />
+</div>
 </fieldset>
 {"\n    "}<p className="hint retention-warning">{"到期且未喜欢的本地图片及提示词 JSON 将永久删除。"}<HelpTip text="取消喜欢后，已过期图片也会被清理。任务记录和 ComfyUI 文件保留。" /></p>
 {"\n    "}

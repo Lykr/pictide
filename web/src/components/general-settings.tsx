@@ -23,10 +23,10 @@ export function GeneralSettings({ initialError = "" }: { initialError?: string }
     catch (failure) { applyTheme(previous); setError(`主题保存失败：${failure instanceof Error ? failure.message : String(failure)}`); }
     finally { setSaving(false); }
   };
-  return <div className="max-w-md space-y-3">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <Label id="theme-label" className="mb-0!">主题</Label>
-      <ToggleGroup type="single" size="sm" value={theme} onValueChange={change} disabled={saving} aria-labelledby="theme-label" aria-busy={saving}>
+  return <div className="space-y-3">
+    <div className="settings-field">
+      <Label id="theme-label" >主题</Label>
+      <ToggleGroup className="justify-self-start" type="single" size="sm" value={theme} onValueChange={change} disabled={saving} aria-labelledby="theme-label" aria-busy={saving}>
         {([{ value: "system", label: "跟随系统", icon: Monitor }, { value: "dark", label: "黑色", icon: Moon }, { value: "light", label: "白色", icon: Sun }] as const).map(({ value, label, icon: Icon }) =>
           <ToggleGroupItem key={value} value={value} aria-label={label}>
             {saving && theme === value ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Icon aria-hidden="true" />}{label}

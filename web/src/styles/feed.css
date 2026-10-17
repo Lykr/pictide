@@ -161,13 +161,13 @@
 .feed-page .settings-navigation button.active:not(:where(.editor-page, .editor-page *)) { background: var(--accent); color: var(--accent-foreground); }
 .feed-page .settings-content:not(:where(.editor-page, .editor-page *)) { min-width: 0; max-width: 780px; }
 .feed-page .workflow-actions:not(:where(.editor-page, .editor-page *)) { display: flex; gap: 4px; align-items: center; }
-/* Backend fields share one rhythm; shadcn primitives retain their own styling. */
-.feed-page #settings-form { display: grid; min-width: 0; gap: 24px; }
-.feed-page #settings-form .form-grid { row-gap: 16px; align-items: start; }
-.feed-page #settings-form .settings-field { display: grid; align-content: start; min-width: 0; gap: 8px; }
-.feed-page #settings-form .settings-field > label, .feed-page #settings-form .settings-field-heading { display: flex; align-items: center; min-height: 24px; margin: 0; }
-.feed-page #settings-form .settings-field-heading { justify-content: space-between; gap: 8px; }
-.feed-page #settings-form .settings-field-heading > label { margin: 0; }
+/* All settings use one field rhythm; shadcn primitives retain their styling. */
+.feed-page #settings-form, .feed-page .settings-stack { display: grid; min-width: 0; gap: 24px; }
+.feed-page .settings-content .form-grid { gap: 16px; align-items: start; }
+.feed-page .settings-content .settings-field { display: grid; align-content: start; min-width: 0; gap: 8px; }
+.feed-page .settings-content .settings-field > label, .feed-page .settings-content .settings-field-heading { display: flex; align-items: center; min-height: 24px; margin: 0; }
+.feed-page .settings-content .settings-field-heading { justify-content: space-between; gap: 8px; }
+.feed-page .settings-content .settings-field-heading > label { margin: 0; }
 .feed-page #settings-form [data-control-host=workflow] { margin: 0; }
 .feed-page #settings-form .workflow-picker [data-slot=command-input-wrapper] { padding: 0; }
 .feed-page #settings-form #default-workflow, .feed-page #settings-form #custom-workflow { display: grid; min-width: 0; gap: 16px; margin: 0; }
@@ -183,11 +183,21 @@
 .feed-page #settings-form .node-input-field:only-child { grid-column: 1 / -1; }
 .feed-page #settings-form .validation { margin: 0; }
 .feed-page #settings-form .binding-inputs { display: grid; min-width: 0; gap: 16px; }
-.feed-page #settings-form .dialog-footer { margin: 0; }
+.feed-page .settings-content .dialog-footer { margin: 0; justify-content: flex-end; }
+.feed-page #test-backend { margin-right: auto; }
+.feed-page .settings-content .notice { margin: 0; }
+.feed-page .settings-content .settings-field > .field-caption { min-height: 24px; }
+.feed-page .settings-content .settings-field > [role=group] { justify-self: start; }
+.feed-page .settings-content .settings-field > [data-slot=input-group] { justify-self: stretch; }
+.feed-page .settings-preferences { padding-block: 4px; }
+.feed-page .settings-data-section h2 { margin-bottom: 16px; }
+.feed-page #history-fields { max-width: 382px; }
+.feed-page #history-form .retention-warning { margin: 0; }
 
 .feed-page #workflow-mode:not(:where(.editor-page, .editor-page *)), .feed-page [data-slot=native-select-wrapper]:has(>#workflow-mode):not(:where(.editor-page, .editor-page *)) { margin-bottom: 20px; }
-.feed-page .data-locations:not(:where(.editor-page, .editor-page *)) { display: grid; gap: 8px; }
-.feed-page .data-locations dt:not(:where(.editor-page, .editor-page *)) { font-size: 12px; color: var(--muted-foreground); margin-top: 12px; }
+.feed-page .data-locations:not(:where(.editor-page, .editor-page *)) { display: grid; gap: 16px; }
+.feed-page .data-locations > div { display: grid; min-width: 0; gap: 8px; }
+.feed-page .data-locations dt:not(:where(.editor-page, .editor-page *)) { font-size: 12px; color: var(--muted-foreground); }
 .feed-page .data-locations dd:not(:where(.editor-page, .editor-page *)) { margin: 0; overflow-wrap: anywhere; font: 12px/1.7 var(--font-mono); }
 .feed-page #generate-form:not(:where(.editor-page, .editor-page *)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
 .feed-page #generate-form > label:has(textarea):not(:where(.editor-page, .editor-page *)), .feed-page #rule-section:not(:where(.editor-page, .editor-page *)), .feed-page .generation-plan-fields:not(:where(.editor-page, .editor-page *)) { grid-column: 1 / -1; }
