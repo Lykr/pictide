@@ -16,7 +16,7 @@
 
 - GET /api/settings/roam 和既有包含漫游设置的响应增加 candidate_count，默认 4。
 - PUT /api/settings/roam 接受 candidate_count；支持单独保存此字段，完整表单未传时保留原值。
-- 候选 provider.generate 已支持 constraints.count（1–20），推荐与任务接口不变。
+- 基础设置为 1–20；候选 provider.generate 的 constraints.count 支持 1–100，以容纳强力倍增；力度与评分接口见 [推荐力度](roam-recommendation-strength.md)。
 - 漫游设置内部 get/save/save_options 支持该字段，SQLite 的 roam_candidate_settings 表持久保存。初始化不删除现有图片、任务、偏好和设置；修改前备份数据库。
 
 ## 验证

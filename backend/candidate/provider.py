@@ -17,7 +17,7 @@ class CooccurrenceCandidateProvider:
                                  tuple(term["categories"]), term["channel"]) for term in terms)
 
     def generate(self, context, constraints):
-        count = integer(constraints.get("count", 1), "count", 1, 20)
+        count = integer(constraints.get("count", 1), "count", 1, 100)
         context = dict(context)
         prompt_mode = constraints.get("prompt_mode", "random")
         previous = constraints.get("previous_candidate")

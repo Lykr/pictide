@@ -178,3 +178,41 @@ class RoamPipelineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(self.app.roam.get()["epoch"], epoch)
         self.assertEqual(self.app.storage.job(first["job"]["id"])["status"], "queued")
+
+    async def test_strong_pool_and_strategy_switch_preserves_existing_tasks(self):
+        counts = []
+        def generate(context, constraints):
+            counts.append(constraints["count"])
+            return tuple(Candidate(f"option-{i}", f"forest {i}", "",
+                         terms=(TagSnapshot("smoke", f"forest-{i}", f"forest {i}"),))
+                         for i in range(constraints["count"]))
+        self.pool.generate = generate
+        def score(request):
+            self.scorer.requests.append(request)
+            return ScoreResult(tuple(CandidateScore(c.candidate_id, float(i))
+                               for i, c in enumerate(request.candidates)), "smoke-features", "smoke-policy", 0)
+        self.scorer.score = score
+        epoch = self.app.roam.get()["epoch"]
+        response = await self.client.put("/api/settings/roam", json={"recommendation_strength": "strong"})
+        self.assertEqual(response.status, 200)
+        first = await self.ensure()
+        self.assertEqual((counts, self.scorer.requests[-1].strategy), ([8], "mean"))
+        self.assertEqual(first["job"]["positive"], "forest 7")
+        self.assertEqual(self.app.storage.roam_snapshot(first["job"]["id"])["scoring_strategy"], "mean")
+        response = await self.client.put("/api/settings/roam", json={"recommendation_strength": "standard"})
+        self.assertEqual(response.status, 200)
+        second = await self.ensure()
+        self.assertEqual((counts, self.scorer.requests[-1].strategy), ([8, 4], "thompson"))
+        self.assertEqual(self.app.storage.job(first["job"]["id"])["status"], "queued")
+        self.assertEqual(self.app.roam.get()["epoch"], epoch)
+        self.assertEqual(second["roam_pending"], 2)
+
+    async def test_candidate_provider_accepts_full_strong_pool(self):
+        from backend.candidate.provider import CooccurrenceCandidateProvider
+        provider = CooccurrenceCandidateProvider(SimpleNamespace())
+        provider.sample = lambda *args, **kwargs: {"candidate_id": "sample", "positive": "forest",
+                                                  "negative": "", "selected_tags": []}
+        pool = provider.generate({"document": {}}, {"count": 100})
+        self.assertEqual(len(pool), 100)
+        with self.assertRaises(ValueError):
+            provider.generate({"document": {}}, {"count": 101})

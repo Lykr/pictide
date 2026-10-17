@@ -43,6 +43,20 @@ def prompt_mode_value(value):
     return value
 
 
+RECOMMENDATION_DEFAULTS = {"recommendation_strength": "standard", "strong_candidate_multiplier": 2}
+
+
+def recommendation_options(payload):
+    options = {key: payload[key] for key in RECOMMENDATION_DEFAULTS if key in payload}
+    if "recommendation_strength" in options and options["recommendation_strength"] not in ("standard", "strong"):
+        raise ValidationError("推荐力度须为 standard 或 strong。")
+    if "strong_candidate_multiplier" in options:
+        value = options["strong_candidate_multiplier"]
+        if type(value) is not int or not 1 <= value <= 5:
+            raise ValidationError("强力候选倍数须为 1–5 之间的整数。")
+    return options
+
+
 def selection(value, label):
     if not isinstance(value, str) or len(value) > 200:
         raise ValidationError(f"{label}须为文本，留空表示自动选择。")
@@ -66,6 +80,10 @@ class RoamSettings:
             db.execute("CREATE TABLE IF NOT EXISTS roam_candidate_settings (id INTEGER PRIMARY KEY CHECK(id=1), "
                        "candidate_count INTEGER NOT NULL CHECK(candidate_count BETWEEN 1 AND 20))")
 
+            db.execute("CREATE TABLE IF NOT EXISTS roam_recommendation_settings (id INTEGER PRIMARY KEY CHECK(id=1), "
+                       "recommendation_strength TEXT NOT NULL CHECK(recommendation_strength IN ('standard','strong')), "
+                       "strong_candidate_multiplier INTEGER NOT NULL CHECK(strong_candidate_multiplier BETWEEN 1 AND 5))")
+
     @contextmanager
     def connect(self):
         db = sqlite3.connect(self.path, timeout=30)
@@ -77,7 +95,7 @@ class RoamSettings:
 
     @staticmethod
     def defaults():
-        return {"prefetch_count": 0, "max_history_images": 0, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 5, "liked_tags_only": False, "prompt_mode": "random", "candidate_count": 4}
+        return {"prefetch_count": 0, "max_history_images": 0, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 5, "liked_tags_only": False, "prompt_mode": "random", "candidate_count": 4, **RECOMMENDATION_DEFAULTS}
 
     @classmethod
     def _get(cls, db):
@@ -90,6 +108,9 @@ class RoamSettings:
         document["playback_interval_seconds"] = playback[0] if playback else 5
         candidate = db.execute("SELECT candidate_count FROM roam_candidate_settings WHERE id=1").fetchone()
         document["candidate_count"] = candidate[0] if candidate else 4
+        recommendation = db.execute("SELECT recommendation_strength,strong_candidate_multiplier "
+                                    "FROM roam_recommendation_settings WHERE id=1").fetchone()
+        document.update(dict(recommendation) if recommendation else RECOMMENDATION_DEFAULTS)
         return document
 
     def get(self):
@@ -109,12 +130,13 @@ class RoamSettings:
     def history_limit(self):
         return self.get()["max_history_images"]
 
-    def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None):
+    def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None, recommendation=None):
         document = {"prefetch_count": prefetch_count(count), "backend_id": selection(backend_id, "生图后端"),
                     "max_history_images": max_history_images(max_history),
                     "preset_id": selection(preset_id, "候选预设"), "epoch": uuid.uuid4().hex}
         if playback_interval is not None:
             playback_interval_seconds(playback_interval)
+        recommendation = recommendation_options(recommendation or {})
         if liked_tags_only is not None:
             liked_tags_only_value(liked_tags_only)
         if prompt_mode is not None:
@@ -126,8 +148,10 @@ class RoamSettings:
             previous = self._get(db)
             document["liked_tags_only"] = previous["liked_tags_only"] if liked_tags_only is None else liked_tags_only
             document["prompt_mode"] = previous["prompt_mode"] if prompt_mode is None else prompt_mode
-            if candidate_count is not None and all(document[key] == previous[key] for key in
-                    ("prefetch_count", "max_history_images", "backend_id", "preset_id", "liked_tags_only", "prompt_mode")) and (playback_interval is None or playback_interval == previous["playback_interval_seconds"]):
+            same_settings = all(document[key] == previous[key] for key in
+                ("prefetch_count", "max_history_images", "backend_id", "preset_id", "liked_tags_only", "prompt_mode"))
+            same_interval = playback_interval is None or playback_interval == previous["playback_interval_seconds"]
+            if (candidate_count is not None or recommendation) and same_settings and same_interval:
                 document["epoch"] = previous["epoch"]
             if any(document[key] != previous[key] for key in ("liked_tags_only", "prompt_mode", "backend_id", "preset_id")):
                 Repository.discard_roam_prefetch(db)
@@ -136,6 +160,8 @@ class RoamSettings:
                 self._save_playback(db, playback_interval)
             if candidate_count is not None:
                 self._save_candidate_count(db, candidate_count)
+            if recommendation:
+                self._save_recommendation(db, previous | recommendation)
             document = self._get(db)
         return document
 
@@ -149,7 +175,15 @@ class RoamSettings:
         db.execute("INSERT INTO roam_candidate_settings VALUES(1,?) ON CONFLICT(id) DO UPDATE SET "
                    "candidate_count=excluded.candidate_count", (count,))
 
-    def save_options(self, liked_tags_only=None, playback_interval=None, prompt_mode=None, candidate_count=None):
+    @staticmethod
+    def _save_recommendation(db, document):
+        db.execute("INSERT INTO roam_recommendation_settings VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET "
+                   "recommendation_strength=excluded.recommendation_strength,"
+                   "strong_candidate_multiplier=excluded.strong_candidate_multiplier",
+                   tuple(document[key] for key in RECOMMENDATION_DEFAULTS))
+
+    def save_options(self, liked_tags_only=None, playback_interval=None, prompt_mode=None, candidate_count=None, recommendation=None):
+        recommendation = recommendation_options(recommendation or {})
         if liked_tags_only is not None:
             liked_tags_only_value(liked_tags_only)
         if playback_interval is not None:
@@ -175,6 +209,8 @@ class RoamSettings:
                 self._save_playback(db, playback_interval)
             if candidate_count is not None:
                 self._save_candidate_count(db, candidate_count)
+            if recommendation:
+                self._save_recommendation(db, document | recommendation)
             return self._get(db)
 
     def save_playback_interval(self, seconds):

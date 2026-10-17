@@ -20,6 +20,8 @@ App 已能取得完整提示词组合及标签快照，`roam_jobs` 保留生成�
 
 ## 第一版学习目标
 
+漫游的标准 / 强力力度分别映射到采样 / 后验均值评分，共用同一学习状态；强力确定性评分与接口增补见 [推荐力度](roam-recommendation-strength.md)。
+
 使用显式喜欢/不喜欢学习正负关联，未评价保持未知，撤回移除对应证据。采用贝叶斯线性打分与 Thompson 式参数采样，但不宣称已建立曝光→点赞的完整转化率模型或校准点赞概率。如果希望根据展示后未点赞学习，需要另行确认曝光定义、观察窗口与未转化信号，不能擅自当成负反馈。
 
 ## 静态模块架构
@@ -68,7 +70,7 @@ flowchart TD
 
 | 接口 | 输入 | 输出与约束 |
 | --- | --- | --- |
-| `score(ScoreRequest) -> ScoreResult` | `request_id`、`user_id`、`sampling_seed`、完整组合列表 | 每个 `candidate_id` 的有限数值分数；特征版本、策略版本、状态修订；不选择、不修改组合 |
+| `score(ScoreRequest) -> ScoreResult` | `request_id`、`user_id`、`sampling_seed`、完整组合列表、`strategy: thompson / mean`（默认 thompson） | 每个 `candidate_id` 的有限数值分数；特征版本、策略版本、状态修订；不选择、不修改组合 |
 | `apply_feedback(FeedbackUpdate) -> LearningResult` | 用户、图片 ID、反馈修订、`value: 1 / -1 / null`、实际生成组合快照、特征版本 | 应用后的修订与 `applied / unchanged / pending` 状态；重复提交不重复学习，旧修订不覆盖新状态 |
 | `status() -> RecommendationStatus` | 无 | 是否可用、模型/特征/策略版本、错误或降级原因；不触发下载 |
 
