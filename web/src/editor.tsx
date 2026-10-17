@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { GripVertical, Check, ChevronsUpDown, Copy, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
+import { Textarea } from "./components/ui/textarea";
 import { Label } from "./components/ui/label";
 import { Badge } from "./components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "./components/ui/tabs";
@@ -20,11 +21,11 @@ import "./styles/editor.css";
 
 type Tag = { id: number; name: string; post_count: number };
 type TagPage = { tags: Tag[]; total: number; page: number; page_size: number };
-type PresetDocument = { base_positive: string[]; base_negative: string[]; min_tags: number; max_tags: number; pmi_threshold: number; min_cooccurrence: number; change_budget: number };
+type PresetDocument = { base_positive: string[]; base_negative: string[]; blocked_keywords: string[]; min_tags: number; max_tags: number; pmi_threshold: number; min_cooccurrence: number; change_budget: number };
 type Preset = { id: string; name: string; document: PresetDocument };
 type Mode = "random_each_run" | "fixed_seed" | "sequence";
 type Result = { candidate_id: string; positive: string; negative: string; seed: number; selected_tags: PreviewTerm[]; sequence?: { seed?: number; step?: number; changes?: number; change_budget?: number }; report: Record<string, unknown> };
-const defaults: PresetDocument = { base_positive: [], base_negative: [], min_tags: 5, max_tags: 20, pmi_threshold: 0, min_cooccurrence: 10, change_budget: 2 };
+const defaults: PresetDocument = { base_positive: [], base_negative: [], blocked_keywords: [], min_tags: 5, max_tags: 20, pmi_threshold: 0, min_cooccurrence: 10, change_budget: 2 };
 const stopReasons: Record<string, string> = { target_length: "达到目标长度", no_candidates: "无可用候选", budget_exhausted: "达到变化预算", max_steps: "达到搜索上限", search_limit: "已达搜索上限", no_eligible_tags: "已无可扩展标签", budget_zero: "保持上一帧", held_no_legal_change: "无合法变化，保持上一帧" };
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json" } });
@@ -132,6 +133,7 @@ export function EditorWorkspace() {
   const [presets, setPresets] = useState<{ id: string; name: string }[]>([]);
   const [preset, setPreset] = useState<Preset>({ id: "", name: "新预设", document: { ...defaults } });
   const [saved, setSaved] = useState("");
+  const [blockedText, setBlockedText] = useState("");
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [notice, setNotice] = useState("");
@@ -151,6 +153,10 @@ export function EditorWorkspace() {
   const [result, setResult] = useState<Result | null>(null);
   const [refresh, setRefresh] = useState(0);
   const dirty = JSON.stringify(preset) !== saved;
+  const loadPreset = (next: Preset) => {
+    const loaded = { ...next, document: { ...next.document, blocked_keywords: next.document.blocked_keywords ?? [] } };
+    setPreset(loaded); setBlockedText(loaded.document.blocked_keywords.join("\n")); setSaved(JSON.stringify(loaded));
+  };
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { if (dirty && loaded) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn);
@@ -161,7 +167,7 @@ export function EditorWorkspace() {
       if (!active) return;
       setPresets(listing.presets); setDataset(info);
       const initial = listing.presets[0] ? await api<Preset>(`/api/candidate/presets/${encodeURIComponent(listing.presets[0].id)}`) : { id: "", name: "新预设", document: { ...defaults } };
-      if (active) { setPreset(initial); setSaved(JSON.stringify(initial)); setLoaded(true); }
+      if (active) { loadPreset(initial); setLoaded(true); }
     }).catch(error => { if (active) setNotice(message(error)); });
     return () => { active = false; };
   }, []);
@@ -177,12 +183,13 @@ export function EditorWorkspace() {
   const selectPreset = async (id: string) => {
     if (id === preset.id || !(await discard())) return;
     setBusy(true); setNotice("");
-    try { const next = await api<Preset>(`/api/candidate/presets/${encodeURIComponent(id)}`); setPreset(next); setSaved(JSON.stringify(next)); setResult(null); setSuccess(false); setLoaded(true); }
+    try { const next = await api<Preset>(`/api/candidate/presets/${encodeURIComponent(id)}`); loadPreset(next); setResult(null); setSuccess(false); setLoaded(true); }
     catch (error) { setNotice(message(error)); } finally { setBusy(false); }
   };
   const create = async (copy = false) => {
     if (!copy && !(await discard())) return;
-    setPreset(copy ? { ...preset, id: "", name: `${preset.name} 副本`, document: structuredClone(preset.document) } : { id: "", name: "新预设", document: { ...defaults } });
+    const next = copy ? { ...preset, id: "", name: `${preset.name} 副本`, document: structuredClone(preset.document) } : { id: "", name: "新预设", document: { ...defaults } };
+    setPreset(next); setBlockedText(next.document.blocked_keywords.join("\n"));
     setSaved(""); setResult(null); setSuccess(false); setLoaded(true); setTab("settings");
   };
   const validate = () => {
@@ -200,7 +207,7 @@ export function EditorWorkspace() {
     try {
       validate();
       const next = await api<Preset>("/api/candidate/presets", { method: "POST", body: JSON.stringify({ ...preset, id: preset.id || undefined }) });
-      setPreset(next); setSaved(JSON.stringify(next)); setSuccess(true); setLoaded(true);
+      loadPreset(next); setSuccess(true); setLoaded(true);
       const listing = await api<{ presets: { id: string; name: string }[] }>("/api/candidate/presets"); setPresets(listing.presets);
       document.dispatchEvent(new Event("pictide:candidate-presets-changed"));
     } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
@@ -212,7 +219,7 @@ export function EditorWorkspace() {
       await api(`/api/candidate/presets/${encodeURIComponent(preset.id)}`, { method: "DELETE", body: "{}" });
       const listing = await api<{ presets: { id: string; name: string }[] }>("/api/candidate/presets"); setPresets(listing.presets);
       const next = listing.presets[0] ? await api<Preset>(`/api/candidate/presets/${encodeURIComponent(listing.presets[0].id)}`) : { id: "", name: "新预设", document: { ...defaults } };
-      setPreset(next); setSaved(JSON.stringify(next)); setResult(null); setSuccess(false);
+      loadPreset(next); setResult(null); setSuccess(false);
       document.dispatchEvent(new Event("pictide:candidate-presets-changed"));
     } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
   };
@@ -227,7 +234,7 @@ export function EditorWorkspace() {
     } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
   };
   const controlOptions = [{ value: "fixed", text: "固定" }, { value: "increment", text: "递增" }, { value: "decrement", text: "递减" }, { value: "randomize", text: "随机" }];
-  const numberField = (key: keyof Omit<PresetDocument, "base_positive" | "base_negative">, label: string, help: string, min?: number, max?: number, increment: number | "any" = 1) => <Field label={label} help={help}><Input aria-label={label} type="number" min={min} max={max} step={increment} value={Number.isNaN(preset.document[key]) ? "" : preset.document[key]} required disabled={busy} onChange={event => update(key, event.target.valueAsNumber)} /></Field>;
+  const numberField = (key: keyof Omit<PresetDocument, "base_positive" | "base_negative" | "blocked_keywords">, label: string, help: string, min?: number, max?: number, increment: number | "any" = 1) => <Field label={label} help={help}><Input aria-label={label} type="number" min={min} max={max} step={increment} value={Number.isNaN(preset.document[key]) ? "" : preset.document[key]} required disabled={busy} onChange={event => update(key, event.target.valueAsNumber)} /></Field>;
   const pages = Math.max(1, Math.ceil(tags.total / tags.page_size));
   return <section id="prompts-view" className="editor-page workspace-content" aria-label="提示词" hidden>
     <header className="editor-toolbar"><h1>提示词</h1><span className="spacer" /><Badge variant="secondary" data-tooltip={`数据来源：${String(dataset.source || "尚未导入")}`}>{dataset.status === "ready" ? "词库就绪" : "词库未就绪"}</Badge></header>
@@ -251,7 +258,14 @@ export function EditorWorkspace() {
             {numberField("pmi_threshold", "PMI 阈值", "PMI = log₂(共同次数 × 总图片数 ÷ 两个标签各自次数之积)。0 表示独立，正数表示更常共同出现，负数表示更少共同出现；可填写任意有限数。", undefined, undefined, "any")}
             {numberField("min_cooccurrence", "最低共现次数", "每对标签必须共同出现至少此次数；词库仅保留至少 10 次的关系，设为更小的值也不会恢复已裁剪关系。", 1, Number.MAX_SAFE_INTEGER)}
             {numberField("change_budget", "连续变化预算", "仅连续模式生效。相邻帧标签增删的总数上限；替换一个标签计 2，固定词保留。在预算可达的数量区间内均匀抽取目标，无法合法变化时保持上一帧。", 0, 1000)}
-          </div><button type="submit" hidden />
+          </div>
+          <Field label="屏蔽关键词" help="每行一个关键词，跳过包含任一关键词的共现抽取标签；忽略大小写，空格与下划线等价。仅影响后续新抽取的正向标签，固定正负词不受影响；驻足保持的提示词不重新过滤。">
+            <Textarea aria-label="屏蔽关键词" placeholder={"每行一个关键词，例如：\nhair\nblack socks"} rows={3} disabled={busy} value={blockedText} onChange={event => {
+              const text = event.target.value;
+              setBlockedText(text);
+              update("blocked_keywords", [...new Set(text.split(/\r?\n/).map(item => item.trim()).filter(Boolean))]);
+            }} />
+          </Field><button type="submit" hidden />
         </form> : <section className="cooc-preview">
           <div className="cooc-preview-controls"><Field label="生成模式"><Choice label="预览生成模式" value={mode} onChange={value => setMode(value as Mode)} options={[{ value: "random_each_run", text: "每次随机" }, { value: "fixed_seed", text: "固定种子" }, { value: "sequence", text: "连续序列" }]} disabled={busy} /></Field>
             {mode !== "random_each_run" && <><Field label="提示词种子"><Input aria-label="预览提示词种子" type="number" min={0} max={Number.MAX_SAFE_INTEGER} step={1} value={seed} disabled={busy} onChange={event => setSeed(event.target.valueAsNumber)} /></Field><Field label="种子生成后"><Choice label="预览种子生成后" value={seedControl} onChange={setSeedControl} options={controlOptions} disabled={busy} /></Field></>}
