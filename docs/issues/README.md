@@ -49,5 +49,6 @@
 
 ## 项目与部署历史
 
+- [启动时自动准备依赖（待确认）](automatic-startup.md)
 - [项目独立迁移记录](project-move.md)
 - [数据部署历史记录](data-layout-history.md)
