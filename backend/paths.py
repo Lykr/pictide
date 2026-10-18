@@ -22,11 +22,11 @@ class DataPaths:
 
     @property
     def database(self):
-        return self.root / "pictide.sqlite3"
+        return self.root / "db" / "pictide.sqlite3"
 
     @property
     def candidate_database(self):
-        return self.root / "candidate.sqlite3"
+        return self.root / "db" / "candidate.sqlite3"
 
     @property
     def libraries(self):
@@ -35,10 +35,6 @@ class DataPaths:
     @property
     def images(self):
         return self.root / "images"
-
-    @property
-    def prompts(self):
-        return self.root / "prompts"
 
     @property
     def workflows(self):
@@ -53,8 +49,12 @@ class DataPaths:
         return self.root / "logs"
 
     @property
-    def previews(self):
-        return self.root / "previews"
+    def models(self):
+        return self.root / "models"
+
+    @property
+    def dev(self):
+        return self.root / "dev"
 
     @property
     def tmp(self):
@@ -65,8 +65,8 @@ class DataPaths:
         return self.root / "runtime"
 
     def ensure(self):
-        for directory in (self.root, self.libraries, self.images, self.prompts, self.workflows, self.cache, self.logs,
-                          self.previews, self.tmp, self.runtime,
+        for directory in (self.root, self.database.parent, self.libraries, self.images, self.models, self.workflows, self.cache, self.logs,
+                          self.tmp, self.runtime,
                           self.cache / "python", self.cache / "pip"):
             directory.mkdir(parents=True, exist_ok=True)
         return self

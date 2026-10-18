@@ -12,8 +12,8 @@ PREPROCESSING_VERSION = "fastembed-0.9.0:minilm-mean-l2:nfc-strip:256tokens:v1"
 class MiniLMEncoder:
     dimension = 384
 
-    def __init__(self, cache_dir):
-        self.cache_dir = Path(cache_dir)
+    def __init__(self, model_dir):
+        self.model_dir = Path(model_dir)
         self.version = "minilm:unavailable"
         self.error = None
         self._model = None
@@ -24,14 +24,7 @@ class MiniLMEncoder:
         self._lock = RLock()
 
     def _files(self):
-        repository = self.cache_dir / "models--Qdrant--all-MiniLM-L6-v2-onnx"
-        ref = repository / "refs" / "main"
-        if not ref.is_file():
-            raise RuntimeError("Offline MiniLM cache is missing refs/main")
-        commit = ref.read_text(encoding="utf-8").strip()
-        if not commit or any(char not in "0123456789abcdef" for char in commit):
-            raise RuntimeError("Invalid offline model snapshot reference")
-        directory = repository / "snapshots" / commit
+        directory = self.model_dir
         paths = [directory / name for name in ("model.onnx", "tokenizer.json", "config.json", "tokenizer_config.json", "special_tokens_map.json")]
         if not all(path.is_file() for path in paths):
             raise RuntimeError("Offline MiniLM model/tokenizer files are incomplete")
@@ -95,7 +88,7 @@ class MiniLMEncoder:
             try:
                 if self._model is None:
                     from fastembed import TextEmbedding
-                    self._model = TextEmbedding(model_name=MODEL_NAME, cache_dir=str(self.cache_dir),
+                    self._model = TextEmbedding(model_name=MODEL_NAME, cache_dir=str(self.model_dir),
                                                 threads=2, providers=["CPUExecutionProvider"],
                                                 local_files_only=True, specific_model_path=str(self._directory))
                 return list(self._model.embed(texts, batch_size=64))

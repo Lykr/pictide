@@ -321,7 +321,7 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
     candidate_store = SQLiteCandidateStore(paths.candidate_database, libraries.selected_path())
     storage = Repository(paths.database)
     recommendation_store = SQLiteRecommendationStore(storage)
-    recommendation = RecommendationService(recommendation_store, MiniLMEncoder(paths.cache / "embeddings"))
+    recommendation = RecommendationService(recommendation_store, MiniLMEncoder(paths.models / "minilm"))
     tasks = JobService(storage, None, backend_factory, paths=paths)
     history = HistorySettings(paths)
     roam = RoamSettings(paths)

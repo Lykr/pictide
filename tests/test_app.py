@@ -7,6 +7,7 @@ from pathlib import Path
 from aiohttp.test_utils import TestClient, TestServer
 
 from backend.host import create_app, APPLICATION
+from backend.paths import DataPaths
 from backend.generation.base import BackendError
 
 
@@ -73,7 +74,7 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.backend = FakeBackend()
         self.data_dir = Path(self.directory.name)/"data"
-        self.database = self.data_dir/"pictide.sqlite3"
+        self.database = DataPaths(self.data_dir).database
         self.client = TestClient(TestServer(create_app(self.data_dir,lambda config,session:self.backend)))
         await self.client.start_server()
 

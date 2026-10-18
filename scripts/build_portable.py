@@ -48,16 +48,13 @@ def export_resources(source_data, seed):
         db.execute('VACUUM')
         if db.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
             raise RuntimeError('Vocabulary integrity check failed.')
-    encoder = MiniLMEncoder(source_data.cache / 'embeddings')
+    encoder = MiniLMEncoder(source_data.models / 'minilm')
     directory, files = encoder._files()
-    repository = seed / 'cache/embeddings/models--Qdrant--all-MiniLM-L6-v2-onnx'
-    snapshot = repository / 'snapshots' / directory.name
-    snapshot.mkdir(parents=True)
+    model_target = seed / 'models/minilm'
+    model_target.mkdir(parents=True)
     for source in files:
-        shutil.copyfile(source, snapshot / source.name)
-    (repository / 'refs').mkdir()
-    (repository / 'refs/main').write_text(directory.name, encoding='utf-8')
-    manifest = {'version': __version__, 'model_snapshot': directory.name, 'files': []}
+        shutil.copyfile(source, model_target / source.name)
+    manifest = {'version': __version__, 'model_sha256': digest(directory / 'model.onnx'), 'files': []}
     for path in sorted(seed.rglob('*')):
         if path.is_file():
             manifest['files'].append({'path': path.relative_to(seed).as_posix(), 'bytes': path.stat().st_size, 'sha256': digest(path)})
@@ -149,7 +146,7 @@ def build(source_data_dir, output_dir):
     notices.mkdir()
     copy_licenses(notices)
     shutil.copyfile(ROOT / 'web/src/THIRD_PARTY_NOTICES.md', notices / 'frontend.md')
-    (notices / 'MiniLM.txt').write_text('Model: sentence-transformers/all-MiniLM-L6-v2\nONNX export: Qdrant/all-MiniLM-L6-v2-onnx\nLicense: Apache-2.0\nSnapshot: ' + manifest['model_snapshot'] + '\nhttps://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx\n', encoding='utf-8')
+    (notices / 'MiniLM.txt').write_text('Model: sentence-transformers/all-MiniLM-L6-v2\nONNX export: Qdrant/all-MiniLM-L6-v2-onnx\nLicense: Apache-2.0\nONNX SHA-256: ' + manifest['model_sha256'] + '\nhttps://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx\n', encoding='utf-8')
     archive = output / f'pictide-{__version__}-{sys.platform}-{platform.machine().lower()}.zip'
     with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zip:
         for path in sorted(package.rglob('*')):

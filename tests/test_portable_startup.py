@@ -26,13 +26,10 @@ class PortableResourcesSmoke(unittest.TestCase):
             with closing(sqlite3.connect(source.candidate_database)) as db, db:
                 db.execute('CREATE TABLE library_selection(id INTEGER PRIMARY KEY,filename TEXT)')
                 db.execute("INSERT INTO library_selection VALUES(1,'neutral.sqlite3')")
-            repository = source.cache / 'embeddings/models--Qdrant--all-MiniLM-L6-v2-onnx'
-            snapshot = repository / 'snapshots/abc123'
+            snapshot = source.models / 'minilm'
             snapshot.mkdir(parents=True)
             for name in ('model.onnx', 'tokenizer.json', 'config.json', 'tokenizer_config.json', 'special_tokens_map.json'):
                 (snapshot / name).write_text('fixture', encoding='utf-8')
-            (repository / 'refs').mkdir()
-            (repository / 'refs/main').write_text('abc123', encoding='utf-8')
             seed = root / 'seed'
             export_resources(source, seed)
             with closing(sqlite3.connect(seed / 'libraries/neutral.sqlite3')) as db:
@@ -40,8 +37,8 @@ class PortableResourcesSmoke(unittest.TestCase):
                 self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='presets'").fetchone())
             target = DataPaths(root / 'portable data')
             PictideApplication.prepare_startup(target, seed)
-            model = target.cache / 'embeddings/models--Qdrant--all-MiniLM-L6-v2-onnx/refs/main'
-            self.assertEqual(model.read_text(), 'abc123')
+            model = target.models / 'minilm/config.json'
+            self.assertEqual(model.read_text(), 'fixture')
             model.write_text('user-model', encoding='utf-8')
             target.candidate_database.write_bytes(b'personal presets')
             target.database.write_bytes(b'personal history')
