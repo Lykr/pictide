@@ -1,8 +1,10 @@
-"""ComfyUI API adapter: deterministic injection and bounded, read-only polling."""
+"""ComfyUI API adapter: deterministic injection, event notifications and HTTP result checks."""
 import asyncio
 import copy
 import json
 import re
+import uuid
+from typing import Callable
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
 
 import aiohttp
@@ -140,6 +142,85 @@ class ComfyBackend:
     def __init__(self, config: dict, session: aiohttp.ClientSession):
         self.config = validate_comfyui(config)
         self.session = session
+        self._events_request_id = None
+        self._events_client_id = None
+        self._events_prompt_id = None
+        self._events_ws = None
+        self._events_task = None
+        self._events_notify = None
+
+    def _set_event_request(self, request_id):
+        if self._events_request_id != request_id:
+            self._events_request_id = request_id
+            self._events_client_id = "pictide-" + str(uuid.uuid5(uuid.NAMESPACE_URL, request_id))
+            self._events_prompt_id = None
+
+    @property
+    def events_connected(self) -> bool:
+        return (self._events_ws is not None and not self._events_ws.closed
+                and self._events_task is not None and not self._events_task.done())
+
+    async def start_events(self, request_id: str, notify: Callable[[], None]) -> bool:
+        request_id = _string(request_id, "request_id")
+        if self._events_request_id == request_id and self.events_connected:
+            self._events_notify = notify
+            return True
+        await self.stop_events()
+        self._set_event_request(request_id)
+        self._events_notify = notify
+        try:
+            # Bound the handshake, not the lifetime of a connected stream.
+            ws = await asyncio.wait_for(self.session.ws_connect(
+                self.config["base_url"] + "/ws", params={"clientId": self._events_client_id},
+                headers=self._headers(), heartbeat=30, max_msg_size=MAX_JSON_BYTES,
+                timeout=aiohttp.ClientWSTimeout(ws_close=1)), timeout=1)
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
+            self._events_notify = None
+            return False
+        self._events_ws = ws
+        self._events_task = asyncio.create_task(self._receive_events(ws))
+        return True
+
+    async def _receive_events(self, ws):
+        try:
+            async for message in ws:
+                if message.type != aiohttp.WSMsgType.TEXT:
+                    continue
+                try:
+                    event = json.loads(message.data)
+                except (ValueError, UnicodeDecodeError):
+                    continue
+                if not isinstance(event, dict) or not isinstance(event.get("data"), dict):
+                    continue
+                data, kind = event["data"], event.get("type")
+                terminal = kind in ("execution_success", "execution_error", "execution_interrupted")
+                terminal = terminal or (kind == "executing" and "node" in data and data["node"] is None)
+                if not terminal or not isinstance(data.get("prompt_id"), str):
+                    continue
+                if self._events_prompt_id is not None and data["prompt_id"] != self._events_prompt_id:
+                    continue
+                if self._events_notify is not None:
+                    self._events_notify()
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
+            pass
+        finally:
+            if self._events_ws is ws:
+                self._events_ws = None
+                if self._events_notify is not None:
+                    self._events_notify()
+            await ws.close()
+
+    async def stop_events(self) -> None:
+        ws, task = self._events_ws, self._events_task
+        self._events_ws = self._events_task = self._events_notify = None
+        if task is not None:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        if ws is not None and not ws.closed:
+            await ws.close()
 
     def _redact(self, text):
         value = str(text)
@@ -375,14 +456,18 @@ class ComfyBackend:
         if plan["negative"] and "negative" not in self.config["bindings"]:
             raise BackendError("该工作流没有绑定负向提示词输入，请清空负向提示词或先完成绑定。")
         request_id = _string(request_id, "request_id")
+        if self._events_request_id != request_id:
+            await self.stop_events()
+            self._set_event_request(request_id)
         workflow = copy.deepcopy(self.config["workflow"])
         for role, binding in self.config["bindings"].items():
             workflow[binding["node_id"]]["inputs"][binding["input"]] = plan[role]
-        response = await self._json("POST", "/prompt", payload={"prompt": workflow,
+        response = await self._json("POST", "/prompt", payload={"prompt": workflow, "client_id": self._events_client_id,
                                     "extra_data": {"pictide_request_id": request_id}}, uncertain=True)
         prompt_id = response.get("prompt_id")
         if not isinstance(prompt_id, str) or not prompt_id:
             raise BackendError("ComfyUI did not return a prompt ID; submission outcome is unknown", uncertain=True)
+        self._events_prompt_id = prompt_id
         return prompt_id
 
     async def inspect(self, prompt_id: str) -> dict:
