@@ -27,6 +27,7 @@ function tone(relation: Relation | undefined, anchorKnown: boolean | undefined) 
 }
 
 export function PreviewPrompts({ terms, positive, negative }: { terms: PreviewTerm[]; positive: string; negative: string }) {
+  const positiveTerms = terms.filter(term => term.channel === "positive");
   const [active, setActive] = useState<number | null>(null);
   const [queries, setQueries] = useState(new Map<string, Query>());
   const requested = useRef(new Set<string>());
@@ -41,7 +42,7 @@ export function PreviewPrompts({ terms, positive, negative }: { terms: PreviewTe
     const update = (query: Query) => setQueries(current => new Map(current).set(anchor, query));
     update({});
     fetch("/api/candidate/relations", { method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
-      body: JSON.stringify({ anchor, terms: terms.map(term => term.text) }) })
+      body: JSON.stringify({ anchor, terms: positiveTerms.map(term => term.text) }) })
       .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || tr`请求失败（${response.status}）`); return data as Relations; })
       .then(data => { if (!controller.signal.aborted) update({ data }); })
       .catch(error => { if (!controller.signal.aborted) { requested.current.delete(anchor); update({ error: error instanceof Error ? error.message : String(error) }); } })
@@ -54,13 +55,13 @@ export function PreviewPrompts({ terms, positive, negative }: { terms: PreviewTe
     {(["positive", "negative"] as const).map(channel => {
       const label = channel === "positive" ? t("正向提示词") : t("负向提示词");
       const items = terms.map((term, index) => ({ term, index })).filter(({ term }) => term.channel === channel);
-      return <section key={channel}><div className="cooc-section-heading"><h2>{label}</h2>{channel === "negative" && <HelpTip text={t("负向词交给生图模型排除内容，不参与共现扩展筛选。")} />}<span className="spacer" /><CopyText text={channel === "positive" ? positive : negative} label={label} /></div>
-        <p className="cooc-prompt">{items.length ? items.map(({ term, index }, position) => <span key={`${channel}:${index}`}>
+      return <section key={channel}><div className="cooc-section-heading"><h2>{label}</h2><HelpTip text={channel === "positive" ? t("悬停正向词可查看它与其他正向词的共现相关性。") : t("直接用于生图，不参与共现扩展。")} /><span className="spacer" /><CopyText text={channel === "positive" ? positive : negative} label={label} /></div>
+        <p className={channel === "negative" ? "cooc-prompt cooc-negative-prompt" : "cooc-prompt"}>{channel === "negative" ? negative || "—" : items.length ? items.map(({ term, index }, position) => <span key={`${channel}:${index}`}>
           <Tooltip open={active === index} onOpenChange={open => { if (open) load(index); else setActive(current => current === index ? null : current); }}>
-            <TooltipTrigger asChild><Button variant="ghost" size="sm" className="cooc-preview-term" data-relation={anchor === normalized(term.text) ? "anchor" : tone(relations.get(normalized(term.text)), query?.data?.anchor.known)} aria-label={tr`查看 ${term.text} 与其他提示词的相关性`} onClick={event => { event.preventDefault(); load(index); }}>{term.text}</Button></TooltipTrigger>
+            <TooltipTrigger asChild><Button variant="ghost" size="sm" className="cooc-preview-term" data-relation={anchor === normalized(term.text) ? "anchor" : tone(relations.get(normalized(term.text)), query?.data?.anchor.known)} aria-label={tr`查看 ${term.text} 与其他正向词的相关性`} onClick={event => { event.preventDefault(); load(index); }}>{term.text}</Button></TooltipTrigger>
             <TooltipContent side="bottom" align="start" sideOffset={6} className="cooc-relations-tooltip">
               <strong>{term.text}</strong>
-              {!query || !query.data && !query.error ? <p role="status"><LoaderCircle className="size-3 animate-spin" />{t("读取相关性…")}</p> : query.error ? <p role="status">{t("读取失败：{error}。移开后重试。", { error: query.error })}</p> : !query.data!.anchor.known ? <p>{t("自定义词，无统计；不参与 PMI 比较。")}</p> : !query.data!.relations.length ? <p>{t("当前组合没有其他词项。")}</p> : <>
+              {!query || !query.data && !query.error ? <p role="status"><LoaderCircle className="size-3 animate-spin" />{t("读取相关性…")}</p> : query.error ? <p role="status">{t("读取失败：{error}。移开后重试。", { error: query.error })}</p> : !query.data!.anchor.known ? <p>{t("自定义词，无统计；不参与 PMI 比较。")}</p> : !query.data!.relations.length ? <p>{t("当前组合没有其他正向词。")}</p> : <>
                 <div className="cooc-relations-scroll"><table><thead><tr><th>{t("提示词")}</th><th>PMI</th><th>{t("共现次数（≥10）")}</th></tr></thead><tbody>{query.data!.relations.map(relation => <tr key={relation.text}>
                   <td>{relation.text}</td><td>{!relation.known ? t("无统计") : relation.count === null ? t("未保留统计") : relation.pmi!.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>{!relation.known ? "—" : relation.count === null ? "<10" : relation.count.toLocaleString(locale())}</td>
                 </tr>)}</tbody></table></div>

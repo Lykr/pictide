@@ -100,5 +100,7 @@
   "预览搜索上限": "Preview search limit",
   "预览生成模式": "Preview generation mode",
   "预览种子生成后": "Preview seed after generation",
-  "预设名称": "Preset name"
+  "预设名称": "Preset name",
+  "正向生成": "Positive prompt generation",
+  "直接用于生图，不参与共现扩展。": "Used directly for image generation; not part of co-occurrence expansion."
 }

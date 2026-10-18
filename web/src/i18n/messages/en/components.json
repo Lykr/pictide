@@ -172,5 +172,9 @@
   "加载更多": "Load more",
   "暂无法按偏好评分排序，已按时间展示。": "Preference ranking is unavailable. Images are shown newest first.",
   "评分更新失败，已保留现有缓存。": "Could not update scores. Existing cached scores were kept.",
-  "推荐服务暂不可用，暂按时间排序。": "The recommendation service is unavailable. Images are shown newest first."
+  "推荐服务暂不可用，暂按时间排序。": "The recommendation service is unavailable. Images are shown newest first.",
+  "直接用于生图，不参与共现扩展。": "Used directly for image generation; not part of co-occurrence expansion.",
+  "悬停正向词可查看它与其他正向词的共现相关性。": "Hover over a positive term to see its co-occurrence with other positive terms.",
+  "查看 {0} 与其他正向词的相关性": "View co-occurrence between {0} and other positive terms",
+  "当前组合没有其他正向词。": "There are no other positive terms in this combination."
 }

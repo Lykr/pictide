@@ -24,7 +24,7 @@
 .cooc-field { display: flex; flex-direction: column; align-items: stretch; min-width: 0; gap: 6px; }
 .cooc-field > label { display: flex; align-items: center; min-height: 24px; font-size: 12px; font-weight: 400; gap: 4px; }
 .cooc-field > [data-slot=select-trigger] { width: 100%; }
-.cooc-fixed-grid, .cooc-preview-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.cooc-positive-settings, .cooc-preview-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 .cooc-fixed { min-width: 0; }
 .cooc-section-heading { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
 .cooc-fixed-list { margin-top: 12px; display: grid; gap: 6px; }
@@ -42,9 +42,10 @@
 .cooc-preview-controls > .cooc-field { width: 150px; }
 .cooc-preview-grid { margin: 20px 0; }
 .cooc-prompt { white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.8 var(--font-mono); min-height: 120px; }
+.cooc-negative-prompt { min-height: 0; color: var(--muted-foreground); }
 .cooc-result-summary { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--muted-foreground); font-size: 12px; margin-bottom: 12px; }
 .cooc-report { max-height: 340px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 var(--font-mono); }
-@media (max-width: 800px) { .cooc-fixed-grid, .cooc-preview-grid { grid-template-columns: minmax(0, 1fr); } .cooc-number-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 800px) { .cooc-number-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 480px) { .cooc-library-filters { flex-wrap: wrap; } .cooc-number-grid { grid-template-columns: minmax(0, 1fr); } }
 
 .cooc-preview-term { display: inline; height: auto; min-height: 24px; padding: 2px 4px; border-radius: var(--radius-sm); font: inherit; white-space: normal; text-align: left; vertical-align: baseline; }
@@ -72,7 +73,7 @@
   .cooc-preset-toolbar { gap: 4px; margin-bottom: 16px; }
   .cooc-preset-toolbar > [data-slot=select-trigger] { flex: 1 1 150px; min-width: 0; }
   .cooc-fixed-picker, .cooc-fixed-row { grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 0; }
-  .cooc-fixed-grid, .cooc-preview-grid { gap: 20px; }
+  .cooc-positive-settings, .cooc-preview-grid { gap: 20px; }
   .cooc-fixed-origin { right: 8px; font-size: 10px; }
   .cooc-fixed-value input { padding-right: 70px; }
   .cooc-tag { gap: 8px; padding-inline: 4px; }

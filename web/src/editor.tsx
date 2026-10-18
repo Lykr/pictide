@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { GripVertical, Check, ChevronsUpDown, Copy, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react";
+import { GripVertical, Check, ChevronRight, ChevronsUpDown, Copy, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Textarea } from "./components/ui/textarea";
@@ -251,22 +251,34 @@ export function EditorWorkspace() {
         <div className="cooc-preset-toolbar"><Choice label={t("生成预设")} value={preset.id || "__new"} onChange={selectPreset} disabled={busy} options={[...presets.map(item => ({ value: item.id, text: item.name })), ...(!preset.id ? [{ value: "__new", text: t("未保存预设") }] : [])]} /><IconButton icon={Plus} label={t("新建预设")} disabled={busy} onClick={() => create()} /><IconButton icon={Copy} label={t("复制预设")} disabled={busy || !loaded} onClick={() => create(true)} /><IconButton icon={Trash2} label={t("删除预设")} disabled={busy || !preset.id} onClick={remove} /><span className="spacer" /><span className="text-xs text-muted-foreground" role="status">{loaded && dirty ? t("未保存") : ""}</span><Button disabled={busy || !dirty} onClick={save} data-tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")}>{busy ? <LoaderCircle className="animate-spin" /> : success ? <Check /> : <Save />}{success ? t("已保存") : t("保存")}</Button></div>
         {tab === "settings" ? <form className="cooc-settings" onSubmit={event => { event.preventDefault(); save(); }}>
           <Field label={t("预设名称")}><Input aria-label={t("预设名称")} value={preset.name} disabled={busy} required onChange={event => { setPreset(current => ({ ...current, name: event.target.value })); setSuccess(false); }} /></Field>
-          <div className="cooc-fixed-grid"><FixedTags positive label={t("固定正向词")} values={preset.document.base_positive} disabled={busy} onChange={values => update("base_positive", values)} /><FixedTags label={t("固定负向词")} values={preset.document.base_negative} disabled={busy} onChange={values => update("base_negative", values)} /></div>
-          <div className="cooc-section-heading"><h2>{t("共现扩展")}</h2><HelpTip text={t("根据标签共同出现的情况扩展正向提示词。统计相关不保证画面协调。")} /></div>
-          <div className="cooc-number-grid">
-            {numberField("min_tags", t("标签数量下限"), t("在上下限之间等概率抽取目标数量；无法达到时返回已生成的内容。"), 1, 1000)}
-            {numberField("max_tags", t("标签数量上限"), t("数量包含固定正向词。固定词超过下限时，以固定词数作为有效下限。"), 1, 1000)}
-            {numberField("pmi_threshold", t("PMI 阈值"), t("新标签与每个已有可统计正向标签的 PMI 都须达到此值。0 为独立预期，正数更常共同出现，负数更少。"), undefined, undefined, "any")}
-            {numberField("min_cooccurrence", t("最低共现次数"), t("每对标签须共同出现至少此次数。词库只保留共现 ≥10 次的关系，降低门槛不会恢复已裁剪关系。"), 1, Number.MAX_SAFE_INTEGER)}
-            {numberField("change_budget", t("连续变化预算"), t("限制连续序列和顺流漫游每帧的标签增删数，替换计 2 次。固定词保留；无合法变化时保持上一帧，预算 0 不变。"), 0, 1000)}
-          </div>
-          <Field label={t("屏蔽关键词")} help={t("跳过包含关键词的新抽取标签。固定正负词与停泊保持的提示词不重新过滤。")}>
-            <Textarea aria-label={t("屏蔽关键词")} data-tooltip={t("每行一个关键词；忽略大小写，空格与下划线等价。")} placeholder={t("每行一个关键词，例如：\nhair\nblack socks")} rows={3} disabled={busy} value={blockedText} onChange={event => {
-              const text = event.target.value;
-              setBlockedText(text);
-              update("blocked_keywords", [...new Set(text.split(/\r?\n/).map(item => item.trim()).filter(Boolean))]);
-            }} />
-          </Field><button type="submit" hidden />
+          <section className="cooc-positive-settings" aria-label={t("正向生成")}>
+            <FixedTags positive label={t("固定正向词")} values={preset.document.base_positive} disabled={busy} onChange={values => update("base_positive", values)} />
+            <div className="cooc-section-heading"><h2>{t("共现扩展")}</h2><HelpTip text={t("根据标签共同出现的情况扩展正向提示词。统计相关不保证画面协调。")} /></div>
+            <div className="cooc-number-grid">
+              {numberField("min_tags", t("标签数量下限"), t("在上下限之间等概率抽取目标数量；无法达到时返回已生成的内容。"), 1, 1000)}
+              {numberField("max_tags", t("标签数量上限"), t("数量包含固定正向词。固定词超过下限时，以固定词数作为有效下限。"), 1, 1000)}
+              {numberField("pmi_threshold", t("PMI 阈值"), t("新标签与每个已有可统计正向标签的 PMI 都须达到此值。0 为独立预期，正数更常共同出现，负数更少。"), undefined, undefined, "any")}
+              {numberField("min_cooccurrence", t("最低共现次数"), t("每对标签须共同出现至少此次数。词库只保留共现 ≥10 次的关系，降低门槛不会恢复已裁剪关系。"), 1, Number.MAX_SAFE_INTEGER)}
+              {numberField("change_budget", t("连续变化预算"), t("限制连续序列和顺流漫游每帧的标签增删数，替换计 2 次。固定词保留；无合法变化时保持上一帧，预算 0 不变。"), 0, 1000)}
+            </div>
+            <Field label={t("屏蔽关键词")} help={t("跳过包含关键词的新抽取标签。固定正负词与停泊保持的提示词不重新过滤。")}>
+              <Textarea aria-label={t("屏蔽关键词")} data-tooltip={t("每行一个关键词；忽略大小写，空格与下划线等价。")} placeholder={t("每行一个关键词，例如：\nhair\nblack socks")} rows={3} disabled={busy} value={blockedText} onChange={event => {
+                const text = event.target.value;
+                setBlockedText(text);
+                update("blocked_keywords", [...new Set(text.split(/\r?\n/).map(item => item.trim()).filter(Boolean))]);
+              }} />
+            </Field>
+          </section>
+          <Collapsible className="cooc-negative-settings">
+            <div className="cooc-section-heading">
+              <CollapsibleTrigger asChild><Button variant="ghost" size="sm" className="group px-0 font-semibold hover:bg-transparent" aria-label={t("负向提示词")}><ChevronRight className="size-4 transition-transform group-data-[state=open]:rotate-90" />{t("负向提示词")}{preset.document.base_negative.length > 0 && <Badge variant="secondary">{preset.document.base_negative.length}</Badge>}</Button></CollapsibleTrigger>
+              <HelpTip text={t("直接用于生图，不参与共现扩展。")} />
+            </div>
+            <CollapsibleContent forceMount className="data-[state=closed]:hidden">
+              <FixedTags label={t("固定负向词")} values={preset.document.base_negative} disabled={busy} onChange={values => update("base_negative", values)} />
+            </CollapsibleContent>
+          </Collapsible>
+          <button type="submit" hidden />
         </form> : <section className="cooc-preview">
           <div className="cooc-preview-controls"><Field label={t("生成模式")}><Choice label={t("预览生成模式")} value={mode} onChange={value => setMode(value as Mode)} options={[{ value: "random_each_run", text: t("每次随机") }, { value: "fixed_seed", text: t("固定种子") }, { value: "sequence", text: t("连续序列") }]} disabled={busy} /></Field>
             {mode !== "random_each_run" && <><Field label={t("提示词种子")}><Input aria-label={t("预览提示词种子")} type="number" min={0} max={Number.MAX_SAFE_INTEGER} step={1} value={seed} disabled={busy} onChange={event => setSeed(event.target.valueAsNumber)} /></Field><Field label={t("种子生成后")}><Choice label={t("预览种子生成后")} value={seedControl} onChange={setSeedControl} options={controlOptions} disabled={busy} /></Field></>}
