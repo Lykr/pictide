@@ -139,14 +139,18 @@ class RecommendationService:
             except ValueError:
                 record = self._rebuilt_record(request.user_id, version, record)
                 keys, precision, reward = policy.unpack(record, extra_keys)
-            parameters = (policy.mean(precision, reward) if request.strategy == "mean"
-                          else policy.sample(precision, reward, request.sampling_seed))
-            values = dense_features(prepared, keys) @ parameters
+            center, parameters = policy.scoring_parameters(precision, reward,
+                request.sampling_seed if request.strategy == "thompson" else None)
+            vectors = dense_features(prepared, keys)
+            means = vectors @ center
+            values = means if request.strategy == "mean" else vectors @ parameters
             import numpy as np
-            if not np.isfinite(values).all():
+            if not np.isfinite(values).all() or not np.isfinite(means).all():
                 raise ValueError("Non-finite recommendation score")
+            minimum, maximum = self.store.observe_score_range(request.user_id, version, policy.POLICY_VERSION,
+                                                             float(means.min()), float(means.max()))
             return ScoreResult(tuple(CandidateScore(c.candidate_id, float(v)) for c, v in zip(request.candidates, values)),
-                               version, policy.POLICY_VERSION, record.revision if record else 0)
+                               version, policy.POLICY_VERSION, record.revision if record else 0, minimum, maximum)
 
     def _rebuilt_record(self, user_id, version, record, evidence=None):
         import numpy as np

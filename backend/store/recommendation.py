@@ -12,6 +12,10 @@ from ..domain import ConflictError
 
 def initialize_recommendation(db):
     db.executescript("""
+    CREATE TABLE IF NOT EXISTS recommendation_score_range (
+        user_id TEXT NOT NULL, feature_version TEXT NOT NULL, policy_version TEXT NOT NULL,
+        score_min REAL NOT NULL, score_max REAL NOT NULL,
+        PRIMARY KEY(user_id,feature_version,policy_version));
     CREATE TABLE IF NOT EXISTS recommendation_vectors (
         encoder_version TEXT NOT NULL, text TEXT NOT NULL, vector BLOB NOT NULL,
         PRIMARY KEY(encoder_version,text));
@@ -97,6 +101,18 @@ class SQLiteRecommendationStore:
         with repository.connection() as db:
             initialize_recommendation(db)
 
+    def observe_score_range(self, user_id, feature_version, policy_version, minimum, maximum):
+        with self.repository.connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("INSERT INTO recommendation_score_range VALUES (?,?,?,?,?) "
+                       "ON CONFLICT(user_id,feature_version,policy_version) DO UPDATE SET "
+                       "score_min=MIN(score_min,excluded.score_min),score_max=MAX(score_max,excluded.score_max)",
+                       (user_id, feature_version, policy_version, minimum, maximum))
+            row = db.execute("SELECT score_min,score_max FROM recommendation_score_range "
+                             "WHERE user_id=? AND feature_version=? AND policy_version=?",
+                             (user_id, feature_version, policy_version)).fetchone()
+            return row["score_min"], row["score_max"]
+
     def get_reset_state(self, user_id):
         with self.repository.connection() as db:
             row = db.execute("SELECT * FROM recommendation_resets WHERE user_id=?", (user_id,)).fetchone()
@@ -121,6 +137,7 @@ class SQLiteRecommendationStore:
                                (user_id,)).fetchone()[0]
             reset_at = datetime.now(timezone.utc).isoformat()
             revision += 1
+            db.execute("DELETE FROM recommendation_score_range WHERE user_id=?", (user_id,))
             db.execute("DELETE FROM recommendation_policy WHERE user_id=?", (user_id,))
             db.execute("DELETE FROM recommendation_evidence WHERE user_id=?", (user_id,))
             db.execute("INSERT INTO recommendation_resets VALUES (?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET "

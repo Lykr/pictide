@@ -292,6 +292,36 @@ class PictideApplication:
         await self.clean_history()
         return await asyncio.to_thread(self.storage.artifact_page, liked, limit, before, source, around, tuple(dict.fromkeys(tags)))
 
+    async def preference_score(self, identifier):
+        artifact = await asyncio.to_thread(self.storage.artifact, identifier)
+        if artifact is None:
+            raise NotFoundError()
+        result = dict(status="missing_snapshot", score=None, love_score=None, score_min=None, score_max=None,
+                      state_revision=None, feature_version=None, reason="缺少完整生成快照，暂无法评分。")
+        snapshot = await asyncio.to_thread(self.storage.roam_snapshot, artifact["job_id"])
+        if snapshot is None:
+            return result
+        try:
+            candidate = ScoreCandidate(snapshot["candidate_id"], snapshot["positive"], snapshot["negative"],
+                tuple(ScoreTerm(term["text"], term.get("channel", "positive")) for term in snapshot["terms"]))
+            if candidate.positive != artifact["positive"] or candidate.negative != artifact["negative"]:
+                return result
+        except (KeyError, TypeError):
+            return result
+        request = ScoreRequest(uuid.uuid4().hex, "local", 0, (candidate,), strategy="mean")
+        try:
+            scored = await asyncio.to_thread(self.recommendation.score, request)
+        except ValueError:
+            return result
+        except (RuntimeError, OSError):
+            return dict(result, status="unavailable", reason="推荐服务暂不可用，请检查模型和学习状态。")
+        value = scored.scores[0].score
+        minimum, maximum = scored.score_min, scored.score_max
+        relative = (100 * (value - minimum) / (maximum - minimum)
+                    if minimum is not None and maximum is not None and maximum > minimum else None)
+        return dict(result, status="scored", score=value, love_score=relative, score_min=minimum, score_max=maximum,
+                    state_revision=scored.state_revision, feature_version=scored.feature_version, reason=None)
+
     async def liked_tags(self):
         return {"tags": await asyncio.to_thread(self.storage.liked_tags),
                 "revision": await asyncio.to_thread(self.storage.artifact_revision)}

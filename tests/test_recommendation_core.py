@@ -25,6 +25,13 @@ class MemoryStore:
         self.states = {}
         self.evidence = {}
         self.conflicts = 0
+        self.score_ranges = {}
+
+    def observe_score_range(self, user_id, feature_version, policy_version, minimum, maximum):
+        key = (user_id, feature_version, policy_version)
+        previous = self.score_ranges.get(key, (minimum, maximum))
+        self.score_ranges[key] = (min(previous[0], minimum), max(previous[1], maximum))
+        return self.score_ranges[key]
 
     def get_reset_state(self, user_id):
         return ResetState()

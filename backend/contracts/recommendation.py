@@ -38,6 +38,8 @@ class ScoreResult:
     feature_version: str
     policy_version: str
     state_revision: int
+    score_min: float | None = None
+    score_max: float | None = None
 
 
 @dataclass(frozen=True)
@@ -118,6 +120,7 @@ class ResetResult:
 
 
 class RecommendationStore(Protocol):
+    def observe_score_range(self, user_id: str, feature_version: str, policy_version: str, minimum: float, maximum: float) -> tuple[float, float]: ...
     def get_reset_state(self, user_id: str) -> ResetState: ...
     def reset_user(self, user_id: str, request_id: str, expected_reset_revision: int) -> ResetResult: ...
     def load_vectors(self, encoder_version: str, texts: Sequence[str]) -> dict[str, tuple[float, ...]]: ...

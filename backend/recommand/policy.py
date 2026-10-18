@@ -64,16 +64,22 @@ def mean(precision, reward):
     return _posterior_mean(validate(precision, reward), reward)
 
 
-def sample(precision, reward, seed):
+def scoring_parameters(precision, reward, seed=None):
     import numpy as np
     factor = validate(precision, reward)
     center = _posterior_mean(factor, reward)
+    if seed is None:
+        return center, center
     noise = np.random.default_rng(seed).standard_normal(len(reward))
     # L^-T z has covariance (L L^T)^-1, retaining all feature correlations.
     parameters = center + _triangular_solve(factor.T, noise, False)
     if not np.isfinite(parameters).all():
         raise ValueError("Non-finite sampled parameters")
-    return parameters
+    return center, parameters
+
+
+def sample(precision, reward, seed):
+    return scoring_parameters(precision, reward, seed)[1]
 
 
 def pack(keys, precision, reward, revision, count):
