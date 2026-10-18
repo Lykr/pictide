@@ -98,40 +98,41 @@ class JobService:
                 # Unknown submissions must never be automatically submitted again.
                 continue
 
-    async def tick(self):
+    async def tick(self) -> bool:
+        """Return true when this job releases the queue for immediate advancement."""
         job = await self.database(self.repository.next_job)
         if not job:
-            return
+            return False
         config = await self.database(self.repository.job_backend, job["id"])
         backend = self.backend(config)
         if not job["backend_prompt_id"]:
             if job["status"] != "queued":
                 await self.database(self.repository.update_job,job["id"],"unknown",error="提交过程未确认完成，需要与后端核对；不会重复提交。")
-                return
+                return True
             if not await self.database(self.repository.claim_job,job["id"]):
-                return
+                return False
             current = await self.database(self.repository.job, job["id"])
             if current["status"] == "cancelled":
-                return
+                return True
             try:
                 prompt_id = await backend.submit(job, job["request_id"])
             except BackendError as exc:
                 await self.database(self.repository.update_job, job["id"], "unknown" if exc.uncertain else "failed", error=str(exc))
-                return
+                return True
             except Exception:
                 await self.database(self.repository.update_job,job["id"],"unknown",error="提交过程中发生内部异常，结果待核对；不会自动重新提交。")
-                return
+                return True
             job = await self.database(self.repository.attach_prompt, job["id"], prompt_id)
             if job["status"] == "cancelled":
                 await backend.cancel(prompt_id)
-                return
+                return True
             await self.database(self.repository.update_job, job["id"], "running", error=None)
         try:
             result = await backend.inspect(job["backend_prompt_id"])
         except BackendError as exc:
             # The job may still run: retry inspection, not submission.
             await self.database(self.repository.update_job, job["id"], error=str(exc))
-            return
+            return False
         state = result["state"]
         if state == "completed":
             if not result.get("outputs"):
@@ -142,7 +143,7 @@ class JobService:
                 except (BackendError,OSError) as exc:
                     message = str(exc) if isinstance(exc,BackendError) else "无法写入 data/images，请检查磁盘空间和目录权限。"
                     await self.database(self.repository.update_job,job["id"],"failed",error=message)
-                    return
+                    return True
                 await self.database(self.repository.complete, job["id"], outputs)
         elif state == "failed":
             await self.database(self.repository.update_job, job["id"], "failed", error=result.get("error") or "生图任务失败。")
@@ -150,6 +151,7 @@ class JobService:
             await self.database(self.repository.update_job, job["id"], "unknown", error="后端队列和历史中均没有该任务；不会自动重新提交。")
         else:
             await self.database(self.repository.update_job, job["id"], "running", error=None)
+        return state in {"completed", "failed", "unknown"}
 
     async def cancel_pending(self):
         count = await self.database(self.repository.cancel_pending_jobs)
@@ -175,16 +177,21 @@ class JobService:
     async def run(self):
         reconcile_count = 0
         while True:
+            advanced = False
             try:
                 if reconcile_count % 15 == 0:
                     await self.reconcile_unknown()
-                await self.tick()
+                advanced = await self.tick()
             except asyncio.CancelledError:
                 raise
             except Exception:
                 # Do not emit requests, workflow contents or authentication data.
                 log.error("Job worker encountered an internal error; generation was not resubmitted.")
             reconcile_count += 1
+            if advanced:
+                # The next tick rechecks durable queue order, including manual priority.
+                self.wake.clear()
+                continue
             try:
                 await asyncio.wait_for(self.wake.wait(), timeout=2)
             except asyncio.TimeoutError:
