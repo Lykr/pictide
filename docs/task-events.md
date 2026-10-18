@@ -1,4 +1,4 @@
-# 生图任务事件通知（待确认）
+# 生图任务事件通知（已确认、已实现）
 
 ## 范围
 
@@ -74,4 +74,6 @@ async def stop_events(self) -> None: ...
 - [ComfyUI 服务器消息](https://docs.comfy.org/zh/development/comfyui-server/comms_messages)：终止事件及 executing(node=null) 的含义。
 - [官方 WebSocket 示例](https://github.com/Comfy-Org/ComfyUI/blob/master/script_examples/websockets_api_example.py)：先连接 /ws、提交时关联 client_id，再读取 history 和图片。
 
-当前只完成设计，尚未实现或发布。
+实现验证：11 个相关隔离冒烟通过，覆盖适配器终止事件过滤、早到事件、Task 查询期间唤醒、重复事件不重复处理、断线及不可用回退、重启后的旧任务轮询、手动优先、提前准备与提交不确定时不重试。
+
+三次相同模拟流程对比（aiohttp HTTP/WebSocket、独立 SQLite、PNG 缓存落盘）中，从模拟完成到下一项提交的平均时间为：2 秒轮询 1962ms，事件通知 36ms。两种模式每项均查询两次 history；真实长任务的健康连接每 30 秒兜底，不再每 2 秒查询。生产 ComfyUI 只读 WebSocket 握手已通过，未提交真实 GPU 测试任务。该结果衡量调度响应，不代表 GPU 出图加速；报告在 data/verification/task-events-20261018。

@@ -28,6 +28,16 @@ class FakeBackend:
         self.unexpected_submit_error = False
         self.pending = False
 
+    @property
+    def events_connected(self):
+        return False
+
+    async def start_events(self, request_id, notify):
+        return False
+
+    async def stop_events(self):
+        pass
+
     async def check(self):
         return {"ok":True,"message":"test backend reachable"}
 
