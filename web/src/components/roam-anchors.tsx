@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, LoaderCircle, LockKeyhole, Pin, Trash2 } from "lucide-react";
+import { ChevronDown, LoaderCircle, LockKeyhole, Pin, Plus, Trash2 } from "lucide-react";
 import { t } from "../i18n/index.mjs";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { Input } from "./ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { HelpTip } from "./actions";
 import { anchorTerms } from "../controllers/roam-anchors.mjs";
@@ -13,6 +14,7 @@ const normalize = (text: string) => text.trim().replaceAll("_", " ");
 export function RoamAnchors() {
   const [settings, setSettings] = useState<AnchorSettings>({ pinned_positive: [], preset_base_positive: [], prompt_mode: "random" });
   const [positive, setPositive] = useState("");
+  const [query, setQuery] = useState("");
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
@@ -36,16 +38,22 @@ export function RoamAnchors() {
   const pinned = new Set(pins);
   const terms: string[] = anchorTerms(positive, pins, settings.preset_base_positive);
   const locked = settings.prompt_mode === "stay";
-  const save = async (text: string | null) => {
-    if (pending !== null) return;
+  const save = async (text: string | null, addOnly = false) => {
+    if (!ready || locked || pending !== null) return false;
+    if (addOnly && text !== null && (fixed.has(text) || pinned.has(text))) return true;
     const next = text === null ? [] : pinned.has(text) ? pins.filter(value => value !== text) : [...pins, text];
     setPending(text ?? ""); setError("");
     try {
       await new Promise((resolve, reject) => document.dispatchEvent(new CustomEvent("pictide:roam-settings-save", {
         detail: { patch: { pinned_positive: next }, resolve, reject },
       })));
-    } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
+      return true;
+    } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); return false; }
     finally { setPending(null); }
+  };
+  const add = async () => {
+    const text = normalize(query);
+    if (text && await save(text, true)) setQuery("");
   };
   return <Collapsible open={open} onOpenChange={setOpen} className="roam-anchors">
     <div className="flex items-center gap-1">
@@ -61,6 +69,20 @@ export function RoamAnchors() {
       </Button>}
     </div>
     <CollapsibleContent>
+      <div className="flex items-center gap-2 px-2 pt-2">
+        <Input className="min-w-0 flex-1" value={query} onChange={event => setQuery(event.target.value)}
+          aria-label={t("添加锚点")} placeholder={t("输入提示词，回车添加")}
+          data-tooltip={t("输入完整提示词并回车添加；自定义词不参与 PMI 计算。")}
+          disabled={!ready || locked || pending !== null} onKeyDown={event => {
+            if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+              event.preventDefault(); event.stopPropagation(); void add();
+            }
+          }} />
+        <Button variant="ghost" size="icon-sm" aria-label={t("添加锚点")} data-tooltip={t("添加锚点")}
+          disabled={!ready || locked || pending !== null || !query.trim()} onClick={() => void add()}>
+          {pending !== null && pending === normalize(query) ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}
+        </Button>
+      </div>
       <div className="roam-anchor-terms">
         {terms.map(text => {
           const fromPreset = fixed.has(text), selected = pinned.has(text);

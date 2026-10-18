@@ -177,5 +177,7 @@
   "悬停正向词可查看它与其他正向词的共现相关性。": "Hover over a positive term to see its co-occurrence with other positive terms.",
   "查看 {0} 与其他正向词的相关性": "View co-occurrence between {0} and other positive terms",
   "当前组合没有其他正向词。": "There are no other positive terms in this combination.",
-  "用于生图；共现扩展跳过同名词，不参与 PMI 计算。": "Used for image generation. Co-occurrence expansion skips matching terms; negatives do not take part in PMI calculations."
+  "用于生图；共现扩展跳过同名词，不参与 PMI 计算。": "Used for image generation. Co-occurrence expansion skips matching terms; negatives do not take part in PMI calculations.",
+  "添加锚点": "Add anchor",
+  "输入完整提示词并回车添加；自定义词不参与 PMI 计算。": "Enter a complete prompt and press Enter to add it. Custom terms do not take part in PMI calculations."
 }
