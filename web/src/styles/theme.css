@@ -122,6 +122,8 @@ body { position: fixed; inset: 0; }
 #feed-main { display: flex; flex-direction: column; min-height: 0; overflow: clip; }
 #feed-main > .section-heading, #feed-main > .notice { flex-shrink: 0; }
 #feed-main > section { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; align-content: start; }
+/* Keep content clear of both reserved and overlay scrollbars. */
+#feed-main > section, .editor-page main { padding-inline-end: 16px; }
 /* All ordinary workspaces share the liked-page content boundaries. */
 .workspace-content { width: 100%; max-width: 1200px; margin: 0 auto; min-width: 0; padding: 24px; }
 @media (max-width: 1024px) { .workspace-content { padding: 16px; } }
@@ -226,7 +228,7 @@ body { position: fixed; inset: 0; }
 }
 @media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
   .workspace-content { padding: 12px; }
-  #feed-main > section, .editor-page main { scrollbar-gutter: auto; }
+  #feed-main > section, .editor-page main { scrollbar-gutter: auto; padding-inline-end: 8px; }
 }
 
 /* Home Screen apps have no browser chrome to collapse; keep the app shell locked. */
