@@ -12,7 +12,7 @@ from .errors import CandidateError
 from .expansion import PreparedGeneration
 from .rounds import integer, validate_options, prepare_rounds
 
-DEFAULT_DOCUMENT = dict(base_positive=[], base_negative=[], min_tags=5, max_tags=20,
+DEFAULT_DOCUMENT = dict(base_positive=[], base_negative=[], min_tags=10, max_tags=30,
                         pmi_threshold=0, min_cooccurrence=10, change_budget=2, blocked_keywords=[])
 
 

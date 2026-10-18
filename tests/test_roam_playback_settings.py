@@ -46,6 +46,10 @@ class RoamPlaybackSettingsTests(unittest.IsolatedAsyncioTestCase):
                           ("prefetch_count", "max_history_images", "playback_interval_seconds", "candidate_count")},
                          {"prefetch_count": 2, "max_history_images": 20,
                           "playback_interval_seconds": 8, "candidate_count": 10})
+        preset_response = await self.client.get("/api/candidate/presets/default")
+        self.assertEqual(preset_response.status, 200)
+        preset = (await preset_response.json())["document"]
+        self.assertEqual((preset["min_tags"], preset["max_tags"]), (10, 30))
         stream = self.app.events.stream()
         self.assertEqual((await anext(stream))["topic"], "ready")
         saved = await self.put({"playback_interval_seconds": 12})

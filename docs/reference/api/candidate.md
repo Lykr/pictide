@@ -34,8 +34,8 @@
 | 字段 | 范围 | 默认 |
 | --- | --- | --- |
 | `base_positive` / `base_negative` | 完整词项字符串数组，允许自定义文本 | `[]` |
-| `min_tags` | 整数 1–1000 | 5 |
-| `max_tags` | 整数 min_tags–1000 | 20 |
+| `min_tags` | 整数 1–1000 | 10 |
+| `max_tags` | 整数 min_tags–1000 | 30 |
 | `pmi_threshold` | 有限数值 | 0 |
 | `min_cooccurrence` | 正整数，最大安全整数 | 10 |
 | `change_budget` | 整数 0–2000 | 2 |
