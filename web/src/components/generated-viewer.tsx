@@ -129,7 +129,12 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
       <IconButton icon={privacyBlur ? EyeOff : Eye} label={privacyBlur ? "关闭毛玻璃 · 空格" : "开启毛玻璃 · 空格"} aria-pressed={privacyBlur} onClick={() => onPrivacyChange(!privacyBlur)} />
       <IconButton icon={X} label="关闭图片" onClick={() => onActiveChange(null)} />
     </div>
-    <IconButton ref={exitRef} icon={Minimize} label="退出沉浸模式" className="touch-immersive-exit" hidden={!immersive} />
+    <div className="immersive-actions" role="toolbar" aria-label="沉浸模式设置">
+      <Toggle size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={onPrivacyChange} aria-label={privacyBlur ? "关闭毛玻璃 · 空格" : "开启毛玻璃 · 空格"} aria-keyshortcuts="Space" data-tooltip={privacyBlur ? "关闭毛玻璃 · 空格" : "开启毛玻璃 · 空格"}>
+        {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+      </Toggle>
+      <IconButton ref={exitRef} icon={Minimize} label="退出沉浸模式" hidden={!immersive} />
+    </div>
     <ViewerImage key={item.id} item={item} privacyBlur={privacyBlur} label={props.imageLabel ?? "生成图片"} onNavigate={navigate} busy={busy || infoOpen} />
     {waitingOlder && loadingMore && <div className="generated-viewer-paging" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">加载更早图片</span></div>}
     {error && <div className="generated-viewer-error" role="alert">{error}</div>}
@@ -137,9 +142,6 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
       <div className="generated-viewer-navigation">
       <IconButton icon={ArrowLeft} label="上一张 · ←" disabled={busy || (!older && !hasMore) || !!waitingOlder} onClick={() => navigate("older")} />
       <IconButton icon={Heart} label={item.feedback === 1 ? "撤回喜欢" : "喜欢图片 · ↑"} className={item.feedback === 1 ? "generated-viewer-liked" : ""} aria-pressed={item.feedback === 1} disabled={busy} onClick={async () => { if (props.confirmUnlike && item.feedback === 1) await viewerRef.current?.leave(); onLike(item); }} />
-      {immersive && <Toggle size="sm" className="w-8 px-0" pressed={privacyBlur} onPressedChange={onPrivacyChange} aria-label={privacyBlur ? "关闭毛玻璃 · 空格" : "开启毛玻璃 · 空格"} data-tooltip={privacyBlur ? "关闭毛玻璃 · 空格" : "开启毛玻璃 · 空格"}>
-        {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-      </Toggle>}
       <IconButton icon={ArrowRight} label="下一张 · →" disabled={busy || !newer} onClick={() => navigate("newer")} />
       </div>
       <div className="generated-viewer-details" hidden={immersive}>

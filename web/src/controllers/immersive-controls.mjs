@@ -18,21 +18,24 @@ export function createAutoHideControls({ visible, held, delay = 2000, schedule =
 export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entry, exit = /** @type {HTMLElement | null} */ (null), eligible, changed = () => {}, document: doc = document, window: win = window }) {
   let active = false, mode = null, revision = 0, hovered = false, keyboard = false;
   let restoreInert = [];
+  const toolbars = [...new Set([toolbar, exit?.parentElement].filter(Boolean))];
+  const inControls = node => toolbars.some(bar => bar.contains(node));
   const controls = createAutoHideControls({
-    held: () => hovered || (keyboard && (toolbar.contains(doc.activeElement) || exit === doc.activeElement)),
+    held: () => hovered || (keyboard && inControls(doc.activeElement)),
     visible: show => {
-      if (!show && (toolbar.contains(doc.activeElement) || exit === doc.activeElement)) card.focus({ preventScroll: true });
+      if (!show && inControls(doc.activeElement)) card.focus({ preventScroll: true });
       card.classList.toggle('immersive-controls-hidden', !show);
-      toolbar.inert = !show;
-      toolbar.setAttribute('aria-hidden', String(!show));
-      if (exit) { exit.inert = !show; exit.setAttribute('aria-hidden', String(!show)); }
+      for (const bar of toolbars) {
+        bar.inert = !show;
+        bar.setAttribute('aria-hidden', String(!show));
+      }
     },
   });
   const pointerMove = () => controls.wake();
   const pointerDown = event => {
     keyboard = false;
     if (event.pointerType === 'touch') hovered = false;
-    if (!toolbar.contains(event.target)) card.focus({ preventScroll: true });
+    if (!inControls(event.target)) card.focus({ preventScroll: true });
     controls.wake();
   };
   const enterToolbar = event => { if (event.pointerType !== 'touch') { hovered = true; controls.wake(); } };
@@ -73,7 +76,7 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
     for (const [node, previous] of restoreInert) node.inert = previous;
     restoreInert = [];
     card.removeEventListener('pointermove', pointerMove); card.removeEventListener('pointerdown', pointerDown);
-    toolbar.removeEventListener('pointerenter', enterToolbar); toolbar.removeEventListener('pointerleave', leaveToolbar);
+    for (const bar of toolbars) { bar.removeEventListener('pointerenter', enterToolbar); bar.removeEventListener('pointerleave', leaveToolbar); }
     card.removeEventListener('focusin', focus); card.removeEventListener('focusout', focus);
     doc.removeEventListener('keydown', key, true); doc.removeEventListener('fullscreenchange', fullscreen);
     win.removeEventListener('pagehide', suspend);
@@ -90,7 +93,7 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
     entry.setAttribute('aria-pressed', 'true');
     isolate();
     card.addEventListener('pointermove', pointerMove); card.addEventListener('pointerdown', pointerDown);
-    toolbar.addEventListener('pointerenter', enterToolbar); toolbar.addEventListener('pointerleave', leaveToolbar);
+    for (const bar of toolbars) { bar.addEventListener('pointerenter', enterToolbar); bar.addEventListener('pointerleave', leaveToolbar); }
     card.addEventListener('focusin', focus); card.addEventListener('focusout', focus);
     doc.addEventListener('keydown', key, true); doc.addEventListener('fullscreenchange', fullscreen);
     win.addEventListener('pagehide', suspend);

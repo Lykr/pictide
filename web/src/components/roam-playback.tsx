@@ -18,11 +18,11 @@ function usePlaybackState() {
   }, []);
   return state;
 }
-export function RoamPlaybackButton({ menu = false, visible = true }: { menu?: boolean; visible?: boolean }) {
+export function RoamPlaybackButton({ menu = false, visible = true, immersive = false }: { menu?: boolean; visible?: boolean; immersive?: boolean }) {
   const state = usePlaybackState();
   const label = state.playing ? "暂停播放" : "自动播放";
   const delay = useMemo(() => state.startedAt === null ? 0 : -Math.max(0, performance.now() - state.startedAt), [state.startedAt, state.cycle, visible]);
-  return <Button id={menu ? "roam-options-playback" : "roam-playback"} type="button" variant="ghost" size="icon-sm" className="relative" aria-label={label} data-tooltip={label} aria-pressed={state.playing} disabled={!state.canPlay} onClick={() => document.dispatchEvent(new Event("pictide:roam-playback-toggle"))}>
+  return <Button id={immersive ? "roam-immersive-playback" : menu ? "roam-options-playback" : "roam-playback"} type="button" variant="ghost" size="icon-sm" className="relative" aria-label={label} data-tooltip={label} aria-pressed={state.playing} disabled={!state.canPlay} onClick={() => document.dispatchEvent(new Event("pictide:roam-playback-toggle"))}>
     {state.playing && <svg className="playback-progress absolute left-1/2 top-1/2 size-8 -translate-x-1/2 -translate-y-1/2 -rotate-90" viewBox="0 0 32 32" fill="none" aria-hidden="true">
       <circle cx="16" cy="16" r="13" stroke="currentColor" strokeWidth="1.5" opacity="0.15" />
       <circle key={`${state.cycle}-${visible}`} className="playback-progress-value" cx="16" cy="16" r="13" pathLength="1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ strokeDashoffset: state.waiting ? 0 : 1, animation: state.startedAt === null ? "none" : `playback-progress ${state.durationMs}ms linear ${delay}ms forwards` }} />

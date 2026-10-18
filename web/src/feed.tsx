@@ -73,7 +73,13 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <Button id="empty-generate" variant="default" type="button" hidden>开始生成</Button>
 </div>
 {"\n        "}<Card id="image-card" className="image-card gap-0 py-0" tabIndex={-1} aria-label="图片浏览" hidden>
-<IconButton id="roam-immersive-exit" className="touch-immersive-exit" icon={Minimize} label="退出沉浸模式" hidden />
+<div className="immersive-actions" role="toolbar" aria-label="沉浸模式设置">
+<RoamPlaybackButton immersive />
+<Toggle id="roam-immersive-privacy" size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={`${privacyLabel} · 空格`}>
+{privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+</Toggle>
+<IconButton id="roam-immersive-exit" icon={Minimize} label="退出沉浸模式" hidden />
+</div>
 <div className="image-stage">
 <img id="main-image" alt="生成的图片" draggable={false} />
 <div id="image-error" className="image-error" hidden>{"图片读取失败，请检查服务与文件是否可用。"}</div>
@@ -90,9 +96,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <RoamPlaybackButton />
 <IconButton id="like" icon={Heart} label="喜欢 · ↑" variant="ghost" type="button" className="feedback" aria-pressed="false" />
 <IconButton id="dislike" icon={ThumbsDown} label="不喜欢 · ↓" variant="ghost" type="button" className="feedback" aria-pressed="false" />
-<Toggle id="roam-immersive-privacy" size="sm" className="immersive-privacy" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={`${privacyLabel} · 空格`}>
-{privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-</Toggle>
 <IconButton id="next" icon={ArrowRight} label="下一张较新图片 · →" variant="ghost" type="button" />
 </div>
 <div className="image-info">
