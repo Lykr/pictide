@@ -4,7 +4,7 @@
 
 ## 局域网访问
 
-Windows 双击 `start-lan.cmd`，或执行 `& '.\start.ps1' -Lan`；Linux / macOS 在项目目录执行 `bash start.sh --lan`。本机仍通过 `http://127.0.0.1:8189` 使用，其他设备通过电脑的局域网 IP 访问（Windows 启动窗口会列出地址），例如 `http://192.168.50.50:8189`；电脑 IP 变化后使用新地址。普通 `start.cmd` / `start.sh` / `start.command` 保持仅本机访问。
+Windows 在项目目录执行 `.\start.cmd -Lan`；Linux / macOS 在项目目录执行 `bash start.sh --lan`。本机仍通过 `http://127.0.0.1:8189` 使用，其他设备通过电脑的局域网 IP 访问（Windows 启动窗口会列出地址），例如 `http://192.168.50.50:8189`；电脑 IP 变化后使用新地址。普通 `start.cmd` / `start.sh` / `start.command` 保持仅本机访问。
 
 Windows 首次使用需在管理员 PowerShell 添加防火墙规则，仅放行专用网络的本地子网：
 
