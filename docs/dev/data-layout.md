@@ -6,7 +6,7 @@
 
 数据目录按「启动参数 → PICTIDE_DATA_DIR → 旧 PICTIDE_WEB_DATA_DIR → 默认 data」选择。源码版默认使用项目内 data；便携版默认使用发行目录中的 data。移动整个便携目录后，个人数据与程序一起保留。
 
-自定义目录按系统查阅：[Windows](../../docs/guides/setup/windows.md#端口与数据目录) · [Linux](../../docs/guides/setup/linux.md#端口与数据目录) · [macOS](../../docs/guides/setup/macos.md#端口与数据目录)。相对路径按运行命令时所在目录解析。
+自定义目录按系统查阅：[Windows](../guides/setup/windows.md#端口与数据目录) · [Linux](../guides/setup/linux.md#端口与数据目录) · [macOS](../guides/setup/macos.md#端口与数据目录)。相对路径按运行命令时所在目录解析。
 
 ## 运行数据
 
@@ -27,7 +27,7 @@
 | `logs/` | 运行日志 |
 | `backups/` | 数据备份 |
 
-词库添加与选择见[提示词指南](../../docs/guides/prompts.md#添加与切换词库)。MiniLM 是推荐运行所需资源，独立放在 models，日常缓存清理保留该目录。前端构建成品由程序提供，源码中的 web/node_modules 指向根目录 dev/runtime/frontend/node_modules。
+词库添加与选择见[提示词指南](../guides/prompts.md#添加与切换词库)。MiniLM 是推荐运行所需资源，独立放在 models，日常缓存清理保留该目录。前端构建成品由程序提供，源码中的 web/node_modules 指向根目录 dev/runtime/frontend/node_modules。
 
 ## 开发材料
 
@@ -36,7 +36,7 @@
 | 路径 | 内容 |
 | --- | --- |
 | [`data_processing/`](data-processing.md) | 版本管理的离线下载、统计导入工具和依赖清单 |
-| [`dev/docs/`](README.md) | 开发指南、架构、接口、设计规范与需求记录，纳入版本管理 |
+| [`docs/dev/`](README.md) | 开发指南、架构、接口、设计规范与需求记录，纳入版本管理 |
 | `dev/datasets/` | 原始 Parquet、下载校验与离线统计中间文件 |
 | `dev/runtime/frontend/`、`dev/runtime/importer/` | 前端开发依赖与离线导入环境 |
 | `dev/cache/`、`dev/tmp/`、`dev/build/` | 开发缓存、临时文件与便携构建工作区 |
@@ -52,7 +52,7 @@
 
 - 后端保存产生不可变修订，已有任务引用提交时快照；工作流编辑前保留版本备份。
 - 喜欢图片跨栏目保留。清理未喜欢图片会回收图片与提示词 JSON，任务历史继续保存。
-- 时间清理和漫游历史数量清理在启动与操作入口执行，说明见[设置与清理](../../docs/guides/settings.md#历史图片清理)。
+- 时间清理和漫游历史数量清理在启动与操作入口执行，说明见[设置与清理](../guides/settings.md#历史图片清理)。
 - 反馈与待学习记录同事务落库，推荐在后台处理；历史记录按生成时快照解释。
 
-备份与恢复步骤见[用户指南](../../docs/guides/backup.md#备份与恢复)。需要保留本机开发环境、原始数据或发行产物时，另行备份根目录 `dev/` 与 `releases/`。
+备份与恢复步骤见[用户指南](../guides/backup.md#备份与恢复)。需要保留本机开发环境、原始数据或发行产物时，另行备份根目录 `dev/` 与 `releases/`。

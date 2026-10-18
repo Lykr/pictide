@@ -1,6 +1,6 @@
 # 提示词与共现预设
 
-[文档导航](../README.md) · [候选接口](../../dev/docs/reference/api/candidate.md)
+[文档导航](../README.md) · [候选接口](../dev/reference/api/candidate.md)
 
 先在「词库」查找标签，在「编排」保存固定词与共现参数，再到「预览」检查结果。
 
@@ -16,7 +16,7 @@
 
 切换后个人预设、固定词和编辑草稿保留。词库携带最低共现次数：编排输入框随所选词库设置下限，当前草稿不足时自动提高，较高值保留；保存后写入预设。实际生成也应用词库下限。固定词按新词库重新识别，匹配到的参与共现统计，自定义词继续输出。已有任务和预取图片保留，新建候选使用所选词库。
 
-上传接受 Pictide 成品统计库（tags、correlations、dataset），单个文件及解压后各支持最大 2 GiB；原始 Parquet 的处理见[数据准备](#数据准备)。词库选择的接口与实现见[需求记录](../../dev/docs/issues/library-selection.md)。
+上传接受 Pictide 成品统计库（tags、correlations、dataset），单个文件及解压后各支持最大 2 GiB；原始 Parquet 的处理见[数据准备](#数据准备)。词库选择的接口与实现见[需求记录](../dev/issues/library-selection.md)。
 
 ## 正向生成与负向提示词
 
@@ -26,7 +26,7 @@
 
 ## 共现扩展
 
-提示词候选根据 Danbooru 标签共现扩展生成。用户管理命名预设与固定正负提示词，词库是从数据集导入的只读数据；旧 JSON 标签库和槽位规则不再使用。数据来源为 `Shio-Koube/Danbooru-2026-parquet-metadata`，完整下载后在本地处理，不下载图片。设计、接口与 PMI 含义见 [共现候选说明](../../dev/docs/issues/cooccurrence-candidates-v1.md)。
+提示词候选根据 Danbooru 标签共现扩展生成。用户管理命名预设与固定正负提示词，词库是从数据集导入的只读数据；旧 JSON 标签库和槽位规则不再使用。数据来源为 `Shio-Koube/Danbooru-2026-parquet-metadata`，完整下载后在本地处理，不下载图片。设计、接口与 PMI 含义见 [共现候选说明](../dev/issues/cooccurrence-candidates-v1.md)。
 
 提示词页面提供「词库 / 编排 / 预览」。词库包含普通 general 类别中出现至少 100 次的标签，以及 general / sensitive / questionable / explicit 四个图片评级标签，按原始名称分页搜索；编排编辑固定词、数量上下限、PMI 阈值、最低共现次数、屏蔽关键词及连续变化预算。固定词可从匹配列表选择或输入自由文本，列表标记「词库词 / 自定义」，编辑后自动重新识别；未匹配词保留输出但不参与统计。预览中悬停或聚焦词项可查看与当前组合其他词的 PMI 和共现次数，并联动高亮；自由词无统计与已知词对未保留关系分别标记。
 
@@ -40,8 +40,8 @@
 
 数据集内部按空格拆分标签，下划线连接词；词库界面显示原始名称，不保存显示副本；推荐和生图输出在内存中将下划线转空格，标签间用 `, ` 分隔。固定自由文本按完整条目保存，不按内部空格拆分。
 
-当前试用词库仅保留共现次数 ≥1,000 的关系，标签和预设保持。缺失关系表示未保留统计；预览显示“未保留统计”，次数显示“—”。裁剪结果和恢复位置见[极限裁剪记录](../../dev/docs/issues/candidate-pair1000.md)。基础离线导入仍保留 ≥10 次的完整统计库。评级可作为固定正向锚点参与统计。运行时词库原名、词频、PMI、共现次数及来源保存在 `data/libraries/*.sqlite3`；个人预设和当前选择保存在 `data/db/candidate.sqlite3`，导入素材在 `dev/datasets/`。导入命令及分析依赖见[数据处理工具](../../dev/docs/data-processing.md)；导入在离线工具中执行，不放在启动或页面请求里。
+当前试用词库仅保留共现次数 ≥1,000 的关系，标签和预设保持。缺失关系表示未保留统计；预览显示“未保留统计”，次数显示“—”。裁剪结果和恢复位置见[极限裁剪记录](../dev/issues/candidate-pair1000.md)。基础离线导入仍保留 ≥10 次的完整统计库。评级可作为固定正向锚点参与统计。运行时词库原名、词频、PMI、共现次数及来源保存在 `data/libraries/*.sqlite3`；个人预设和当前选择保存在 `data/db/candidate.sqlite3`，导入素材在 `dev/datasets/`。导入命令及分析依赖见[数据处理工具](../dev/data-processing.md)；导入在离线工具中执行，不放在启动或页面请求里。
 
 ## 数据准备
 
-离线下载和导入集中在根目录 [`data_processing/`](../../dev/docs/data-processing.md)，包含工具、依赖与处理步骤；源 Parquet、中间 SQLite 和待导入成品库放在 dev/datasets，运行词库放在 data/libraries。成品数据口径与文件布局见[存储参考](../../dev/docs/reference/storage.md#候选数据)，设计与验证见[共现候选记录](../../dev/docs/issues/cooccurrence-candidates-v1.md#离线导入)。处理完成后，在词库页面上传成品 SQLite，或复制到 libraries 目录后刷新选择，即可用于共现预览和漫游。
+离线下载和导入集中在根目录 [`data_processing/`](../dev/data-processing.md)，包含工具、依赖与处理步骤；源 Parquet、中间 SQLite 和待导入成品库放在 dev/datasets，运行词库放在 data/libraries。成品数据口径与文件布局见[存储参考](../dev/reference/storage.md#候选数据)，设计与验证见[共现候选记录](../dev/issues/cooccurrence-candidates-v1.md#离线导入)。处理完成后，在词库页面上传成品 SQLite，或复制到 libraries 目录后刷新选择，即可用于共现预览和漫游。

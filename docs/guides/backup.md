@@ -27,4 +27,4 @@
 
 - [添加与切换词库](prompts.md#添加与切换词库)
 - [历史图片清理](settings.md#历史图片清理)
-- [开发者：完整目录结构与职责](../../dev/docs/data-layout.md)
+- [开发者：完整目录结构与职责](../dev/data-layout.md)

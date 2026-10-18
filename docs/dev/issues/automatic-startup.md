@@ -88,7 +88,7 @@ sequenceDiagram
 - 少数冒烟覆盖首次启动、再次启动、带空格的移动路径、自定义数据目录和已有个人配置保留；验证实例使用独立端口与数据。
 - Linux/macOS 按系统与 CPU 架构在本机构建；分别维护启动说明，原生运行结果按实际验证状态记录。
 - 发行依赖的第三方许可证与现有前端声明随包保留。用户操作集中在获取、解压、启动和首次后端配置。
-- 源码启动脚本继续用于开发，发布完成后同步 [README](../../../README.md) 与各系统[安装路径](../../../docs/guides/getting-started.md)。
+- 源码启动脚本继续用于开发，发布完成后同步 [README](../../../README.md) 与各系统[安装路径](../../guides/getting-started.md)。
 
 参考：[PyInstaller 打包方式](https://pyinstaller.org/en/stable/operating-mode.html)。
 

@@ -48,7 +48,7 @@ cd ../pictide-example
 
 遵循 [项目协作约定](../../AGENTS.md#验证与发布) 的概念验证原则，只选少数冒烟场景确认本次主要路径，不运行完整回归。后端改动可针对具体接口或用例验证；前端改动执行类型检查和构建，再检查受影响的页面交互与资源加载。复用已有测试时只运行相关的少数用例，不以整套测试数量作为交付目标。
 
-纯文档与 Git 规则修改只需检查内容、链接、忽略规则和差异。报告实际通过、失败和未验证的范围；行为变化同步更新所属文档。需求设计、功能变更及交付记录放入 `dev/docs/issues/`；当前说明按指南、架构和参考主题维护；入口见[文档导航](README.md#文档维护)。
+纯文档与 Git 规则修改只需检查内容、链接、忽略规则和差异。报告实际通过、失败和未验证的范围；行为变化同步更新所属文档。需求设计、功能变更及交付记录放入 `docs/dev/issues/`；当前说明按指南、架构和参考主题维护；入口见[文档导航](README.md#文档维护)。
 
 提交前运行 `git diff --check`，核对 `git diff`，按明确路径暂存本任务文件，再核对 `git diff --cached` 后提交。不要把运行数据、密钥、依赖、构建结果或其他任务的文件带入提交。提交信息简短说明具体变化，不能把“已提交”当作“已发布”。
 
@@ -69,6 +69,6 @@ git merge --ff-only feat/example
 
 ## 版本管理范围
 
-跟踪源码、测试样例、文档、锁文件、图标素材及手工维护的工作流模板。`dev/docs/` 纳入版本管理；`.gitignore` 排除 `data/`、`dev/` 中其余开发数据、`releases/`、虚拟环境与依赖、构建产物、缓存与测试报告、日志与临时文件、环境密钥、SQLite 及辅助文件、模型权重和原始 Parquet 数据。保留 `.env.example` / `.env.template`（含分环境示例）及 VS Code 的共享 settings / extensions / tasks / launch 配置，示例中只填占位值；不要按图片、JSON 或锁文件扩展名整体忽略。新增规则不会自动停止跟踪已有文件，调整时用 `git ls-files -ci --exclude-standard` 核对。下载素材按现有脚本恢复，不把 Git 当作用户数据备份。换行由 `.gitattributes` 统一：源码使用 LF，Windows 启动脚本使用 CRLF。
+跟踪源码、测试样例、文档、锁文件、图标素材及手工维护的工作流模板。`docs/dev/` 纳入版本管理；`.gitignore` 排除 `data/`、`dev/`、`releases/`、虚拟环境与依赖、构建产物、缓存与测试报告、日志与临时文件、环境密钥、SQLite 及辅助文件、模型权重和原始 Parquet 数据。保留 `.env.example` / `.env.template`（含分环境示例）及 VS Code 的共享 settings / extensions / tasks / launch 配置，示例中只填占位值；不要按图片、JSON 或锁文件扩展名整体忽略。新增规则不会自动停止跟踪已有文件，调整时用 `git ls-files -ci --exclude-standard` 核对。下载素材按现有脚本恢复，不把 Git 当作用户数据备份。换行由 `.gitattributes` 统一：源码使用 LF，Windows 启动脚本使用 CRLF。
 
 初始化时保留现有本地文件，并创建 `main` 上的首个源码快照；远程仓库、推送与托管 CI 按需另行配置。

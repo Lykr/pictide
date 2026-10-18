@@ -28,7 +28,7 @@ PICTIDE_PYTHON=/path/to/python3 bash start.sh
 
 ## 从源码准备
 
-详见[Linux 开发与构建](../../../dev/docs/setup/linux.md#从源码准备)。
+详见[Linux 开发与构建](../../dev/setup/linux.md#从源码准备)。
 
 ## 端口与数据目录
 
@@ -48,4 +48,4 @@ bash start.sh --lan
 
 ## 构建便携包
 
-详见[Linux 开发与构建](../../../dev/docs/setup/linux.md#构建便携包)。
+详见[Linux 开发与构建](../../dev/setup/linux.md#构建便携包)。

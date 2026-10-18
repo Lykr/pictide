@@ -1,6 +1,6 @@
 # Windows 开发与构建
 
-[开发文档](../README.md) · [Windows 安装与启动](../../../docs/guides/setup/windows.md)
+[开发文档](../README.md) · [Windows 安装与启动](../../guides/setup/windows.md)
 
 以下命令在项目根目录执行。
 

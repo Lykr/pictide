@@ -23,7 +23,7 @@ $env:PICTIDE_PYTHON = 'C:\Path\To\python.exe'
 
 ## 从源码准备
 
-详见[Windows 开发与构建](../../../dev/docs/setup/windows.md#从源码准备)。
+详见[Windows 开发与构建](../../dev/setup/windows.md#从源码准备)。
 
 ## 端口与数据目录
 
@@ -49,4 +49,4 @@ New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -
 
 ## 构建便携包
 
-详见[Windows 开发与构建](../../../dev/docs/setup/windows.md#构建便携包)。
+详见[Windows 开发与构建](../../dev/setup/windows.md#构建便携包)。

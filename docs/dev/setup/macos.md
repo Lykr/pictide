@@ -1,6 +1,6 @@
 # macOS 开发与构建
 
-[开发文档](../README.md) · [macOS 安装与启动](../../../docs/guides/setup/macos.md)
+[开发文档](../README.md) · [macOS 安装与启动](../../guides/setup/macos.md)
 
 以下命令在项目根目录执行。
 

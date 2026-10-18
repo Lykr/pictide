@@ -1,6 +1,6 @@
 # Pictide Web
 
-Pictide 的唯一浏览器入口，npm 包名 `pictide-web`。产品操作见[使用指南](../../docs/README.md#使用指南)，接口见[API 索引](api.md)。
+Pictide 的唯一浏览器入口，npm 包名 `pictide-web`。产品操作见[使用指南](../README.md#使用指南)，接口见[API 索引](api.md)。
 
 ## 代码入口
 
@@ -35,5 +35,5 @@ React 页面壳层与控制器共同维护草稿。图片窗口按 source 区分
 
 - [共享组件、主题及页面规范](design-system.md)
 - [模块边界](architecture.md)
-- [图片操作与快捷键](../../docs/guides/roam.md#浏览与自动播放)
+- [图片操作与快捷键](../guides/roam.md#浏览与自动播放)
 - [第三方组件声明](../../web/src/THIRD_PARTY_NOTICES.md)

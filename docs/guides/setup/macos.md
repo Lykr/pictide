@@ -28,7 +28,7 @@ PICTIDE_PYTHON=/path/to/python3 ./start.command
 
 ## 从源码准备
 
-详见[macOS 开发与构建](../../../dev/docs/setup/macos.md#从源码准备)。
+详见[macOS 开发与构建](../../dev/setup/macos.md#从源码准备)。
 
 ## 端口与数据目录
 
@@ -48,4 +48,4 @@ PICTIDE_PYTHON=/path/to/python3 ./start.command
 
 ## 构建便携包
 
-详见[macOS 开发与构建](../../../dev/docs/setup/macos.md#构建便携包)。
+详见[macOS 开发与构建](../../dev/setup/macos.md#构建便携包)。

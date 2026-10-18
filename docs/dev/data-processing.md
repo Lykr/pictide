@@ -40,7 +40,7 @@ python -m data_processing.importer dev/datasets/danbooru-2026/raw dev/datasets/d
 - PMI(a,b) = log2(共现次数 × 去重图片总数 / (a 的出现次数 × b 的出现次数))。
 - 成品保存原始名称、词频、两两 PMI/次数和数据来源，dataset.min_cooccurrence 记录关系保留下限。
 
-成品表结构见[存储参考](reference/storage.md#候选数据)。处理完成后，可通过[词库页面上传或选择](../../docs/guides/prompts.md#添加与切换词库)使用成品。
+成品表结构见[存储参考](reference/storage.md#候选数据)。处理完成后，可通过[词库页面上传或选择](../guides/prompts.md#添加与切换词库)使用成品。
 
 ## 裁剪与历史处理记录
 
