@@ -49,7 +49,7 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
   const privacyHost = liked ? document.getElementById("liked-privacy-controls") : null;
   return <section className="generated-results" aria-label={liked ? t("喜欢的图片") : t("生成结果")}>
     {liked && privacyHost && createPortal(<span className="inline-flex items-center gap-1">
-      {state.sort === "score" && <IconButton icon={state.loading ? LoaderCircle : RotateCw} className={state.loading ? "[&_svg]:animate-spin" : ""} label={state.loading ? t("正在计算偏好评分") : t("刷新偏好评分")} tooltip={refreshTooltip} disabled={busy} onClick={() => emit("liked-refresh")} />}
+      {state.sort === "score" && <IconButton icon={state.loading ? LoaderCircle : RotateCw} className={`generated-privacy-toggle rounded-3xl border-0 ${state.loading ? "[&_svg]:animate-spin" : ""}`} label={state.loading ? t("正在计算偏好评分") : t("刷新偏好评分")} tooltip={refreshTooltip} disabled={busy} onClick={() => emit("liked-refresh")} />}
       {privacyControl}
     </span>, privacyHost)}
     {liked && <LikedTagFilter visible={state.visible} revision={state.revision} disabled={state.feedbackPending || state.mutationPending} sort={state.sort} />}
