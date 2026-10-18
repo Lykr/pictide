@@ -282,7 +282,7 @@ body.pictide-immersive { overflow: hidden; }
 @media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
   .feed-page .brand-mark { width: 28px; height: 28px; font-size: 14px; }
   .feed-page h1 { font-size: 18px; }
-  .feed-page .roam-active #gallery-view > #image-card:not(.immersive) { display: grid; grid-template-rows: minmax(0, 1fr) auto; flex: 1 1 0; min-height: 0; }
+  .feed-page .roam-active #gallery-view > #image-card:not(.immersive) { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; flex: 1 1 0; min-height: 0; }
   .feed-page .roam-active #gallery-view #image-card:not(.immersive) .image-stage { height: auto; min-height: 0; max-height: none; }
   .image-stage img, .generated-viewer-stage img { position: absolute; inset: 0; }
   .feed-page #image-card:not(.immersive) { isolation: isolate; clip-path: inset(0 round var(--radius-4xl)); box-shadow: none; border: 1px solid var(--border); }
@@ -305,7 +305,7 @@ body.pictide-immersive { overflow: hidden; }
       .feed-page .sidebar:not(:where(.editor-page, .editor-page *)) { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; }
       .feed-page #feed-main, .feed-page #feed-main > section, .feed-page .editor-page, .feed-page .editor-page main { height: auto; min-height: 0; overflow: visible; flex: none; }
       .feed-page .roam-active #gallery-view > #image-card:not(.immersive) { flex: none; grid-template-rows: auto auto; }
-      .feed-page .roam-active #gallery-view #image-card:not(.immersive) .image-stage { height: auto; min-height: 0; aspect-ratio: 2 / 3; max-height: 72svh; }
+      .feed-page .roam-active #gallery-view #image-card:not(.immersive) .image-stage { width: 100%; min-width: 0; height: auto; min-height: 0; aspect-ratio: 2 / 3; max-height: 72svh; }
       html:has(body.pictide-immersive), html:has(body[data-scroll-locked]) { overflow: hidden; }
     }
   }
