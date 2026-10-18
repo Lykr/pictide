@@ -93,6 +93,7 @@ let roamError = '';
 let roamAnchorRetried = false;
 let roamPageActive = true, roamVersion = 0;
 let roamSettingsSaving = false, roamSwitch = null;
+let anchorPrefetchDeferred = false;
 const roamPlayback = createRoamPlayback({
   advance: current => moveImage('newer', current),
   changed: detail => document.dispatchEvent(new CustomEvent('pictide:roam-playback-state', { detail })),
@@ -125,7 +126,7 @@ bindTouchNavigation(document.querySelector('#image-card .image-stage'), {
   enabled: () => state.view === 'feed' && !!state.currentImage && !state.feedbackPending && !document.querySelector('[role=dialog][data-state=open],[role=alertdialog],[data-slot=popover-content][data-state=open]'),
 });
 const refillRoam = createRefillCoordinator({
-  active: () => galleryCursors.ready && roamPageActive && roamSettingsLoaded && !roamSwitch && !roamBlocked && (roamSettings.prefetch_count > 0 || !!nextImageWait.current) && state.view === 'feed' && !document.hidden,
+  active: () => galleryCursors.ready && roamPageActive && roamSettingsLoaded && !roamSwitch && !anchorPrefetchDeferred && !roamBlocked && (roamSettings.prefetch_count > 0 || !!nextImageWait.current) && state.view === 'feed' && !document.hidden,
   version: () => `${roamVersion}:${nextImageWait.current?.token || 0}`,
   anchor: () => state.activeId || null,
   request: anchor_id => api('/api/roam/ensure', { method: 'POST', body: JSON.stringify({ anchor_id, demand: !!nextImageWait.current }) }),
@@ -446,6 +447,7 @@ async function moveImage(direction, automatic = null) {
     roamPlayback.restart();
   }
   if (!state.pages[pageView()].loaded) { refresh(true); return; }
+  if (state.view === 'feed' && direction === 'newer') anchorPrefetchDeferred = false;
   if (state.view === 'feed' && direction === 'older') nextImageWait.cancel();
   else if (state.view === 'feed' && nextImageWait.current) return;
   const items = artifactsForView(); const index = items.findIndex((item) => item.id === state.activeId);
@@ -950,12 +952,17 @@ function beginRoamSwitch() {
 function finishRoamSwitch() {
   const transition = roamSwitch; roamSwitch = null;
   renderArtifacts();
-  if (transition?.resume && transition.view === viewRevision && state.view === 'feed' && !document.hidden && !roamBlocked && !roamPlayback.playing) roamPlayback.toggle();
+  if (transition?.resume && !anchorPrefetchDeferred && transition.view === viewRevision && state.view === 'feed' && !document.hidden && !roamBlocked && !roamPlayback.playing) roamPlayback.toggle();
   refillRoam();
 }
 async function applyRoamSettings(settings, savedFields = []) {
   const next = { ...settings, recommendation_strength: settings.recommendation_strength ?? 'standard', strong_candidate_multiplier: strongCandidateMultiplier(settings.strong_candidate_multiplier ?? 2), candidate_count: candidateCount(settings.candidate_count ?? 4), prefetch_count: prefetchCount(settings.prefetch_count), max_history_images: maxHistoryImages(settings.max_history_images ?? 0), liked_tags_only: !!settings.liked_tags_only, prompt_mode: settings.prompt_mode ?? 'random', playback_interval_seconds: settings.playback_interval_seconds ?? 5 };
   const switched = roamSettingsLoaded && roamGenerationChanged(roamSettings, next);
+  if (roamSettingsLoaded && JSON.stringify(roamSettings.pinned_positive ?? []) !== JSON.stringify(next.pinned_positive ?? [])) {
+    // Saving anchors still discards the old window, but editing must not launch
+    // replacements through settings/SSE/page refresh events. Next navigation resumes it.
+    anchorPrefetchDeferred = true;
+  }
   if (switched) beginRoamSwitch();
   const draft = Object.fromEntries(Object.entries(roamFields).map(([key, id]) => [key, key === 'liked_tags_only' ? $(id).checked : $(id).value]));
   const merged = mergeRoamDraft(roamSettings, next, draft, savedFields);
