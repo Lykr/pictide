@@ -33,6 +33,7 @@ test('artifact requests separate generated and roaming images while likes span b
   for (const [view, source] of [['generate', 'generate'], ['feed', 'roam'], ['liked', 'all']]) {
     const query = new URL(artifactPath(view, 'id ?&'), 'http://localhost').searchParams;
     assert.equal(query.get('source'), source);
+    assert.equal(query.get('limit'), view === 'liked' ? '100' : '200');
     assert.equal(query.get('liked'), view === 'liked' ? '1' : null);
     assert.equal(query.get('before'), 'id ?&');
   }

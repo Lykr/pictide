@@ -1,5 +1,5 @@
 /** A browsing snapshot: ranking is refreshed only by explicit page actions. */
-export function createLikedRanking({ request, changed, pageSize = 15 }) {
+export function createLikedRanking({ request, changed, pageSize = 100 }) {
   let items = [], visible = pageSize, error = '', loading = false, refreshedAt = null;
   let version = 0, controller;
   const snapshot = () => ({ artifacts: items.slice(0, visible), total: items.length,

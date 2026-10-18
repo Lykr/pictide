@@ -12,7 +12,7 @@ export const generationRepetitions = raw => boundedGenerationCount(raw, t("ç”Ÿæˆ
 
 /** Keep manually submitted images outside the recommendation feed. */
 export function artifactPath(view, cursor = null, tags = []) {
-  const query = new URLSearchParams({ limit: '200', source: view === 'liked' ? 'all' : view === 'generate' ? 'generate' : 'roam' });
+  const query = new URLSearchParams({ limit: view === 'liked' ? '100' : '200', source: view === 'liked' ? 'all' : view === 'generate' ? 'generate' : 'roam' });
   if (view === 'liked') {
     query.set('liked', '1');
     for (const tag of new Set(tags)) query.append('tag', tag);

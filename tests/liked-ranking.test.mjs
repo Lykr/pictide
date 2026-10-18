@@ -5,17 +5,18 @@ import { applyArtifactPage, observeArtifactRevision } from '../web/src/controlle
 
 const artifacts = Array.from({ length: 34 }, (_, i) => ({ id: String(i), feedback: 1 }));
 test('ranked liked browsing keeps server order and pages locally, including an unlike', async () => {
+  const artifacts = Array.from({ length: 234 }, (_, i) => ({ id: String(i), feedback: 1 }));
   let calls = 0, latest;
   const ranked = createLikedRanking({ request: async path => {
     calls++; assert.equal(path, '/api/liked/ranked?tag=blue+sky&tag=solo');
     return { artifacts, scoring_available: true };
   }, changed: value => { latest = value; } });
   await ranked.load(['blue sky', 'solo', 'solo']);
-  assert.equal(latest.artifacts.length, 15); assert.equal(latest.total, 34);
-  ranked.more(); assert.equal(latest.artifacts.length, 30);
+  assert.equal(latest.artifacts.length, 100); assert.equal(latest.total, 234);
+  ranked.more(); assert.equal(latest.artifacts.length, 200);
   ranked.update({ id: '2', feedback: null });
-  assert.deepEqual(latest.artifacts.map(item => item.id), artifacts.filter(item => item.id !== '2').slice(0, 30).map(item => item.id));
-  ranked.update({ id: 'outside', feedback: 1 }); assert.equal(latest.total, 33);
+  assert.deepEqual(latest.artifacts.map(item => item.id), artifacts.filter(item => item.id !== '2').slice(0, 200).map(item => item.id));
+  ranked.update({ id: 'outside', feedback: 1 }); assert.equal(latest.total, 233);
   ranked.more(); assert.equal(latest.hasMore, false); assert.equal(calls, 1);
 });
 
@@ -34,7 +35,7 @@ test('only explicit refresh posts the current filter and local pagination keeps 
   assert.equal(calls[1].method, 'POST');
   assert.deepEqual(JSON.parse(calls[1].body), { tags: ['blue sky', 'solo'] });
   ranked.more();
-  assert.equal(latest.artifacts.length, 30);
+  assert.equal(latest.artifacts.length, 34);
   assert.equal(calls.length, 2);
   assert.equal(latest.refreshedAt, "2026-10-18T11:00:00+00:00");
 });
