@@ -271,10 +271,20 @@ body.pictide-immersive { overflow: hidden; }
   [data-slot=tabs-list] { height: auto; min-height: 52px; }
 }
 
-@media (max-width: 640px), (max-width: 900px) and (max-height: 500px), (pointer: coarse) {
-  .roam-options-panel { width: 320px; }
-  .roam-options-panel .roam-choice { flex-wrap: wrap; row-gap: 0; }
-  .roam-options-panel .roam-choice > [role=radiogroup] { margin-left: auto; }
+/* Size translated labels and their controls together, then cap at the viewport. */
+.roam-options-panel {
+  width: max-content;
+  min-width: min(20rem, calc(100vw - 24px));
+  max-width: min(calc(100vw - 24px), var(--radix-popover-content-available-width, 100vw));
+}
+.roam-options-panel .roam-choice { min-width: 0; column-gap: 24px; }
+.roam-options-panel .roam-choice > .field-caption { min-width: 0; white-space: normal; }
+.roam-options-panel .roam-choice > [data-slot=toggle-group] {
+  margin-inline-start: auto;
+  max-width: 100%;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 @media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {

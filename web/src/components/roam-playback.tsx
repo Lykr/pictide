@@ -127,7 +127,7 @@ export function RoamOptions() {
     if (next) { dirty.current = false; setDraft(String(settings.playback_interval_seconds)); setError(""); }
   }}>
     <PopoverTrigger asChild><IconButton id="roam-options" icon={Settings2} label={t("漫游选项")} /></PopoverTrigger>
-    <PopoverContent forceMount hidden={!open} align="end" className="roam-options-panel w-80 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label={t("漫游选项")} onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
+    <PopoverContent forceMount hidden={!open} align="end" collisionPadding={12} className="roam-options-panel w-max gap-1 p-3" aria-label={t("漫游选项")} onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
       <div className="grid gap-1">
         <form className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-3" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
           <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap font-normal">{t("展示时间")}</Label>
