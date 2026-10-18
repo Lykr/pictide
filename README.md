@@ -9,7 +9,7 @@
 ### 快速开始
 
 1. 启动 ComfyUI，准备可用的文生图模型。
-2. 在已安装的 Pictide 目录启动：Windows 双击 `start.cmd`；Linux / macOS 执行 `bash start.sh`（macOS 也可双击 `start.command`）。打开 http://127.0.0.1:8189 。
+2. 按系统完成安装与启动：[Windows](docs/guides/setup/windows.md) · [Linux](docs/guides/setup/linux.md) · [macOS](docs/guides/setup/macos.md)。打开 http://127.0.0.1:8189 。
 3. 在「设置 → 后端」填写 ComfyUI 地址、测试并保存；进入「生成」提交图片。
 
 共现生成需要词库，推荐学习需要本地 MiniLM；准备与接入步骤见[安装与接入](docs/guides/getting-started.md)。关闭启动窗口或按 Ctrl+C 停止应用。

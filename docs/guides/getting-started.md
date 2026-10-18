@@ -4,35 +4,21 @@
 
 先准备 ComfyUI 和可用的文生图模型，再启动 Pictide。词库共现扩展需要已导入的候选库，推荐学习还需要本地 MiniLM；手动输入文本生图可独立使用。
 
-## 启动
+## 启动前准备
 
-| 系统 | 启动方式 |
-| --- | --- |
-| Windows | 双击 `start.cmd`，或 PowerShell 执行 `& .\start.ps1` |
-| Linux | 在项目目录执行 `bash start.sh` |
-| macOS | 在项目目录执行 `bash start.sh`，或双击 `start.command` |
+应用运行需要 Python 3.10+；新检出的源码还需要先构建前端，Node.js 与 pnpm 版本见[开发环境要求](../development.md#首次准备检出目录)。已准备好前端的目录日常运行不需要 Node.js 服务。
 
-打开 http://127.0.0.1:8189 。关闭启动窗口或按 Ctrl+C 停止应用。没有自启动、计划任务或常驻服务；ComfyUI 与此应用可以独立启动、停止。macOS 如提示脚本不可执行，先在项目目录执行 `chmod +x start.sh start.command`。
+启动器自动准备所选数据目录下的 Python 环境、依赖与缓存，不下载生图模型、词库或推荐模型。不同系统分别创建运行环境，不直接复用其他系统的 venv。Linux 与 macOS 的脚本流程已做 Bash 冒烟，原生环境安装尚未验证。
 
-启动脚本会创建 `data/runtime/venv`，首次启动时安装 `backend/requirements.txt` 所列依赖。需要 Python 3.10+，可通过 `PICTIDE_PYTHON` 指定解释器（旧 `PICTIDE_WEB_PYTHON` 仍可读取）；Linux 默认查找 `python3`，macOS 不提供合适 Python 时需自行安装。Windows 也会尝试使用 Codex 已有的 Python 运行时。Debian / Ubuntu 缺少 venv 时需安装与 Python 版本匹配的 `python3-venv` 包。不同操作系统分别创建运行环境，不直接复用 Windows 的 venv。
+## 按系统安装与启动
 
-前端构建后由同一应用提供静态资源；日常启动不需要 Node.js 或前端构建服务，新检出目录需先按[开发流程](../development.md#首次准备检出目录)构建一次。脚本不会下载生图模型、词库或推荐模型。
+选择当前系统，沿对应页面完成启动、源码准备、自定义参数与局域网配置：
 
-自定义端口和数据目录：
+- [Windows](setup/windows.md)
+- [Linux](setup/linux.md)
+- [macOS](setup/macos.md)
 
-```powershell
-# Windows
-& '.\start.ps1' -Port 8191 -DataDir 'E:\PictideData'
-```
-
-```bash
-# Linux / macOS
-bash start.sh --port 8191 --data-dir "$HOME/PictideData"
-# 可选：指定 Python
-PICTIDE_PYTHON=/path/to/python3 bash start.sh
-```
-
-`bash start.sh --help` 查看参数，`--lan` 开放局域网访问，详见[局域网指南](access.md)。相对数据路径按运行命令时所在目录解析，默认数据目录始终在项目内。
+启动完成后，继续下面的 ComfyUI 接入步骤。应用与 ComfyUI 可分别启动、停止，没有自启动或常驻服务。
 
 ## 接入 ComfyUI
 

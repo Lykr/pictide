@@ -1,6 +1,6 @@
 # Git 开发流程
 
-仓库根目录为 `E:\Code\pictide`，独立管理 Pictide 源码、测试、文档和工作流模板。`main` 保存验证后的集成结果；当前仅有本地仓库，未配置远程服务。
+包含 `README.md`、`backend/`、`web/` 与启动脚本的目录是仓库根目录，独立管理 Pictide 源码、测试、文档和工作流模板。`main` 保存验证后的集成结果；当前仅有本地仓库，未配置远程服务。
 
 按步骤阅读：[开始任务](#开始任务) → [准备环境](#首次准备检出目录) → [验证提交](#验证与提交) → [集成发布](#集成与发布)。接口、架构和界面规则分别见[文档导航](README.md)。
 
@@ -8,16 +8,16 @@
 
 先检查当前工作，不覆盖用户或其他任务的改动：
 
-```powershell
+```shell
 git status --short --branch
 git diff
 ```
 
 实现任务使用 `feat/<topic>`、`fix/<topic>` 或 `chore/<topic>` 分支。运行中的主目录用于集成和服务，开发与并行 agent 优先在独立 worktree 工作：
 
-```powershell
-git worktree add ..\pictide-example -b feat/example main
-Set-Location ..\pictide-example
+```shell
+git worktree add ../pictide-example -b feat/example main
+cd ../pictide-example
 ```
 
 分支名和目录名按实际任务替换，开始前核对是否已存在。无需复制整个生产目录；Git 管理源码，忽略的 `data/` 和依赖不会自动复制。独立任务交给 subagent 时明确 worktree、分支、文件边界和交付要求，共享接口由主管协调。简单文档修改可直接在干净工作区完成。
@@ -26,48 +26,15 @@ Set-Location ..\pictide-example
 
 需要 Git、Python 3.10+、Node.js 20.19+（或 22.12+）和 `web/package.json` 指定的 pnpm。Python 运行依赖放在 `backend/requirements.txt`，离线导入依赖放在 `backend/requirements-import.txt`；前端依赖由 `web/package.json` 管理。依赖安装遵循锁文件，不复制或提交 `node_modules`。
 
-在仓库根目录执行以下 PowerShell 命令；运行环境、包缓存和临时文件都放入该检出目录的 `data/`：
+按当前系统准备环境和构建前端：
 
-```powershell
-$projectData = Join-Path (Get-Location) 'data'
-New-Item -ItemType Directory -Path "$projectData\tmp", "$projectData\cache\pip" -Force | Out-Null
-$env:TEMP = "$projectData\tmp"
-$env:TMP = $env:TEMP
-$env:PIP_CACHE_DIR = "$projectData\cache\pip"
-$env:PYTHONPYCACHEPREFIX = "$projectData\cache\python"
-python -m venv "$projectData\runtime\venv"
-& "$projectData\runtime\venv\Scripts\python.exe" -m pip install -r backend/requirements.txt
-Push-Location web
-pnpm install --frozen-lockfile
-pnpm run typecheck
-pnpm run build
-Pop-Location
-```
+- [Windows：从源码准备](guides/setup/windows.md#从源码准备)
+- [Linux：从源码准备](guides/setup/linux.md#从源码准备)
+- [macOS：从源码准备](guides/setup/macos.md#从源码准备)
 
-Linux / macOS 在仓库根目录执行对应命令（系统需先提供 Python 3.10+、Node.js 和指定版本的 pnpm）：
+`web/dist/` 不提交，首次构建后才能使用页面和静态资源测试。运行数据、依赖、缓存和临时文件放在各自检出目录的 `data/`，现有主目录的构建与运行数据保持原样。
 
-```bash
-project_data="$PWD/data"
-mkdir -p "$project_data/tmp" "$project_data/cache/pip" "$project_data/cache/python"
-export TMPDIR="$project_data/tmp" TEMP="$project_data/tmp" TMP="$project_data/tmp"
-export PIP_CACHE_DIR="$project_data/cache/pip" PYTHONPYCACHEPREFIX="$project_data/cache/python"
-python3 -m venv "$project_data/runtime/venv"
-"$project_data/runtime/venv/bin/python" -m pip install -r backend/requirements.txt
-(cd web && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run build)
-bash start.sh
-```
-
-`web/dist/` 不提交，首次构建后才能使用页面和静态资源测试。现有主目录的构建与运行数据保持原样。使用自定义数据目录时，也不要将它放入其他源码路径或加入 Git。
-
-需要浏览器验证时，在 worktree 根目录启动独立实例：
-
-```powershell
-& .\start.ps1 -Port 8191 -DataDir .\data
-```
-
-Linux / macOS 对应 `bash start.sh --port 8191 --data-dir ./data`；macOS 双击入口为 `start.command`，两种脚本均使用 `exec` 交接 Python 进程，Ctrl+C / SIGTERM 可直接到达应用。Shell 语法兼容 macOS 系统 Bash 3.2，Git 记录脚本执行位与 LF 换行。
-
-每个并行实例使用不同端口；不要共用主实例的 SQLite、词库或图片目录。默认使用模拟后端与中性样例；真实 ComfyUI 接入先只读检查，不为普通回归测试提交 GPU 任务。
+浏览器验证按各系统页面的「端口与数据目录」步骤使用独立实例。每个并行实例使用不同端口，不共用主实例的 SQLite、词库或图片目录。默认使用模拟后端与中性样例；真实 ComfyUI 接入先只读检查，不为普通回归测试提交 GPU 任务。新启动脚本的 Git 执行位与换行约定见仓库属性；POSIX 启动脚本通过 `exec` 交接应用进程。
 
 ## 验证与提交
 
@@ -81,7 +48,7 @@ Linux / macOS 对应 `bash start.sh --port 8191 --data-dir ./data`；macOS 双�
 
 任务交付包含分支、提交、关键变更及验证结果。主管确认主工作区无待保护的改动后统一集成：
 
-```powershell
+```shell
 git switch main
 git merge --ff-only feat/example
 ```

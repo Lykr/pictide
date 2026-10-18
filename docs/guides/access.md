@@ -4,17 +4,15 @@
 
 ## 局域网访问
 
-Windows 在项目目录执行 `.\start.cmd -Lan`；Linux / macOS 在项目目录执行 `bash start.sh --lan`。本机仍通过 `http://127.0.0.1:8189` 使用，其他设备通过电脑的局域网 IP 访问（Windows 启动窗口会列出地址），例如 `http://192.168.50.50:8189`；电脑 IP 变化后使用新地址。普通 `start.cmd` / `start.sh` / `start.command` 保持仅本机访问。
+按宿主系统完成局域网启动与防火墙配置：
 
-Windows 首次使用需在管理员 PowerShell 添加防火墙规则，仅放行专用网络的本地子网：
+- [Windows](setup/windows.md#局域网访问)
+- [Linux](setup/linux.md#局域网访问)
+- [macOS](setup/macos.md#局域网访问)
 
-```powershell
-New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8189 -Profile Private -RemoteAddress LocalSubnet
-```
+本机通过 `http://127.0.0.1:8189` 使用，其他设备通过电脑的局域网 IP 访问，例如 `http://192.168.50.50:8189`；IP 变化后使用新地址。普通启动默认仅本机访问。
 
-Linux / macOS 如启用防火墙，允许可信局域网访问 Pictide 使用的端口；macOS 可能提示允许 Python 接受传入连接。脚本不会自动修改防火墙。
-
-Windows 网络需设为可信的“专用网络”，所有设备需处于可互通的可信局域网；不需开放 ComfyUI 端口。使用其他端口时同步修改防火墙规则。不配置路由器端口转发。
+所有设备需处于可互通的可信局域网，不需开放 ComfyUI 端口；使用其他端口时同步修改防火墙规则，不配置路由器端口转发。
 
 局域网启动监听 IPv4 所有接口，但 HTTP 仅接受本机回环地址或请求实际到达的本机内网 IP，保留同源修改校验。局域网设备共用图库、设置、任务和偏好，没有账号隔离，能够生成、评价及删除图片。只给可信设备开放。
 

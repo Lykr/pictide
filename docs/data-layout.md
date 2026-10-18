@@ -4,11 +4,9 @@
 
 ## 数据位置
 
-优先级为启动参数 `-DataDir` / `--data-dir`、`PICTIDE_DATA_DIR`、旧 `PICTIDE_WEB_DATA_DIR`、项目下 `data/`。选择的是整个目录，不是单个数据库文件。
+数据目录按「启动参数 → `PICTIDE_DATA_DIR` → 旧 `PICTIDE_WEB_DATA_DIR` → 项目内 `data/`」选择。选择的是整个目录，不是单个数据库文件。
 
-```powershell
-& '.\start.ps1' -Port 8189 -DataDir 'E:\PictideData'
-```
+自定义目录的命令按系统查阅：[Windows](guides/setup/windows.md#端口与数据目录) · [Linux](guides/setup/linux.md#端口与数据目录) · [macOS](guides/setup/macos.md#端口与数据目录)。相对路径按运行命令时所在目录解析。
 
 ## 目录概览
 
