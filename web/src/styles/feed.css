@@ -342,3 +342,9 @@ body.pictide-immersive { overflow: hidden; }
 .feed-page .roam-anchor-term { height: auto; min-height: 32px; max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; }
 .feed-page .roam-anchor-term:disabled { opacity: 0.65; }
 @media (pointer: coarse) { .feed-page .roam-anchor-term { min-height: 44px; } }
+
+/* Installed apps use the column title as their header; retain the system safe area. */
+@media (display-mode: standalone) {
+  .feed-page > .topbar { display: none; }
+  .feed-page { padding-top: env(safe-area-inset-top, 0px); }
+}
