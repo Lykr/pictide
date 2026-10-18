@@ -18,7 +18,7 @@ export function createAutoHideControls({ visible, held, delay = 2000, schedule =
 /** Reuse the mounted image and buttons in native fullscreen, with a viewport fallback. */
 export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entry, exit = /** @type {HTMLElement | null} */ (null), eligible, changed = () => {}, document: doc = document, window: win = window }) {
   let active = false, mode = null, revision = 0, hovered = false, keyboard = false, shortcutInput = false;
-  let restoreInert = [];
+  let restoreInert = [], touchGesture = null, installed = false;
   const toolbars = [...new Set([toolbar, exit?.parentElement].filter(Boolean))];
   const inControls = node => toolbars.some(bar => bar.contains(node));
   const controls = createAutoHideControls({
@@ -32,13 +32,42 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
       }
     },
   });
-  const pointerMove = () => { keyboard = false; shortcutInput = false; controls.wake(); };
+  const standaloneTouch = event => event.pointerType === 'touch' && installed;
+  const pointerMove = event => {
+    if (standaloneTouch(event)) {
+      if (touchGesture?.id === event.pointerId
+          && Math.hypot(event.clientX - touchGesture.x, event.clientY - touchGesture.y) >= 12) touchGesture.moved = true;
+      return;
+    }
+    keyboard = false; shortcutInput = false; controls.wake();
+  };
   const pointerDown = event => {
-    keyboard = false; shortcutInput = false;
+    keyboard = false;
+    if (standaloneTouch(event)) {
+      hovered = false;
+      if (event.isPrimary === false) { touchGesture = null; return; }
+      if (!inControls(event.target)) {
+        // Defer waking until release distinguishes a tap from navigation/rating swipes.
+        shortcutInput = true;
+        touchGesture = { id: event.pointerId, x: event.clientX, y: event.clientY, started: event.timeStamp, moved: false };
+        card.focus({ preventScroll: true });
+        return;
+      }
+    }
+    shortcutInput = false;
     if (event.pointerType === 'touch') hovered = false;
     if (!inControls(event.target)) card.focus({ preventScroll: true });
     controls.wake();
   };
+  const pointerUp = event => {
+    if (!standaloneTouch(event) || touchGesture?.id !== event.pointerId) return;
+    const gesture = touchGesture; touchGesture = null;
+    if (!gesture.moved && event.timeStamp - gesture.started <= 500
+        && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) < 12) {
+      shortcutInput = false; controls.wake();
+    }
+  };
+  const pointerCancel = () => { touchGesture = null; };
   const enterToolbar = event => { if (!shortcutInput && event.pointerType !== 'touch') { hovered = true; controls.wake(); } };
   const leaveToolbar = () => { hovered = false; if (!shortcutInput) controls.wake(); };
   const focus = () => { if (!shortcutInput) controls.wake(); };
@@ -76,13 +105,14 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
   function leave(requestExit = true) {
     if (!active) return;
     active = false; mode = null; revision++;
-    controls.stop(); hovered = false; keyboard = false; shortcutInput = false;
+    controls.stop(); hovered = false; keyboard = false; shortcutInput = false; touchGesture = null;
     card.classList.remove('immersive'); doc.body.classList.remove('pictide-immersive');
     if (exit) exit.hidden = true;
     entry.setAttribute('aria-pressed', 'false');
     for (const [node, previous] of restoreInert) node.inert = previous;
     restoreInert = [];
     card.removeEventListener('pointermove', pointerMove); card.removeEventListener('pointerdown', pointerDown);
+    card.removeEventListener('pointerup', pointerUp); card.removeEventListener('pointercancel', pointerCancel);
     for (const bar of toolbars) { bar.removeEventListener('pointerenter', enterToolbar); bar.removeEventListener('pointerleave', leaveToolbar); }
     card.removeEventListener('focusin', focus); card.removeEventListener('focusout', focus);
     doc.removeEventListener('keydown', key, true); doc.removeEventListener('fullscreenchange', fullscreen);
@@ -93,6 +123,8 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
   }
   function enter() {
     if (active || !eligible()) return;
+    // Native fullscreen can change display-mode; capture installation before entering.
+    installed = win.matchMedia?.('(display-mode: standalone)').matches || win.navigator?.standalone === true;
     active = true; mode = 'browser'; const token = ++revision;
     doc.dispatchEvent(new Event('pictide:close-image-info'));
     card.classList.add('immersive'); doc.body.classList.add('pictide-immersive');
@@ -100,6 +132,7 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
     entry.setAttribute('aria-pressed', 'true');
     isolate();
     card.addEventListener('pointermove', pointerMove); card.addEventListener('pointerdown', pointerDown);
+    card.addEventListener('pointerup', pointerUp); card.addEventListener('pointercancel', pointerCancel);
     for (const bar of toolbars) { bar.addEventListener('pointerenter', enterToolbar); bar.addEventListener('pointerleave', leaveToolbar); }
     card.addEventListener('focusin', focus); card.addEventListener('focusout', focus);
     doc.addEventListener('keydown', key, true); doc.addEventListener('fullscreenchange', fullscreen);

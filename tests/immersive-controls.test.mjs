@@ -184,3 +184,51 @@ test('image shortcuts hide panels without focus or pointer-leave waking them; po
     assert.equal(f.toolbar.inert, false);
   } finally { f.viewer.leave(); }
 });
+
+
+test('standalone touch wakes hidden panels only after a tap; four-way swipes stay hidden', () => {
+  const f = fixture();
+  f.window.matchMedia = () => ({ matches: true });
+  const pointer = (type, x, y, extra = {}) => {
+    const event = new Event(type);
+    Object.assign(event, { pointerType: 'touch', pointerId: 1, isPrimary: true, clientX: x, clientY: y }, extra);
+    f.card.dispatchEvent(event);
+  };
+  const hide = () => { const event = new Event('keydown'); event.key = 'ArrowRight'; f.document.dispatchEvent(event); };
+  const hidden = () => f.card.classList.contains('immersive-controls-hidden');
+  try {
+    f.entry.dispatchEvent(new Event('click')); hide();
+    // Fullscreen changes the media query without changing how the app was opened.
+    f.window.matchMedia = () => ({ matches: false });
+    for (const [x, y] of [[100, 200], [300, 200], [200, 100], [200, 300]]) {
+      pointer('pointerdown', 200, 200);
+      f.card.dispatchEvent(new Event('focusin'));
+      assert.equal(hidden(), true);
+      pointer('pointermove', x, y);
+      pointer('pointerup', x, y);
+      f.toolbar.dispatchEvent(new Event('pointerleave'));
+      assert.equal(hidden(), true);
+      assert.equal(f.toolbar.inert, true);
+    }
+    // Returning to the start, cancelling or adding a second finger is not a tap.
+    pointer('pointerdown', 200, 200); pointer('pointermove', 200, 240); pointer('pointerup', 200, 200);
+    pointer('pointerdown', 200, 200); pointer('pointercancel', 200, 200); pointer('pointerup', 200, 200);
+    pointer('pointerdown', 200, 200); pointer('pointerdown', 210, 210, { pointerId: 2, isPrimary: false }); pointer('pointerup', 200, 200);
+    assert.equal(hidden(), true);
+    pointer('pointerdown', 200, 200);
+    assert.equal(hidden(), true);
+    pointer('pointerup', 203, 204);
+    assert.equal(hidden(), false);
+    assert.equal(f.toolbar.inert, false);
+  } finally { f.viewer.leave(); }
+});
+
+test('ordinary browser touch keeps existing immediate wake behavior', () => {
+  const f = fixture(); f.window.matchMedia = () => ({ matches: false });
+  try {
+    f.entry.dispatchEvent(new Event('click'));
+    const key = new Event('keydown'); key.key = 'ArrowLeft'; f.document.dispatchEvent(key);
+    const down = new Event('pointerdown'); down.pointerType = 'touch'; f.card.dispatchEvent(down);
+    assert.equal(f.card.classList.contains('immersive-controls-hidden'), false);
+  } finally { f.viewer.leave(); }
+});
