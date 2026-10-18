@@ -56,7 +56,7 @@ export function PreviewPrompts({ terms, positive, negative }: { terms: PreviewTe
       const label = channel === "positive" ? t("正向提示词") : t("负向提示词");
       const items = terms.map((term, index) => ({ term, index })).filter(({ term }) => term.channel === channel);
       return <section key={channel}><div className="cooc-section-heading"><h2>{label}</h2><HelpTip text={channel === "positive" ? t("悬停正向词可查看它与其他正向词的共现相关性。") : t("用于生图；共现扩展跳过同名词，不参与 PMI 计算。")} /><span className="spacer" /><CopyText text={channel === "positive" ? positive : negative} label={label} /></div>
-        <p className={channel === "negative" ? "cooc-prompt cooc-negative-prompt" : "cooc-prompt"}>{channel === "negative" ? negative || "—" : items.length ? items.map(({ term, index }, position) => <span key={`${channel}:${index}`}>
+        <p className={channel === "negative" ? "cooc-prompt cooc-negative-prompt rounded-xl bg-muted/50" : "cooc-prompt rounded-xl bg-muted/50"}>{channel === "negative" ? negative || "—" : items.length ? items.map(({ term, index }, position) => <span key={`${channel}:${index}`}>
           <Tooltip open={active === index} onOpenChange={open => { if (open) load(index); else setActive(current => current === index ? null : current); }}>
             <TooltipTrigger asChild><Button variant="ghost" size="sm" className="cooc-preview-term" data-relation={anchor === normalized(term.text) ? "anchor" : tone(relations.get(normalized(term.text)), query?.data?.anchor.known)} aria-label={tr`查看 ${term.text} 与其他正向词的相关性`} onClick={event => { event.preventDefault(); load(index); }}>{term.text}</Button></TooltipTrigger>
             <TooltipContent side="bottom" align="start" sideOffset={6} className="cooc-relations-tooltip">

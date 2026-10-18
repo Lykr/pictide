@@ -37,18 +37,27 @@
 .cooc-fixed-value input { min-width: 0; padding-right: 80px; }
 .cooc-fixed-origin { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); }
 .cooc-number-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.cooc-preview { }
-.cooc-preview-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
-.cooc-preview-controls > .cooc-field { width: 150px; }
-.cooc-preview-grid { margin: 20px 0; }
-.cooc-prompt { white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.8 var(--font-mono); min-height: 120px; }
-.cooc-negative-prompt { min-height: 0; color: var(--muted-foreground); }
-.cooc-result-summary { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--muted-foreground); font-size: 12px; margin-bottom: 12px; }
-.cooc-report { max-height: 340px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 var(--font-mono); }
-@media (max-width: 800px) { .cooc-number-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cooc-preview { display: grid; gap: 24px; min-width: 0; }
+.cooc-preview-options { display: grid; gap: 16px; min-width: 0; }
+.cooc-preview-toolbar { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.cooc-preview-toolbar > .cooc-field { flex: 0 1 260px; min-width: 180px; }
+.cooc-preview-actions { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.cooc-preview-parameters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.cooc-preview-parameter-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.cooc-preview-search { max-width: 260px; }
+.cooc-preview-results { display: grid; gap: 16px; min-width: 0; }
+.cooc-preview-grid { margin: 0; gap: 20px; }
+.cooc-preview-grid > section { min-width: 0; }
+.cooc-preview-grid .cooc-section-heading { min-height: 32px; }
+.cooc-prompt { padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.8 var(--font-mono); }
+.cooc-negative-prompt { color: var(--muted-foreground); }
+.cooc-result-summary { display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center; color: var(--muted-foreground); font-size: 12px; }
+.cooc-preview-meta { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.cooc-report { max-height: 340px; overflow: auto; margin: 8px 0 0; padding: 12px 14px; border-radius: var(--radius-xl); background: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 var(--font-mono); }
+@media (max-width: 800px) { .cooc-preview-parameters { grid-template-columns: minmax(0, 1fr); } .cooc-number-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 480px) { .cooc-library-filters { flex-wrap: wrap; } .cooc-number-grid { grid-template-columns: minmax(0, 1fr); } }
 
-.cooc-preview-term { display: inline; height: auto; min-height: 24px; padding: 2px 4px; border-radius: var(--radius-sm); font: inherit; white-space: normal; text-align: left; vertical-align: baseline; }
+.cooc-preview-term { display: inline; height: auto; min-height: 24px; padding: 0 2px; border-radius: var(--radius-sm); font: inherit; white-space: normal; text-align: left; vertical-align: baseline; }
 .cooc-preview-term[data-relation=anchor] { background: var(--accent); box-shadow: inset 0 0 0 1px var(--ring); }
 .cooc-preview-term[data-relation=positive] { background: color-mix(in oklch, var(--success) 16%, transparent); }
 .cooc-preview-term[data-relation=negative] { background: color-mix(in oklch, var(--warning) 18%, transparent); }
@@ -78,8 +87,12 @@
   .cooc-fixed-value input { padding-right: 70px; }
   .cooc-tag { gap: 8px; padding-inline: 4px; }
   .cooc-tag > span:first-child { min-width: 0; overflow-wrap: anywhere; }
-  .cooc-preview-controls > .cooc-field { width: auto; flex: 1 1 140px; }
-  .cooc-preview-controls > [data-slot=button] { flex: 1; }
+  .cooc-preview-toolbar > .cooc-field { flex: 1 1 180px; min-width: 0; }
+  .cooc-preview-actions { flex: 1 1 auto; justify-content: flex-end; }
+  .cooc-preview-parameters { grid-template-columns: minmax(0, 1fr); }
+  .cooc-preview-search { max-width: none; }
+  .cooc-result-summary { gap: 8px; }
+  .cooc-prompt { padding: 10px 12px; }
   .cooc-library-filters { align-items: stretch; }
   .cooc-library-filters > input { flex: 1 1 180px; min-width: 0; max-width: none; }
 }

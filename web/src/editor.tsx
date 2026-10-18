@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { GripVertical, Check, ChevronRight, ChevronsUpDown, Copy, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react";
+import { GripVertical, Check, ChevronRight, Settings2, ChevronsUpDown, Copy, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Textarea } from "./components/ui/textarea";
@@ -280,13 +280,43 @@ export function EditorWorkspace() {
           </Collapsible>
           <button type="submit" hidden />
         </form> : <section className="cooc-preview">
-          <div className="cooc-preview-controls"><Field label={t("生成模式")}><Choice label={t("预览生成模式")} value={mode} onChange={value => setMode(value as Mode)} options={[{ value: "random_each_run", text: t("每次随机") }, { value: "fixed_seed", text: t("固定种子") }, { value: "sequence", text: t("连续序列") }]} disabled={busy} /></Field>
-            {mode !== "random_each_run" && <><Field label={t("提示词种子")}><Input aria-label={t("预览提示词种子")} type="number" min={0} max={Number.MAX_SAFE_INTEGER} step={1} value={seed} disabled={busy} onChange={event => setSeed(event.target.valueAsNumber)} /></Field><Field label={t("种子生成后")}><Choice label={t("预览种子生成后")} value={seedControl} onChange={setSeedControl} options={controlOptions} disabled={busy} /></Field></>}
-            {mode === "sequence" && <><Field label={t("帧序号")}><Input aria-label={t("预览帧序号")} type="number" min={0} max={1000} step={1} value={step} disabled={busy} onChange={event => setStep(event.target.valueAsNumber)} /></Field><Field label={t("帧序号生成后")}><Choice label={t("预览帧序号生成后")} value={stepControl} onChange={setStepControl} options={controlOptions} disabled={busy} /></Field></>}
-            <Button variant="secondary" disabled={busy || !loaded} onClick={preview} data-tooltip={t("使用当前预设草稿生成提示词，不生成图片，也不保存修改。")}>{busy ? <LoaderCircle className="animate-spin" /> : <Sparkles />}{t("预览")}</Button>
-          </div>
-          <Collapsible><CollapsibleTrigger asChild><Button variant="ghost" size="sm">{t("搜索设置")}</Button></CollapsibleTrigger><CollapsibleContent><Field label={t("搜索上限")} help={t("所有模式共用的搜索步数上限。达到上限时返回已生成的提示词。")}><Input className="max-w-48" aria-label={t("预览搜索上限")} type="number" min={1} max={1000000} value={maxSteps} step={1} onChange={event => setMaxSteps(event.target.valueAsNumber)} /></Field></CollapsibleContent></Collapsible>
-          {result ? <><PreviewPrompts key={result.candidate_id} terms={result.selected_tags} positive={result.positive} negative={result.negative} /><div className="cooc-result-summary"><Badge variant="secondary">{t(stopReasons[String(result.report.stop_reason)] || String(result.report.stop_reason || "已生成"))}</Badge><span>{tr`种子 ${result.seed}`}</span>{result.sequence && <span>{tr`帧 ${result.sequence.step ?? step} · 变化 ${result.sequence.changes ?? 0} / ${result.sequence.change_budget ?? preset.document.change_budget}`}</span>}</div>{Array.isArray(result.report.unrecognized_fixed) && result.report.unrecognized_fixed.length > 0 && <p className="text-xs text-muted-foreground" role="status">{tr`未参与共现计算：${result.report.unrecognized_fixed.join(", ")}`}</p>}<Collapsible><CollapsibleTrigger asChild><Button variant="ghost" size="sm">{t("生成报告")}</Button></CollapsibleTrigger><CollapsibleContent><pre className="cooc-report">{JSON.stringify({ selected_tags: result.selected_tags, sequence: result.sequence, ...result.report }, null, 2)}</pre></CollapsibleContent></Collapsible></> : <p className="cooc-empty">{t("预览当前预设，不生成图片。")}</p>}
+          <Collapsible className="cooc-preview-options">
+            <div className="cooc-preview-toolbar">
+              <Field label={t("生成模式")}>
+                <Choice label={t("预览生成模式")} value={mode} onChange={value => setMode(value as Mode)} options={[{ value: "random_each_run", text: t("每次随机") }, { value: "fixed_seed", text: t("固定种子") }, { value: "sequence", text: t("连续序列") }]} disabled={busy} />
+              </Field>
+              <div className="cooc-preview-actions">
+                <CollapsibleTrigger asChild><Button variant="ghost" size="sm"><Settings2 />{t("搜索设置")}</Button></CollapsibleTrigger>
+                <Button variant="secondary" disabled={busy || !loaded} onClick={preview} data-tooltip={t("使用当前预设草稿生成提示词，不生成图片，也不保存修改。")}>{busy ? <LoaderCircle className="animate-spin" /> : <Sparkles />}{t("预览")}</Button>
+              </div>
+            </div>
+            {mode !== "random_each_run" && <div className="cooc-preview-parameters">
+              <div className="cooc-preview-parameter-group">
+                <Field label={t("提示词种子")}><Input aria-label={t("预览提示词种子")} type="number" min={0} max={Number.MAX_SAFE_INTEGER} step={1} value={seed} disabled={busy} onChange={event => setSeed(event.target.valueAsNumber)} /></Field>
+                <Field label={t("种子生成后")}><Choice label={t("预览种子生成后")} value={seedControl} onChange={setSeedControl} options={controlOptions} disabled={busy} /></Field>
+              </div>
+              {mode === "sequence" && <div className="cooc-preview-parameter-group">
+                <Field label={t("帧序号")}><Input aria-label={t("预览帧序号")} type="number" min={0} max={1000} step={1} value={step} disabled={busy} onChange={event => setStep(event.target.valueAsNumber)} /></Field>
+                <Field label={t("帧序号生成后")}><Choice label={t("预览帧序号生成后")} value={stepControl} onChange={setStepControl} options={controlOptions} disabled={busy} /></Field>
+              </div>}
+            </div>}
+            <CollapsibleContent>
+              <div className="cooc-preview-search"><Field label={t("搜索上限")} help={t("所有模式共用的搜索步数上限。达到上限时返回已生成的提示词。") }><Input aria-label={t("预览搜索上限")} type="number" min={1} max={1000000} value={maxSteps} step={1} disabled={busy} onChange={event => setMaxSteps(event.target.valueAsNumber)} /></Field></div>
+            </CollapsibleContent>
+          </Collapsible>
+          {result ? <section className="cooc-preview-results" aria-label={t("预览结果")}>
+            <div className="cooc-result-summary">
+              <Badge variant="secondary">{t(stopReasons[String(result.report.stop_reason)] || String(result.report.stop_reason || "已生成"))}</Badge>
+              <span className="cooc-preview-meta">{tr`种子 ${result.seed}`}</span>
+              {result.sequence && <span className="cooc-preview-meta">{tr`帧 ${result.sequence.step ?? step} · 变化 ${result.sequence.changes ?? 0} / ${result.sequence.change_budget ?? preset.document.change_budget}`}</span>}
+            </div>
+            {Array.isArray(result.report.unrecognized_fixed) && result.report.unrecognized_fixed.length > 0 && <p className="text-xs text-muted-foreground" role="status">{tr`未参与共现计算：${result.report.unrecognized_fixed.join(", ")}`}</p>}
+            <PreviewPrompts key={result.candidate_id} terms={result.selected_tags} positive={result.positive} negative={result.negative} />
+            <Collapsible className="cooc-preview-report">
+              <CollapsibleTrigger asChild><Button variant="ghost" size="sm" className="group"><ChevronRight className="size-4 transition-transform group-data-[state=open]:rotate-90" />{t("生成报告")}</Button></CollapsibleTrigger>
+              <CollapsibleContent><pre className="cooc-report">{JSON.stringify({ selected_tags: result.selected_tags, sequence: result.sequence, ...result.report }, null, 2)}</pre></CollapsibleContent>
+            </Collapsible>
+          </section> : <p className="cooc-empty">{t("预览当前预设，不生成图片。")}</p>}
         </section>}
       </>}
     </main>
