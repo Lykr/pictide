@@ -56,6 +56,7 @@ class Repository:
                 revision_id TEXT NOT NULL REFERENCES backend_revisions(id),
                 status TEXT NOT NULL, positive TEXT NOT NULL, negative TEXT NOT NULL,
                 seed INTEGER NOT NULL, backend_prompt_id TEXT, error TEXT,
+                backend_pending INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS jobs_status ON jobs(status, created_at);
             CREATE INDEX IF NOT EXISTS jobs_created ON jobs(created_at DESC, id DESC);
@@ -69,6 +70,8 @@ class Repository:
                 actor_id TEXT NOT NULL, value INTEGER NOT NULL CHECK(value IN (-1,1)),
                 updated_at TEXT NOT NULL, PRIMARY KEY(artifact_id, actor_id));
             """)
+            if "backend_pending" not in {row["name"] for row in db.execute("PRAGMA table_info(jobs)")}:
+                db.execute("ALTER TABLE jobs ADD COLUMN backend_pending INTEGER NOT NULL DEFAULT 0")
             columns = {row["name"] for row in db.execute("PRAGMA table_info(artifacts)")}
             for column in ("local_path","content_type","deleted_at","generated_hidden_at","roam_hidden_at"):
                 if column not in columns:
@@ -157,6 +160,7 @@ class Repository:
             result["seed_applied"] = bool(result["seed_applied"])
         result.pop("config", None)
         result.pop("payload_hash", None)
+        result.pop("backend_pending", None)
         return result
 
     def jobs(self, limit=100):
@@ -383,14 +387,26 @@ class Repository:
             return {"candidate_id": snapshot.get("candidate_id", ""), "positive": row["positive"],
                     "negative": row["negative"], "terms": snapshot.get("terms", [])}
 
-    def next_job(self):
+    def dispatch_jobs(self, limit=2):
         with self.connection() as db:
-            # Resume accepted work first; manual queued work precedes prefetch.
-            row = db.execute("SELECT j.id FROM jobs j LEFT JOIN roam_jobs r ON r.job_id=j.id "
-                             "WHERE j.status IN ('queued','submitting','running') "
-                             "ORDER BY CASE WHEN j.backend_prompt_id IS NOT NULL THEN 0 ELSE 1 END,"
-                             "CASE WHEN r.job_id IS NULL THEN 0 ELSE 1 END,j.created_at LIMIT 1").fetchone()
-            return self.job(row["id"]) if row else None
+            # Count and select from one snapshot. Pending work always returns,
+            # including cancelled or uncertain jobs still occupying the backend.
+            db.execute("BEGIN")
+            query = ("SELECT j.*,CASE WHEN r.job_id IS NULL THEN 'generate' ELSE 'roam' END AS source,"
+                     "json_extract(b.config,'$.name') AS backend_name,"
+                     "json_type(b.config,'$.bindings.seed')='object' AS seed_applied "
+                     "FROM jobs j LEFT JOIN roam_jobs r ON r.job_id=j.id "
+                     "JOIN backend_revisions b ON b.id=j.revision_id ")
+            pending = db.execute(query + "WHERE j.backend_pending=1 ORDER BY j.created_at,j.id").fetchall()
+            slots = max(0, limit - len(pending))
+            queued = db.execute(query + "WHERE j.backend_pending=0 AND j.status='queued' AND j.backend_prompt_id IS NULL "
+                                "ORDER BY CASE WHEN r.job_id IS NULL THEN 0 ELSE 1 END,j.created_at,j.id LIMIT ?",
+                                (slots,)).fetchall()
+            return [{**self._job(row), "backend_pending": bool(row["backend_pending"])} for row in [*pending, *queued]]
+
+    def finish_dispatch(self, iid):
+        with self.connection() as db:
+            db.execute("UPDATE jobs SET backend_pending=0 WHERE id=?", (iid,))
 
     def cancel_pending_jobs(self):
         # One conditional write races safely with claim_job: only one can win.
@@ -404,7 +420,7 @@ class Repository:
 
     def claim_job(self, iid):
         with self.connection() as db:
-            cursor = db.execute("UPDATE jobs SET status='submitting',error=NULL,updated_at=? WHERE id=? AND status='queued' AND backend_prompt_id IS NULL",(now(),iid))
+            cursor = db.execute("UPDATE jobs SET status='submitting',backend_pending=1,error=NULL,updated_at=? WHERE id=? AND status='queued' AND backend_pending=0 AND backend_prompt_id IS NULL",(now(),iid))
             return cursor.rowcount == 1
 
     def update_job(self, iid, status=None, **fields):
@@ -422,7 +438,7 @@ class Repository:
     def attach_prompt(self, iid, prompt_id):
         with self.connection() as db:
             # Retain the external id even if cancellation raced with POST /prompt.
-            db.execute("UPDATE jobs SET backend_prompt_id=?,updated_at=? WHERE id=?", (prompt_id, now(), iid))
+            db.execute("UPDATE jobs SET backend_prompt_id=?,backend_pending=1,updated_at=? WHERE id=?", (prompt_id, now(), iid))
         return self.job(iid)
 
     def complete(self, iid, outputs):
@@ -443,7 +459,13 @@ class Repository:
 
     def recover_submissions(self):
         with self.connection() as db:
-            db.execute("UPDATE jobs SET status='unknown',error='应用在提交期间退出，需要与后端核对。',updated_at=? WHERE status='submitting' AND backend_prompt_id IS NULL", (now(),))
+            # A running row may have released its window before an interrupted
+            # image save. Inspect its accepted prompt again; never resubmit it.
+            db.execute("UPDATE jobs SET backend_pending=1 WHERE status IN ('submitting','running') "
+                       "AND backend_prompt_id IS NOT NULL")
+            db.execute("UPDATE jobs SET status='unknown',backend_pending=1,"
+                       "error='应用在提交期间退出，需要与后端核对。',updated_at=? "
+                       "WHERE status='submitting' AND backend_prompt_id IS NULL", (now(),))
 
     def unknown_jobs(self):
         with self.connection() as db:
