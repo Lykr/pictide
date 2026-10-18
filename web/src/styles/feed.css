@@ -247,9 +247,9 @@ body.pictide-immersive { overflow: hidden; }
   .feed-page .roam-active #gallery-view > .image-card:not(.immersive) { flex: 1; min-height: 0; }
   .feed-page .roam-active #gallery-view .image-stage:not(.immersive .image-stage) { flex: 1; height: auto; min-height: 100px; max-height: none; }
   .feed-page .roam-active #gallery-view .load-more-row { margin: 0; }
-  .feed-page .image-toolbar:not(:where(.editor-page, .editor-page *)) { grid-template-columns: minmax(0, 1fr) auto; padding: 4px; gap: 4px; }
-  .feed-page .image-navigation { grid-column: 1; gap: 0; }
-  .feed-page .image-info { grid-column: 2; }
+  .feed-page .image-toolbar:not(:where(.editor-page, .editor-page *)) { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); padding: 4px; gap: 4px; }
+  .feed-page .image-navigation { grid-column: 2; gap: 0; }
+  .feed-page .image-info { grid-column: 3; }
   .feed-page .image-card.immersive .image-toolbar { max-width: calc(100% - 16px); padding: 4px; }
   .feed-page .image-card.immersive .image-navigation { gap: 0; }
   .feed-page .settings-navigation:not(:where(.editor-page, .editor-page *)) { flex-wrap: nowrap; gap: 2px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
