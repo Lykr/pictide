@@ -4,6 +4,7 @@
 
 ## 候选与提示词
 
+- [词库上传与选择](library-selection.md)
 - [共现提示词候选](cooccurrence-candidates-v1.md)
 - [PMI 候选数据与生成调整](candidate-pmi.md)
 - [共现 ≥1,000 次的极限裁剪](candidate-pair1000.md)
@@ -51,6 +52,6 @@
 ## 项目与部署历史
 
 - [开箱即用的便携发行包（设计）](automatic-startup.md)
-- [便携发行与词库选择实施接口（待确认）](portable-release-implementation.md)
+- [便携发行实施计划（待实施）](portable-release-implementation.md)
 - [项目独立迁移记录](project-move.md)
 - [数据部署历史记录](data-layout-history.md)

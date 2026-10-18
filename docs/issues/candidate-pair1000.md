@@ -43,9 +43,9 @@ SQLite 完整性检查通过；标签、来源和预设与备份双向比较一�
 
 ## 产物与恢复
 
-- 运行库：`data/candidate.sqlite3`。
+- 运行统计库：`data/libraries/danbooru-pair1000.sqlite3`（词库管理集成时从原混合库整理）。
 - 原始备份：`data/backups/before-candidate-pair1000-20261019/candidate.sqlite3`。
 - 精简副本、gzip 与验证报告：`data/verification/candidate-pair1000-20261019/`。
 - 前端发布前备份：`data/backups/before-candidate-pair1000-20261019/web-dist/`。
 
-需要恢复时，停止应用，先保存当前预设，再从原始备份恢复词库，并将最新预设写回。图片、任务和偏好保存在业务主库，本次裁剪保持这些记录。
+需要使用原统计时，可在词库页面上传原始备份后选用；上传仅提取统计，当前个人预设保留。图片、任务和偏好保存在业务主库，本次裁剪保持这些记录。

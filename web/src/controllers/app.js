@@ -1407,6 +1407,7 @@ function connectEvents() {
     try {
       const topic = JSON.parse(event.data).topic;
       if (topic === 'roam_settings' || topic === 'candidate') loadRoamSettings({ preserveDraft: true });
+      if (topic === 'candidate') document.dispatchEvent(new Event('pictide:candidate-library-changed'));
       if (topic === 'general_settings') syncTheme();
       if (topic === 'feedback') {
         state.feedbackRevision++;

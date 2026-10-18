@@ -2,6 +2,16 @@
 
 [API 索引](../../api.md) · [通用约定与错误](../../api.md#通用约定)
 
+## 词库文件管理
+
+| 方法 | 路径 | 请求 | 响应 |
+| --- | --- | --- | --- |
+| GET | `/api/candidate/library` | 无 | `{selected,libraries:[{filename,tag_count,relation_count,bytes}]}` |
+| POST | `/api/candidate/library` | multipart/form-data，字段 `file`，`.sqlite3` 或 `.sqlite3.gz` | 201，`{filename,tag_count,relation_count,bytes}` |
+| PUT | `/api/candidate/library` | JSON `{filename}` | `{selected}`，立即使用 |
+
+文件放在所选数据目录的 `libraries/`。GET 刷新目录和所选文件状态；有效文件需要 tags、correlations、dataset 表，来源为 ready。上传和 gzip 解压各支持最大 2 GiB，同名自动编号，仅复制统计表。页面在上传成功后调用 PUT 自动选用。选择保存到个人配置库，已有预设、任务和预取保留，状态变化复用 candidate 事件。详情见[词库管理](../../issues/library-selection.md)。
+
 ## 候选词库、预设与预览
 
 | 方法 | 路径 | 请求 | 响应 |

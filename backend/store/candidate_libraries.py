@@ -81,7 +81,7 @@ class CandidateLibraries:
 
     def listing(self):
         libraries = []
-        for path in sorted(self.directory.glob("*.sqlite3"), key=lambda item: item.name.casefold()):
+        for path in sorted((item for item in self.directory.iterdir() if item.suffix.lower() == ".sqlite3"), key=lambda item: item.name.casefold()):
             if path.name.startswith("."):
                 continue
             try:

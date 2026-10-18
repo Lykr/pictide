@@ -146,6 +146,7 @@ export function EditorWorkspace() {
   const [libraryError, setLibraryError] = useState("");
   const [libraryRevision, setLibraryRevision] = useState(0);
   const libraryInput = useRef<HTMLInputElement>(null);
+  const libraryRequest = useRef(0);
   const [dataset, setDataset] = useState<Record<string, unknown>>({});
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -193,12 +194,18 @@ export function EditorWorkspace() {
     return () => abort.abort();
   }, []);
   const refreshLibrary = async () => {
-    const [listing, info] = await Promise.all([
-      api<LibraryListing>("/api/candidate/library"), api<Record<string, unknown>>("/api/candidate/dataset"),
-    ]);
+    const request = ++libraryRequest.current;
+    const listing = await api<LibraryListing>("/api/candidate/library");
+    const info = await api<Record<string, unknown>>("/api/candidate/dataset");
+    if (request !== libraryRequest.current) return;
     setLibrary(listing); setDataset(info); setPage(1); setTags({ tags: [], total: 0, page: 1, page_size: DEFAULT_PAGE_SIZE });
     setRefresh(value => value + 1); setLibraryRevision(value => value + 1); setResult(null);
   };
+  useEffect(() => {
+    const changed = () => { refreshLibrary().catch(error => setLibraryError(message(error))); };
+    document.addEventListener("pictide:candidate-library-changed", changed);
+    return () => { document.removeEventListener("pictide:candidate-library-changed", changed); libraryRequest.current++; };
+  }, []);
   const libraryOperation = async (action: string, filename?: string, file?: File) => {
     setBusy(true); setLibraryAction(action); setLibraryError("");
     try {
