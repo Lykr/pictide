@@ -1,3 +1,4 @@
+import { t } from '../i18n/index.mjs';
 /** Clipboard API needs HTTPS; LAN HTTP can still use the user-initiated copy command. */
 export async function copyText(text: string) {
   if (navigator.clipboard?.writeText) {
@@ -15,7 +16,7 @@ export async function copyText(text: string) {
   try {
     field.select();
     field.setSelectionRange(0, text.length);
-    if (!document.execCommand("copy")) throw new Error("浏览器不允许复制，请选中文本复制。");
+    if (!document.execCommand("copy")) throw new Error(t("浏览器不允许复制，请选中文本复制。"));
   } finally {
     field.remove();
     focused?.focus({ preventScroll: true });

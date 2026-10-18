@@ -124,7 +124,7 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
 
   return <DialogContent ref={setCardElement} className="generated-viewer image-card" showCloseButton={false} aria-describedby={undefined} tabIndex={-1}
     onEscapeKeyDown={event => { if (event.defaultPrevented || viewerRef.current?.active) { event.preventDefault(); viewerRef.current?.leave(); } }}>
-    <DialogTitle className="sr-only">{props.imageLabel ?? t("生成图片")}</DialogTitle>
+    <DialogTitle className="sr-only">{props.imageLabel ?? t("生成的图片")}</DialogTitle>
     <div className="generated-viewer-heading">
       <IconButton ref={entryRef} icon={Maximize} label={t("沉浸模式")} aria-pressed={immersive} disabled={busy} />
       <IconButton icon={privacyBlur ? EyeOff : Eye} label={privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格")} aria-pressed={privacyBlur} onClick={() => onPrivacyChange(!privacyBlur)} />
@@ -136,8 +136,8 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
       </Toggle>
       <IconButton ref={exitRef} icon={Minimize} label={t("退出沉浸模式")} hidden={!immersive} />
     </div>
-    <ViewerImage key={item.id} item={item} privacyBlur={privacyBlur} label={props.imageLabel ?? t("生成图片")} onNavigate={navigate} busy={busy || infoOpen} />
-    {waitingOlder && loadingMore && <div className="generated-viewer-paging" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("加载更早图片")}</span></div>}
+    <ViewerImage key={item.id} item={item} privacyBlur={privacyBlur} label={props.imageLabel ?? t("生成的图片")} onNavigate={navigate} busy={busy || infoOpen} />
+    {waitingOlder && loadingMore && <div className="generated-viewer-paging" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("正在加载更早图片")}</span></div>}
     {error && <div className="generated-viewer-error" role="alert">{error}</div>}
     <div ref={toolbarRef} className="generated-viewer-toolbar" aria-label={t("图片操作")}>
       <div className="generated-viewer-navigation">

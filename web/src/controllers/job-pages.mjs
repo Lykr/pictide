@@ -1,7 +1,8 @@
+import { t, tr, locale } from '../i18n/index.mjs';
 export function jobPageNumber(value, totalPages) {
   const text = String(value).trim();
   const page = /^\d+$/.test(text) ? Number(text) : NaN;
-  if (!Number.isSafeInteger(page) || page < 1 || page > totalPages) throw new Error(`页码须为 1 至 ${totalPages} 的整数。`);
+  if (!Number.isSafeInteger(page) || page < 1 || page > totalPages) throw new Error(tr`页码须为 1 至 ${totalPages} 的整数。`);
   return page;
 }
 
@@ -22,7 +23,7 @@ export function createJobPager({ request, changed, active = () => true }) {
         state.total = result.total; state.totalPages = result.total_pages; state.loaded = true;
       } catch (error) {
         if (token !== revision) return;
-        requestedPage = state.page; state.error = `任务加载失败：${error.message}`;
+        requestedPage = state.page; state.error = tr`任务加载失败：${error.message}`;
       } finally {
         if (token === revision) {
           const repeat = queued && active();

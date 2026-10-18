@@ -216,3 +216,10 @@ Flex / Grid 内容列设置 `min-width: 0`，长 ID、路径和提示词适当�
 - `web/index.html` 提供清单、iOS standalone 元信息与 `apple-touch-icon`。`web/public/icons/` 的 180 / 192 / 512 PNG 沿用 `data/designs/pictide-icon-v1.png` 品牌稿导出，实际运行资产提交 Git；图标有不透明底色，由系统裁切。
 - `display-mode: standalone` 恢复固定外壳与栏目内部滚动，不使用普通浏览器的文档滚动布局；顶部/底部继续使用现有安全区。主题渲染同时更新 `theme-color`，与显式黑白或跟随系统保持一致。
 - 本版不注册 Service Worker，不缓存 API、图片或旧构建；主屏幕模式仍在线连接 Pictide。不能将独立窗口或安装元信息称作已支持离线生图。
+
+
+## 界面语言
+
+产品文案通过 web/src/i18n/index.mjs 的 t / tr 调用，React 与 DOM 控制器共用词典，禁止在 UI 中新增未接入的可见文案。简体中文原文作为消息键，英文按页面领域维护在 messages/en/；动态值使用具名占位或 tr 模板的位置占位，译文可改变词序。
+
+默认跟随浏览器首选语言，简体中文以外未支持的语言使用英文；手动选择优先。用户内容、实际提示词、标签原名、模型／工作流技术标识直接展示原文。日期和数字使用当前 locale；英文文案允许自然换行，表单值与页面状态不随切换重置。设置与新增语言步骤见 [国际化](i18n.md)。

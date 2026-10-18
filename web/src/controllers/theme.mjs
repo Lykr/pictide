@@ -1,3 +1,4 @@
+import { applyLanguage, tr } from '../i18n/index.mjs';
 const systemAppearance = window.matchMedia('(prefers-color-scheme: dark)');
 let selectedTheme = 'system';
 
@@ -24,13 +25,26 @@ systemAppearance.addEventListener('change', () => {
 });
 renderTheme();
 
+let settingsRevision = 0, pendingWrites = 0, readSerial = 0, appliedRead = 0;
 async function requestTheme(options = {}) {
-  const response = await fetch('/api/settings/general', options);
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || `请求失败（${response.status}）`);
-  applyTheme(data.theme);
-  return data.theme;
+  const writing = options.method === 'PUT';
+  if (writing) { pendingWrites++; settingsRevision++; }
+  const revision = settingsRevision, serial = ++readSerial;
+  try {
+    const response = await fetch('/api/settings/general', options);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || tr`请求失败（${response.status}）`);
+    // Older SSE reads must not undo a newer user choice.
+    if (writing || !pendingWrites && revision === settingsRevision && serial >= appliedRead) {
+      appliedRead = serial;
+      applyTheme(data.theme);
+      applyLanguage(data.language);
+    }
+    return data.theme;
+  } finally { if (writing) { pendingWrites--; settingsRevision++; } }
 }
 
 export const loadTheme = () => requestTheme();
 export const saveTheme = theme => requestTheme({ method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme }) });
+
+export const saveLanguage = language => requestTheme({ method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language }) });

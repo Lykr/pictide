@@ -1,3 +1,4 @@
+import { t, tr, locale } from '../i18n/index.mjs';
 import { loadTheme } from './theme.mjs';
 import { createButtonFeedback } from './button-feedback.mjs';
 import { decorateElement, createIcon } from "../dom-primitives";
@@ -18,6 +19,13 @@ import { createJobPager } from './job-pages.mjs';
 import { createPageScroll } from './page-scroll.mjs';
 
 const $ = (id) => document.getElementById(id);
+const localizedMessages = new Map();
+function setStatusText(id, message) {
+  if (typeof message === 'function') localizedMessages.set(id, message); else localizedMessages.delete(id);
+  const text = typeof message === 'function' ? message() : message;
+  $(id).textContent = text;
+  return text;
+}
 const state = { backends: [], jobs: [], artifacts: [], view: 'feed', activeId: null, databasePath: '', polling: false, saving: false, currentImage: null, feedbackPending: false, feedbackRevision: 0 };
 const galleryCursors = createGalleryCursors();
 const pageScroll = createPageScroll();
@@ -27,7 +35,7 @@ let roamWindowLoading = false, roamBlocked = false, viewRevision = 0;
 let roamViewPending = Promise.resolve();
 function selectImage(id, view = state.view) {
   const record = galleryCursors.select(view, id);
-  if (record) roamViewPending = api('/api/roam/view', { method: 'PUT', keepalive: true, body: JSON.stringify(record) }).catch(error => showNotice(`观看位置保存失败：${error.message}`, true));
+  if (record) roamViewPending = api('/api/roam/view', { method: 'PUT', keepalive: true, body: JSON.stringify(record) }).catch(error => showNotice(tr`观看位置保存失败：${error.message}`, true));
 }
 state.likedArtifacts = [];
 state.likedError = "";
@@ -44,7 +52,7 @@ state.pages = { feed: { hasMore: false, cursor: null, total: 0, loadedMore: fals
 state.loadingMore = false;
 state.artifactRevision = 0;
 const uncertainRequests = new Map();
-const statusNames = { queued: '等待生成', submitting: '正在提交', running: '正在生成', completed: '已完成', failed: '生成失败', cancelled: '已取消', unknown: '状态待确认' };
+const statusNames = { queued: "等待生成", submitting: "正在提交", running: "正在生成", completed: "已完成", failed: "生成失败", cancelled: "已取消", unknown: "状态待确认" };
 const activeStatuses = new Set(['queued', 'submitting', 'running']);
 let jobsSignature = '';
 let noticeTimer;
@@ -113,11 +121,11 @@ const refillRoam = createRefillCoordinator({
     if (result.job && !state.jobs.some(job => job.id === result.job.id)) { state.jobs.unshift(result.job); renderJobs(); }
     if (result.paused) {
       roamBlocked = true; roamPlayback.pause(); nextImageWait.cancel(); renderArtifacts();
-      if (result.error !== roamError) { roamError = result.error; showNotice(`预取已暂停：${result.error || '请检查任务状态'}。可在漫游设置中保存后重试。`, true); }
+      if (result.error !== roamError) { roamError = result.error; showRoamNotice(tr`预取已暂停：${result.error || t("请检查任务状态")}。可在漫游设置中保存后重试。`, true); }
     } else {
       if (likedTagsWait(result, !!nextImageWait.current)) {
         roamBlocked = false; nextImageWait.cancel(); roamPlayback.pause(); renderArtifacts();
-        showNotice('喜欢图片中暂无可用标签，请先喜欢图片或将偏好范围设为全部');
+        showRoamNotice(t("喜欢图片中暂无可用标签，请先喜欢图片或将偏好范围设为全部"));
         return;
       }
       clearRoamError();
@@ -127,21 +135,22 @@ const refillRoam = createRefillCoordinator({
   error: error => {
     if (error.status === 404 && !roamAnchorRetried) { roamAnchorRetried = true; refresh(true); return; }
     roamBlocked = !isTemporaryRefillError(error); nextImageWait.cancel(); renderArtifacts();
-    if (error.message !== roamError) { roamError = error.message; showNotice(`预取未完成：${error.message}${roamBlocked ? '' : '。后续页面事件会自动重试。'}`, true); }
+    if (error.message !== roamError) { roamError = error.message; showRoamNotice(tr`预取未完成：${error.message}${roamBlocked ? '' : t("。后续页面事件会自动重试。")}`, true); }
   },
 });
 
 function clearRoamError() {
-  if (/^(?:预取(?:已暂停|未完成)：|喜欢图片中暂无可用标签)/.test($('notice').textContent)) $('notice').hidden = true;
+  if ($('notice').dataset.roamWait === 'true') $('notice').hidden = true;
   roamError = '';
   roamBlocked = false;
 }
 
 function showBackendAvailability(available, pending = false) {
   const element = $('backend-status');
-  element.textContent = pending ? '检查中' : available ? '可用' : state.backends.length ? '不可用' : '未配置';
-  element.dataset.tooltip = pending ? '正在检查后端连接' : available ? '至少一个后端已通过连接检查' : state.backends.length ? '后端未通过连接检查，可在设置中测试连接' : '在设置中添加生图后端';
+  element.textContent = pending ? t("检查中") : available ? t("可用") : state.backends.length ? t("不可用") : t("未配置");
+  element.dataset.tooltip = pending ? t("正在检查后端连接") : available ? t("至少一个后端已通过连接检查") : state.backends.length ? t("后端未通过连接检查，可在设置中测试连接") : t("在设置中添加生图后端");
   element.classList.toggle('connected', available);
+  element.dataset.availability = pending ? 'pending' : available ? 'available' : 'unavailable';
 }
 async function checkBackendAvailability() {
   const signature = JSON.stringify(state.backends);
@@ -161,11 +170,13 @@ async function checkBackendAvailability() {
 async function api(path, options = {}) {
   const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
   let data;
-  try { data = await response.json(); } catch { throw new Error(`服务返回了无法解析的响应（HTTP ${response.status}）`); }
-  if (!response.ok) { const error = new Error(typeof data.error === 'string' ? data.error : data.error?.message || data.detail || `请求失败（HTTP ${response.status}）`); error.status = response.status; throw error; }
+  try { data = await response.json(); } catch { throw new Error(tr`服务返回了无法解析的响应（HTTP ${response.status}）`); }
+  if (!response.ok) { const error = new Error(typeof data.error === 'string' ? data.error : data.error?.message || data.detail || tr`请求失败（HTTP ${response.status}）`); error.status = response.status; throw error; }
   return data;
 }
+function showRoamNotice(message, error = false) { showNotice(message, error); $('notice').dataset.roamWait = 'true'; }
 function showNotice(message, error = false) {
+  delete $('notice').dataset.roamWait;
   if (state.view === 'generate') {
     $('notice').hidden = true;
     if (error) { state.generatedError = message; renderGeneratedResults(); }
@@ -175,23 +186,24 @@ function showNotice(message, error = false) {
   clearTimeout(noticeTimer); $('notice').textContent = message; $('notice').classList.toggle('error', error); $('notice').hidden = false;
   if (!error) noticeTimer = setTimeout(() => { $('notice').hidden = true; }, 5000);
 }
-function settingsNotice(message, error = false) { $('settings-result').textContent = message; $('settings-result').classList.toggle('error', error); $('settings-result').hidden = false; }
-function historyNotice(message, error = false) { $('history-result').textContent = message; $('history-result').classList.toggle('error', error); $('history-result').hidden = !message; }
+function settingsNotice(message, error = false) { setStatusText('settings-result', message); $('settings-result').classList.toggle('error', error); $('settings-result').hidden = false; }
+function historyNotice(message, error = false) { message = setStatusText('history-result', message); $('history-result').classList.toggle('error', error); $('history-result').hidden = !message; }
 function describeAction(element, label) { element.setAttribute('aria-label', label); element.dataset.tooltip = label; }
-function inlineStatus(id, message, visible = true) { const element = $(id); element.textContent = message; element.hidden = !visible; }
+function inlineStatus(id, message, visible = true) { const element = $(id); setStatusText(id, message); element.hidden = !visible; }
+function translatedOption(value, key) { const item = option(value, t(key)); item.dataset.i18nKey = key; return item; }
 function option(value, label) { const item = document.createElement('option'); item.value = value; item.textContent = label; return item; }
-function dateLabel(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); }
-function seedLabel(item) { return item.seed_applied === false ? '使用工作流种子设置' : `seed ${item.seed ?? '—'}`; }
+function dateLabel(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : date.toLocaleString(locale(), { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+function seedLabel(item) { return item.seed_applied === false ? t("使用工作流种子设置") : `seed ${item.seed ?? '—'}`; }
 function artifactsForView() { return state.view === 'liked' ? state.likedArtifacts : state.artifacts; }
 function pageView() { return ['liked', 'generate'].includes(state.view) ? state.view : 'feed'; }
 function applyPage(view, result, append = false) {
   return applyArtifactPage(state, view, result, typeof append === 'object' ? append : { append });
 }
-const viewTitles = { feed: '漫游', generate: '生成', liked: '喜欢', prompts: '提示词', settings: '设置' };
+const viewTitles = { feed: "漫游", generate: "生成", liked: "喜欢", prompts: "提示词", settings: "设置" };
 function setView(route, updateUrl = true) {
   const [requested, section] = String(route || 'feed').split('/');
   const view = Object.hasOwn(viewTitles, requested) ? requested : 'feed';
-  if (state.feedbackPending) { showNotice('正在保存评价，请稍候。'); return; }
+  if (state.feedbackPending) { showNotice(t("正在保存评价，请稍候。")); return; }
   pageScroll.save();
   if (view !== state.view) { if (view !== 'feed') roamPlayback.pause(); immersive.leave(); viewRevision++; nextImageWait.cancel(); roamWindowLoading = false; }
   state.view = view;
@@ -205,7 +217,7 @@ function setView(route, updateUrl = true) {
     if (selected) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   });
-  $('view-title').textContent = viewTitles[view];
+  $('view-title').textContent = t(viewTitles[view]);
   $('roam-loading').hidden = true;
   $('feed-main').hidden = editor;
   $('prompts-view').hidden = !editor;
@@ -244,12 +256,12 @@ function setSettingsSection(section, updateUrl = true) {
 }
 function renderBackends() {
   const selected = $('generate-backend').value;
-  $('generate-backend').replaceChildren(...(state.backends.length ? state.backends.map((backend) => option(backend.id, backend.name)) : [option('', '请先配置生图后端')]));
+  $('generate-backend').replaceChildren(...(state.backends.length ? state.backends.map((backend) => option(backend.id, backend.name)) : [translatedOption('', "请先配置生图后端")]));
   if (state.backends.some((backend) => backend.id === selected)) $('generate-backend').value = selected;
   $('generate').disabled = !state.backends.length;
   checkBackendAvailability();
   const edited = $('edit-backend').value;
-  $('edit-backend').replaceChildren(...state.backends.map((backend) => option(backend.id, backend.name)), option('__new__', '＋ 添加后端'));
+  $('edit-backend').replaceChildren(...state.backends.map((backend) => option(backend.id, backend.name)), translatedOption('__new__', "＋ 添加后端"));
   if (state.backends.some((backend) => backend.id === edited)) $('edit-backend').value = edited;
   updateGenerationHints();
   renderRoamBackends();
@@ -258,7 +270,7 @@ function updateGenerationHints() {
   const backend = state.backends.find((item) => item.id === $('generate-backend').value);
   const noSeed = !!backend && !backend.bindings?.seed;
   $('seed').disabled = noSeed;
-  describeAction($('seed-note'), noSeed ? '未绑定种子输入，将使用工作流自身的种子设置。' : '-1 每个任务随机；非负值按任务递增，跨轮延续。实际种子随图片保存。');
+  describeAction($('seed-note'), noSeed ? t("未绑定种子输入，将使用工作流自身的种子设置。") : t("-1 每个任务随机；非负值按任务递增，跨轮延续。实际种子随图片保存。"));
   $('negative-binding-note').hidden = !backend || !!backend.bindings?.negative;
 }
 
@@ -275,19 +287,19 @@ function updateRuleControls() {
 
 async function loadRuleConfigs(feedback = false) {
   const button = $('reload-rule-configs'); if (button.disabled) return; button.disabled = true;
-  if (feedback) configFeedback.show('pending', '正在刷新…');
+  if (feedback) configFeedback.show('pending', t("正在刷新…"));
   try {
     const selected = $('rule-config').value;
     const listing = await api('/api/candidate/presets');
     const presets = listing.presets;
-    $('rule-config').replaceChildren(...(presets.length ? presets.map(item => option(item.id, item.name)) : [option('', '请先新建生成预设')]));
+    $('rule-config').replaceChildren(...(presets.length ? presets.map(item => option(item.id, item.name)) : [translatedOption('', "请先新建生成预设")]));
     $('rule-config').value = presets.some(item => item.id === selected) ? selected : presets[0]?.id || '';
-    inlineStatus('rule-config-note', '还没有生成预设，请在提示词页新建。', !presets.length);
+    inlineStatus('rule-config-note', () => t("还没有生成预设，请在提示词页新建。"), !presets.length);
     ruleConfigsLoaded = true; updateRuleControls();
-    if (feedback) configFeedback.show('success', '已刷新');
+    if (feedback) configFeedback.show('success', t("已刷新"));
   } catch (error) {
-    inlineStatus('rule-config-note', `预设读取失败：${error.message}`, !feedback);
-    if (feedback) configFeedback.show('error', '刷新失败', `刷新失败：${error.message}`);
+    inlineStatus('rule-config-note', () => tr`预设读取失败：${error.message}`, !feedback);
+    if (feedback) configFeedback.show('error', t("刷新失败"), tr`刷新失败：${error.message}`);
   }
   finally { button.disabled = false; }
 }
@@ -295,32 +307,32 @@ async function loadRuleConfigs(feedback = false) {
 function ruleNumber(id, label, minimum, maximum) {
   const raw = $(id).value;
   const value = Number(raw);
-  if (!raw.trim() || !Number.isSafeInteger(value) || value < minimum || value > maximum) throw new Error(`${label}须为 ${minimum}–${maximum} 之间的整数。`);
+  if (!raw.trim() || !Number.isSafeInteger(value) || value < minimum || value > maximum) throw new Error(tr`${label}须为 ${minimum}–${maximum} 之间的整数。`);
   return value;
 }
 
 function readRuleGeneration() {
-  if (!$('rule-config').value) throw new Error('请先选择生成预设，或在提示词页新建预设。');
+  if (!$('rule-config').value) throw new Error(t("请先选择生成预设，或在提示词页新建预设。"));
   const mode = $('rule-mode').value;
   const current = {
-    mode, seed: mode === 'random_each_run' ? Number($('rule-seed').value) || 0 : ruleNumber('rule-seed', '提示词种子', 0, Number.MAX_SAFE_INTEGER),
-    step: mode === 'sequence' ? ruleNumber('sequence-step', '帧序号', 0, 1000) : Number($('sequence-step').value) || 0,
+    mode, seed: mode === 'random_each_run' ? Number($('rule-seed').value) || 0 : ruleNumber('rule-seed', t("提示词种子"), 0, Number.MAX_SAFE_INTEGER),
+    step: mode === 'sequence' ? ruleNumber('sequence-step', t("帧序号"), 0, 1000) : Number($('sequence-step').value) || 0,
     seedControl: $('rule-seed-control').value, stepControl: $('sequence-control').value,
   };
-  const payload = { preset_id: $('rule-config').value, mode, seed: mode === 'random_each_run' ? 0 : current.seed, max_steps: ruleNumber('rule-max-steps', '搜索上限', 1, 1000000), sequence_step: mode === 'sequence' ? current.step : 0 };
+  const payload = { preset_id: $('rule-config').value, mode, seed: mode === 'random_each_run' ? 0 : current.seed, max_steps: ruleNumber('rule-max-steps', t("搜索上限"), 1, 1000000), sequence_step: mode === 'sequence' ? current.step : 0 };
   return { current, payload };
 }
 
 function presentRulePrompts(result, counters, current) {
-  if (typeof result.positive !== 'string' || typeof result.negative !== 'string') throw new Error('候选服务没有返回完整的正负提示词。');
+  if (typeof result.positive !== 'string' || typeof result.negative !== 'string') throw new Error(t("候选服务没有返回完整的正负提示词。"));
   $('positive').value = result.positive; $('negative').value = result.negative;
   $('rule-seed').value = String(counters.seed); $('sequence-step').value = String(counters.step);
   $('rule-report').hidden = false;
   const { positive, negative, ...report } = result;
   $('rule-report-content').textContent = JSON.stringify(report, null, 2);
-  const usedSeed = current.mode === 'sequence' ? `序列种子 ${result.sequence?.seed ?? current.seed} · 帧 ${result.sequence?.step ?? current.step} · 本帧有效种子 ${result.seed}` : `本次提示词种子 ${result.seed}`;
+  const usedSeed = () => current.mode === 'sequence' ? tr`序列种子 ${result.sequence?.seed ?? current.seed} · 帧 ${result.sequence?.step ?? current.step} · 本帧有效种子 ${result.seed}` : tr`本次提示词种子 ${result.seed}`;
   inlineStatus('rule-generation-note', usedSeed);
-  $('rule-generation-note').dataset.tooltip = '计数已更新为下次值，当前提示词可直接编辑。';
+  $('rule-generation-note').dataset.tooltip = t("计数已更新为下次值，当前提示词可直接编辑。");
 }
 
 async function generateRulePrompts() {
@@ -344,10 +356,10 @@ function renderGalleryLoading() {
   $('roam-immersive').disabled = true;
   immersive.leave();
   $('empty-state').hidden = false; $('image-card').hidden = true;
-  $('empty-title').hidden = true; $('empty-description').textContent = '正在读取图片…';
+  $('empty-title').hidden = true; $('empty-description').textContent = t("正在读取图片…");
   $('empty-settings').hidden = true; $('empty-generate').hidden = true; $('load-more').hidden = true;
   $('roam-loading').hidden = state.view !== 'feed';
-  $('roam-loading-label').textContent = '正在读取漫游图片';
+  $('roam-loading-label').textContent = t("正在读取漫游图片");
 }
 function renderArtifacts() {
   renderGeneratedResults();
@@ -362,24 +374,24 @@ function renderArtifacts() {
   const waiting = roam && (!!nextImageWait.current || roamWindowLoading || !!roamSwitch);
   $('load-more').hidden = roam || !page.hasMore;
   $('load-more').disabled = state.loadingMore || state.feedbackPending;
-  $('load-more').textContent = state.loadingMore ? '加载中…' : '更早图片';
-  $('load-more').dataset.tooltip = `已加载 ${items.length} / ${page.total} 张图片`;
+  $('load-more').textContent = state.loadingMore ? t("加载中…") : t("更早图片");
+  $('load-more').dataset.tooltip = tr`已加载 ${items.length} / ${page.total} 张图片`;
   if (selection.id !== state.activeId) state.activeId = selection.id;
   const index = Math.max(0, items.findIndex((item) => item.id === state.activeId));
   const artifact = items[index];
   $('empty-state').hidden = !!artifact; $('image-card').hidden = !artifact;
   $('empty-title').hidden = false;
-  $('empty-description').textContent = state.view === 'liked' ? '喜欢的图片会保存在这里。' : waiting ? '正在准备漫游图片…' : state.backends.length ? '开始漫游，发现下一张图片。' : '连接 ComfyUI，开始生成。';
+  $('empty-description').textContent = state.view === 'liked' ? t("喜欢的图片会保存在这里。") : waiting ? t("正在准备漫游图片…") : state.backends.length ? t("开始漫游，发现下一张图片。") : t("连接 ComfyUI，开始生成。");
   $('empty-settings').hidden = state.view === 'liked' || state.backends.length > 0;
   $('empty-generate').hidden = !roam || !state.backends.length || waiting;
-  $('empty-generate').textContent = '开始漫游';
-  $('empty-settings').textContent = '配置后端';
+  $('empty-generate').textContent = t("开始漫游");
+  $('empty-settings').textContent = t("配置后端");
   $('roam-loading').hidden = !waiting;
-  $('roam-loading-label').textContent = artifact ? '正在加载下一张漫游图片' : '正在生成漫游图片';
+  $('roam-loading-label').textContent = artifact ? t("正在加载下一张漫游图片") : t("正在生成漫游图片");
   $('image-card').setAttribute('aria-busy', String(waiting));
   $('roam-immersive').disabled = !roam || !artifact;
   if (!artifact) { syncRoamPlayback(); immersive.leave(); state.currentImage = null; document.dispatchEvent(new CustomEvent('pictide:image-info', { detail: null })); return; }
-  document.dispatchEvent(new CustomEvent('pictide:image-info', { detail: { id: artifact.id, seed: artifact.seed_applied === false ? '使用工作流种子设置' : String(artifact.seed ?? '—'), positive: artifact.positive || '', negative: artifact.negative || '' } }));
+  document.dispatchEvent(new CustomEvent('pictide:image-info', { detail: { id: artifact.id, seed: artifact.seed_applied === false ? t("使用工作流种子设置") : String(artifact.seed ?? '—'), positive: artifact.positive || '', negative: artifact.negative || '' } }));
   if (state.currentImage !== artifact.id) {
     state.currentImage = artifact.id; $('image-error').hidden = true;
     const imageUrl = `/api/artifacts/${encodeURIComponent(artifact.id)}/image`;
@@ -388,9 +400,9 @@ function renderArtifacts() {
   }
   $('image-index').textContent = `${index + 1} / ${page.total || items.length}`;
   $('like').setAttribute('aria-pressed', String(artifact.feedback === 1));
-  describeAction($('like'), artifact.feedback === 1 ? '已喜欢，点击撤回' : '喜欢 · ↑');
+  describeAction($('like'), artifact.feedback === 1 ? t("已喜欢，点击撤回") : t("喜欢 · ↑"));
   $('dislike').setAttribute('aria-pressed', String(artifact.feedback === -1));
-  describeAction($('dislike'), artifact.feedback === -1 ? '已不喜欢，点击撤回' : '不喜欢 · ↓');
+  describeAction($('dislike'), artifact.feedback === -1 ? t("已不喜欢，点击撤回") : t("不喜欢 · ↓"));
   $('like').disabled = state.feedbackPending; $('dislike').disabled = state.feedbackPending;
   $('previous').disabled = (index >= items.length - 1 && !page.hasMore) || state.feedbackPending || roamWindowLoading || !!roamSwitch;
   $('next').disabled = (!roam && index <= 0) || state.feedbackPending || waiting;
@@ -402,7 +414,7 @@ function advanceWaitingImage() {
 }
 function requestNextRoamImage() {
   if (!galleryCursors.ready || roamSwitch || nextImageWait.current || state.view !== 'feed') return;
-  if (!state.backends.length) { roamPlayback.pause(); showNotice('请先在设置中配置生图后端。', true); return; }
+  if (!state.backends.length) { roamPlayback.pause(); showNotice(t("请先在设置中配置生图后端。"), true); return; }
   clearRoamError();
   nextImageWait.begin(state.activeId); renderArtifacts(); refillRoam();
 }
@@ -430,28 +442,28 @@ async function moveImage(direction, automatic = null) {
         const next = destinationIndex(state.artifacts.findIndex(item => item.id === anchor), state.artifacts.length, direction);
         if (next !== null) state.activeId = state.artifacts[next].id;
         else if (direction === 'newer') requestNextRoamImage();
-      } catch (error) { if (automatic && !isTemporaryRefillError(error)) roamPlayback.pause(); showNotice(`图片加载失败：${error.message}`, true); }
+      } catch (error) { if (automatic && !isTemporaryRefillError(error)) roamPlayback.pause(); showNotice(tr`图片加载失败：${error.message}`, true); }
       finally { if (revision === viewRevision) roamWindowLoading = false; renderArtifacts(); refillRoam(); }
     } else if (action === 'generate') requestNextRoamImage();
     else renderArtifacts();
     return;
   }
-  if (destination === null) { showNotice(items.length ? direction === 'newer' ? '已经是最新的一张。' : state.pages[pageView()].hasMore ? '已到已加载图片的末尾，请点击加载更早图片。' : '已经是最早的一张。' : '还没有可以浏览的图片。'); return; }
+  if (destination === null) { showNotice(items.length ? direction === 'newer' ? t("已经是最新的一张。") : state.pages[pageView()].hasMore ? t("已到已加载图片的末尾，请点击加载更早图片。") : t("已经是最早的一张。") : t("还没有可以浏览的图片。")); return; }
   state.activeId = items[destination].id; renderArtifacts(); refillRoam();
 }
 async function feedback(value, toggle = true) {
   if (state.feedbackPending) return;
-  const artifact = artifactsForView().find((item) => item.id === state.activeId); if (!artifact) { showNotice('还没有可以评价的图片。'); return; }
+  const artifact = artifactsForView().find((item) => item.id === state.activeId); if (!artifact) { showNotice(t("还没有可以评价的图片。")); return; }
   const nextValue = feedbackValue(artifact.feedback, value, toggle);
   if (nextValue === artifact.feedback) return;
   const artifactRevision = state.artifactRevision;
   state.feedbackPending = true;
   renderArtifacts();
   try {
-    if (state.view === 'liked' && nextValue === null && !await confirmAction('确定取消喜欢这张图片？取消后将从喜欢页面移除，并受自动清理规则影响。')) return;
+    if (state.view === 'liked' && nextValue === null && !await confirmAction(t("确定取消喜欢这张图片？取消后将从喜欢页面移除，并受自动清理规则影响。"))) return;
     const result = await api(`/api/artifacts/${encodeURIComponent(artifact.id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value: nextValue }) }); state.feedbackRevision++; observeArtifactRevision(state, result.revision ?? result.artifact_revision); if (artifactRevision === state.artifactRevision) { const delta = Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); if (matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += delta; replaceArtifact(result.artifact); } renderArtifacts();
   }
-  catch (error) { showNotice(error.status === 404 || error.status === 410 ? '图片已清理或不可用，正在刷新列表。' : error.message, true); }
+  catch (error) { showNotice(error.status === 404 || error.status === 410 ? t("图片已清理或不可用，正在刷新列表。") : error.message, true); }
   finally { state.feedbackPending = false; renderArtifacts(); await refresh(true); }
 }
 function replaceArtifact(artifact) {
@@ -468,30 +480,30 @@ function createJobCard(job) {
   card.open = expandedJobs.has(job.id);
   card.addEventListener('toggle', () => { if (card.open) expandedJobs.add(job.id); else expandedJobs.delete(job.id); });
   const summary = document.createElement('summary');
-  const label = statusNames[job.status] || job.status;
-  summary.setAttribute('aria-label', `${label} · ${job.id} · ${dateLabel(job.created_at)} · 任务详情`);
-  summary.dataset.tooltip = '展开或收起任务详情';
+  const label = t(statusNames[job.status] || job.status);
+  summary.setAttribute('aria-label', tr`${label} · ${job.id} · ${dateLabel(job.created_at)} · 任务详情`);
+  summary.dataset.tooltip = t("展开或收起任务详情");
   const iconName = { queued: 'Clock', submitting: 'LoaderCircle', running: 'LoaderCircle', completed: 'CircleCheck', failed: 'CircleX', cancelled: 'CircleSlash' }[job.status] || 'CircleHelp';
   const status = document.createElement('span'); status.className = `job-status job-status-${job.status}`; status.dataset.tooltip = label;
   status.setAttribute('role', 'img'); status.setAttribute('aria-label', label); status.append(createIcon(iconName));
-  const clock = document.createElement('span'); clock.className = 'job-time'; clock.dataset.tooltip = new Date(job.created_at).toLocaleString('zh-CN');
+  const clock = document.createElement('span'); clock.className = 'job-time'; clock.dataset.tooltip = new Date(job.created_at).toLocaleString(locale());
   clock.setAttribute('role', 'img'); clock.setAttribute('aria-label', clock.dataset.tooltip); clock.append(createIcon('Clock'));
   const identifier = document.createElement('span'); identifier.className = 'job-identifier'; identifier.textContent = job.id;
-  identifier.dataset.tooltip = `任务 ID：${job.id}`;
+  identifier.dataset.tooltip = tr`任务 ID：${job.id}`;
   summary.append(status, identifier, clock);
   const body = document.createElement('div'); body.className = 'job-body';
   const meta = document.createElement('dl'); meta.className = 'job-meta';
-  for (const [name, value] of [['状态', label], ['时间', new Date(job.created_at).toLocaleString('zh-CN')], ['后端', job.backend_name || job.backend_id], ['种子', seedLabel(job)], ['任务 ID', job.id]]) {
+  for (const [name, value] of [[t("状态"), label], [t("时间"), new Date(job.created_at).toLocaleString(locale())], [t("后端"), job.backend_name || job.backend_id], [t("种子"), seedLabel(job)], [t("任务 ID"), job.id]]) {
     const term = document.createElement('dt'), detail = document.createElement('dd'); term.textContent = name; detail.textContent = value; meta.append(term, detail);
   }
   body.append(meta);
-  for (const [name, value] of [['正向提示词', job.positive], ['负向提示词', job.negative]]) {
+  for (const [name, value] of [[t("正向提示词"), job.positive], [t("负向提示词"), job.negative]]) {
     if (!value) continue;
     const heading = document.createElement('h3'); heading.textContent = name;
     const prompt = document.createElement('p'); prompt.className = 'job-prompt'; prompt.textContent = value; body.append(heading, prompt);
   }
   if (job.error) { const error = document.createElement('p'); error.className = 'job-error'; error.textContent = job.error; body.append(error); }
-  if (activeStatuses.has(job.status)) { const actions = document.createElement('div'); actions.className = 'job-actions'; const cancel = document.createElement('button'); cancel.textContent = '取消任务'; decorateElement(cancel, 'button', {}); cancel.addEventListener('click', () => cancelJob(job.id, cancel)); actions.append(cancel); body.append(actions); }
+  if (activeStatuses.has(job.status)) { const actions = document.createElement('div'); actions.className = 'job-actions'; const cancel = document.createElement('button'); cancel.textContent = t("取消任务"); decorateElement(cancel, 'button', {}); cancel.addEventListener('click', () => cancelJob(job.id, cancel)); actions.append(cancel); body.append(actions); }
   card.append(summary, body);
   return card;
 }
@@ -499,7 +511,7 @@ function renderJobs() {
   renderGeneratedResults();
 }
 function renderJobPage(page) {
-  const signature = JSON.stringify([page.page, page.items]);
+  const signature = JSON.stringify([locale(), page.page, page.items]);
   if (signature !== jobsSignature) { jobsSignature = signature; $('job-list').replaceChildren(...page.items.map(createJobCard)); }
   $('job-list').inert = page.loading;
   $('job-list').setAttribute('aria-busy', String(page.loading));
@@ -508,7 +520,7 @@ function renderJobPage(page) {
     page: page.page, totalPages: page.totalPages, loading: page.loading,
     visible: page.loading || !!page.error || page.total > 0,
   } }));
-  inlineStatus('jobs-page-message', page.error || (page.loading ? '正在读取任务…' : ''), !!page.error || page.loading);
+  inlineStatus('jobs-page-message', page.error || (page.loading ? t("正在读取任务…") : ''), !!page.error || page.loading);
   $('jobs-page-message').classList.toggle('error', !!page.error);
 }
 document.addEventListener('pictide:jobs-page', event => {
@@ -518,7 +530,7 @@ function renderGeneratedResults() {
   const manual = state.jobs.filter(job => job.source !== 'roam');
   const pending = manual.filter(job => activeStatuses.has(job.status));
   const latest = manual[0];
-  const status = pending.length ? `${pending.length} 个任务生成中` : latest && ['failed', 'unknown', 'cancelled'].includes(latest.status) ? `${statusNames[latest.status]}${latest.error ? `：${latest.error}` : ''}` : '';
+  const status = pending.length ? tr`${pending.length} 个任务生成中` : latest && ['failed', 'unknown', 'cancelled'].includes(latest.status) ? `${t(statusNames[latest.status])}${latest.error ? `：${latest.error}` : ''}` : '';
   document.dispatchEvent(new CustomEvent('pictide:generated-results', { detail: {
     artifacts: state.generatedArtifacts, total: state.pages.generate.total,
     hasMore: state.pages.generate.hasMore, loading: (!state.generatedLoaded || !state.pages.generate.loaded) && !state.generatedError && !state.generatedMutationError || state.loadingMore,
@@ -545,12 +557,12 @@ async function feedbackGenerated(id, toggle = true, view = 'generate') {
   if (view === 'liked') state.likedError = ''; else state.generatedMutationError = '';
   state.feedbackPending = true; renderArtifacts();
   try {
-    if (view === 'liked' && value === null && !await confirmAction('确定取消喜欢这张图片？取消后将从喜欢页面移除，并受自动清理规则影响。')) return;
+    if (view === 'liked' && value === null && !await confirmAction(t("确定取消喜欢这张图片？取消后将从喜欢页面移除，并受自动清理规则影响。"))) return;
     const result = await api(`/api/artifacts/${encodeURIComponent(id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value }) });
     state.feedbackRevision++;
     observeArtifactRevision(state, result.revision ?? result.artifact_revision);
     if (revision === state.artifactRevision) { if (matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); replaceArtifact(result.artifact); }
-  } catch (error) { const message = error.status === 404 || error.status === 410 ? '图片已清理或不可用，正在刷新列表。' : error.message; if (view === 'liked') state.likedError = message; else state.generatedMutationError = message; }
+  } catch (error) { const message = error.status === 404 || error.status === 410 ? t("图片已清理或不可用，正在刷新列表。") : error.message; if (view === 'liked') state.likedError = message; else state.generatedMutationError = message; }
   finally { state.feedbackPending = false; renderArtifacts(); await refresh(true); }
 }
 async function clearGenerated() {
@@ -572,7 +584,7 @@ async function clearGenerated() {
     state.generatedError = '';
   } catch (error) {
     if (committed) { state.generatedArtifacts = []; state.pages.generate.loaded = false; state.generatedLoaded = false; }
-    state.generatedMutationError = `${committed ? '图片已处理，列表刷新失败' : '清理失败'}：${error.message}`;
+    state.generatedMutationError = `${committed ? t("图片已处理，列表刷新失败") : t("清理失败")}：${error.message}`;
   } finally {
     state.generatedMutationPending = false; renderGeneratedResults(); await refresh(true);
   }
@@ -621,10 +633,10 @@ async function refresh(force = false) {
   }
   catch (error) {
     if (view === 'liked' && filterVersion !== likedFilterVersion) return;
-    if (view === 'generate') { state.generatedError = `同步失败：${error.message}`; renderGeneratedResults(); }
-    if (view === 'liked') { state.likedError = `同步失败：${error.message}`; renderLikedResults(); }
+    if (view === 'generate') { state.generatedError = tr`同步失败：${error.message}`; renderGeneratedResults(); }
+    if (view === 'liked') { state.likedError = tr`同步失败：${error.message}`; renderLikedResults(); }
     if (nextImageWait.current) { nextImageWait.cancel(); roamBlocked = !isTemporaryRefillError(error); renderArtifacts(); }
-    showNotice(`同步失败：${error.message}`, true);
+    showNotice(tr`同步失败：${error.message}`, true);
   }
   finally { state.polling = false; if (state.refreshQueued) { state.refreshQueued = false; await refresh(true); } else refillRoam(); }
 }
@@ -635,7 +647,7 @@ async function loadMore() {
   const artifactRevision = state.artifactRevision;
   const filterVersion = likedFilterVersion;
   try { const result = await api(artifactPath(view, page.cursor, state.likedTags)); if (!state.feedbackPending && !state.generatedMutationPending && revision === state.feedbackRevision && (view !== 'liked' || filterVersion === likedFilterVersion)) { const applied = applyPage(view, result, { append: true, requestRevision: artifactRevision }); if (applied.refresh) await refresh(true); } }
-  catch (error) { if (view === 'liked' && filterVersion !== likedFilterVersion) return; if (view === 'generate') state.generatedError = `加载失败：${error.message}`; if (view === 'liked') state.likedError = `加载失败：${error.message}`; showNotice(`加载失败：${error.message}`, true); }
+  catch (error) { if (view === 'liked' && filterVersion !== likedFilterVersion) return; if (view === 'generate') state.generatedError = tr`加载失败：${error.message}`; if (view === 'liked') state.likedError = tr`加载失败：${error.message}`; showNotice(tr`加载失败：${error.message}`, true); }
   finally { state.loadingMore = false; renderArtifacts(); }
 }
 function loadBackend(id) {
@@ -644,17 +656,17 @@ function loadBackend(id) {
   $('workflow-mode').disabled = false;
   const backend = state.backends.find((item) => item.id === id);
   workflowInputOptions = {};
-  $('backend-name').value = backend?.name || '本机 ComfyUI'; $('backend-kind').value = backend?.kind || 'comfyui';
+  $('backend-name').value = backend?.name || t("本机 ComfyUI"); $('backend-kind').value = backend?.kind || 'comfyui';
   $('backend-url').value = backend?.base_url || 'http://127.0.0.1:8188';
   hasSavedApiKey = !!backend?.has_api_key;
   $('backend-key').value = hasSavedApiKey ? API_KEY_MASK : '';
   $('backend-key').setCustomValidity('');
-  describeAction($('key-state'), hasSavedApiKey ? '已保存密钥。保留遮罩不修改，清空并保存可移除。' : '可选。本机 ComfyUI 通常无需密钥。');
+  describeAction($('key-state'), hasSavedApiKey ? t("已保存密钥。保留遮罩不修改，清空并保存可移除。") : t("可选。本机 ComfyUI 通常无需密钥。"));
   $('workflow-json').value = backend?.workflow ? JSON.stringify(backend.workflow, null, 2) : '';
   $('workflow-mode').value = backend?.workflow_id && state.workflows.some((item) => item.id === backend.workflow_id) ? `saved:${backend.workflow_id}` : configuredWorkflowMode(backend);
   state.workflowId = backend?.workflow_id || null;
   state.workflowRevision = backend?.workflow_revision || null;
-  $('default-checkpoint').replaceChildren(option('', '自动选择第一个可用模型'));
+  $('default-checkpoint').replaceChildren(translatedOption('', "自动选择第一个可用模型"));
   if (backend?.default_checkpoint) { $('default-checkpoint').append(option(backend.default_checkpoint, backend.default_checkpoint)); $('default-checkpoint').value = backend.default_checkpoint; }
   inlineStatus('model-note', '', false);
   $('settings-result').hidden = true;
@@ -675,7 +687,7 @@ function updateWorkflowControls() {
   $('binding-positive').required = needsBindings; $('binding-negative').required = needsBindings;
   $('workflow-name').required = custom;
   $('delete-workflow').disabled = !state.workflowId || !state.workflows.some(item => item.id === state.workflowId);
-  if (custom && !needsBindings) { $('workflow-error').textContent = '请导入 API 工作流，或从默认文生图读取节点参数。'; $('workflow-error').classList.remove('valid'); }
+  if (custom && !needsBindings) { setStatusText('workflow-error', () => t("请导入 API 工作流，或从默认文生图读取节点参数。")); $('workflow-error').classList.remove('valid'); }
 }
 function bindingValue(binding) { return binding ? JSON.stringify([String(binding.node_id), binding.input]) : ''; }
 function parseBinding(value) { if (!value) return null; const [node_id, input] = JSON.parse(value); return { node_id, input }; }
@@ -692,7 +704,7 @@ function setWorkflowPanelMode(mode, validate = true) {
     const invalidParameter = $('node-parameter-fields').querySelector(':invalid');
     if (invalidParameter) {
       invalidParameter.reportValidity(); invalidParameter.focus();
-      settingsNotice('请先修正节点参数中的无效输入，再切换 JSON。', true);
+      settingsNotice(() => t("请先修正节点参数中的无效输入，再切换 JSON。"), true);
       return;
     }
   }
@@ -705,7 +717,7 @@ function setWorkflowPanelMode(mode, validate = true) {
   $('node-parameter-fields').hidden = json;
   $('workflow-json-editor').hidden = !json;
   $('toggle-workflow-json').setAttribute('aria-pressed', String(json));
-  describeAction($('toggle-workflow-json'), json ? '返回节点参数' : '编辑 API 工作流 JSON');
+  describeAction($('toggle-workflow-json'), json ? t("返回节点参数") : t("编辑 API 工作流 JSON"));
 }
 function updateBindings(bindings = null, outputNodes = null) {
   const previous = bindings || { positive: parseBinding($('binding-positive').value), negative: parseBinding($('binding-negative').value), seed: parseBinding($('binding-seed').value) };
@@ -714,7 +726,7 @@ function updateBindings(bindings = null, outputNodes = null) {
   try {
     const workflow = readWorkflow(); let textCount = 0;
     const retained = retainedWorkflowBindings(workflow, previous, previousOutputs);
-    positive.replaceChildren(option('', '选择正向 text 输入')); negative.replaceChildren(option('', '选择负向 text 输入')); seed.replaceChildren(option('', '不绑定')); outputs.replaceChildren();
+    positive.replaceChildren(translatedOption('', "选择正向 text 输入")); negative.replaceChildren(translatedOption('', "选择负向 text 输入")); seed.replaceChildren(translatedOption('', "不绑定")); outputs.replaceChildren();
     for (const [nodeId, node] of Object.entries(workflow)) {
       if (!node?.class_type || !node?.inputs) continue;
       const label = `${nodeId} · ${node._meta?.title || node.class_type}`;
@@ -727,15 +739,15 @@ function updateBindings(bindings = null, outputNodes = null) {
     }
     positive.value = bindingValue(retained.bindings.positive); negative.value = bindingValue(retained.bindings.negative); seed.value = bindingValue(retained.bindings.seed);
     [...outputs.options].forEach((item) => { item.selected = retained.output_nodes.includes(item.value); });
-    $('workflow-error').textContent = `${Object.keys(workflow).length} 个节点 · ${textCount} 个文本输入`;
+    setStatusText('workflow-error', () => tr`${Object.keys(workflow).length} 个节点 · ${textCount} 个文本输入`);
     $('workflow-error').classList.add('valid');
     $('workflow-json').setAttribute('aria-invalid', 'false');
   } catch (error) {
-    $('workflow-error').textContent = $('workflow-json').value.trim() ? error.message : '支持从 ComfyUI 导出的 API 工作流。';
+    setStatusText('workflow-error', () => $('workflow-json').value.trim() ? error.message : t("支持从 ComfyUI 导出的 API 工作流。"));
     $('workflow-error').classList.remove('valid');
     $('workflow-json').setAttribute('aria-invalid', 'true');
     if (bindings !== null) {
-      positive.replaceChildren(option('', '选择正向 text 输入')); negative.replaceChildren(option('', '选择负向 text 输入')); seed.replaceChildren(option('', '不绑定')); outputs.replaceChildren();
+      positive.replaceChildren(translatedOption('', "选择正向 text 输入")); negative.replaceChildren(translatedOption('', "选择负向 text 输入")); seed.replaceChildren(translatedOption('', "不绑定")); outputs.replaceChildren();
     }
     $('node-parameter-fields').replaceChildren();
     return false;
@@ -773,7 +785,7 @@ function renderNodeParameters() {
         try {
           const updated = changeNodeInput(readWorkflow(), node.id, input.name, input.kind === 'boolean' ? control.checked : control.value, input.kind);
           control.setCustomValidity(''); $('workflow-json').value = JSON.stringify(updated, null, 2);
-          $('workflow-error').textContent = '草稿已更新，保存后生效。'; $('workflow-error').classList.add('valid');
+          setStatusText('workflow-error', () => t("草稿已更新，保存后生效。")); $('workflow-error').classList.add('valid');
         } catch (error) { control.setCustomValidity(error.message); }
       });
       decorateElement(control, control.tagName.toLowerCase(), { type: control.type }); label.append(control); grid.append(label);
@@ -802,12 +814,12 @@ async function currentDefaultTemplate() {
   const draft = { ...connectionDraft(), default_checkpoint:checkpoint };
   const id = editedId === '__new__' ? 'new' : editedId;
   const result = await api(`/api/backends/${encodeURIComponent(id)}/template`, { method:'POST', body:JSON.stringify(draft) });
-  if (workflowLoadRevision !== version || $('edit-backend').value !== editedId || $('backend-url').value !== url || $('default-checkpoint').value !== checkpoint) throw new Error('后端、工作流或模型选择已变化，请重新读取默认节点参数。');
+  if (workflowLoadRevision !== version || $('edit-backend').value !== editedId || $('backend-url').value !== url || $('default-checkpoint').value !== checkpoint) throw new Error(t("后端、工作流或模型选择已变化，请重新读取默认节点参数。"));
   return result;
 }
 
 function renderWorkflowLibrary(selected = $('workflow-mode').value) {
-  $('workflow-mode').replaceChildren(option('default', '默认文生图'), ...state.workflows.map((record) => option(`saved:${record.id}`, record.name)), option('custom', '自定义 API 工作流'));
+  $('workflow-mode').replaceChildren(translatedOption('default', "默认文生图"), ...state.workflows.map((record) => option(`saved:${record.id}`, record.name)), translatedOption('custom', "自定义 API 工作流"));
   $('workflow-mode').value = [...$('workflow-mode').options].some((item) => item.value === selected) ? selected : 'custom';
   updateWorkflowControls();
 }
@@ -829,7 +841,7 @@ async function selectWorkflow() {
     return;
   }
   const select = $('workflow-mode'); select.disabled = true;
-  settingsNotice('正在读取工作流…');
+  settingsNotice(() => t("正在读取工作流…"));
   try {
     const record = await api(`/api/workflows/${encodeURIComponent(selected.slice(6))}`);
     if (workflowLoadRevision !== revision) return;
@@ -846,7 +858,7 @@ async function selectWorkflow() {
 }
 function connectionDraft() {
   const draft = { name: $('backend-name').value.trim(), kind: $('backend-kind').value, base_url: $('backend-url').value.trim() };
-  if (!draft.name || !draft.base_url) throw new Error('请填写后端名称和 API 地址。');
+  if (!draft.name || !draft.base_url) throw new Error(t("请填写后端名称和 API 地址。"));
   Object.assign(draft, apiKeyFields($('backend-key').value, hasSavedApiKey));
   return draft;
 }
@@ -855,12 +867,12 @@ function draftBackend({ saveWorkflow = false } = {}) {
   draft.workflow_mode = $('workflow-mode').value === 'default' ? 'default' : 'custom';
   if (draft.workflow_mode === 'default') { draft.default_checkpoint = $('default-checkpoint').value; return draft; }
   const invalidParameter = $('node-parameters').querySelector(':invalid');
-  if (invalidParameter) { setNodeParametersExpanded(true); setWorkflowPanelMode('parameters', false); invalidParameter.reportValidity(); invalidParameter.focus(); throw new Error('请先修正节点参数中的无效输入。'); }
+  if (invalidParameter) { setNodeParametersExpanded(true); setWorkflowPanelMode('parameters', false); invalidParameter.reportValidity(); invalidParameter.focus(); throw new Error(t("请先修正节点参数中的无效输入。")); }
   const workflow = readWorkflow();
   const positive = parseBinding($('binding-positive').value), negative = parseBinding($('binding-negative').value), seed = parseBinding($('binding-seed').value);
-  if (!positive) throw new Error('请选择正向提示词输入。');
-  if (!negative) throw new Error('请选择负向提示词输入，以便准确记录本次实际使用的提示词。');
-  if (bindingValue(positive) === bindingValue(negative)) throw new Error('正向和负向提示词不能绑定同一个输入。');
+  if (!positive) throw new Error(t("请选择正向提示词输入。"));
+  if (!negative) throw new Error(t("请选择负向提示词输入，以便准确记录本次实际使用的提示词。"));
+  if (bindingValue(positive) === bindingValue(negative)) throw new Error(t("正向和负向提示词不能绑定同一个输入。"));
   const custom = { ...draft, workflow, bindings: { positive, negative, seed }, output_nodes: [...$('output-nodes').selectedOptions].map((item) => item.value) };
   return saveWorkflow ? { ...custom, ...workflowSaveFields(custom, $('workflow-name').value, state.workflowId ? { id: state.workflowId, revision: state.workflowRevision } : null) } : custom;
 }
@@ -870,8 +882,8 @@ function openSettings() {
 }
 function renderRoamBackends() {
   const selected = $('roam-backend').value;
-  $('roam-backend').replaceChildren(option('', '自动选择后端'), ...state.backends.map(item => option(item.id, item.name)));
-  if (selected && !state.backends.some(item => item.id === selected)) $('roam-backend').append(option(selected, '已移除的后端，请重新选择'));
+  $('roam-backend').replaceChildren(translatedOption('', "自动选择后端"), ...state.backends.map(item => option(item.id, item.name)));
+  if (selected && !state.backends.some(item => item.id === selected)) $('roam-backend').append(translatedOption(selected, "已移除的后端，请重新选择"));
   $('roam-backend').value = selected;
 }
 async function loadRoamConfigs() {
@@ -879,10 +891,10 @@ async function loadRoamConfigs() {
     const selected = $('roam-config').value;
     const listing = await api('/api/candidate/presets');
     const presets = listing.presets;
-    $('roam-config').replaceChildren(option('', '自动选择预设'), ...presets.map(item => option(item.id, item.name)));
-    if (selected && !presets.some(item => item.id === selected)) $('roam-config').append(option(selected, '已移除的预设，请重新选择'));
+    $('roam-config').replaceChildren(translatedOption('', "自动选择预设"), ...presets.map(item => option(item.id, item.name)));
+    if (selected && !presets.some(item => item.id === selected)) $('roam-config').append(translatedOption(selected, "已移除的预设，请重新选择"));
     $('roam-config').value = selected;
-  } catch (error) { inlineStatus('roam-result', `预设读取失败：${error.message}`); }
+  } catch (error) { inlineStatus('roam-result', () => tr`预设读取失败：${error.message}`); }
 }
 const roamFields = {
   recommendation_strength: 'roam-recommendation-strength', strong_candidate_multiplier: 'roam-strong-candidate-multiplier',
@@ -955,11 +967,11 @@ async function loadRoamSettings({ preserveDraft = false } = {}) {
     if (roamSettingsSaving || version !== roamVersion) return;
     await applyRoamSettings(settings, preserveDraft ? [] : Object.keys(roamFields));
     renderRoamBackends(); await loadRoamConfigs();
-  } catch (error) { inlineStatus('roam-result', `设置读取失败：${error.message}`); }
+  } catch (error) { inlineStatus('roam-result', () => tr`设置读取失败：${error.message}`); }
   finally { roamSettingsLoading = false; }
 }
 async function saveRoamSettings(patch) {
-  if (roamSettingsSaving) throw new Error('正在保存漫游设置，请稍候。');
+  if (roamSettingsSaving) throw new Error(t("正在保存漫游设置，请稍候。"));
   roamSettingsSaving = true;
   const switched = roamGenerationChanged(roamSettings, { ...roamSettings, ...patch });
   if (switched) beginRoamSwitch();
@@ -981,7 +993,7 @@ $('roam-form').addEventListener('submit', async event => {
   try {
     const payload = { recommendation_strength: $('roam-recommendation-strength').value, strong_candidate_multiplier: strongCandidateMultiplier($('roam-strong-candidate-multiplier').value), candidate_count: candidateCount($('roam-candidate-count').value), prefetch_count: prefetchCount($('roam-prefetch-count').value), max_history_images: maxHistoryImages($('roam-max-history-images').value), backend_id: $('roam-backend').value, preset_id: $('roam-config').value, playback_interval_seconds: playbackInterval($('roam-playback-interval').value), liked_tags_only: $('roam-liked-tags-only').checked, prompt_mode: $('roam-prompt-mode').value };
     await saveRoamSettings(payload);
-    inlineStatus('roam-result', '已保存漫游设置。');
+    inlineStatus('roam-result', () => t("已保存漫游设置。"));
     await refresh(true);
   } catch (error) { inlineStatus('roam-result', error.message); }
   finally { $('roam-save').disabled = false; $('roam-fields').disabled = false; }
@@ -996,20 +1008,20 @@ async function bootstrap() {
     renderBackends(); renderJobs(); renderArtifacts();
     if (data.roam_settings) await applyRoamSettings(data.roam_settings, Object.keys(roamFields));
     if (viewingHistory()) jobPager.load();
-    $('data-directory').textContent = state.dataDirectory || '服务尚未返回数据目录';
-    $('database-path').textContent = state.databasePath || '服务尚未返回数据库路径';
+    $('data-directory').textContent = state.dataDirectory || t("服务尚未返回数据目录");
+    $('database-path').textContent = state.databasePath || t("服务尚未返回数据库路径");
     await loadWorkflowLibrary();
     loadBackend($('edit-backend').value);
     if (!roamSettingsLoaded) await loadRoamSettings();
-  } catch (error) { showNotice(`无法读取平台数据：${error.message}`, true); }
+  } catch (error) { showNotice(tr`无法读取平台数据：${error.message}`, true); }
 }
 
 $('empty-settings').addEventListener('click', () => { if (state.view === 'feed' && state.backends.length) setView('settings/roam'); else openSettings(); });
 $('empty-generate').addEventListener('click', requestNextRoamImage);
 async function loadHistorySettings() {
   historyLoading = true;
-  $('history-fields').disabled = true; $('history-save').disabled = true; $('history-save').textContent = '保存设置';
-  historyNotice('正在读取清理设置…');
+  $('history-fields').disabled = true; $('history-save').disabled = true; $('history-save').textContent = t("保存设置");
+  historyNotice(() => t("正在读取清理设置…"));
   try {
     const result = await api('/api/settings/history');
     $('history-retention-days').value = String(retentionDays(result.unliked_retention_days));
@@ -1017,8 +1029,8 @@ async function loadHistorySettings() {
     historyLoaded = true; historyNotice('');
   } catch (error) {
     try { retentionDays($('history-retention-days').value); } catch { $('history-retention-days').value = '1'; }
-    $('history-save').textContent = '重新保存';
-    historyNotice(`读取失败：${error.message}。配置损坏时过期清理会暂停；可修改天数并重新保存以修复设置。`, true);
+    $('history-save').textContent = t("重新保存");
+    historyNotice(() => tr`读取失败：${error.message}。配置损坏时过期清理会暂停；可修改天数并重新保存以修复设置。`, true);
   } finally { historyLoading = false; $('history-fields').disabled = false; $('history-save').disabled = false; }
 }
 $('history-form').addEventListener('submit', async (event) => {
@@ -1028,9 +1040,9 @@ $('history-form').addEventListener('submit', async (event) => {
     $('history-save').disabled = true; $('history-fields').disabled = true;
     const result = await api('/api/settings/history', { method: 'PUT', body: JSON.stringify({ unliked_retention_days: days }) });
     $('history-retention-days').value = String(retentionDays(result.unliked_retention_days));
-    $('history-save').textContent = '保存设置'; historyLoaded = true;
+    $('history-save').textContent = t("保存设置"); historyLoaded = true;
     if (observeArtifactRevision(state, result.artifact_revision)) renderArtifacts();
-    historyNotice(days ? `已保存：未标记喜欢的图片保留 ${days} 天。` : '已关闭自动清理。');
+    historyNotice(() => days ? tr`已保存：未标记喜欢的图片保留 ${days} 天。` : t("已关闭自动清理。"));
     await refresh(true);
   } catch (error) { historyNotice(error.message, true); }
   finally { $('history-save').disabled = false; $('history-fields').disabled = false; }
@@ -1048,7 +1060,7 @@ $('workflow-json').addEventListener('input', () => {
   try {
     readWorkflow();
     $('workflow-json').setAttribute('aria-invalid', 'false');
-    $('workflow-error').textContent = 'JSON 草稿已更新，保存后生效。';
+    setStatusText('workflow-error', () => t("JSON 草稿已更新，保存后生效。"));
     $('workflow-error').classList.add('valid');
   } catch (error) {
     $('workflow-json').setAttribute('aria-invalid', 'true');
@@ -1058,14 +1070,14 @@ $('workflow-json').addEventListener('input', () => {
 });
 $('workflow-json').addEventListener('change', () => { updateBindings(); updateWorkflowControls(); });
 $('edit-default-parameters').addEventListener('click', async () => {
-  const button = $('edit-default-parameters'); button.disabled = true; settingsNotice('正在读取默认工作流参数…');
-  try { const template = await currentDefaultTemplate(); applyWorkflowDraft(template, template.input_options || {}); setNodeParametersExpanded(true); settingsNotice('已展开节点参数，保存后生效。'); }
+  const button = $('edit-default-parameters'); button.disabled = true; settingsNotice(() => t("正在读取默认工作流参数…"));
+  try { const template = await currentDefaultTemplate(); applyWorkflowDraft(template, template.input_options || {}); setNodeParametersExpanded(true); settingsNotice(() => t("已展开节点参数，保存后生效。")); }
   catch (error) { settingsNotice(error.message, true); }
   finally { button.disabled = false; }
 });
 $('reload-workflows').addEventListener('click', async () => {
   const button = $('reload-workflows'); button.disabled = true;
-  try { await loadWorkflowLibrary(); settingsNotice('工作流列表已刷新。'); }
+  try { await loadWorkflowLibrary(); settingsNotice(() => t("工作流列表已刷新。")); }
   catch (error) { settingsNotice(error.message, true); }
   finally { button.disabled = false; }
 });
@@ -1073,7 +1085,7 @@ $('delete-workflow').addEventListener('click', async () => {
   const id = state.workflowId, revision = state.workflowRevision;
   const workflow = state.workflows.find(item => item.id === id);
   if (state.saving || !workflow || !revision) return;
-  if (!await confirmAction(`删除工作流「${workflow.name}」？已配置后端保留当前工作流参数，历史任务和图片保留。`)) return;
+  if (!await confirmAction(tr`删除工作流「${workflow.name}」？已配置后端保留当前工作流参数，历史任务和图片保留。`)) return;
   state.saving = true; $('settings-form').inert = true;
   try {
     await api(`/api/workflows/${encodeURIComponent(id)}`, { method: 'DELETE', body: JSON.stringify({ revision }) });
@@ -1084,20 +1096,20 @@ $('delete-workflow').addEventListener('click', async () => {
     });
     state.workflowId = null; state.workflowRevision = null; workflowLoadRevision++;
     renderWorkflowLibrary('custom'); renderBackends(); settingsDirty = true;
-    settingsNotice('工作流已删除，当前参数保留为自定义草稿。');
+    settingsNotice(() => t("工作流已删除，当前参数保留为自定义草稿。"));
   } catch (error) { settingsNotice(error.message, true); }
   finally { state.saving = false; $('settings-form').inert = false; }
 });
 $('delete-backend').addEventListener('click', async () => {
   const id = $('edit-backend').value, backend = state.backends.find(item => item.id === id);
   if (state.saving || !backend) return;
-  if (!await confirmAction(`删除后端配置「${backend.name}」？${settingsDirty ? '当前未保存的后端修改将放弃。' : ''}历史任务和图片保留，已有任务继续使用提交时的配置。`)) return;
+  if (!await confirmAction(tr`删除后端配置「${backend.name}」？${settingsDirty ? t("当前未保存的后端修改将放弃。") : ''}历史任务和图片保留，已有任务继续使用提交时的配置。`)) return;
   state.saving = true; $('settings-form').inert = true;
   try {
     await api(`/api/backends/${encodeURIComponent(id)}`, { method: 'DELETE', body: '{}' });
     state.backends = state.backends.filter(item => item.id !== id);
     renderBackends(); loadBackend($('edit-backend').value); renderArtifacts();
-    settingsNotice('后端配置已删除。');
+    settingsNotice(() => t("后端配置已删除。"));
   } catch (error) { settingsNotice(error.message, true); }
   finally { state.saving = false; $('settings-form').inert = false; }
 });
@@ -1118,7 +1130,7 @@ $('workflow-file').addEventListener('change', async (event) => {
   finally { event.target.value = ''; }
 });
 $('load-models').addEventListener('click', async () => {
-  const button = $('load-models'); button.disabled = true; inlineStatus('model-note', '正在读取模型…');
+  const button = $('load-models'); button.disabled = true; inlineStatus('model-note', () => t("正在读取模型…"));
   const editedId = $('edit-backend').value;
   const baseUrl = $('backend-url').value;
   try {
@@ -1127,16 +1139,16 @@ $('load-models').addEventListener('click', async () => {
     if ($('edit-backend').value !== editedId || $('backend-url').value !== baseUrl) return;
     const selected = $('default-checkpoint').value;
     const models = (result.models || []).filter((model) => typeof model === 'string');
-    $('default-checkpoint').replaceChildren(option('', '自动选择第一个可用模型'), ...models.map((model) => option(model, model)));
+    $('default-checkpoint').replaceChildren(translatedOption('', "自动选择第一个可用模型"), ...models.map((model) => option(model, model)));
     if (models.includes(selected)) $('default-checkpoint').value = selected;
-    inlineStatus('model-note', '后端没有可用模型，请在 ComfyUI 中配置。', !models.length);
-    button.dataset.tooltip = `刷新模型，当前 ${models.length} 个可用`;
-  } catch (error) { inlineStatus('model-note', `读取失败：${error.message}`); }
+    inlineStatus('model-note', () => t("后端没有可用模型，请在 ComfyUI 中配置。"), !models.length);
+    button.dataset.tooltip = tr`刷新模型，当前 ${models.length} 个可用`;
+  } catch (error) { inlineStatus('model-note', () => tr`读取失败：${error.message}`); }
   finally { button.disabled = false; }
 });
 $('test-backend').addEventListener('click', async () => {
-  const button = $('test-backend'); button.disabled = true; settingsNotice('正在测试连接…');
-  try { const draft = draftBackend(); const id = $('edit-backend').value === '__new__' ? 'new' : $('edit-backend').value; const result = await api(`/api/backends/${encodeURIComponent(id)}/check`, { method: 'POST', body: JSON.stringify(draft) }); settingsNotice(result.message || (result.ok ? '连接成功。' : '连接失败。'), !result.ok); if (id !== 'new' && result.ok) showBackendAvailability(true); }
+  const button = $('test-backend'); button.disabled = true; settingsNotice(() => t("正在测试连接…"));
+  try { const draft = draftBackend(); const id = $('edit-backend').value === '__new__' ? 'new' : $('edit-backend').value; const result = await api(`/api/backends/${encodeURIComponent(id)}/check`, { method: 'POST', body: JSON.stringify(draft) }); settingsNotice(result.message || (result.ok ? t("连接成功。") : t("连接失败。")), !result.ok); if (id !== 'new' && result.ok) showBackendAvailability(true); }
   catch (error) { settingsNotice(error.message, true); }
   finally { button.disabled = false; }
 });
@@ -1157,27 +1169,27 @@ $('settings-form').addEventListener('submit', async (event) => {
     updateGenerationHints();
     await loadWorkflowLibrary(backend.workflow_id ? `saved:${backend.workflow_id}` : 'default');
     loadBackend(backend.id); renderArtifacts();
-    settingsNotice(backend.workflow_name ? `后端与工作流「${backend.workflow_name}」已保存。` : '后端已保存。');
+    settingsNotice(() => backend.workflow_name ? tr`后端与工作流「${backend.workflow_name}」已保存。` : t("后端已保存。"));
   } catch (error) { settingsNotice(error.message, true); }
   finally { state.saving = false; $('save-backend').disabled = false; $('settings-form').inert = false; }
 });
 
 $('generate-form').addEventListener('submit', async (event) => {
   event.preventDefault(); if (composeBusy) return; setComposeBusy(true);
-  generateFeedback.show('pending', '正在提交…');
+  generateFeedback.show('pending', t("正在提交…"));
   let operation;
   try {
-    const seed = Number($('seed').value); if (!$('seed').value.trim() || !Number.isSafeInteger(seed) || seed < -1) throw new Error('种子须为 -1 或非负安全整数。');
+    const seed = Number($('seed').value); if (!$('seed').value.trim() || !Number.isSafeInteger(seed) || seed < -1) throw new Error(t("种子须为 -1 或非负安全整数。"));
     const count = generationCount($('generation-count').value);
     const repetitions = generationRepetitions($('generation-repetitions').value);
     const automatic = $('prompt-source').value === 'rules' && $('auto-prompts').checked;
     const rule = automatic ? readRuleGeneration() : null;
     const payload = { backend_id: $('generate-backend').value, positive: $('positive').value, negative: $('negative').value, seed, count, repetitions,
       ...(rule ? { candidate: { ...rule.payload, seed_control: rule.current.seedControl, step_control: rule.current.stepControl } } : {}) };
-    if (!payload.positive.trim() && !automatic) throw new Error('请输入正向提示词，或使用共现候选生成提示词。');
+    if (!payload.positive.trim() && !automatic) throw new Error(t("请输入正向提示词，或使用共现候选生成提示词。"));
     const decision = submissionDecision(payload, uncertainRequests, automatic);
     const backend = state.backends.find((item) => item.id === $('generate-backend').value);
-    if (!automatic && payload.negative.trim() && !backend?.bindings?.negative) throw new Error('当前后端未绑定负向输入。请清空负向提示词，或在后端设置中指定负向绑定。');
+    if (!automatic && payload.negative.trim() && !backend?.bindings?.negative) throw new Error(t("当前后端未绑定负向输入。请清空负向提示词，或在后端设置中指定负向绑定。"));
     operation = decision.retry || requestIdentity(payload, uncertainRequests, () => crypto.randomUUID());
     const hasOtherUncertain = uncertainRequests.size && !uncertainRequests.has(operation.key);
     uncertainRequests.set(operation.key, operation);
@@ -1192,26 +1204,26 @@ $('generate-form').addEventListener('submit', async (event) => {
     const submitted = result.jobs || [result.job];
     const submittedIds = new Set(submitted.map(job => job.id));
     state.jobs = [...submitted, ...state.jobs.filter((job) => !submittedIds.has(job.id))]; renderJobs();
-    generateFeedback.show(hasOtherUncertain ? 'warning' : 'success', hasOtherUncertain ? '已提交 · 有待确认任务' : '已提交',
-      `已提交 ${repetitions} 轮，每轮 ${count} 个生成任务；完成后在生成结果中查看。${hasOtherUncertain ? '此前提交的结果仍待确认，请查看任务。' : ''}`);
+    generateFeedback.show(hasOtherUncertain ? 'warning' : 'success', hasOtherUncertain ? t("已提交 · 有待确认任务") : t("已提交"),
+      tr`已提交 ${repetitions} 轮，每轮 ${count} 个生成任务；完成后在生成结果中查看。${hasOtherUncertain ? t("此前提交的结果仍待确认，请查看任务。") : ''}`);
     refresh(true);
   } catch (error) {
     const uncertain = operation && !(error.status >= 400 && error.status < 500);
     if (operation && !uncertain) uncertainRequests.delete(operation.key);
-    generateFeedback.show(uncertain ? 'warning' : 'error', uncertain ? '结果待确认 · 重试' : '提交失败 · 重试',
-      uncertain ? `提交结果尚未确认：${error.message}。相同内容再次点击生成会复用请求 ID，避免重复任务；修改内容则提交新任务。` : error.message);
+    generateFeedback.show(uncertain ? 'warning' : 'error', uncertain ? t("结果待确认 · 重试") : t("提交失败 · 重试"),
+      uncertain ? tr`提交结果尚未确认：${error.message}。相同内容再次点击生成会复用请求 ID，避免重复任务；修改内容则提交新任务。` : error.message);
   }
   finally { setComposeBusy(false); }
 });
 $('cancel-pending').addEventListener('click', async () => {
   if (composeBusy) return;
-  setComposeBusy(true); cancelPendingFeedback.show('pending', '正在取消…');
+  setComposeBusy(true); cancelPendingFeedback.show('pending', t("正在取消…"));
   try {
     const result = await api('/api/jobs/cancel-pending', { method: 'POST', body: '{}' });
-    cancelPendingFeedback.show('success', result.cancelled_count ? `已取消 ${result.cancelled_count} 个` : '暂无待取消任务',
-      `已取消 ${result.cancelled_count} 个待执行的生成任务；已开始的任务和漫游预取保持不变。`);
+    cancelPendingFeedback.show('success', result.cancelled_count ? tr`已取消 ${result.cancelled_count} 个` : t("暂无待取消任务"),
+      tr`已取消 ${result.cancelled_count} 个待执行的生成任务；已开始的任务和漫游预取保持不变。`);
     await refresh(true);
-  } catch (error) { cancelPendingFeedback.show('error', '取消失败 · 重试', error.message); }
+  } catch (error) { cancelPendingFeedback.show('error', t("取消失败 · 重试"), error.message); }
   finally { setComposeBusy(false); }
 });
 $('prompt-source').addEventListener('change', async () => { updateRuleControls(); if ($('prompt-source').value === 'rules' && !ruleConfigsLoaded) await loadRuleConfigs(); });
@@ -1220,17 +1232,17 @@ $('auto-prompts').addEventListener('change', updateRuleControls);
 $('reload-rule-configs').addEventListener('click', () => loadRuleConfigs(true));
 $('generate-prompts').addEventListener('click', async () => {
   if (composeBusy) return; setComposeBusy(true);
-  promptFeedback.show('pending', '正在抽取…');
-  try { await generateRulePrompts(); promptFeedback.show('success', '已抽取'); }
-  catch (error) { inlineStatus('rule-generation-note', '', false); promptFeedback.show('error', '抽取失败 · 重试', `抽取失败：${error.message}`); }
+  promptFeedback.show('pending', t("正在抽取…"));
+  try { await generateRulePrompts(); promptFeedback.show('success', t("已抽取")); }
+  catch (error) { inlineStatus('rule-generation-note', '', false); promptFeedback.show('error', t("抽取失败 · 重试"), tr`抽取失败：${error.message}`); }
   finally { setComposeBusy(false); }
 });
 for (const id of ['positive', 'negative']) $(id).addEventListener('input', () => {
   const wasAutomatic = $('prompt-source').value === 'rules' && $('auto-prompts').checked;
   $('auto-prompts').checked = afterPromptEdit($('prompt-source').value, $('auto-prompts').checked);
   if ($('prompt-source').value === 'rules') {
-    inlineStatus('rule-generation-note', wasAutomatic ? '自动抽取已关闭，使用当前文本。' : '使用当前文本。');
-    $('rule-generation-note').dataset.tooltip = '抽取报告对应编辑前的结果，重新勾选自动抽取可恢复共现生成。';
+    inlineStatus('rule-generation-note', () => wasAutomatic ? t("自动抽取已关闭，使用当前文本。") : t("使用当前文本。"));
+    $('rule-generation-note').dataset.tooltip = t("抽取报告对应编辑前的结果，重新勾选自动抽取可恢复共现生成。");
   }
   updateRuleControls();
 });
@@ -1292,7 +1304,7 @@ updateRuleControls();
 let realtimeConnected = false;
 let eventSource;
 function syncTheme() {
-  return loadTheme().catch(error => document.dispatchEvent(new CustomEvent('pictide:theme-error', { detail: `主题读取失败：${error.message}` })));
+  return loadTheme().catch(error => document.dispatchEvent(new CustomEvent('pictide:theme-error', { detail: tr`主题读取失败：${error.message}` })));
 }
 function connectEvents() {
   if (!window.EventSource || eventSource) return;
@@ -1325,3 +1337,20 @@ setInterval(() => { if (!realtimeConnected) refresh(); }, 2000);
 
 // Preset changes refresh selectors without resetting generator counters or manual drafts.
 document.addEventListener('pictide:candidate-presets-changed', () => { loadRuleConfigs(); if (roamSettingsLoaded) loadRoamConfigs(); });
+
+
+document.addEventListener('pictide:language-changed', () => queueMicrotask(() => {
+  $('view-title').textContent = t(viewTitles[state.view]);
+  const availability = $('backend-status').dataset.availability;
+  showBackendAvailability(availability === 'available', availability === 'pending');
+  for (const item of document.querySelectorAll('option[data-i18n-key]')) item.textContent = t(item.dataset.i18nKey);
+  updateGenerationHints();
+  $('data-directory').textContent = state.dataDirectory || t('服务尚未返回数据目录');
+  $('database-path').textContent = state.databasePath || t('服务尚未返回数据库路径');
+  for (const [id, message] of localizedMessages) if ($(id)) $(id).textContent = message();
+  jobsSignature = '';
+  renderJobPage(jobPager.state);
+  renderArtifacts();
+  renderGeneratedResults();
+  renderLikedResults();
+}));

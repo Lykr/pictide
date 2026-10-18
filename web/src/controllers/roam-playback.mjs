@@ -1,7 +1,8 @@
+import { t, tr, locale } from '../i18n/index.mjs';
 export function playbackInterval(value) {
-  if (!['number', 'string'].includes(typeof value) || String(value).trim() === '') throw new Error('请输入展示秒数。');
+  if (!['number', 'string'].includes(typeof value) || String(value).trim() === '') throw new Error(t("请输入展示秒数。"));
   const seconds = Number(value);
-  if (!Number.isInteger(seconds) || seconds < 1 || seconds > 600) throw new Error('展示时间须为 1–600 秒之间的整数。');
+  if (!Number.isInteger(seconds) || seconds < 1 || seconds > 600) throw new Error(t("展示时间须为 1–600 秒之间的整数。"));
   return seconds;
 }
 

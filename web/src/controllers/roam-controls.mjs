@@ -1,32 +1,33 @@
+import { t, tr, locale } from '../i18n/index.mjs';
 export function prefetchCount(value) {
-  if (!['number', 'string'].includes(typeof value)) throw new Error('请输入有效的预取数量。');
-  if (typeof value === 'string' && !value.trim()) throw new Error('请输入预取数量。');
+  if (!['number', 'string'].includes(typeof value)) throw new Error(t("请输入有效的预取数量。"));
+  if (typeof value === 'string' && !value.trim()) throw new Error(t("请输入预取数量。"));
   const count = Number(value);
-  if (!Number.isInteger(count) || count < 0 || count > 20) throw new Error('预取数量须为 0–20 之间的整数。');
+  if (!Number.isInteger(count) || count < 0 || count > 20) throw new Error(t("预取数量须为 0–20 之间的整数。"));
   return count;
 }
 
 export function candidateCount(value) {
-  if (!['number', 'string'].includes(typeof value) || typeof value === 'string' && !value.trim()) throw new Error('请输入候选组合数量。');
+  if (!['number', 'string'].includes(typeof value) || typeof value === 'string' && !value.trim()) throw new Error(t("请输入候选组合数量。"));
   const count = Number(value);
-  if (!Number.isInteger(count) || count < 1 || count > 20) throw new Error('候选组合数量须为 1–20 之间的整数。');
+  if (!Number.isInteger(count) || count < 1 || count > 20) throw new Error(t("候选组合数量须为 1–20 之间的整数。"));
   return count;
 }
 
 export function strongCandidateMultiplier(value) {
-  if (!['number', 'string'].includes(typeof value) || typeof value === 'string' && !value.trim()) throw new Error('请输入强力候选倍数。');
+  if (!['number', 'string'].includes(typeof value) || typeof value === 'string' && !value.trim()) throw new Error(t("请输入强力候选倍数。"));
   const count = Number(value);
-  if (!Number.isInteger(count) || count < 1 || count > 5) throw new Error('强力候选倍数须为 1–5 之间的整数。');
+  if (!Number.isInteger(count) || count < 1 || count > 5) throw new Error(t("强力候选倍数须为 1–5 之间的整数。"));
   return count;
 }
 
 export function maxHistoryImages(value) {
   if (!['number', 'string'].includes(typeof value) || typeof value === 'string' && !value.trim()) {
-    throw new Error('请输入历史图片数量上限。');
+    throw new Error(t("请输入历史图片数量上限。"));
   }
   const count = Number(value);
   if (!Number.isSafeInteger(count) || count < 0 || count > 100000) {
-    throw new Error('历史图片数量上限须为 0–100000 之间的整数，0 表示关闭数量清理。');
+    throw new Error(t("历史图片数量上限须为 0–100000 之间的整数，0 表示关闭数量清理。"));
   }
   return count;
 }

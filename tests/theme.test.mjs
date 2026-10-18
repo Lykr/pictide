@@ -42,3 +42,19 @@ test('system follows appearance changes; explicit themes stay fixed and the choi
   await loadTheme();
   assert.equal(currentTheme(), 'system');
 });
+
+
+test('an old settings read cannot undo a newly saved language', async () => {
+  const { applyLanguage, locale } = await import('../web/src/i18n/index.mjs');
+  const { loadTheme, saveLanguage } = await import('../web/src/controllers/theme.mjs');
+  applyLanguage('en');
+  let completeOldRead;
+  globalThis.fetch = (url, options) => options.method === 'PUT'
+    ? Promise.resolve({ ok: true, json: async () => ({ theme: 'system', language: 'zh-CN' }) })
+    : new Promise(resolve => { completeOldRead = resolve; });
+  const oldRead = loadTheme();
+  await saveLanguage('zh-CN');
+  completeOldRead({ ok: true, json: async () => ({ theme: 'system', language: 'en' }) });
+  await oldRead;
+  assert.equal(locale(), 'zh-CN');
+});

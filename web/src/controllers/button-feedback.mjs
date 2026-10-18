@@ -1,3 +1,4 @@
+import { t, messageKey } from '../i18n/index.mjs';
 // Controller-owned buttons keep their shadcn styling and disabled state.
 export function createButtonFeedback(button, createIcon, { delay = 2000, schedule = setTimeout, cancel = clearTimeout } = {}) {
   const original = [...button.childNodes];
@@ -11,7 +12,7 @@ export function createButtonFeedback(button, createIcon, { delay = 2000, schedul
     button.replaceChildren(...original);
     for (const [name, value] of saved) {
       if (value === null) button.removeAttribute(name);
-      else button.setAttribute(name, value);
+      else button.setAttribute(name, t(messageKey(value)));
     }
     delete button.dataset.feedback;
   }
@@ -25,7 +26,7 @@ export function createButtonFeedback(button, createIcon, { delay = 2000, schedul
     announcement.className = 'sr-only'; announcement.setAttribute('role', 'status');
     announcement.textContent = detail; button.append(announcement);
     button.dataset.feedback = status;
-    button.setAttribute('aria-label', `${label}：${detail}`);
+    button.setAttribute('aria-label', `${t(messageKey(label))}: ${detail}`);
     button.dataset.tooltip = detail;
     button.setAttribute('aria-busy', String(status === 'pending'));
     // Errors and uncertain submissions stay available until the next attempt.

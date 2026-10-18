@@ -28,7 +28,7 @@ function ArtifactImage({ item, label }: { item: GeneratedArtifact; label: string
 export function GeneratedResults({ collection = "generate" }: { collection?: "generate" | "liked" }) {
   const liked = collection === "liked";
   const prefix = liked ? "liked" : "generated";
-  const label = liked ? t("喜欢图片") : t("生成图片");
+  const label = liked ? t("喜欢图片") : t("生成的图片");
   const [state, setState] = useState(initial);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [privacyBlur, setPrivacyBlur] = useState(true);

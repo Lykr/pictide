@@ -1,9 +1,10 @@
+import { t, tr, locale } from '../i18n/index.mjs';
 import { mergeArtifacts } from './feed-controls.mjs';
 
 export function retentionDays(raw) {
   const value = Number(raw);
   if (!['string', 'number'].includes(typeof raw) || typeof raw === 'string' && !raw.trim() || !Number.isSafeInteger(value) || value < 0 || value > 3650) {
-    throw new Error('保留天数须为 0–3650 之间的整数，0 表示关闭自动清理。');
+    throw new Error(t("保留天数须为 0–3650 之间的整数，0 表示关闭自动清理。"));
   }
   return value;
 }

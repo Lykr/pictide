@@ -11,7 +11,7 @@ class GeneralSettings:
         schema = ("CREATE TABLE IF NOT EXISTS general_settings ("
                   "id INTEGER PRIMARY KEY CHECK(id=1), "
                   "theme TEXT NOT NULL CHECK(theme IN ('system','light','dark')), "
-                  "language TEXT NOT NULL CHECK(language IN ('system','zh-CN','en')))")
+                  "language TEXT NOT NULL)")
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             columns = {row[1] for row in db.execute("PRAGMA table_info(general_settings)")}

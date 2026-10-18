@@ -1,3 +1,4 @@
+import { t, tr, locale } from '../i18n/index.mjs';
 const decimalInputs = new Set(['cfg', 'denoise', 'strength', 'start_percent', 'end_percent']);
 
 export function editableNodeInputs(workflow, inputOptions = {}) {
@@ -13,11 +14,11 @@ export function editableNodeInputs(workflow, inputOptions = {}) {
 
 export function changeNodeInput(workflow, nodeId, name, rawValue, kind) {
   const node = workflow[nodeId];
-  if (!node || !Object.hasOwn(node.inputs, name) || Array.isArray(node.inputs[name])) throw new Error('该输入不是可编辑参数。');
+  if (!node || !Object.hasOwn(node.inputs, name) || Array.isArray(node.inputs[name])) throw new Error(t("该输入不是可编辑参数。"));
   let value = rawValue;
   if (kind === 'number' || kind === 'integer') {
     value = Number(rawValue);
-    if (!String(rawValue).trim() || !Number.isFinite(value) || (kind === 'integer' && !Number.isSafeInteger(value))) throw new Error(kind === 'integer' ? '请输入有效整数。' : '请输入有效数值。');
+    if (!String(rawValue).trim() || !Number.isFinite(value) || (kind === 'integer' && !Number.isSafeInteger(value))) throw new Error(kind === 'integer' ? t("请输入有效整数。") : t("请输入有效数值。"));
   } else if (kind === 'boolean') value = !!rawValue;
   node.inputs[name] = value;
   return workflow;
@@ -25,7 +26,7 @@ export function changeNodeInput(workflow, nodeId, name, rawValue, kind) {
 
 export function workflowRecord(draft, name) {
   const trimmed = name.trim();
-  if (!trimmed || trimmed.length > 120 || /[\\/\u0000-\u001f]/.test(trimmed)) throw new Error('请输入 1–120 字的工作流名称，不含路径或控制字符。');
+  if (!trimmed || trimmed.length > 120 || /[\\/\u0000-\u001f]/.test(trimmed)) throw new Error(t("请输入 1–120 字的工作流名称，不含路径或控制字符。"));
   return { name:trimmed, workflow:draft.workflow, bindings:draft.bindings, output_nodes:draft.output_nodes || [] };
 }
 

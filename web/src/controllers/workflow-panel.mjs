@@ -1,10 +1,11 @@
+import { t, tr, locale } from '../i18n/index.mjs';
 /** Parse the single JSON draft shared by both workflow editing views. */
 export function parseWorkflowDraft(source) {
   const text = source.trim();
-  if (!text) throw new Error('请导入 API 格式工作流。');
+  if (!text) throw new Error(t("请导入 API 格式工作流。"));
   const workflow = JSON.parse(text);
   if (!workflow || typeof workflow !== 'object' || Array.isArray(workflow) || workflow.nodes || !Object.values(workflow).some(node => node?.class_type && node?.inputs)) {
-    throw new Error('需要 ComfyUI「API 格式」工作流，而非普通画布 JSON。');
+    throw new Error(t("需要 ComfyUI「API 格式」工作流，而非普通画布 JSON。"));
   }
   return workflow;
 }
