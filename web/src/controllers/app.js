@@ -15,10 +15,12 @@ import { playbackInterval, createRoamPlayback } from './roam-playback.mjs';
 import { createImmersiveViewer } from './immersive-controls.mjs';
 import { bindTouchNavigation } from './touch-navigation.mjs';
 import { createJobPager } from './job-pages.mjs';
+import { createPageScroll } from './page-scroll.mjs';
 
 const $ = (id) => document.getElementById(id);
 const state = { backends: [], jobs: [], artifacts: [], view: 'feed', activeId: null, databasePath: '', polling: false, saving: false, currentImage: null, feedbackPending: false, feedbackRevision: 0 };
 const galleryCursors = createGalleryCursors();
+const pageScroll = createPageScroll();
 const nextImageWait = createNextImageWait();
 Object.defineProperty(state, 'activeId', { get: () => galleryCursors.get(state.view), set: id => selectImage(id) });
 let roamWindowLoading = false, roamBlocked = false, viewRevision = 0;
@@ -190,6 +192,7 @@ function setView(route, updateUrl = true) {
   const [requested, section] = String(route || 'feed').split('/');
   const view = Object.hasOwn(viewTitles, requested) ? requested : 'feed';
   if (state.feedbackPending) { showNotice('正在保存评价，请稍候。'); return; }
+  pageScroll.save();
   if (view !== state.view) { if (view !== 'feed') roamPlayback.pause(); immersive.leave(); viewRevision++; nextImageWait.cancel(); roamWindowLoading = false; }
   state.view = view;
   if (view === 'generate') { clearTimeout(noticeTimer); $('notice').hidden = true; }
@@ -221,6 +224,7 @@ function setView(route, updateUrl = true) {
   // Keep controllers and their inputs mounted: navigation never discards drafts.
   if (!editor) { renderArtifacts(); renderJobs(); if (galleryCursors.ready) refresh(true); }
   refillRoam();
+  pageScroll.restore(view);
 }
 function setSettingsSection(section, updateUrl = true) {
   if (!['general', 'backend', 'roam', 'history'].includes(section)) section = 'general';
