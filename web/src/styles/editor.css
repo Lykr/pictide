@@ -64,3 +64,21 @@
 .cooc-relations-tooltip th:first-child, .cooc-relations-tooltip td:first-child { text-align: left; overflow-wrap: anywhere; }
 .cooc-relations-tooltip td:not(:first-child) { white-space: nowrap; }
 .cooc-relations-tooltip .cooc-relations-note { display: block; margin-top: 8px; opacity: .7; line-height: 1.5; }
+
+@media (max-width: 640px) {
+  .editor-page .editor-tabs { margin-bottom: 12px; }
+  .editor-page .editor-tabs [data-slot=tabs-list] { width: 100%; }
+  .editor-page .editor-tabs [data-slot=tabs-trigger] { flex: 1; }
+  .cooc-preset-toolbar { gap: 4px; margin-bottom: 16px; }
+  .cooc-preset-toolbar > [data-slot=select-trigger] { flex: 1 1 150px; min-width: 0; }
+  .cooc-fixed-picker, .cooc-fixed-row { grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 0; }
+  .cooc-fixed-grid, .cooc-preview-grid { gap: 20px; }
+  .cooc-fixed-origin { right: 8px; font-size: 10px; }
+  .cooc-fixed-value input { padding-right: 70px; }
+  .cooc-tag { gap: 8px; padding-inline: 4px; }
+  .cooc-tag > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+  .cooc-preview-controls > .cooc-field { width: auto; flex: 1 1 140px; }
+  .cooc-preview-controls > [data-slot=button] { flex: 1; }
+  .cooc-library-filters { align-items: stretch; }
+  .cooc-library-filters > input { flex: 1 1 180px; min-width: 0; max-width: none; }
+}

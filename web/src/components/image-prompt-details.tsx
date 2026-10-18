@@ -1,3 +1,4 @@
+import { copyText } from "../lib/copy-text";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Copy, X } from "lucide-react";
 import { IconButton } from "./actions";
@@ -20,7 +21,7 @@ function CopyValue({ title, text, disabled = false }: { title: string; text: str
     const token = ++request.current;
     setStatus("copying");
     try {
-      await navigator.clipboard.writeText(text);
+      await copyText(text);
       if (request.current === token) setStatus("success");
     } catch {
       if (request.current === token) setStatus("error");

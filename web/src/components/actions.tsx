@@ -50,6 +50,7 @@ export function TooltipLayer() {
       setTarget({ node, text, rect: node.getBoundingClientRect(), container: node.closest<HTMLElement>("[data-slot=dialog-content],dialog[open],.image-card.immersive") ?? document.body });
     };
     const over = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
       if (event.target instanceof Element && event.target.closest("#pictide-tooltip")) { clearTimeout(pending); return; }
       const node = find(event.target);
       if (!node || node === find(event.relatedTarget)) return;

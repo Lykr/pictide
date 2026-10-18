@@ -39,14 +39,14 @@ function RoamChoices({ value, disabled = false, onChange, compact = false }: {
   value: ModeChoices; disabled?: boolean; onChange: (patch: Partial<ModeChoices>) => void; compact?: boolean;
 }) {
   return <div className={compact ? "grid gap-1" : "form-grid"}>
-    <div className={compact ? "flex min-h-8 items-center justify-between gap-2" : "settings-field"}>
+    <div className={compact ? "roam-choice flex min-h-8 items-center justify-between gap-2" : "settings-field"}>
       <span className="field-caption whitespace-nowrap">偏好范围<HelpTip text={value.prompt_mode === "stay" ? "停泊不重新抽取，暂不能切换范围；原选择会保留。" : "切换后保留当前图，清空旧预取并重新准备后续图片。"} /></span>
       <ToggleGroup type="single" size="sm" value={value.liked_tags_only ? "liked" : "all"} disabled={disabled || value.prompt_mode === "stay"} aria-label="偏好范围" onValueChange={next => { if (next) onChange({ liked_tags_only: next === "liked" }); }}>
         <ToggleGroupItem value="all" aria-label="全部" data-tooltip="从完整词库抽取；固定词和 PMI 条件保持。">全部</ToggleGroupItem>
         <ToggleGroupItem value="liked" aria-label="喜欢" data-tooltip="仅从喜欢图片的标签中抽取；固定词和 PMI 条件保持。">喜欢</ToggleGroupItem>
       </ToggleGroup>
     </div>
-    <div className={compact ? "flex min-h-8 items-center justify-between gap-2" : "settings-field"}>
+    <div className={compact ? "roam-choice flex min-h-8 items-center justify-between gap-2" : "settings-field"}>
       <span className="field-caption whitespace-nowrap">漫游方式<HelpTip text="切换后保留当前图，清空旧预取并重新准备后续图片。" /></span>
       <ToggleGroup type="single" size="sm" value={value.prompt_mode} disabled={disabled} aria-label="漫游方式" onValueChange={next => { if (next) onChange({ prompt_mode: next as PromptMode }); }}>
         <ToggleGroupItem value="random" aria-label="漂流" data-tooltip="每张重新随机抽取提示词组合。">漂流</ToggleGroupItem>
@@ -54,7 +54,7 @@ function RoamChoices({ value, disabled = false, onChange, compact = false }: {
         <ToggleGroupItem value="stay" aria-label="停泊" data-tooltip="保持整组正负提示词，图像种子仍随机。">停泊</ToggleGroupItem>
       </ToggleGroup>
     </div>
-    <div className={compact ? "flex min-h-8 items-center justify-between gap-2" : "settings-field"}>
+    <div className={compact ? "roam-choice flex min-h-8 items-center justify-between gap-2" : "settings-field"}>
       <span className="field-caption whitespace-nowrap">推荐力度<HelpTip text="只影响新任务，保留已有预取。停泊已有提示词时不参与评分。" /></span>
       <ToggleGroup type="single" size="sm" value={value.recommendation_strength} disabled={disabled} aria-label="推荐力度" onValueChange={next => { if (next) onChange({ recommendation_strength: next as RecommendationStrength }); }}>
         <ToggleGroupItem value="standard" aria-label="标准" data-tooltip="保留探索，发现更多可能喜欢的组合。">标准</ToggleGroupItem>
@@ -126,7 +126,7 @@ export function RoamOptions() {
     if (next) { dirty.current = false; setDraft(String(settings.playback_interval_seconds)); setError(""); }
   }}>
     <PopoverTrigger asChild><IconButton id="roam-options" icon={Settings2} label="漫游选项" /></PopoverTrigger>
-    <PopoverContent forceMount hidden={!open} align="end" className="w-72 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
+    <PopoverContent forceMount hidden={!open} align="end" className="roam-options-panel w-72 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
       <div className="grid grid-cols-[minmax(0,1fr)_2rem] items-center gap-x-2 gap-y-1">
         <form className="col-span-2 grid grid-cols-[minmax(0,1fr)_5.5rem_2rem] items-center gap-2" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
           <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap font-normal">自动播放</Label>

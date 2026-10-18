@@ -1,3 +1,4 @@
+import { copyText } from "../lib/copy-text";
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy, LoaderCircle } from "lucide-react";
 import { Button } from "./ui/button";
@@ -12,7 +13,7 @@ const normalized = (text: string) => text.trim().replaceAll("_", " ");
 
 function CopyText({ text, label }: { text: string; label: string }) {
   const [status, setStatus] = useState("");
-  const copy = async () => { try { await navigator.clipboard.writeText(text); setStatus("已复制"); } catch { setStatus("复制失败，请重试"); } };
+  const copy = async () => { try { await copyText(text); setStatus("已复制"); } catch { setStatus("复制失败，请重试"); } };
   useEffect(() => { if (!status) return; const timer = setTimeout(() => setStatus(""), 1800); return () => clearTimeout(timer); }, [status]);
   return <IconButton icon={status === "已复制" ? Check : Copy} label={status || `复制${label}`} disabled={!text} onClick={copy} />;
 }

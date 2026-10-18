@@ -160,7 +160,7 @@ body { position: fixed; inset: 0; }
 .editor-page .library-workspace .filters > [data-control-host=select] { flex-basis: 110px; }
 .controller-dialog.prompt-add-dialog { width: min(680px, calc(100vw - 32px)); max-width: min(680px, calc(100vw - 32px)); }
 .controller-dialog.preview-dialog { width: min(1080px, calc(100vw - 32px)); max-width: min(1080px, calc(100vw - 32px)); }
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
   .editor-tabs { padding: 12px; }
   .editor-page .config-control [data-slot=select-trigger] { min-width: 0; }
 }
@@ -206,3 +206,24 @@ body { position: fixed; inset: 0; }
 .config-dialog form { display: flex; flex-direction: column; gap: 16px; }
 .config-dialog .field { margin: 0; }
 .config-dialog .actions { margin-top: 0; }
+
+/* Keep Luma visuals; use a finger-sized target on phones and touch devices. */
+@media (max-width: 640px), (max-width: 900px) and (max-height: 500px), (pointer: coarse) {
+  [data-slot=button], [data-slot=toggle], [data-slot=toggle-group-item],
+  [data-slot=tabs-trigger], [data-slot=select-trigger] { min-height: 44px; min-width: 44px; touch-action: manipulation; }
+  [data-slot=input], [data-slot=input-group], [data-slot=input-group-control] { min-height: 44px; }
+  input:not([type=checkbox]):not([type=radio]), textarea, [data-slot=command-input] { font-size: 16px; }
+  [data-slot=select-item], [data-slot=command-item], [data-slot=multi-select] > label { min-height: 44px; }
+  [data-slot=command-input-wrapper] [data-slot=input-group] { min-height: 44px; }
+  [data-slot=popover-content] { max-width: calc(100vw - 24px); max-height: var(--radix-popover-content-available-height, 80dvh); overflow-y: auto; overscroll-behavior: contain; }
+  [data-slot=select-content] { max-width: calc(100vw - 24px); }
+  [data-slot=select-item] { white-space: normal; overflow-wrap: anywhere; }
+  [data-slot=dialog-content] { max-width: calc(100vw - 24px); padding: 16px; }
+  .controller-dialog > .dialog-scroll-content { max-height: calc(100dvh - 112px); overscroll-behavior: contain; }
+  .field-label, .field-caption { flex-wrap: wrap; }
+  label:has([data-slot=checkbox]), label:has([data-control-host=checkbox]) { min-height: 44px; display: flex; align-items: center; }
+}
+@media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
+  .workspace-content { padding: 12px; }
+  #feed-main > section, .editor-page main { scrollbar-gutter: auto; }
+}

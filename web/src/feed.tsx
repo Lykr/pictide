@@ -6,7 +6,7 @@ import { GeneralSettings } from "./components/general-settings";
 import { PreferenceActions } from "./components/preference-actions";
 import { ImageInfo } from "./components/image-info";
 import { RoamPlaybackButton, RoamOptions, RoamSettingsChoices } from "./components/roam-playback";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, RefreshCw, Settings, Settings2, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, Minimize, RefreshCw, Settings, Settings2, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown, ChevronRight } from "lucide-react";
 import { IconButton, HelpTip } from "./components/actions";
 import { Card } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -73,6 +73,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <Button id="empty-generate" variant="default" type="button" hidden>开始生成</Button>
 </div>
 {"\n        "}<Card id="image-card" className="image-card gap-0 py-0" tabIndex={-1} aria-label="图片浏览" hidden>
+<IconButton id="roam-immersive-exit" className="touch-immersive-exit" icon={Minimize} label="退出沉浸模式" hidden />
 <div className="image-stage">
 <img id="main-image" alt="生成的图片" draggable={false} />
 <div id="image-error" className="image-error" hidden>{"图片读取失败，请检查服务与文件是否可用。"}</div>

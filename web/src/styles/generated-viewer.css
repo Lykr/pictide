@@ -58,3 +58,10 @@
   .generated-viewer.image-card.immersive { width: 100vw; max-width: none; height: 100dvh; max-height: none; padding: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .generated-viewer.immersive .generated-viewer-toolbar { transition: none; } }
+
+@media (max-width: 640px) {
+  .generated-viewer[data-slot=dialog-content]:not(.immersive) { width: calc(100vw - 16px); max-width: calc(100vw - 16px); height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+  .generated-viewer-toolbar [data-slot=button], .generated-viewer-toolbar [data-slot=toggle] { min-width: 44px; min-height: 44px; }
+  .generated-viewer.immersive .generated-viewer-toolbar { max-width: calc(100% - 16px); padding: 4px; }
+  .generated-viewer.immersive .generated-viewer-navigation { gap: 0; }
+}
