@@ -82,3 +82,8 @@
   .cooc-library-filters { align-items: stretch; }
   .cooc-library-filters > input { flex: 1 1 180px; min-width: 0; max-width: none; }
 }
+
+@media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
+  .editor-page.workspace-content { padding-block: 8px; }
+  .editor-page .cooc-library-filters { align-items: center; }
+}

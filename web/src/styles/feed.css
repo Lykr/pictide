@@ -229,14 +229,21 @@ body.pictide-immersive { overflow: hidden; }
 
 /* Phones share the existing navigation; no duplicate controls or state. */
 @media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
-  .feed-page .topbar:not(:where(.editor-page, .editor-page *)) { height: auto; min-height: 48px; padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); }
+  :root {
+    --mobile-safe-top: env(safe-area-inset-top, 0px);
+    --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --mobile-nav-height: calc(48px + 5px + max(4px, var(--mobile-safe-bottom)));
+  }
+}
+@media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
+  .feed-page .topbar:not(:where(.editor-page, .editor-page *)) { height: calc(44px + var(--mobile-safe-top)); min-height: 44px; padding: var(--mobile-safe-top) max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left)); }
   .feed-page .workspace:not(:where(.editor-page, .editor-page *)) { display: flex; flex-direction: column; }
-  .feed-page .sidebar:not(:where(.editor-page, .editor-page *)) { order: 2; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; overflow: visible; padding: 4px max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); border: 0; border-top: 1px solid var(--border); }
+  .feed-page .sidebar:not(:where(.editor-page, .editor-page *)) { order: 2; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; overflow: visible; padding: 4px max(8px, env(safe-area-inset-right)) max(4px, var(--mobile-safe-bottom)) max(8px, env(safe-area-inset-left)); border: 0; border-top: 1px solid var(--border); }
   .feed-page .sidebar-foot:not(:where(.editor-page, .editor-page *)) { display: contents; }
-  .feed-page .sidebar .nav:not(:where(.editor-page, .editor-page *)) { width: 100%; min-width: 0; min-height: 52px; height: auto; padding: 5px 2px; gap: 3px; flex-direction: column; justify-content: center; font-size: 11px; line-height: 16px; border-radius: var(--radius-lg); }
+  .feed-page .sidebar .nav:not(:where(.editor-page, .editor-page *)) { width: 100%; min-width: 0; min-height: 48px; height: auto; padding: 4px 2px; gap: 3px; flex-direction: column; justify-content: center; font-size: 11px; line-height: 16px; border-radius: var(--radius-lg); }
   .feed-page .sidebar .nav svg { width: 18px; height: 18px; }
-  .feed-page #feed-main { flex: 1 1 0; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
-  .feed-page .section-heading:not(:where(.editor-page, .editor-page *)) { flex-wrap: nowrap; gap: 8px; margin-bottom: 12px; }
+  .feed-page #feed-main { flex: 1 1 0; padding-block: 8px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+  .feed-page .section-heading:not(:where(.editor-page, .editor-page *)) { flex-wrap: nowrap; gap: 8px; margin-bottom: 8px; }
   .feed-page .roam-heading-actions { gap: 4px; }
   .feed-page .roam-active #gallery-view { display: flex; flex-direction: column; }
   .feed-page .roam-active #gallery-view > .image-card:not(.immersive) { flex: 1; min-height: 0; }
@@ -256,8 +263,8 @@ body.pictide-immersive { overflow: hidden; }
   .feed-page .generated-results-actions { flex-wrap: wrap; }
 }
 @media (max-width: 900px) and (max-height: 500px) {
-  .feed-page .sidebar .nav:not(:where(.editor-page, .editor-page *)) { flex-direction: row; min-height: 44px; gap: 4px; }
-  .feed-page .topbar:not(:where(.editor-page, .editor-page *)) { min-height: 40px; padding-block: 4px; }
+  .feed-page .sidebar .nav:not(:where(.editor-page, .editor-page *)) { flex-direction: row; min-height: 48px; gap: 4px; }
+  .feed-page .topbar:not(:where(.editor-page, .editor-page *)) { height: calc(40px + var(--mobile-safe-top)); min-height: 40px; padding-top: var(--mobile-safe-top); padding-bottom: 0; }
 }
 
 .image-stage, .generated-viewer-stage { touch-action: pan-y pinch-zoom; overscroll-behavior-x: contain; }
@@ -279,4 +286,36 @@ body.pictide-immersive { overflow: hidden; }
 @media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
   .feed-page .generation-plan-fields .form-grid:not(:where(.editor-page, .editor-page *)) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .feed-page .generated-card-like { opacity: 1; }
+}
+
+@media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
+  .feed-page .brand-mark { width: 28px; height: 28px; font-size: 14px; }
+  .feed-page h1 { font-size: 18px; }
+  .feed-page .roam-active #gallery-view > #image-card:not(.immersive) { display: grid; grid-template-rows: minmax(0, 1fr) auto; flex: 1 1 0; min-height: 0; }
+  .feed-page .roam-active #gallery-view #image-card:not(.immersive) .image-stage { height: auto; min-height: 0; max-height: none; }
+  .image-stage img, .generated-viewer-stage img { position: absolute; inset: 0; }
+  .feed-page #image-card:not(.immersive) { isolation: isolate; clip-path: inset(0 round var(--radius-4xl)); box-shadow: none; border: 1px solid var(--border); }
+  .feed-page #image-card .image-stage { clip-path: inset(0); }
+  .feed-page #image-card .image-toolbar { position: relative; z-index: 1; flex-shrink: 0; min-height: 52px; background: var(--card); }
+  .feed-page #image-card.immersive .image-toolbar { position: absolute; background: color-mix(in oklch, var(--card) 85%, transparent); }
+}
+
+/* iPhone browser chrome observes the document's actual native scroll view. */
+@supports (-webkit-touch-callout: none) {
+  @media (display-mode: browser) {
+    @media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
+      :root { --pictide-document-scroll: 1; }
+      html, body { height: auto; min-height: 100%; overflow-x: clip; overflow-y: auto; }
+      body { position: static; }
+      #root { position: static; height: auto; min-height: 100svh; overflow: visible; }
+      .feed-page { height: auto; min-height: 100svh; }
+      .feed-page .topbar { position: sticky; top: 0; z-index: 20; }
+      .feed-page .workspace:not(:where(.editor-page, .editor-page *)) { display: block; overflow: visible; padding-bottom: calc(var(--mobile-nav-height) + 8px); }
+      .feed-page .sidebar:not(:where(.editor-page, .editor-page *)) { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; }
+      .feed-page #feed-main, .feed-page #feed-main > section, .feed-page .editor-page, .feed-page .editor-page main { height: auto; min-height: 0; overflow: visible; flex: none; }
+      .feed-page .roam-active #gallery-view > #image-card:not(.immersive) { flex: none; grid-template-rows: auto auto; }
+      .feed-page .roam-active #gallery-view #image-card:not(.immersive) .image-stage { height: auto; min-height: 0; aspect-ratio: 2 / 3; max-height: 72svh; }
+      html:has(body.pictide-immersive), html:has(body[data-scroll-locked]) { overflow: hidden; }
+    }
+  }
 }
