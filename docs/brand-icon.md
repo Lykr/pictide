@@ -1,38 +1,13 @@
 # Pictide 图标
 
-- 完整图标：[pictide.svg](../web/public/icons/pictide.svg)，深色圆角背景与白色符号。
-- 透明符号：[pictide-mark.svg](../web/public/icons/pictide-mark.svg)，使用 currentColor，内联时可跟随主题。
+正式图标采用用户确认的浪形 P 精修稿：15 段三次贝塞尔曲线，外圈与竖干自然衔接，白色负形沿回卷逐渐收窄；只保留尾尖与内勾尖端的锐度。
 
-以用户确认的草图形态为准：外圈撑出 P，内侧浪头回卷，竖干随水势收成尖尾。精修曲线切线衔接、内勾与尾部的粗细过渡；负形形成浪洞。
+- [完整图标](../web/public/icons/pictide.svg)：深色圆角背景、白色符号，用于页头和浏览器图标。
+- [透明符号](../web/public/icons/pictide-mark.svg)：相同轮廓，填充使用 currentColor，可直接用矢量编辑器修改。
+- 安装图标：apple-touch-icon.png（180px）、pictide-192.png、pictide-512.png；由相同曲线导出，深色不透明底，系统负责外形裁切。
 
-主体为一条闭合填充路径。画布为 256×256；以原画布中心统一缩放至 94%，再向左 1.5、向下 2 个单位调整视觉位置，增加底框内的留白。完整图标与透明符号共享路径和变换。
+画布为 256×256。完整图标及安装 PNG 将符号围绕画布中心缩放至 80%，使主体落在 maskable 图标的中央安全圆内；透明符号保留精修稿的原始画布与路径。源文件不依赖字体或外部图片。
 
-无字体、图片或外部依赖，已核对前后对照及 16–64px 预览。当前为矢量设计源文件，应用已发布的 PNG 和页面品牌标记尚未替换。
+网页页头、favicon 和 PWA 安装资源统一引用正式版本。缓存标记为 wave-v1；已添加至 iOS 主屏幕的旧图标可能需要移除后重新添加。
 
-## 渐细浪花拟合对照稿
-
-以同一渐细参考轮廓生成四种拟合密度，尺寸与视觉位置一致，关键转折点共用；数量指整条轮廓的三次贝塞尔段数，尾部闭合直线共用。
-
-- [A：8 段](../web/public/icons/studies/pictide-wave-8.svg)
-- [B：12 段](../web/public/icons/studies/pictide-wave-12.svg)
-- [C：18 段](../web/public/icons/studies/pictide-wave-18.svg)
-- [D：24 段](../web/public/icons/studies/pictide-wave-24.svg)
-
-中间的背景负形沿回卷方向逐渐收窄。当前为比较稿，主图继续保留已确认版本。离线拟合脚本、参考轮廓与局部放大预览保存在 data/verification/wave-curve-studies-20261018。
-
-## 新版草图直接拟合
-
-从用户提供的新版黑白草图提取实际边界，轻度平滑笔迹噪声，保留尾尖和内勾的转折；在同一画布比例下比较四种三次贝塞尔段数：
-
-- [A：12 段](../web/public/icons/studies/pictide-sketch-v2-12.svg)
-- [B：18 段](../web/public/icons/studies/pictide-sketch-v2-18.svg)
-- [C：24 段](../web/public/icons/studies/pictide-sketch-v2-24.svg)
-- [D：32 段](../web/public/icons/studies/pictide-sketch-v2-32.svg)
-
-新版具有较厚外圈、较短尖尾和收窄的白色回卷通道。各稿为独立闭合矢量路径；仍是比较稿，未替换应用图标。边界提取、拟合脚本与渲染预览保存在 data/verification/wave-new-sketch-20261018。
-
-## 轮廓重绘精修稿
-
-[精修 SVG](../web/public/icons/studies/pictide-wave-refined.svg) 只参考新版草图的整体比例、粗细关系与回卷走势，不拟合手绘造成的陡折、凸起和小台阶。用 15 段三次贝塞尔曲线重新整理外圈、竖干、浪头和渐细的白色负形；普通连接保持切线连续，仅尾尖与内勾尖端保留锐度。
-
-已检查与上一版的并排渲染、回卷局部和 16–48px 小尺寸表现。仍为独立精修稿，应用图标尚未替换；预览与曲线检查脚本保存在 data/verification/wave-refined-20261018。
+历史对照稿位于 [studies](../web/public/icons/studies/)，包括 [确认的精修稿](../web/public/icons/studies/pictide-wave-refined.svg)；拟合、曲线检查与预览记录位于 data/verification/，不随 Git 提交。

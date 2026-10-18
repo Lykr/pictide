@@ -28,7 +28,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
   return <div className={`feed-page${privacyBlur ? " privacy-blurred" : ""}`}>
 {"\n  "}<header className="topbar">
 <a className="brand" href="/" aria-label="Pictide 图片工作台">
-<span className="brand-mark" aria-hidden="true">P</span>
+<span className="brand-mark" aria-hidden="true"><img src={`${import.meta.env.BASE_URL}icons/pictide.svg?v=wave-v1`} alt="" /></span>
 <div>
 <strong>Pictide</strong>
 
