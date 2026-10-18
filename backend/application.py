@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import uuid
+import unicodedata
 
 from . import __version__
 from .contracts.recommendation import ScoreCandidate, ScoreRequest, ScoreTerm
@@ -301,12 +302,8 @@ class PictideApplication:
         snapshot = await asyncio.to_thread(self.storage.roam_snapshot, artifact["job_id"])
         if snapshot is None:
             return result
-        try:
-            candidate = ScoreCandidate(snapshot["candidate_id"], snapshot["positive"], snapshot["negative"],
-                tuple(ScoreTerm(term["text"], term.get("channel", "positive")) for term in snapshot["terms"]))
-            if candidate.positive != artifact["positive"] or candidate.negative != artifact["negative"]:
-                return result
-        except (KeyError, TypeError):
+        candidate = self._image_score_candidate(artifact, snapshot)
+        if candidate is None:
             return result
         request = ScoreRequest(uuid.uuid4().hex, "local", 0, (candidate,), strategy="mean")
         try:
@@ -321,6 +318,52 @@ class PictideApplication:
                     if minimum is not None and maximum is not None and maximum > minimum else None)
         return dict(result, status="scored", score=value, love_score=relative, score_min=minimum, score_max=maximum,
                     state_revision=scored.state_revision, feature_version=scored.feature_version, reason=None)
+
+    @staticmethod
+    def _image_score_candidate(artifact, snapshot):
+        if not isinstance(snapshot, dict):
+            return None
+        try:
+            terms = tuple(ScoreTerm(term["text"], term.get("channel", "positive")) for term in snapshot["terms"])
+            if not terms or any(not isinstance(t.text, str) or not t.text.strip().strip(",").strip()
+                                or t.channel not in ("positive", "negative") for t in terms):
+                return None
+            for channel in ("positive", "negative"):
+                actual = artifact[channel]
+                joined = ", ".join(t.text.strip().strip(",").strip() for t in terms if t.channel == channel)
+                if snapshot[channel] != actual or unicodedata.normalize("NFC", actual) != unicodedata.normalize("NFC", joined):
+                    return None
+            return ScoreCandidate(artifact["id"], artifact["positive"], artifact["negative"], terms)
+        except (KeyError, TypeError, AttributeError):
+            return None
+
+    async def liked_ranked(self, tags=()):
+        await self.clean_history()
+        data = await asyncio.to_thread(self.storage.liked_scoring_inputs, tuple(dict.fromkeys(tags)))
+        items = data["items"]
+        unique, representative = {}, {}
+        for item in items:
+            candidate = self._image_score_candidate(item["artifact"], item["snapshot"])
+            if candidate is not None:
+                key = (candidate.positive, candidate.negative, candidate.terms)
+                canonical = unique.setdefault(key, candidate)
+                representative[candidate.candidate_id] = canonical.candidate_id
+        scores, scored, error = {}, None, None
+        if unique:
+            request = ScoreRequest(uuid.uuid4().hex, "local", 0, tuple(unique.values()), strategy="mean")
+            try:
+                scored = await asyncio.to_thread(self.recommendation.score, request)
+                by_id = {row.candidate_id: row.score for row in scored.scores}
+                scores = {identifier: by_id[canonical] for identifier, canonical in representative.items()}
+            except (RuntimeError, OSError, ValueError):
+                error = "推荐服务暂不可用，暂按时间排序。"
+        # The storage query already orders ties by creation time and ID.
+        artifacts = [item["artifact"] for item in items]
+        artifacts.sort(key=lambda item: (item["id"] in scores, scores.get(item["id"], 0)), reverse=True)
+        return dict(artifacts=artifacts, revision=data["revision"],
+                    state_revision=scored.state_revision if scored else None,
+                    score_min=scored.score_min if scored else None, score_max=scored.score_max if scored else None,
+                    scoring_available=error is None, error=error)
 
     async def liked_tags(self):
         return {"tags": await asyncio.to_thread(self.storage.liked_tags),

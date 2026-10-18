@@ -147,6 +147,10 @@ async def preference_score(request):
     return web.json_response(await request.app[APPLICATION].preference_score(request.match_info["id"]))
 
 
+async def liked_ranked(request):
+    return web.json_response(await request.app[APPLICATION].liked_ranked(tuple(request.query.getall("tag", []))))
+
+
 async def liked_tags(request):
     return web.json_response(await request.app[APPLICATION].liked_tags())
 
@@ -296,6 +300,7 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get("/api/jobs", jobs), web.post("/api/jobs", jobs), web.post("/api/jobs/cancel-pending", cancel_pending_jobs),
         web.post("/api/jobs/{id}/cancel", cancel_job),
         web.get("/api/liked/tags", liked_tags),
+        web.get("/api/liked/ranked", liked_ranked),
         web.get("/api/artifacts/{id}/preference-score", preference_score),
         web.get("/api/artifacts", artifacts), web.put("/api/artifacts/{id}/feedback", feedback),
         web.delete("/api/generated", clear_generated), web.delete("/api/generated/{id}", clear_generated),

@@ -640,6 +640,31 @@ class Repository:
                     removed += 1
             return {"removed": removed, "hidden": hidden, "revision": self._artifact_revision(db)}
 
+    def liked_scoring_inputs(self, tags=()):
+        selected = set(tags)
+        with self.connection() as db:
+            db.execute("BEGIN")
+            db.create_function("has_prompt_tags", 1, lambda positive: selected <= prompt_tags(positive), deterministic=True)
+            rows = db.execute("""SELECT a.*,j.positive,j.negative,j.seed,f.value AS feedback,
+                CASE WHEN rj.job_id IS NULL THEN 'generate' ELSE 'roam' END AS source,
+                json_type(r.config,'$.bindings.seed')='object' AS seed_applied,rj.candidate AS scoring_snapshot
+                FROM artifacts a JOIN jobs j ON j.id=a.job_id
+                JOIN backend_revisions r ON r.id=j.revision_id
+                JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local' AND f.value=1
+                LEFT JOIN roam_jobs rj ON rj.job_id=a.job_id
+                WHERE a.deleted_at IS NULL AND has_prompt_tags(j.positive)
+                ORDER BY a.created_at DESC,a.id DESC""").fetchall()
+            items = []
+            for row in rows:
+                data = dict(row)
+                raw = data.pop("scoring_snapshot")
+                try:
+                    snapshot = json.loads(raw) if raw else None
+                except ValueError:
+                    snapshot = None
+                items.append({"artifact": self._artifact(data), "snapshot": snapshot})
+            return {"items": items, "revision": self._artifact_revision(db)}
+
     def artifact(self, iid):
         with self.connection() as db:
             return self._read_artifact(db, iid)
