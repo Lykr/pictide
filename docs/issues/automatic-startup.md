@@ -100,10 +100,12 @@ sequenceDiagram
 - 验证采用独立数据和端口，只配置测试生图地址；真实 GPU 生图和 Linux/macOS 原生运行未执行。报告与日志保存在 `data/dev/verification/portable-startup-20261019/`。
 
 
-当前目录约定见[开发资料与发行产物分离](development-release-directories.md)：历史 data/dev 下的开发材料现位于根目录 dev，发行包现位于根目录 releases。 旧 portable-compact-20261019 包已按用户确认删除，个人数据保留在 data/backups/old-portable-personal-20261019；当前包为 releases/portable-new-user-defaults-20261019。
+当前目录约定见[开发资料与发行产物分离](development-release-directories.md)：历史 data/dev 下的开发材料现位于根目录 dev，发行包现位于根目录 releases。 旧 portable-compact-20261019 包已按用户确认删除，个人数据保留在 data/backups/old-portable-personal-20261019；当前包为 releases/portable-library-floor-20261019。
 
 新用户默认配置交付（2026-10-19）：
 
 - 漫游默认预取 2 张、历史数量上限 20 张、展示时间 8 秒、候选组合 10 组；新预设默认标签数量 10–30。
 - 默认文生图为 832×1216、16 步、CFG 2.5；已保存的个人设置、预设与自定义工作流继续使用原值。
 - Windows x64 便携包位于 releases/portable-new-user-defaults-20261019，ZIP 约 147.7 MiB。真实便携程序通过首次运行默认值、默认预设和模拟后端模板核对；发行包个人数据隔离检查通过，验证记录在 dev/verification/new-user-defaults-20261019/report.json。验证实例已关闭，正在使用的旧包保留。
+
+词库下限版本（2026-10-19）：最新包为 releases/portable-library-floor-20261019；词库自带最低共现次数，新用户默认预设与编排输入下限随库设置。实施及验证见[词库最低共现次数约束](library-cooccurrence-floor.md)。
