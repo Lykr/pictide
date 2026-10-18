@@ -43,8 +43,10 @@ class RecommendationApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.host = create_app(self.root, lambda config, session: self.fake)
         self.app = self.host[APPLICATION]
         self.app.recommendation = RecommendationService(self.app.recommendation_store, CPUEncoder())
+        self.observe_learning()
         self.client = TestClient(TestServer(self.host))
         await self.client.start_server()
+        await asyncio.wait_for(self.learning_round.wait(), 5)
         await self.app.tasks.stop()
         response = await self.client.put("/api/backends/local", json=configuration())
         self.assertEqual(response.status, 200)
@@ -66,11 +68,27 @@ class RecommendationApplicationTests(unittest.IsolatedAsyncioTestCase):
                                                       for i in range(count)])
         return self.app.storage.artifacts(source="roam")
 
+    def observe_learning(self):
+        self.learning_round = asyncio.Event()
+        loop = asyncio.get_running_loop()
+        original = self.app._sync_recommendation
+
+        def observed_round():
+            try:
+                return original()
+            finally:
+                loop.call_soon_threadsafe(self.learning_round.set)
+
+        self.app._sync_recommendation = observed_round
+
     async def rate(self, image, value):
+        self.learning_round.clear()
         response = await self.client.put(f"/api/artifacts/{image['id']}/feedback", json={"value": value})
         payload = await response.json()
         self.assertEqual(response.status, 200, payload)
         self.assertEqual(payload["artifact"]["feedback"], value)
+        # Existing policy assertions concern the completed learning round, not HTTP latency.
+        await asyncio.wait_for(self.learning_round.wait(), 5)
         return payload
 
     def policy(self):
@@ -111,8 +129,10 @@ class RecommendationApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.host = create_app(self.root, lambda config, session: self.fake)
         self.app = self.host[APPLICATION]
         self.app.recommendation = RecommendationService(self.app.recommendation_store, CPUEncoder())
+        self.observe_learning()
         self.client = TestClient(TestServer(self.host))
         await self.client.start_server()
+        await asyncio.wait_for(self.learning_round.wait(), 5)
         await self.app.tasks.stop()
         self.assertEqual(self.policy().evidence_count, 1)
         self.assertEqual(self.app.recommendation_store.load_evidence("local", self.version)[0].value, -1)
