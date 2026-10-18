@@ -44,6 +44,19 @@ pnpm run build
 Pop-Location
 ```
 
+Linux / macOS 在仓库根目录执行对应命令（系统需先提供 Python 3.10+、Node.js 和指定版本的 pnpm）：
+
+```bash
+project_data="$PWD/data"
+mkdir -p "$project_data/tmp" "$project_data/cache/pip" "$project_data/cache/python"
+export TMPDIR="$project_data/tmp" TEMP="$project_data/tmp" TMP="$project_data/tmp"
+export PIP_CACHE_DIR="$project_data/cache/pip" PYTHONPYCACHEPREFIX="$project_data/cache/python"
+python3 -m venv "$project_data/runtime/venv"
+"$project_data/runtime/venv/bin/python" -m pip install -r requirements.txt
+(cd web && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run build)
+bash start.sh
+```
+
 `web/dist/` 不提交，首次构建后才能使用页面和静态资源测试。现有主目录的构建与运行数据保持原样。使用自定义数据目录时，也不要将它放入其他源码路径或加入 Git。
 
 需要浏览器验证时，在 worktree 根目录启动独立实例：
@@ -51,6 +64,8 @@ Pop-Location
 ```powershell
 & .\start.ps1 -Port 8191 -DataDir .\data
 ```
+
+Linux / macOS 对应 `bash start.sh --port 8191 --data-dir ./data`；macOS 双击入口为 `start.command`，两种脚本均使用 `exec` 交接 Python 进程，Ctrl+C / SIGTERM 可直接到达应用。Shell 语法兼容 macOS 系统 Bash 3.2，Git 记录脚本执行位与 LF 换行。
 
 每个并行实例使用不同端口；不要共用主实例的 SQLite、词库或图片目录。默认使用模拟后端与中性样例；真实 ComfyUI 接入先只读检查，不为普通回归测试提交 GPU 任务。
 
