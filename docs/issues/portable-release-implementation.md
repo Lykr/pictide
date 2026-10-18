@@ -65,13 +65,19 @@ sequenceDiagram
     Host->>App: prepare_candidate_library(path, filename)
     App->>Candidate: prepare_library(path, filename)
     Candidate->>Store: 校验、构建干净统计副本并保存摘要
-    Store-->>UI: 经 Candidate / App / Host 返回校验摘要
+    Store-->>Candidate: 校验摘要
+    Candidate-->>App: 校验摘要
+    App-->>Host: 校验摘要
+    Host-->>UI: 返回校验摘要
     User->>UI: 确认替换
     UI->>Host: PUT library {id}
     Host->>App: candidate_library(confirm, {id})
     App->>Candidate: confirm_library(id)
     Candidate->>Store: 保存待启用记录
-    Store-->>UI: 经调用链返回重启生效提示
+    Store-->>Candidate: 待启用状态
+    Candidate-->>App: 待启用状态
+    App-->>Host: 待启用状态
+    Host-->>UI: 返回重启生效提示
     User->>Host: 退出后重新启动应用
     Host->>App: prepare_startup(paths, seed_dir)
     App->>Candidate: apply_pending_library()
