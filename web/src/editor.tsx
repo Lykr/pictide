@@ -239,7 +239,7 @@ export function EditorWorkspace() {
   const pages = Math.max(1, Math.ceil(tags.total / tags.page_size));
   return <section id="prompts-view" className="editor-page workspace-content" aria-label={t("提示词")} hidden>
     <header className="editor-toolbar"><h1>{t("提示词")}</h1><span className="spacer" /><Badge variant="secondary" data-tooltip={tr`数据来源：${String(dataset.source || t("尚未导入"))}`}>{dataset.status === "ready" ? t("词库就绪") : t("词库未就绪")}</Badge></header>
-    <Tabs value={tab} onValueChange={setTab}><nav className="editor-tabs" aria-label={t("提示词栏目")}><TabsList><TabsTrigger value="library">{t("词库")}</TabsTrigger><TabsTrigger value="settings">{t("生成设置")}</TabsTrigger><TabsTrigger value="preview">{t("预览")}</TabsTrigger></TabsList></nav></Tabs>
+    <Tabs value={tab} onValueChange={setTab}><nav className="editor-tabs" aria-label={t("提示词栏目")}><TabsList><TabsTrigger value="library">{t("词库")}</TabsTrigger><TabsTrigger value="settings">{t("编排")}</TabsTrigger><TabsTrigger value="preview">{t("预览")}</TabsTrigger></TabsList></nav></Tabs>
     {notice && <div className="notice error" role="alert">{notice}</div>}
     <main>
       {tab === "library" ? <section className="cooc-library">
