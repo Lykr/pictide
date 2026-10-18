@@ -57,7 +57,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 <div className="roam-heading-actions">
 <span id="liked-privacy-controls" hidden />
-<span id="roam-options-controls" className="inline-flex items-center gap-1"><Toggle id="roam-privacy" size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={`${privacyLabel} · 空格。刷新页面后默认开启。`}>
+<span id="roam-options-controls" className="inline-flex items-center gap-1"><RoamPlaybackButton /><Toggle id="roam-privacy" size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={`${privacyLabel} · 空格。刷新页面后默认开启。`}>
 {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
 </Toggle><IconButton id="roam-immersive" icon={Maximize} label="进入沉浸模式" aria-controls="image-card" aria-pressed="false" disabled onClick={() => document.dispatchEvent(new Event("pictide:roam-options-close"))} /><RoamOptions /></span>
 </div>
@@ -93,7 +93,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 <div className="image-navigation">
 <IconButton id="previous" icon={ArrowLeft} label="上一张较旧图片 · ←" variant="ghost" type="button" />
-<RoamPlaybackButton />
 <IconButton id="like" icon={Heart} label="喜欢 · ↑" variant="ghost" type="button" className="feedback" aria-pressed="false" />
 <IconButton id="dislike" icon={ThumbsDown} label="不喜欢 · ↓" variant="ghost" type="button" className="feedback" aria-pressed="false" />
 <IconButton id="next" icon={ArrowRight} label="下一张较新图片 · →" variant="ghost" type="button" />

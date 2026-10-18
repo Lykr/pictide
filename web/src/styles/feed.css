@@ -271,10 +271,7 @@ body.pictide-immersive { overflow: hidden; }
 }
 
 @media (max-width: 640px), (max-width: 900px) and (max-height: 500px), (pointer: coarse) {
-  .roam-options-panel { width: 320px; }
-  .roam-options-panel .roam-choice { flex-wrap: wrap; row-gap: 0; }
-  .roam-options-panel .roam-choice > [role=radiogroup] { margin-left: auto; }
-  .roam-options-panel form { grid-template-columns: minmax(0, 1fr) 88px 44px; }
+  .roam-options-panel { width: 240px; }
 }
 
 @media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
@@ -318,7 +315,6 @@ body.pictide-immersive { overflow: hidden; }
 .immersive-actions { display: none; }
 .image-card.immersive > .immersive-actions { display: flex; align-items: center; position: absolute; z-index: 4; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); gap: 4px; padding: 6px; border: 1px solid var(--border); border-radius: var(--radius-xl); background: color-mix(in oklch, var(--card) 85%, transparent); backdrop-filter: blur(16px); box-shadow: 0 4px 16px #0002; transition: opacity 150ms; }
 .image-card.immersive-controls-hidden > .immersive-actions { opacity: 0; visibility: hidden; pointer-events: none; }
-.feed-page .image-card.immersive #roam-playback { display: none; }
 @media (max-width: 640px), (max-width: 900px) and (max-height: 500px), (pointer: coarse) {
   .image-card.immersive > .immersive-actions { gap: 0; padding: 4px; }
   .immersive-actions [data-slot=button], .immersive-actions [data-slot=toggle] { min-width: 44px; min-height: 44px; }

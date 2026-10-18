@@ -18,14 +18,14 @@ function usePlaybackState() {
   }, []);
   return state;
 }
-export function RoamPlaybackButton({ menu = false, visible = true, immersive = false }: { menu?: boolean; visible?: boolean; immersive?: boolean }) {
+export function RoamPlaybackButton({ immersive = false }: { immersive?: boolean }) {
   const state = usePlaybackState();
   const label = state.playing ? "暂停播放" : "自动播放";
-  const delay = useMemo(() => state.startedAt === null ? 0 : -Math.max(0, performance.now() - state.startedAt), [state.startedAt, state.cycle, visible]);
-  return <Button id={immersive ? "roam-immersive-playback" : menu ? "roam-options-playback" : "roam-playback"} type="button" variant="ghost" size="icon-sm" className="relative" aria-label={label} data-tooltip={label} aria-pressed={state.playing} disabled={!state.canPlay} onClick={() => document.dispatchEvent(new Event("pictide:roam-playback-toggle"))}>
+  const delay = useMemo(() => state.startedAt === null ? 0 : -Math.max(0, performance.now() - state.startedAt), [state.startedAt, state.cycle]);
+  return <Button id={immersive ? "roam-immersive-playback" : "roam-playback"} type="button" variant="ghost" size="icon-sm" className="relative" aria-label={label} data-tooltip={label} aria-pressed={state.playing} disabled={!state.canPlay} onClick={() => document.dispatchEvent(new Event("pictide:roam-playback-toggle"))}>
     {state.playing && <svg className="playback-progress absolute left-1/2 top-1/2 size-8 -translate-x-1/2 -translate-y-1/2 -rotate-90" viewBox="0 0 32 32" fill="none" aria-hidden="true">
       <circle cx="16" cy="16" r="13" stroke="currentColor" strokeWidth="1.5" opacity="0.15" />
-      <circle key={`${state.cycle}-${visible}`} className="playback-progress-value" cx="16" cy="16" r="13" pathLength="1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ strokeDashoffset: state.waiting ? 0 : 1, animation: state.startedAt === null ? "none" : `playback-progress ${state.durationMs}ms linear ${delay}ms forwards` }} />
+      <circle key={state.cycle} className="playback-progress-value" cx="16" cy="16" r="13" pathLength="1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ strokeDashoffset: state.waiting ? 0 : 1, animation: state.startedAt === null ? "none" : `playback-progress ${state.durationMs}ms linear ${delay}ms forwards` }} />
     </svg>}
     {state.playing ? <Pause className="size-3.5" aria-hidden="true" /> : <Play aria-hidden="true" />}
   </Button>;
@@ -88,7 +88,7 @@ export function RoamOptions() {
   const [settings, setSettings] = useState<RoamSettings>({ playback_interval_seconds: 5, liked_tags_only: false, prompt_mode: "random", recommendation_strength: "standard" });
   const [ready, setReady] = useState(false);
   const [draft, setDraft] = useState("5");
-  const [saving, setSaving] = useState({ interval: false, choices: false });
+  const [saving, setSaving] = useState(false);
   const intervalPending = useRef(false);
   const [error, setError] = useState("");
   const dirty = useRef(false);
@@ -106,19 +106,19 @@ export function RoamOptions() {
       document.removeEventListener("pictide:roam-options-close", close);
     };
   }, []);
-  const save = async (kind: "interval" | "choices", choices?: Partial<ModeChoices>) => {
-    if (kind === "interval" && (!ready || !dirty.current || intervalPending.current)) return;
+  const save = async () => {
+    if (!ready || !dirty.current || intervalPending.current) return;
     setError("");
     try {
-      const patch = kind === "interval" ? { playback_interval_seconds: playbackInterval(draft) } : choices;
-      if (kind === "interval") intervalPending.current = true;
-      setSaving(value => ({ ...value, [kind]: true }));
+      const patch = { playback_interval_seconds: playbackInterval(draft) };
+      intervalPending.current = true;
+      setSaving(true);
       const data = await new Promise<RoamSettings>((resolve, reject) => document.dispatchEvent(new CustomEvent("pictide:roam-settings-save", { detail: { patch, resolve, reject } })));
-      if (kind === "interval") { dirty.current = false; setDraft(String(data.playback_interval_seconds)); }
+      dirty.current = false; setDraft(String(data.playback_interval_seconds));
     } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
     finally {
-      if (kind === "interval") intervalPending.current = false;
-      setSaving(value => ({ ...value, [kind]: false }));
+      intervalPending.current = false;
+      setSaving(false);
     }
   };
   return <Popover open={open} onOpenChange={next => {
@@ -126,18 +126,14 @@ export function RoamOptions() {
     if (next) { dirty.current = false; setDraft(String(settings.playback_interval_seconds)); setError(""); }
   }}>
     <PopoverTrigger asChild><IconButton id="roam-options" icon={Settings2} label="漫游选项" /></PopoverTrigger>
-    <PopoverContent forceMount hidden={!open} align="end" className="roam-options-panel w-72 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
-      <div className="grid grid-cols-[minmax(0,1fr)_2rem] items-center gap-x-2 gap-y-1">
-        <form className="col-span-2 grid grid-cols-[minmax(0,1fr)_5.5rem_2rem] items-center gap-2" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
-          <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap font-normal">自动播放</Label>
-          <InputGroup className="h-8" data-disabled={!ready || saving.interval}>
-          <InputGroupInput id="roam-playback-seconds" aria-label="自动播放间隔（秒）" aria-busy={saving.interval} className="h-8 min-w-0 pl-3 text-right tabular-nums" type="number" min={1} max={600} step={1} value={draft} disabled={!ready || saving.interval} onChange={event => { dirty.current = true; setDraft(event.target.value); }} onBlur={() => void save("interval")} />
+    <PopoverContent forceMount hidden={!open} align="end" className="roam-options-panel w-60 max-w-[calc(100vw-24px)] p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
+      <form className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-3" onSubmit={event => { event.preventDefault(); void save(); }}>
+        <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap font-normal">展示时间</Label>
+        <InputGroup className="h-8" data-disabled={!ready || saving}>
+          <InputGroupInput id="roam-playback-seconds" aria-label="展示时间（秒）" aria-busy={saving} className="h-8 min-w-0 pl-3 text-right tabular-nums" type="number" min={1} max={600} step={1} value={draft} disabled={!ready || saving} onChange={event => { dirty.current = true; setDraft(event.target.value); }} onBlur={() => void save()} />
           <InputGroupAddon align="inline-end" className="py-0 text-xs" aria-hidden="true">秒</InputGroupAddon>
-          </InputGroup>
-          <RoamPlaybackButton menu visible={open} />
-        </form>
-        <div className="col-span-2"><RoamChoices compact value={settings} disabled={!ready || saving.choices} onChange={patch => void save("choices", patch)} /></div>
-      </div>
+        </InputGroup>
+      </form>
       {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
     </PopoverContent>
   </Popover>;
