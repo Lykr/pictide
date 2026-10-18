@@ -65,7 +65,7 @@ export function TooltipLayer() {
         pending = setTimeout(hide, 150);
       }
     };
-    const focus = (event: FocusEvent) => { const node = find(event.target); if (node) show(node); else hide(); };
+    const focus = (event: FocusEvent) => { const node = find(event.target); if (node && !node.hasAttribute("data-tooltip-hover-only")) show(node); else hide(); };
     const click = (event: MouseEvent) => {
       if (event.target instanceof Element && event.target.closest("#pictide-tooltip")) return;
       const node = find(event.target);
