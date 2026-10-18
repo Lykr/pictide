@@ -16,7 +16,8 @@ class DataPaths:
     root: Path
 
     def __init__(self, data_dir=None):
-        selected = data_dir if data_dir is not None else os.environ.get("PICTIDE_DATA_DIR") or os.environ.get("PICTIDE_WEB_DATA_DIR") or ROOT / "data"
+        default = Path(sys.executable).resolve().parents[2] if getattr(sys, "frozen", False) else ROOT / "data"
+        selected = data_dir if data_dir is not None else os.environ.get("PICTIDE_DATA_DIR") or os.environ.get("PICTIDE_WEB_DATA_DIR") or default
         object.__setattr__(self, "root", Path(selected).expanduser().resolve())
 
     @property

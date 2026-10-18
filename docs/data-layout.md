@@ -4,7 +4,7 @@
 
 ## 数据位置
 
-数据目录按「启动参数 → `PICTIDE_DATA_DIR` → 旧 `PICTIDE_WEB_DATA_DIR` → 项目内 `data/`」选择。选择的是整个目录，不是单个数据库文件。
+数据目录按「启动参数 → `PICTIDE_DATA_DIR` → 旧 `PICTIDE_WEB_DATA_DIR` → 项目内 `data/`」选择。选择的是整个目录，不是单个数据库文件。便携版默认使用发行目录中的 data，移动整个发行目录后仍能定位个人数据。
 
 自定义目录的命令按系统查阅：[Windows](guides/setup/windows.md#端口与数据目录) · [Linux](guides/setup/linux.md#端口与数据目录) · [macOS](guides/setup/macos.md#端口与数据目录)。相对路径按运行命令时所在目录解析。
 
@@ -19,9 +19,10 @@
 | `workflows/` | 命名 API 工作流；`.backups/` 保存更新或删除前的版本 |
 | `history-cleanup.json` | 历史图片保留天数，缺省 1 天 |
 | `datasets/`、`import/` | 原始 Parquet、下载校验和离线统计中间数据；在线生成不读取 |
-| `cache/embeddings/` | 离线 MiniLM 模型缓存 |
+| `cache/embeddings/` | 离线 MiniLM 模型，推荐运行必需，清理时保留 |
 | `cache/` | Python、pip、pnpm、Vite 等缓存 |
-| `runtime/venv/` | Python 运行环境 |
+| `runtime/venv/` | 源码版本 Python 运行环境 |
+| `runtime/pictide/` | 便携版程序、随包依赖、前端和首次初始化种子资源 |
 | `runtime/frontend/node_modules/` | 前端开发依赖实体 |
 | `logs/`、`tmp/` | 日志和临时文件 |
 | `previews/`、`verification/` | 预览与验证材料 |

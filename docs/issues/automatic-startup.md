@@ -4,13 +4,13 @@
 
 将程序、运行依赖、前端、精简词库和 MiniLM 一起交付，让用户解压后双击启动，达到能够完整漫游的就绪状态。
 
-发行方向已确认，以下补齐本次构建与启动接口，待确认后实施。词库上传与选择已完成，详见[词库管理](library-selection.md)。
+目录式便携发行方案已确认，按下述接口实施。词库上传与选择已完成，详见[词库管理](library-selection.md)。
 
 ## 架构
 
 ```mermaid
 flowchart TD
-    Build["backend.release：构建发行包"] --> Program["PyInstaller 程序与依赖"]
+    Build["scripts/build_portable.py：构建发行包"] --> Program["PyInstaller 程序与依赖"]
     Build --> Assets["已构建前端 / 干净词库 / MiniLM / 资源清单"]
     Program --> Package["各系统便携目录与压缩包"]
     Assets --> Package
@@ -25,7 +25,7 @@ flowchart TD
 
 | 组成 | 接口及职责 |
 | --- | --- |
-| 发行构建 `backend.release` | `python -m backend.release --source-data-dir PATH --output-dir PATH`：读取源数据目录中当前选中的词库与 MiniLM，导出干净资源，打包当前已构建前端和后端，生成便携目录及 ZIP；输出目录使用新目录。 |
+| 发行构建 `scripts/build_portable.py` | `python scripts/build_portable.py --source-data-dir PATH --output-dir PATH`：读取源数据目录中当前选中的词库与 MiniLM，导出干净资源，打包当前已构建前端和后端，生成便携目录及 ZIP；输出目录使用新目录。 |
 | 平台启动入口 | Windows 双击 `start.cmd`；Linux 执行 `start.sh`；macOS 双击 `start.command`。入口仅运行随包程序并传递参数。 |
 | Host 启动 | 沿用 `--port`、`--data-dir`、`--host`；增加 `--lan` 作为局域网入口、`--no-browser` 用于验证。便携启动默认就绪后打开浏览器，源码入口保留现有默认行为。 |
 | 应用编排初始化 | 新增 `PictideApplication.prepare_startup(paths, seed_dir)`：在服务组装前补齐所选数据目录中缺失的默认词库和模型；预设复用候选模块现有默认值。已有个人预设、所选词库、模型和业务数据保留。 |
@@ -91,3 +91,10 @@ sequenceDiagram
 - 源码启动脚本继续用于开发，发布完成后同步 [README](../../README.md) 与各系统[安装路径](../guides/getting-started.md)。
 
 参考：[PyInstaller 打包方式](https://pyinstaller.org/en/stable/operating-mode.html)。
+
+交付与验证（2026-10-19）：
+
+- Windows x64 目录式程序及 ZIP 已构建，产物位于 `data/releases/portable-compact-20261019/`。ZIP 为 154,793,286 B（147.6 MiB），解压目录为 257,461,991 B（245.5 MiB）；首次运行另生成约 110 MiB 的词库与模型工作副本。
+- 三项冒烟通过：干净资源导出与已有数据保留、便携默认路径、服务就绪后打开浏览器；实际解压程序通过页面资源、候选、MiniLM 编码与推荐评分验证。
+- 在本机已缓存磁盘条件下，新数据目录初始化至 bootstrap 响应约 1.04 秒，再次启动约 0.62 秒，移动目录后约 1.13 秒；该时间包含资源准备和服务就绪，浏览器展示及首次模型推理另计。
+- 验证采用独立数据和端口，只配置测试生图地址；真实 GPU 生图和 Linux/macOS 原生运行未执行。报告与日志保存在 `data/verification/portable-startup-20261019/`。

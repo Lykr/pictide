@@ -6,7 +6,15 @@
 
 ## 用户指南
 
-### 快速开始（源码版本）
+### 快速开始（便携版本）
+
+1. 启动 ComfyUI，准备可用的文生图模型。
+2. 解压对应系统的便携包，运行启动入口：[Windows](docs/guides/setup/windows.md#便携版本) · [Linux](docs/guides/setup/linux.md#便携版本) · [macOS](docs/guides/setup/macos.md#便携版本)。程序就绪后自动打开浏览器。
+3. 在「设置 → 后端」连接 ComfyUI，进入「漫游」开始浏览。
+
+便携包随带运行环境、前端、精简词库和 MiniLM；个人数据保存在包内 `data/`。Windows 已验证真实产物，Linux/macOS 的本机构建与原生验证状态见各系统说明。
+
+### 从源码开始
 
 1. 启动 ComfyUI，准备可用的文生图模型。
 2. 按系统完成安装与启动：[Windows](docs/guides/setup/windows.md) · [Linux](docs/guides/setup/linux.md) · [macOS](docs/guides/setup/macos.md)。打开 http://127.0.0.1:8189 。
@@ -34,7 +42,7 @@ ComfyUI 是独立的生成后端；Pictide 不作为其插件加载。当前为�
 
 ## 开发者文档
 
-- [便携发行包设计](docs/issues/automatic-startup.md)：依赖随包交付，简化项目启动，达到漫游就绪状态。
+- [便携发行构建与验证](docs/issues/automatic-startup.md)：目录式打包、资源初始化和平台验证。
 - [开发流程](docs/development.md)：从源码安装、构建、验证及发布；首次检出从[准备环境](docs/development.md#首次准备检出目录)开始。
 - [架构与模块边界](docs/architecture.md)：模块职责、依赖和调用流程。
 - [HTTP API 参考](docs/api.md)：接口索引、请求参数和响应。

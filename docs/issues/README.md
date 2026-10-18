@@ -51,6 +51,6 @@
 
 ## 项目与部署历史
 
-- [开箱即用的便携发行包（待实施）](automatic-startup.md)
+- [开箱即用的便携发行包](automatic-startup.md)
 - [项目独立迁移记录](project-move.md)
 - [数据部署历史记录](data-layout-history.md)

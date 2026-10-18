@@ -1,5 +1,8 @@
 """HTTP, event transport and process lifecycle. Use cases live in application.py."""
 import argparse
+import asyncio
+import sys
+import webbrowser
 import ipaddress
 import json
 import math
@@ -364,14 +367,49 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
     return app
 
 
-def main():
+async def open_browser_when_ready(url):
+    """Open the default browser only after the listening service answers bootstrap."""
+    async with ClientSession(timeout=ClientTimeout(total=2)) as session:
+        for _ in range(30):
+            try:
+                async with session.get(url + "/api/bootstrap") as response:
+                    if response.status == 200:
+                        try:
+                            await asyncio.to_thread(webbrowser.open, url)
+                        except webbrowser.Error:
+                            print("Open Pictide in your browser: " + url)
+                        return
+            except (OSError, asyncio.TimeoutError):
+                pass
+            await asyncio.sleep(0.1)
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser(description="Pictide")
     parser.add_argument("--host", default="127.0.0.1", choices=["127.0.0.1", "localhost", "::1", "0.0.0.0"])
     parser.add_argument("--port", type=int, default=8189)
     parser.add_argument("--data-dir", default=None)
-    args = parser.parse_args()
+    parser.add_argument("--lan", action="store_true", help="Allow devices on the local network")
+    parser.add_argument("--no-browser", action="store_true", help="Keep the browser closed")
+    args = parser.parse_args(argv)
+    frozen = getattr(sys, "frozen", False)
     paths = DataPaths(args.data_dir).configure_runtime()
-    web.run_app(create_app(paths.root, allow_lan=args.host == "0.0.0.0"), host=args.host, port=args.port, access_log=None)
+    PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
+    host = "0.0.0.0" if args.lan else args.host
+    app = create_app(paths.root, allow_lan=host == "0.0.0.0")
+    if frozen and not args.no_browser:
+        browser_task = None
+        url_host = "[::1]" if host == "::1" else "127.0.0.1" if host == "0.0.0.0" else host
+        async def launch_browser(app):
+            nonlocal browser_task
+            browser_task = asyncio.create_task(open_browser_when_ready(f"http://{url_host}:{args.port}"))
+        async def stop_browser(app):
+            if browser_task is not None:
+                browser_task.cancel()
+                await asyncio.gather(browser_task, return_exceptions=True)
+        app.on_startup.append(launch_browser)
+        app.on_shutdown.append(stop_browser)
+    web.run_app(app, host=host, port=args.port, access_log=None)
 
 
 if __name__ == "__main__":

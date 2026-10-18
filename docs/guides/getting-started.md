@@ -2,11 +2,13 @@
 
 [文档导航](../README.md) · 下一步：[提示词](prompts.md) / [漫游](roam.md)
 
-本页说明当前源码版本的安装与接入。先准备 ComfyUI 和可用的文生图模型，再启动 Pictide；共现漫游使用已导入的词库，推荐学习使用本地 MiniLM。
+本页说明便携版与源码版的启动准备和生图后端接入。先准备 ComfyUI 和可用的文生图模型，再启动 Pictide。
 
 ## 启动前准备
 
-应用运行需要 Python 3.10+；新检出的源码还需要先构建前端，Node.js 与 pnpm 版本见[开发环境要求](../development.md#首次准备检出目录)。已准备好前端的目录日常运行不需要 Node.js 服务。
+便携版随包提供程序、前端、精简词库和离线 MiniLM。解压后运行对应系统的启动入口即可，详见 [Windows](setup/windows.md#便携版本) · [Linux](setup/linux.md#便携版本) · [macOS](setup/macos.md#便携版本)。
+
+源码版需要 Python 3.10+；新检出的源码还需要先构建前端，Node.js 与 pnpm 版本见[开发环境要求](../development.md#首次准备检出目录)。已准备好前端的目录日常运行不需要 Node.js 服务。
 
 启动器自动准备所选数据目录下的 Python 环境、依赖与缓存，不下载生图模型、词库或推荐模型。不同系统分别创建运行环境，不直接复用其他系统的 venv。Linux 与 macOS 的脚本流程已做 Bash 冒烟，原生环境安装尚未验证。
 

@@ -24,7 +24,7 @@ cd ../pictide-example
 
 ## 首次准备检出目录
 
-源码环境由开发者按本节准备。[便携发行包设计](issues/automatic-startup.md)将运行环境、前端成品、词库和推荐模型统一纳入构建发布流程，当前待实现与验证。
+源码环境由开发者按本节准备。[便携发行包设计](issues/automatic-startup.md)将运行环境、前端成品、词库和推荐模型统一纳入构建发布流程，Windows 目录式产物已验证，Linux/macOS 原生验证待完成。
 
 需要 Git、Python 3.10+、Node.js 20.19+（或 22.12+）和 `web/package.json` 指定的 pnpm。Python 运行依赖放在 `backend/requirements.txt`，离线导入依赖放在 `backend/requirements-import.txt`；前端依赖由 `web/package.json` 管理。依赖安装遵循锁文件，不复制或提交 `node_modules`。
 
@@ -37,6 +37,12 @@ cd ../pictide-example
 `web/dist/` 不提交，首次构建后才能使用页面和静态资源测试。运行数据、依赖、缓存和临时文件放在各自检出目录的 `data/`，现有主目录的构建与运行数据保持原样。
 
 浏览器验证按各系统页面的「端口与数据目录」步骤使用独立实例。每个并行实例使用不同端口，不共用主实例的 SQLite、词库或图片目录。默认使用模拟后端与中性样例；真实 ComfyUI 接入先只读检查，不为普通回归测试提交 GPU 任务。新启动脚本的 Git 执行位与换行约定见仓库属性；POSIX 启动脚本通过 `exec` 交接应用进程。
+
+## 构建便携发行包
+
+完成当前检出的前端构建后，按本机系统阅读：[Windows](guides/setup/windows.md#构建便携包) · [Linux](guides/setup/linux.md#构建便携包) · [macOS](guides/setup/macos.md#构建便携包)。构建工具为 `scripts/build_portable.py`，仅从指定数据目录导出所选统计词库与编码器所需模型，个人后端、图片、预设与偏好留在本地。
+
+输出目录使用新目录，产物包括 Pictide 目录、ZIP 和 build-report.json。默认词库由源数据目录的选择决定；正式发布优先选择精简词库。构建阶段安装 `backend/requirements-release.txt`，用户直接启动已构建产物。
 
 ## 验证与提交
 
