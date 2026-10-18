@@ -20,14 +20,14 @@
 安装离线依赖：
 
 ```shell
-python -m pip install -r data_processing/requirements.txt
+python -m pip install -r corpus/requirements.txt
 ```
 
 下载元数据，下载完成后输出固定的数据版本号；将该值填入导入命令的 REVISION：
 
 ```shell
-python -m data_processing.download dev/datasets/danbooru-2026
-python -m data_processing.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/candidate.sqlite3 --revision REVISION
+python -m corpus.download dev/datasets/danbooru-2026
+python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/candidate.sqlite3 --revision REVISION
 ```
 
 重新获取同一版本时，下载命令可加 `--revision REVISION`。导入成品使用新文件名；中间状态默认保存为成品文件名加 `-state.sqlite3`，也可用 `--state` 指定。中断后复用相同中间状态继续导入；各参数见两个模块的 `--help`。
@@ -57,7 +57,7 @@ python -m data_processing.importer dev/datasets/danbooru-2026/raw dev/datasets/d
 导入冒烟使用临时 Parquet 与 SQLite，覆盖去重、评级、词频与关系门槛、PMI 和中断恢复：
 
 ```shell
-python -m unittest discover -s tests/data_processing -p test_importer.py -v
+python -m unittest discover -s tests/corpus -p test_importer.py -v
 ```
 
 应用候选生成的验证入口见[候选冒烟](../../tests/candidate/README.md)。

@@ -35,7 +35,7 @@
 
 | 路径 | 内容 |
 | --- | --- |
-| [`data_processing/`](data-processing.md) | 版本管理的离线下载、统计导入工具和依赖清单 |
+| [`corpus/`](corpus.md) | 版本管理的离线下载、统计导入工具和依赖清单 |
 | [`docs/dev/`](README.md) | 开发指南、架构、接口、设计规范与需求记录，纳入版本管理 |
 | `dev/datasets/` | 原始 Parquet、下载校验与离线统计中间文件 |
 | `dev/runtime/frontend/`、`dev/runtime/importer/` | 前端开发依赖与离线导入环境 |

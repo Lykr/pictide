@@ -34,8 +34,8 @@ PMI(a,b) = log2(count(a,b) * N / (count(a) * count(b)))。
 离线命令保持以下入口，默认中间库为成品文件名加 -state.sqlite3，也可通过 --state 显式指定；成品要求新路径。可复用中间库恢复已完成的阶段和块，不扩展旧成品 schema。
 
 ```powershell
-python -m pip install -r data_processing/requirements.txt
-python -m data_processing.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/candidate.sqlite3 --revision 203df76a018bd5d463c37666c394b88b5acaa202
+python -m pip install -r corpus/requirements.txt
+python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/candidate.sqlite3 --revision 203df76a018bd5d463c37666c394b88b5acaa202
 ```
 
 本次重建复用已验证的全量普通标签精确计数，从原始 Parquet 按相同 post ID 去重规则补算评级词频及评级与普通词的共现；校验每个普通词的四评级计数之和等于原词频。输出统一过滤 count >=10 并重算 PMI，原普通标签 ID 保持不变、追加四个评级 ID；新导入器以中性样例验证四评级、去重、100/99 词频与9/10关系边界。新库保留已有预设，切换前从在线库重读预设，避免覆盖处理期间的编辑。统计来源标识升级为 pmi-v2:general+ratings:min100:pair10，历史图片和推荐证据不重写。离线导入使用新的中间 state 文件，避免复用不含评级的旧计数。

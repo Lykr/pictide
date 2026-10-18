@@ -25,7 +25,7 @@
 
 ## 离线导入
 
-完整原始 Parquet 保留在 data/datasets，统计中间状态使用独立离线 SQLite，成品 candidate.sqlite3 不包含去重图片 ID 或导入进度。仅离线工具需要 data_processing/requirements.txt，Web 不依赖 PyArrow/SciPy。CLI 与结果验证见 [PMI 设计](candidate-pmi.md#实施与验证)。
+完整原始 Parquet 保留在 data/datasets，统计中间状态使用独立离线 SQLite，成品 candidate.sqlite3 不包含去重图片 ID 或导入进度。仅离线工具需要 corpus/requirements.txt，Web 不依赖 PyArrow/SciPy。CLI 与结果验证见 [PMI 设计](candidate-pmi.md#实施与验证)。
 
 应用候选库更换前备份。状态 ready、导入进程退出且 WAL 已清空后才发布；不复制正在写入的库。旧预设原文件保留于备份，新版本不解释旧的概率阈值。任务、图片、喜欢和推荐证据保留。
 
