@@ -4,6 +4,7 @@
 
 ## 项目约定
 
+- [HTTP API 参考](api.md)
 - [架构与模块边界](architecture.md)
 - [Git 开发流程](development.md)
 - [Pictide 页面设计规范](design-system.md)

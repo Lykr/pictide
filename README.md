@@ -1,6 +1,6 @@
 # Pictide
 
-文档入口见 [文档导航](docs/README.md)，需求设计与交付记录集中在 `docs/issues/`。
+文档入口见 [文档导航](docs/README.md)，HTTP 接口集中见 [API 参考](docs/api.md)，需求设计与交付记录集中在 `docs/issues/`。
 
 项目根目录为 `E:\Code\pictide`，前端模块 `web/` 的 npm 包名为 `pictide-web`；后端业务位于 `backend/`，产品名称为 Pictide。前后端职责及依赖方向见 [架构与模块边界](docs/architecture.md)。
 
