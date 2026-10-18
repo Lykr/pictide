@@ -161,5 +161,6 @@
   "正在计算偏好评分": "Calculating preference scores",
   "刷新偏好评分排序": "Refresh preference ranking",
   "加载更多": "Load more",
-  "暂无法按偏好评分排序，已按时间展示。": "Preference ranking is unavailable. Images are shown newest first."
+  "暂无法按偏好评分排序，已按时间展示。": "Preference ranking is unavailable. Images are shown newest first.",
+  "推荐服务暂不可用，暂按时间排序。": "The recommendation service is unavailable. Images are shown newest first."
 }
