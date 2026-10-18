@@ -28,6 +28,14 @@ class CooccurrenceCandidateProvider:
                               terms=self._terms(previous["terms"])),)
         if "document" not in context:
             context["document"] = self.service.load_preset(context["preset_id"])["document"]
+        pinned = constraints.get("pinned_positive", [])
+        if pinned:
+            document = dict(context["document"])
+            document["base_positive"] = list(dict.fromkeys(
+                text.strip().replace("_", " ") for text in [*document["base_positive"], *pinned]))
+            document["max_tags"] = max(document["max_tags"], len(document["base_positive"]))
+            document["min_tags"] = max(document["min_tags"], len(document["base_positive"]))
+            context["document"] = document
         allowed = constraints.get("allowed_positive_tags")
         allowed_ids = None if allowed is None else frozenset(
             tag["id"] for tag in self.service.store.find_tags(allowed))

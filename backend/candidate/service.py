@@ -85,6 +85,17 @@ class CandidateService:
         except KeyError:
             raise CandidateError(f"未找到预设：{preset_id}") from None
 
+    def normalize_roam_anchors(self, preset_id, pinned_positive):
+        document = self.load_preset(preset_id)["document"] if preset_id else DEFAULT_DOCUMENT
+        if not isinstance(pinned_positive, list) or any(
+                not isinstance(text, str) or not text.strip() for text in pinned_positive):
+            raise CandidateError("pinned_positive 必须是完整且非空的提示词列表")
+        base, _ = self._fixed(document["base_positive"], "positive", "")
+        pins, _ = self._fixed([text.strip().replace("_", " ") for text in pinned_positive], "positive", "")
+        base_ids = {term["id"] for term in base}
+        return dict(preset_base_positive=[term["text"] for term in base],
+                    pinned_positive=[term["text"] for term in pins if term["id"] not in base_ids])
+
     def save_preset(self, payload):
         name = payload.get("name", "").strip()
         if not name:

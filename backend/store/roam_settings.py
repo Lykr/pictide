@@ -1,5 +1,6 @@
 """Explicit local roam preferences and atomic prefetch invalidation."""
 from contextlib import contextmanager
+import json
 import sqlite3
 import threading
 import uuid
@@ -84,6 +85,9 @@ class RoamSettings:
                        "recommendation_strength TEXT NOT NULL CHECK(recommendation_strength IN ('standard','strong')), "
                        "strong_candidate_multiplier INTEGER NOT NULL CHECK(strong_candidate_multiplier BETWEEN 1 AND 5))")
 
+            db.execute("CREATE TABLE IF NOT EXISTS roam_anchor_settings (id INTEGER PRIMARY KEY CHECK(id=1), "
+                       "pinned_positive TEXT NOT NULL, preset_base_positive TEXT NOT NULL)")
+
     @contextmanager
     def connect(self):
         db = sqlite3.connect(self.path, timeout=30)
@@ -95,7 +99,7 @@ class RoamSettings:
 
     @staticmethod
     def defaults():
-        return {"prefetch_count": 0, "max_history_images": 0, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 5, "liked_tags_only": False, "prompt_mode": "random", "candidate_count": 4, **RECOMMENDATION_DEFAULTS}
+        return {"prefetch_count": 0, "max_history_images": 0, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 5, "liked_tags_only": False, "prompt_mode": "random", "candidate_count": 4, "pinned_positive": [], "preset_base_positive": [], **RECOMMENDATION_DEFAULTS}
 
     @classmethod
     def _get(cls, db):
@@ -111,6 +115,9 @@ class RoamSettings:
         recommendation = db.execute("SELECT recommendation_strength,strong_candidate_multiplier "
                                     "FROM roam_recommendation_settings WHERE id=1").fetchone()
         document.update(dict(recommendation) if recommendation else RECOMMENDATION_DEFAULTS)
+        anchors = db.execute("SELECT pinned_positive,preset_base_positive FROM roam_anchor_settings WHERE id=1").fetchone()
+        document["pinned_positive"] = json.loads(anchors[0]) if anchors else []
+        document["preset_base_positive"] = json.loads(anchors[1]) if anchors else []
         return document
 
     def get(self):
@@ -130,7 +137,7 @@ class RoamSettings:
     def history_limit(self):
         return self.get()["max_history_images"]
 
-    def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None, recommendation=None):
+    def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None):
         document = {"prefetch_count": prefetch_count(count), "backend_id": selection(backend_id, "生图后端"),
                     "max_history_images": max_history_images(max_history),
                     "preset_id": selection(preset_id, "候选预设"), "epoch": uuid.uuid4().hex}
@@ -148,14 +155,19 @@ class RoamSettings:
             previous = self._get(db)
             document["liked_tags_only"] = previous["liked_tags_only"] if liked_tags_only is None else liked_tags_only
             document["prompt_mode"] = previous["prompt_mode"] if prompt_mode is None else prompt_mode
+            if anchors is not None:
+                document.update(anchors)
+            else:
+                document.update({key: previous[key] for key in ("pinned_positive", "preset_base_positive")})
             same_settings = all(document[key] == previous[key] for key in
-                ("prefetch_count", "max_history_images", "backend_id", "preset_id", "liked_tags_only", "prompt_mode"))
+                ("prefetch_count", "max_history_images", "backend_id", "preset_id", "liked_tags_only", "prompt_mode", "pinned_positive", "preset_base_positive"))
             same_interval = playback_interval is None or playback_interval == previous["playback_interval_seconds"]
-            if (candidate_count is not None or recommendation) and same_settings and same_interval:
+            if (candidate_count is not None or recommendation or anchors is not None) and same_settings and same_interval:
                 document["epoch"] = previous["epoch"]
-            if any(document[key] != previous[key] for key in ("liked_tags_only", "prompt_mode", "backend_id", "preset_id")):
+            if any(document[key] != previous[key] for key in ("liked_tags_only", "prompt_mode", "backend_id", "preset_id", "pinned_positive", "preset_base_positive")):
                 Repository.discard_roam_prefetch(db)
             self._save_settings(db, document)
+            self._save_anchors(db, document)
             if playback_interval is not None:
                 self._save_playback(db, playback_interval)
             if candidate_count is not None:
@@ -182,7 +194,13 @@ class RoamSettings:
                    "strong_candidate_multiplier=excluded.strong_candidate_multiplier",
                    tuple(document[key] for key in RECOMMENDATION_DEFAULTS))
 
-    def save_options(self, liked_tags_only=None, playback_interval=None, prompt_mode=None, candidate_count=None, recommendation=None):
+    @staticmethod
+    def _save_anchors(db, document):
+        db.execute("INSERT INTO roam_anchor_settings VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET "
+                   "pinned_positive=excluded.pinned_positive,preset_base_positive=excluded.preset_base_positive",
+                   tuple(json.dumps(document[key], ensure_ascii=False) for key in ("pinned_positive", "preset_base_positive")))
+
+    def save_options(self, liked_tags_only=None, playback_interval=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None):
         recommendation = recommendation_options(recommendation or {})
         if liked_tags_only is not None:
             liked_tags_only_value(liked_tags_only)
@@ -196,8 +214,12 @@ class RoamSettings:
             db.execute("BEGIN IMMEDIATE")
             document = self._get(db)
             changed = ((liked_tags_only is not None and liked_tags_only != document["liked_tags_only"])
-                       or (prompt_mode is not None and prompt_mode != document["prompt_mode"]))
+                       or (prompt_mode is not None and prompt_mode != document["prompt_mode"])
+                       or (anchors is not None and any(anchors[key] != document[key]
+                           for key in ("pinned_positive", "preset_base_positive"))))
             if changed:
+                if anchors is not None:
+                    document.update(anchors)
                 if liked_tags_only is not None:
                     document["liked_tags_only"] = liked_tags_only
                 if prompt_mode is not None:
@@ -205,6 +227,7 @@ class RoamSettings:
                 document["epoch"] = uuid.uuid4().hex
                 Repository.discard_roam_prefetch(db)
                 self._save_settings(db, document)
+                self._save_anchors(db, document)
             if playback_interval is not None:
                 self._save_playback(db, playback_interval)
             if candidate_count is not None:
