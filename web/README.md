@@ -1,6 +1,6 @@
 # Pictide Web
 
-Pictide 的唯一浏览器入口。漫游、喜欢、任务、生成、提示词和设置共享同一个页面与侧栏；切换视图保留已经填写的提示词、生成预设草稿、配置和预览结果。
+Pictide 的唯一浏览器入口，npm 包名 `pictide-web`。产品操作见[使用指南](../docs/README.md#使用指南)，接口见[API 索引](../docs/api.md)。
 
 ## 代码入口
 
@@ -12,46 +12,26 @@ Pictide 的唯一浏览器入口。漫游、喜欢、任务、生成、提示词
 
 React 壳层与既有 DOM 控制器管理展示和草稿，控制器在页面生命周期内只初始化一次。共享控件层通过 portals 接入官方 shadcn/Radix 组件，保持单一 React 根；隐藏的表单状态接口用于衔接旧控制器，不能作为可见的原生控件。新增功能复用该层，不创建独立页面入口或按控件创建 React 根。
 
-浏览器路由使用 `#feed`（漫游）、`#liked`（喜欢）、`#generate`（生成）、`#prompts`（提示词）及 `#settings/general|backend|roam|history`（设置分类），深链接和刷新仍加载同一 HTML。漫游与喜欢页不显示生成面板；方向键只作用于图片视图，输入、菜单及弹窗中不触发图片快捷键。提示词保存快捷键只在编辑器视图有效。
 
-图片反馈只提交 `value: 1`（喜欢）或 `value: null`（撤回喜欢），上方向键幂等点赞，左/右方向键切换图片；下方向键不绑定反馈。
+## 页面与状态
 
-词库、任务及用户偏好统一使用 `components/page-controls.tsx`，默认每页 15 条，底部居中显示上一页、页码输入、总页数、跳转及下一页。支持回车或点击跳转，页码范围校验、加载禁用与边界状态一致；数据获取仍由各页面原有逻辑负责。图片连续浏览与加载更多保留游标方式。
+内部路由为 `#feed`、`#generate`、`#liked`、`#prompts` 及 `#settings/general|roam|backend|history`。任务记录位于设置的历史分区，没有独立任务栏目。
 
-任务页通过 `GET /api/jobs?page=N` 读取 SQLite 分页，每页固定 15 条；输入页码配合跳转按钮或 Enter，支持上一页和下一页。分页状态独立于生成区的最近任务状态，实时刷新保持当前页，展开状态按任务 ID 保留，慢请求不能覆盖后来选择的页码；空列表、加载与失败可见。无 `page` 的接口仍供生成状态使用，不用它在浏览器切片模拟分页。
+React 页面壳层与控制器共同维护草稿。图片窗口按 source 区分生成、漫游，喜欢跨来源；观看位置由后端保存。UI 不直接访问文件、SQLite 或 Python 模块，业务算法在后端。
 
-漫游沉浸模式复用已有图片 DOM 与上一张/喜欢/下一张控件，新增退出按钮。进入时在真实点击处理器中直接请求 Fullscreen API；不支持或拒绝时使用浏览器视口铺满。毛玻璃、观看游标、按需下一张加载与快捷键保持不变；只有底部四按钮浮栏，2 秒无操作隐藏，鼠标移动、触屏点按和按键唤醒，悬停或键盘焦点停留时保持显示。隐藏栏通过 inert 避免透明误点与意外聚焦，Tab 可唤醒。Esc、浏览器退出全屏、切离漫游和 pagehide 清理定时器与监听，恢复外围原有 inert 状态和入口焦点；异步全屏请求晚到时也不能重新进入。操作错误退出沉浸以展示错误原因；不支持时的模式仅覆盖浏览器视口，不声称操作系统全屏。
+`components/generated-results.tsx` 和 `generated-viewer.tsx` 管理生成/喜欢网格及大图；漫游控制器管理当前图、预取与自动播放；`components/page-controls.tsx` 管理常规分页。来源、数量和反馈语义以[图片接口](../docs/reference/api/images.md)为准。
 
-生成页设置每次数量和生成次数（均 1–10），后端一次准备并持久化所有轮次；每轮共现生成一次，同轮共用文本，生成后控制按轮推进，图像种子跨轮递增或逐张随机。`POST /api/jobs` 的 `count`、`repetitions` 与可选 `candidate` 参与整批幂等身份；浏览器只在收到确认回复后更新计数，结果不确定时保留原参数、文本和请求 ID。生成结果由 `components/generated-results.tsx` 管理独立卡片与官方 Dialog，通过事件桥与现有控制器连接；图片分别使用 `source=generate` 和 `source=roam` 查询，喜欢页使用 `source=all&liked=1`，三个分页缓存共同遵守清理修订号。生成结果不加入漫游，喜欢可以跨来源收藏；已有手动任务的产物自然归入生成区。
-
-`GeneratedResults` 管理网格、默认开启的毛玻璃与大图选图；`components/generated-viewer.tsx` 管理官方 Dialog、导航和键盘，沉浸复用 `createImmersiveViewer`。`generated-feedback` 事件的 `toggle:false` 用于幂等键盘喜欢；`generated-clear` 经控制器调用批量清理 API，不直接修改文件或数据库。清理与反馈串行，列表修订后重读权威页面，保留已浏览窗口和邻近选图，晚回请求不得恢复已处理图片。生成结果状态单独传递 `mutationPending` 和错误，私密模糊覆盖网格及大图，与漫游状态独立。
-
-工作流普通参数与 JSON 在同一面板切换，导入替换同一草稿。漫游使用持久设置中的预取数量、后端与候选词库；浏览器仅在可见漫游页进入、切图和现有实时刷新后请求 `/api/roam/ensure`，合并重叠请求，不增加定时器。推荐候选、缺口计数、任务互斥、失败暂停及历史快照由后端执行，前端不读取生成页的手动提示词。
-
-漫游设置中的「历史图片数量上限」为 `0`–`100000` 整数，默认 `0` 关闭数量清理，通过 `/api/settings/roam` 的 `max_history_images` 保存。数量统计当前观看图片之前的所有漫游图片，超限从最早图片开始清理：未喜欢的删除本地图片及对应提示词 JSON，喜欢的仅从漫游隐藏并保留在喜欢页。当前及较新预取图片不计入上限，生成页图片不受漫游配置影响。保存后根据 `artifact_revision` 使图片缓存失效，并重读当前漫游位置附近的权威列表，保留其他页面的编辑草稿。
-
-漫游观看位置通过 `/api/roam/view` 保存在后端，刷新或从喜欢返回时恢复；喜欢位置在本次页面内独立保留。初始化先读取持久游标及附近窗口，不先选择最新图片；只有实际选图时才以递增时间戳和 `keepalive` 请求保存位置，普通实时刷新不更新观看时间。图片窗口使用 `source=roam&around=当前图片` 整体替换，避免大图库中跳过未加载的相邻图片；清理修订使缓存失效时保留游标，等待权威窗口再处理已删除图片的邻居回退。
-
-用户向右没有下一张时，或空图库点击「开始漫游」时，使用 `demand: true` 请求推荐生图；预取数量为 `0` 仍可按需生成，不改变预取设置。图片区域展示加载动画，现有任务/SSE 更新确认下一张可用后只自动前进一次。重复右键合并为同一个等待，向左切图或离开漫游取消自动前进；生成失败、暂停和接口错误退出加载并显示错误，不自动重试失败循环。较旧边界不显示最早图片提示。
-
-候选功能通过 `/api/candidate/{configs,config,save,create,check,generate}` 访问，其余功能仍通过同源 `/api/`。前端不导入 Python 模块，也不访问后端配置文件路径。
-
-应用通过唯一的 `/api/events` EventSource 接收 `change` 事件并同步任务和图片；连接未建立或正在恢复时使用原有 2 秒轮询。切换内部视图不创建第二条事件连接，离开页面时关闭连接。
+全应用共用 `/api/events` EventSource；断线时保留既有轮询回退，切换栏目不创建第二条连接。候选使用 `/api/candidate/tags|presets|dataset|generate|relations`，具体方法与字段见[候选接口](../docs/reference/api/candidate.md)。
 
 ## 构建
 
-在本目录执行：
+在 `web/` 中执行 `pnpm install --frozen-lockfile`、`pnpm run typecheck`、`pnpm run build`。首次环境、验证及发布顺序统一见[开发流程](../docs/development.md)，不要在正在提供页面的目录直接清空 dist。
 
-```sh
-pnpm install --frozen-lockfile
-pnpm run typecheck
-pnpm run build
-```
+构建使用项目根 data 下的依赖和缓存；`web/node_modules` 指向依赖实体，`web/dist` 为发布资源。Node.js 仅用于构建，运行由 Python 宿主提供 `/static/ui/`。
 
-Node.js 仅用于构建。产物在 `web/dist/`，由后端静态服务提供 `/static/ui/`，`dist/index.html` 是应用首页；不需要额外前端服务。产物不纳入 Git，每个新检出目录需先构建；分支、独立数据与发布约定见 [Git 开发流程](../docs/development.md)。
+## 进一步查阅
 
-依赖实体保存在项目根 `data/runtime/frontend/node_modules/`，本目录 `node_modules` 仅为 Windows Junction；pnpm、Vite 和 TypeScript 缓存都放在项目根 `data/cache/`。构建脚本会建立所需 Junction，避免在源码目录中散落运行数据。
-
-Feed CSS 使用显式的 `:not(:where(.editor-page, .editor-page *))` 目标排除规则隔离嵌入编辑器的布局，避免同名的 `.workspace`、表单与弹窗样式跨工作区生效；不依赖 CSS `@scope`。
-
-任务记录位于设置的历史分区；通用分区显示主题与数据位置，历史分区同时保留图片清理设置。
+- [共享组件、主题及页面规范](../docs/design-system.md)
+- [模块边界](../docs/architecture.md)
+- [图片操作与快捷键](../docs/guides/roam.md#浏览与自动播放)
+- [第三方组件声明](src/THIRD_PARTY_NOTICES.md)
