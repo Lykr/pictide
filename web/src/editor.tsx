@@ -312,22 +312,24 @@ export function EditorWorkspace() {
     <main>
       {tab === "library" ? <section className="cooc-library">
         <div className="cooc-library-filters">
-          <div className="cooc-library-selection">
-            <Select value={library.selected || undefined} onValueChange={filename => void libraryOperation("select", filename)} disabled={busy || !library.libraries.length}>
-              <SelectTrigger aria-label={t("当前词库")}><SelectValue placeholder={t("选择词库")} /></SelectTrigger>
-              <SelectContent>{library.libraries.map(item => <SelectItem key={item.filename} value={item.filename}>{item.filename}</SelectItem>)}</SelectContent>
-            </Select>
-            <HelpTip text={t("上传词库文件，或放入 data/libraries/ 后刷新选择。支持 .sqlite3 和 .sqlite3.gz，选中立即生效。")} />
+          <div className="cooc-library-toolbar">
+            <div className="cooc-library-selection">
+              <Select value={library.selected || undefined} onValueChange={filename => void libraryOperation("select", filename)} disabled={busy || !library.libraries.length}>
+                <SelectTrigger aria-label={t("当前词库")}><SelectValue placeholder={t("选择词库")} /></SelectTrigger>
+                <SelectContent>{library.libraries.map(item => <SelectItem key={item.filename} value={item.filename}>{item.filename}</SelectItem>)}</SelectContent>
+              </Select>
+              <HelpTip text={t("上传词库文件，或放入 data/libraries/ 后刷新选择。支持 .sqlite3 和 .sqlite3.gz，选中立即生效。")} />
+            </div>
+            <div className="cooc-library-actions">
+              <input ref={libraryInput} type="file" hidden accept=".sqlite3,.sqlite3.gz" aria-label={t("选择词库文件")} onChange={event => {
+                const file = event.target.files?.[0]; event.target.value = "";
+                if (file) void libraryOperation("upload", undefined, file);
+              }} />
+              <IconButton icon={libraryAction === "upload" ? LoaderCircle : Upload} className={libraryAction === "upload" ? "[&>svg]:animate-spin" : ""} label={libraryAction === "upload" ? t("正在上传词库") : t("上传词库")} onClick={() => libraryInput.current?.click()} disabled={busy} />
+              <IconButton icon={libraryAction === "refresh" ? LoaderCircle : RefreshCw} className={libraryAction === "refresh" ? "[&>svg]:animate-spin" : ""} label={t("刷新词库")} onClick={() => void libraryOperation("refresh")} disabled={busy || tagLoading} />
+            </div>
           </div>
-          <Input aria-label={t("搜索词库标签")} placeholder={t("搜索标签")} value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} />
-          <div className="cooc-library-actions">
-            <input ref={libraryInput} type="file" hidden accept=".sqlite3,.sqlite3.gz" aria-label={t("选择词库文件")} onChange={event => {
-              const file = event.target.files?.[0]; event.target.value = "";
-              if (file) void libraryOperation("upload", undefined, file);
-            }} />
-            <IconButton icon={libraryAction === "upload" ? LoaderCircle : Upload} className={libraryAction === "upload" ? "[&>svg]:animate-spin" : ""} label={libraryAction === "upload" ? t("正在上传词库") : t("上传词库")} onClick={() => libraryInput.current?.click()} disabled={busy} />
-            <IconButton icon={libraryAction === "refresh" ? LoaderCircle : RefreshCw} className={libraryAction === "refresh" ? "[&>svg]:animate-spin" : ""} label={t("刷新词库")} onClick={() => void libraryOperation("refresh")} disabled={busy || tagLoading} />
-          </div>
+          <Input className="cooc-library-search" aria-label={t("搜索词库标签")} placeholder={t("搜索标签")} value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} />
         </div>
         {libraryAction === "select" && <p className="text-xs text-muted-foreground" role="status">{t("正在切换词库…")}</p>}
         {libraryError && <p className="cooc-error" role="alert">{libraryError}</p>}
