@@ -9,6 +9,8 @@ test('system follows appearance changes; explicit themes stay fixed and the choi
   doc.documentElement = { classList: { toggle(name, enabled) { enabled ? classes.add(name) : classes.delete(name); } } };
   globalThis.window = { matchMedia: query => { assert.equal(query, '(prefers-color-scheme: dark)'); return media; } };
   globalThis.document = doc;
+  let chromeColor;
+  doc.querySelector = query => { assert.equal(query, 'meta[name="theme-color"]'); return { setAttribute(name, color) { assert.equal(name, 'content'); chromeColor = color; } }; };
   let writes = 0;
   globalThis.fetch = async (url, options) => {
     assert.equal(url, '/api/settings/general');
@@ -18,18 +20,24 @@ test('system follows appearance changes; explicit themes stay fixed and the choi
   const { currentTheme, applyTheme, saveTheme, loadTheme } = await import('../web/src/controllers/theme.mjs');
   assert.equal(currentTheme(), 'system');
   assert.equal(classes.has('dark'), true);
+  assert.equal(chromeColor, '#0a0a0a');
   media.matches = false; media.dispatchEvent(new Event('change'));
   assert.equal(classes.has('dark'), false);
+  assert.equal(chromeColor, '#ffffff');
   applyTheme('dark'); media.dispatchEvent(new Event('change'));
   assert.equal(classes.has('dark'), true);
+  assert.equal(chromeColor, '#0a0a0a');
   applyTheme('light'); media.matches = true; media.dispatchEvent(new Event('change'));
   assert.equal(classes.has('dark'), false);
+  assert.equal(chromeColor, '#ffffff');
   await saveTheme('system');
   assert.equal(currentTheme(), 'system');
   assert.equal(classes.has('dark'), true);
+  assert.equal(chromeColor, '#0a0a0a');
   media.matches = false; media.dispatchEvent(new Event('change'));
   assert.equal(currentTheme(), 'system');
   assert.equal(classes.has('dark'), false);
+  assert.equal(chromeColor, '#ffffff');
   assert.equal(writes, 1);
   await loadTheme();
   assert.equal(currentTheme(), 'system');

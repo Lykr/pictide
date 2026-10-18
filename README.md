@@ -38,6 +38,12 @@ New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -
 
 手机使用底部导航，图片大图可左右滑动切换；沉浸模式提供触屏退出按钮。iPhone 浏览器允许原生竖向滚动手势触发地址栏收起，具体显示仍由浏览器控制。普通 HTTP 下复制会尝试浏览器兼容方式，原生全屏不可用时使用页面内沉浸布局。
 
+### iPhone 主屏幕应用
+
+用 Safari 打开电脑的局域网地址 → 分享 → 添加到主屏幕 → 添加。若系统显示“作为 Web App 打开”，保持开启。从主屏幕的 Pictide 图标进入后使用独立窗口，不占用 Safari 地址栏，并复用现有底部导航与安全区布局。曾添加旧快捷方式时，需要移除旧快捷方式后重新添加，才能更新安装时的图标和窗口模式。
+
+当前支持主屏幕启动、应用图标、独立窗口与主题颜色；没有 Service Worker 或离线缓存。电脑上的 Pictide 必须运行，手机需能访问该局域网地址；电脑 IP 改变后须使用新地址重新添加。无需 Apple 开发者账号。现代 iOS 可直接从主屏幕以 Web App 打开网页，具体安装入口与行为见 [Apple 使用说明](https://support.apple.com/guide/iphone/open-as-web-app-iphea86e5236/ios) 和 [WebKit 主屏幕应用说明](https://webkit.org/blog/17333/webkit-features-in-safari-26-0/#every-site-can-be-a-web-app-on-ios-and-ipados)。
+
 所有应用数据默认集中在项目下 `data/`：数据库、图片及提示词 JSON、日志、缓存、临时文件和 Python 运行环境。可用 `-DataDir` 或 `PICTIDE_DATA_DIR` 指定另一数据目录；旧 `PICTIDE_WEB_DATA_DIR` 仍用于保留自定义路径。详细布局与备份方式见 [数据目录](docs/data-layout.md)。数据目录已排除出 Git。
 
 ## 通用设置

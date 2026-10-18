@@ -8,6 +8,7 @@
 
 /* Official preset b1VlIttI: radix-luma / neutral / Inter / Lucide. */
 :root {
+  color-scheme: light;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -238,4 +239,10 @@ body { position: fixed; inset: 0; }
     #feed-main > section, .editor-page main { overscroll-behavior-y: auto; }
     html:has(body.pictide-immersive), html:has(body[data-scroll-locked]) { min-height: 100dvh; overflow: hidden; }
   }
+}
+
+/* Home Screen apps have no browser chrome to collapse; keep the app shell locked. */
+@media (display-mode: standalone) {
+  html, body { position: fixed; inset: 0; height: 100%; min-height: 0; overflow: hidden; }
+  #root { height: 100dvh; }
 }
