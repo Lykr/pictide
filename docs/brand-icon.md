@@ -30,3 +30,9 @@
 - [D：32 段](../web/public/icons/studies/pictide-sketch-v2-32.svg)
 
 新版具有较厚外圈、较短尖尾和收窄的白色回卷通道。各稿为独立闭合矢量路径；仍是比较稿，未替换应用图标。边界提取、拟合脚本与渲染预览保存在 data/verification/wave-new-sketch-20261018。
+
+## 轮廓重绘精修稿
+
+[精修 SVG](../web/public/icons/studies/pictide-wave-refined.svg) 只参考新版草图的整体比例、粗细关系与回卷走势，不拟合手绘造成的陡折、凸起和小台阶。用 15 段三次贝塞尔曲线重新整理外圈、竖干、浪头和渐细的白色负形；普通连接保持切线连续，仅尾尖与内勾尖端保留锐度。
+
+已检查与上一版的并排渲染、回卷局部和 16–48px 小尺寸表现。仍为独立精修稿，应用图标尚未替换；预览与曲线检查脚本保存在 data/verification/wave-refined-20261018。
