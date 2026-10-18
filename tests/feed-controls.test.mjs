@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { destinationIndex, keyboardAction, feedbackValue, mergeArtifacts, requestIdentity, configuredWorkflowMode, effectiveWorkflowMode } from '../web/src/controllers/feed-controls.mjs';
+import { destinationIndex, keyboardAction, feedbackValue, steppedFeedbackValue, mergeArtifacts, requestIdentity, configuredWorkflowMode, effectiveWorkflowMode } from '../web/src/controllers/feed-controls.mjs';
 
 const context = { editing: false, dialogOpen: false, view: 'feed', feedbackPending: false };
 
@@ -19,10 +19,10 @@ test('navigation stops at both boundaries and on empty feed', () => {
   assert.equal(destinationIndex(0, 1, 'newer'), null);
 });
 
-test('up likes and down dislikes only in roam, including immersive mode', () => {
-  assert.equal(keyboardAction({ key: 'ArrowUp' }, context), 'like');
-  assert.equal(keyboardAction({ key: 'ArrowDown' }, context), 'dislike');
-  assert.equal(keyboardAction({ key: 'ArrowDown' }, { ...context, immersive: true }), 'dislike');
+test('up increases and down decreases feedback only in roam, including immersive mode', () => {
+  assert.equal(keyboardAction({ key: 'ArrowUp' }, context), 'increase');
+  assert.equal(keyboardAction({ key: 'ArrowDown' }, context), 'decrease');
+  assert.equal(keyboardAction({ key: 'ArrowDown' }, { ...context, immersive: true }), 'decrease');
   assert.equal(keyboardAction({ key: 'ArrowDown' }, { ...context, view: 'generate' }), null);
   assert.equal(keyboardAction({ key: 'ArrowDown' }, { ...context, view: 'liked' }), null);
 });
@@ -122,9 +122,16 @@ test('liked grid leaves arrow navigation to its opened image viewer', () => {
   assert.equal(keyboardAction({ key: ' ', dialogOpen: true }, { ...liked, dialogOpen:true }), null);
 });
 
-test('holding up can renew roam viewing time while other repeated shortcuts and editing stay ignored', () => {
-  assert.equal(keyboardAction({ key: 'ArrowUp', repeat: true }, context), 'like');
-  assert.equal(keyboardAction({ key: 'ArrowUp', repeat: true }, { ...context, immersive: true }), 'like');
-  assert.equal(keyboardAction({ key: 'ArrowUp', repeat: true }, { ...context, editing: true }), null);
-  assert.equal(keyboardAction({ key: 'ArrowUp', repeat: true, ctrlKey: true }, context), null);
+test('held feedback keys cannot cross multiple levels', () => {
+  for (const key of ['ArrowUp', 'ArrowDown']) {
+    assert.equal(keyboardAction({ key, repeat: true }, context), null);
+    assert.equal(keyboardAction({ key, repeat: true }, { ...context, immersive: true }), null);
+  }
+});
+
+test('ordinal feedback moves exactly one level and stops at both ends', () => {
+  for (const [current, increased, decreased] of [[-1, null, -1], [null, 1, -1], [1, 1, null]]) {
+    assert.equal(steppedFeedbackValue(current, 1), increased);
+    assert.equal(steppedFeedbackValue(current, -1), decreased);
+  }
 });

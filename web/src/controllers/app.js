@@ -3,7 +3,7 @@ import { loadTheme } from './theme.mjs';
 import { createButtonFeedback } from './button-feedback.mjs';
 import { decorateElement, createIcon } from "../dom-primitives";
 import { confirmAction } from '../components/confirm-action';
-import { destinationIndex, keyboardAction, feedbackValue, requestIdentity, configuredWorkflowMode, effectiveWorkflowMode } from './feed-controls.mjs';
+import { destinationIndex, keyboardAction, feedbackValue, steppedFeedbackValue, requestIdentity, configuredWorkflowMode, effectiveWorkflowMode } from './feed-controls.mjs';
 import { ruleVisibility, nextRuleCounters, submissionDecision, afterPromptEdit } from './rule-controls.mjs';
 import { editableNodeInputs, changeNodeInput, workflowSaveFields } from './workflow-controls.mjs';
 import { parseWorkflowDraft, retainedWorkflowBindings } from './workflow-panel.mjs';
@@ -111,6 +111,8 @@ const immersive = createImmersiveViewer({
 });
 bindTouchNavigation(document.querySelector('#image-card .image-stage'), {
   navigate: direction => moveImage(direction),
+  adjustFeedback: direction => stepFeedback(direction),
+  verticalEnabled: () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
   enabled: () => state.view === 'feed' && !!state.currentImage && !state.feedbackPending && !document.querySelector('[role=dialog][data-state=open],[role=alertdialog],[data-slot=popover-content][data-state=open]'),
 });
 const refillRoam = createRefillCoordinator({
@@ -459,11 +461,16 @@ async function moveImage(direction, automatic = null) {
   if (destination === null) { showNotice(items.length ? direction === 'newer' ? t("已经是最新的一张。") : state.pages[pageView()].hasMore ? t("已到已加载图片的末尾，请点击加载更早图片。") : t("已经是最早的一张。") : t("还没有可以浏览的图片。")); return; }
   state.activeId = items[destination].id; renderArtifacts(); refillRoam();
 }
+function stepFeedback(direction) {
+  if (state.feedbackPending) return;
+  const artifact = artifactsForView().find(item => item.id === state.activeId);
+  if (artifact) return feedback(steppedFeedbackValue(artifact.feedback, direction), false);
+}
 async function feedback(value, toggle = true) {
   if (value === 1 && state.view === 'feed') roamPlayback.pauseForLike();
   if (state.feedbackPending) return;
   const artifact = artifactsForView().find((item) => item.id === state.activeId); if (!artifact) { showNotice(t("还没有可以评价的图片。")); return; }
-  const nextValue = feedbackValue(artifact.feedback, value, toggle);
+  const nextValue = toggle ? feedbackValue(artifact.feedback, value) : value;
   if (nextValue === artifact.feedback) return;
   const artifactRevision = state.artifactRevision;
   state.feedbackPending = true;
@@ -1297,11 +1304,11 @@ $('settings-form').addEventListener('change', () => { settingsDirty = true; });
 document.querySelectorAll('[data-settings-section]').forEach((button) => button.addEventListener('click', () => setSettingsSection(button.dataset.settingsSection)));
 document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
 document.addEventListener('keydown', (event) => {
-  const action = keyboardAction(event, { editing: !!event.target.closest('input,textarea,select,[data-help],[role=combobox],[role=listbox],[role=option],[role=checkbox],[role=radio],[role=tab],[role=dialog],[data-slot=select-content],[data-slot=popover-content],[contenteditable]:not([contenteditable="false"])'), dialogOpen: !!document.querySelector('dialog[open],[role=dialog][data-state=open],[role=alertdialog]'), view: state.view, immersive: immersive.active, feedbackPending: state.feedbackPending && event.key !== 'ArrowUp' });
+  const action = keyboardAction(event, { editing: !!event.target.closest('input,textarea,select,[data-help],[role=combobox],[role=listbox],[role=option],[role=checkbox],[role=radio],[role=tab],[role=dialog],[data-slot=select-content],[data-slot=popover-content],[contenteditable]:not([contenteditable="false"])'), dialogOpen: !!document.querySelector('dialog[open],[role=dialog][data-state=open],[role=alertdialog]'), view: state.view, immersive: immersive.active, feedbackPending: state.feedbackPending });
   if (!action) return;
   event.preventDefault();
-  if (action === 'like') feedback(1, false);
-  else if (action === 'dislike') feedback(-1, false);
+  if (action === 'increase') stepFeedback(1);
+  else if (action === 'decrease') stepFeedback(-1);
   else if (action === 'privacy') {
     const control = ['generate', 'liked'].includes(state.view) ? document.querySelector(`.generated-privacy-toggle[data-collection="${state.view}"]`) : $(immersive.active ? 'roam-immersive-privacy' : 'roam-privacy');
     control?.click();

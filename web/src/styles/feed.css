@@ -345,6 +345,7 @@ body.pictide-immersive { overflow: hidden; }
 
 /* Installed apps use the column title as their header; retain the system safe area. */
 @media (display-mode: standalone) {
+  #image-card .image-stage { touch-action: pinch-zoom; }
   .feed-page > .topbar { display: none; }
   .feed-page { padding-top: env(safe-area-inset-top, 0px); }
 }
