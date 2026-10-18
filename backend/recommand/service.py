@@ -16,6 +16,7 @@ class RecommendationService:
         self.encoder = encoder
         self.features = FeatureEncoder(store, encoder)
         self._lock = RLock()
+        self._mean_cache = None
 
     def status(self):
         try:
@@ -109,7 +110,9 @@ class RecommendationService:
                 or expected_reset_revision < 0):
             raise ValueError("expected_reset_revision must be a non-negative integer")
         with self._lock:
-            return self.store.reset_user(user_id, request_id, expected_reset_revision)
+            result = self.store.reset_user(user_id, request_id, expected_reset_revision)
+            self._mean_cache = None
+            return result
 
     def score(self, request):
         with self._lock:
@@ -125,6 +128,8 @@ class RecommendationService:
             if len(set(ids)) != len(ids):
                 raise ValueError("candidate_id must be unique within a request")
             version = self._require_available()
+            if request.strategy == "mean":
+                return self._score_mean(request, version)
             prepared = self.features.prepare(request.candidates)
             record = self.store.load_policy(request.user_id, version)
             if record is None:
@@ -151,6 +156,49 @@ class RecommendationService:
                                                              float(means.min()), float(means.max()))
             return ScoreResult(tuple(CandidateScore(c.candidate_id, float(v)) for c, v in zip(request.candidates, values)),
                                version, policy.POLICY_VERSION, record.revision if record else 0, minimum, maximum)
+
+    def _score_mean(self, request, version):
+        """Score one posterior snapshot in bounded batches, without new axes."""
+        import numpy as np
+        record = self.store.load_policy(request.user_id, version)
+        if record is None:
+            evidence = self.store.load_evidence(request.user_id, version)
+            if evidence:
+                record = self._rebuilt_record(request.user_id, version, None, evidence)
+        revision = record.revision if record else 0
+        if not request.candidates:
+            return ScoreResult((), version, policy.POLICY_VERSION, revision)
+        reset = self.store.get_reset_state(request.user_id)
+        cache_key = (request.user_id, version, policy.POLICY_VERSION, reset.revision, revision)
+        if self._mean_cache is not None and self._mean_cache[0] == cache_key:
+            _, semantic_weights, exact_weights = self._mean_cache
+        else:
+            if record is None:
+                keys, center = (), np.zeros(SEMANTIC_DIMENSION, dtype=np.float64)
+            else:
+                try:
+                    keys, precision, reward = policy.unpack(record)
+                except ValueError:
+                    record = self._rebuilt_record(request.user_id, version, record)
+                    keys, precision, reward = policy.unpack(record)
+                center = policy.mean(precision, reward)
+            semantic_weights = center[:SEMANTIC_DIMENSION]
+            exact_weights = dict(zip(keys, center[SEMANTIC_DIMENSION:]))
+            self._mean_cache = (cache_key, semantic_weights, exact_weights)
+        scores = []
+        for start in range(0, len(request.candidates), 128):
+            batch = request.candidates[start:start + 128]
+            prepared = self.features.prepare(batch)
+            values = [float(semantic @ semantic_weights) + sum(
+                value * exact_weights.get(key, 0.) for key, value in exact.items())
+                for semantic, exact in prepared]
+            if not np.isfinite(values).all():
+                raise ValueError("Non-finite recommendation score")
+            scores.extend(CandidateScore(candidate.candidate_id, float(value))
+                          for candidate, value in zip(batch, values))
+        minimum, maximum = self.store.observe_score_range(request.user_id, version, policy.POLICY_VERSION,
+            min(item.score for item in scores), max(item.score for item in scores))
+        return ScoreResult(tuple(scores), version, policy.POLICY_VERSION, revision, minimum, maximum)
 
     def _rebuilt_record(self, user_id, version, record, evidence=None):
         import numpy as np
@@ -216,5 +264,6 @@ class RecommendationService:
                     rebuilt = self._rebuilt_record(update.user_id, version, record, remaining)
                     state = type(rebuilt)(revision + 1, rebuilt.term_keys, rebuilt.precision, rebuilt.reward, rebuilt.evidence_count)
                 if self.store.commit_feedback(update, state, revision):
+                    self._mean_cache = None
                     return LearningResult(state.revision, "applied")
             return LearningResult(revision, "pending")
