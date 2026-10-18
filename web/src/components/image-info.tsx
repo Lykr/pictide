@@ -1,3 +1,4 @@
+import { t } from "../i18n/index.mjs";
 import { useEffect, useState } from "react";
 import { Download, Info } from "lucide-react";
 import { IconButton } from "./actions";
@@ -26,10 +27,10 @@ export function ImageInfo() {
   }, []);
   return <>
     <Popover open={open && !!image} onOpenChange={setOpen}>
-    <PopoverTrigger asChild><IconButton icon={Info} label="图片信息" disabled={!image} /></PopoverTrigger>
-    <PopoverContent className="image-info-popover image-details-popover" align="end" side="top" aria-label="图片信息">
+    <PopoverTrigger asChild><IconButton icon={Info} label={t("图片信息")} disabled={!image} /></PopoverTrigger>
+    <PopoverContent className="image-info-popover image-details-popover" align="end" side="top" aria-label={t("图片信息")}>
       {image && <ImagePromptDetails key={image.id} seed={image.seed} positive={image.positive} negative={image.negative}
-        actions={<Button asChild variant="ghost" size="icon-sm"><a href={`/api/artifacts/${encodeURIComponent(image.id)}/prompts`} aria-label="下载提示词 JSON" data-tooltip="下载提示词 JSON" download><Download aria-hidden="true" /></a></Button>} />}
+        actions={<Button asChild variant="ghost" size="icon-sm"><a href={`/api/artifacts/${encodeURIComponent(image.id)}/prompts`} aria-label={t("下载提示词 JSON")} data-tooltip={t("下载提示词 JSON")} download><Download aria-hidden="true" /></a></Button>} />}
     </PopoverContent>
     </Popover>
   </>;

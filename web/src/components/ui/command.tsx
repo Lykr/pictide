@@ -1,6 +1,7 @@
 // Official shadcn/ui radix-luma (MIT); local aliases and Lucide icon substitution.
 
 
+import { t } from "../../i18n/index.mjs"
 import * as React from "react"
 import { Command as CommandPrimitive } from "cmdk"
 import { cn } from "@/lib/utils"
@@ -35,8 +36,8 @@ function Command({
 }
 
 function CommandDialog({
-  title = "Command Palette",
-  description = "Search for a command to run...",
+  title = t("命令菜单"),
+  description = t("搜索要执行的命令…"),
   children,
   className,
   showCloseButton = false,

@@ -1,3 +1,4 @@
+import { t } from "../i18n/index.mjs";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Download, Eye, EyeOff, Heart, Info, LoaderCircle, Maximize, Minimize, X } from "lucide-react";
 import { IconButton } from "./actions";
@@ -43,7 +44,7 @@ function ViewerImage({ item, privacyBlur, label, onNavigate, busy }: { item: Gen
   }, []);
   return <div ref={stageRef} className="generated-viewer-stage" data-privacy-blur={privacyBlur}>
     <img src={artifactPath(item, "image")} alt={label} draggable={false} onLoad={() => setStatus("ready")} onError={() => setStatus("error")} />
-    {status !== "ready" && <div className="generated-viewer-loading" role="status">{status === "loading" ? <><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">图片加载中</span></> : "图片已清理或读取失败"}</div>}
+    {status !== "ready" && <div className="generated-viewer-loading" role="status">{status === "loading" ? <><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("图片加载中")}</span></> : t("图片已清理或读取失败")}</div>}
   </div>;
 }
 
@@ -123,33 +124,33 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
 
   return <DialogContent ref={setCardElement} className="generated-viewer image-card" showCloseButton={false} aria-describedby={undefined} tabIndex={-1}
     onEscapeKeyDown={event => { if (event.defaultPrevented || viewerRef.current?.active) { event.preventDefault(); viewerRef.current?.leave(); } }}>
-    <DialogTitle className="sr-only">{props.imageLabel ?? "生成图片"}</DialogTitle>
+    <DialogTitle className="sr-only">{props.imageLabel ?? t("生成图片")}</DialogTitle>
     <div className="generated-viewer-heading">
-      <IconButton ref={entryRef} icon={Maximize} label="沉浸模式" aria-pressed={immersive} disabled={busy} />
-      <IconButton icon={privacyBlur ? EyeOff : Eye} label={privacyBlur ? "关闭毛玻璃 · 空格" : "开启毛玻璃 · 空格"} aria-pressed={privacyBlur} onClick={() => onPrivacyChange(!privacyBlur)} />
-      <IconButton icon={X} label="关闭图片" onClick={() => onActiveChange(null)} />
+      <IconButton ref={entryRef} icon={Maximize} label={t("沉浸模式")} aria-pressed={immersive} disabled={busy} />
+      <IconButton icon={privacyBlur ? EyeOff : Eye} label={privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格")} aria-pressed={privacyBlur} onClick={() => onPrivacyChange(!privacyBlur)} />
+      <IconButton icon={X} label={t("关闭图片")} onClick={() => onActiveChange(null)} />
     </div>
-    <div className="immersive-actions" role="toolbar" aria-label="沉浸模式设置">
-      <Toggle size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={onPrivacyChange} aria-label={privacyBlur ? "关闭毛玻璃 · 空格" : "开启毛玻璃 · 空格"} aria-keyshortcuts="Space" data-tooltip={privacyBlur ? "关闭毛玻璃 · 空格" : "开启毛玻璃 · 空格"}>
+    <div className="immersive-actions" role="toolbar" aria-label={t("沉浸模式设置")}>
+      <Toggle size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={onPrivacyChange} aria-label={privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格")} aria-keyshortcuts="Space" data-tooltip={privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格")}>
         {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
       </Toggle>
-      <IconButton ref={exitRef} icon={Minimize} label="退出沉浸模式" hidden={!immersive} />
+      <IconButton ref={exitRef} icon={Minimize} label={t("退出沉浸模式")} hidden={!immersive} />
     </div>
-    <ViewerImage key={item.id} item={item} privacyBlur={privacyBlur} label={props.imageLabel ?? "生成图片"} onNavigate={navigate} busy={busy || infoOpen} />
-    {waitingOlder && loadingMore && <div className="generated-viewer-paging" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">加载更早图片</span></div>}
+    <ViewerImage key={item.id} item={item} privacyBlur={privacyBlur} label={props.imageLabel ?? t("生成图片")} onNavigate={navigate} busy={busy || infoOpen} />
+    {waitingOlder && loadingMore && <div className="generated-viewer-paging" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("加载更早图片")}</span></div>}
     {error && <div className="generated-viewer-error" role="alert">{error}</div>}
-    <div ref={toolbarRef} className="generated-viewer-toolbar" aria-label="图片操作">
+    <div ref={toolbarRef} className="generated-viewer-toolbar" aria-label={t("图片操作")}>
       <div className="generated-viewer-navigation">
-      <IconButton icon={ArrowLeft} label="上一张 · ←" disabled={busy || (!older && !hasMore) || !!waitingOlder} onClick={() => navigate("older")} />
-      <IconButton icon={Heart} label={item.feedback === 1 ? "撤回喜欢" : "喜欢图片 · ↑"} className={item.feedback === 1 ? "generated-viewer-liked" : ""} aria-pressed={item.feedback === 1} disabled={busy} onClick={async () => { if (props.confirmUnlike && item.feedback === 1) await viewerRef.current?.leave(); onLike(item); }} />
-      <IconButton icon={ArrowRight} label="下一张 · →" disabled={busy || !newer} onClick={() => navigate("newer")} />
+      <IconButton icon={ArrowLeft} label={t("上一张 · ←")} disabled={busy || (!older && !hasMore) || !!waitingOlder} onClick={() => navigate("older")} />
+      <IconButton icon={Heart} label={item.feedback === 1 ? t("撤回喜欢") : t("喜欢图片 · ↑")} className={item.feedback === 1 ? "generated-viewer-liked" : ""} aria-pressed={item.feedback === 1} disabled={busy} onClick={async () => { if (props.confirmUnlike && item.feedback === 1) await viewerRef.current?.leave(); onLike(item); }} />
+      <IconButton icon={ArrowRight} label={t("下一张 · →")} disabled={busy || !newer} onClick={() => navigate("newer")} />
       </div>
       <div className="generated-viewer-details" hidden={immersive}>
         <Popover open={infoOpen && !immersive} onOpenChange={setInfoOpen}>
-          <PopoverTrigger asChild><IconButton icon={Info} label="图片信息" /></PopoverTrigger>
-          <PopoverContent className="generated-viewer-info image-details-popover" align="end" side="top" aria-label="图片信息">
-            <ImagePromptDetails key={item.id} seed={item.seed_applied === false ? "使用工作流种子设置" : item.seed ?? "—"} positive={item.positive || ""} negative={item.negative || ""}
-              actions={<Button asChild variant="ghost" size="icon-sm"><a href={artifactPath(item, "prompts")} download aria-label="下载提示词 JSON" data-tooltip="下载提示词 JSON"><Download aria-hidden="true" /></a></Button>} />
+          <PopoverTrigger asChild><IconButton icon={Info} label={t("图片信息")} /></PopoverTrigger>
+          <PopoverContent className="generated-viewer-info image-details-popover" align="end" side="top" aria-label={t("图片信息")}>
+            <ImagePromptDetails key={item.id} seed={item.seed_applied === false ? t("使用工作流种子设置") : item.seed ?? "—"} positive={item.positive || ""} negative={item.negative || ""}
+              actions={<Button asChild variant="ghost" size="icon-sm"><a href={artifactPath(item, "prompts")} download aria-label={t("下载提示词 JSON")} data-tooltip={t("下载提示词 JSON")}><Download aria-hidden="true" /></a></Button>} />
           </PopoverContent>
         </Popover>
       </div>

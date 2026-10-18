@@ -1,3 +1,4 @@
+import { t, tr, locale, messageKey } from "../i18n/index.mjs";
 import { useEffect, useRef, useState } from "react";
 import { Eye, LoaderCircle, RefreshCw, RotateCcw } from "lucide-react";
 import { HelpTip, IconButton } from "./actions";
@@ -23,15 +24,15 @@ class PreferenceRequestError extends Error {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json", ...options.headers } });
   const body = await response.json().catch(() => null);
-  if (!response.ok) throw new PreferenceRequestError(typeof body?.error === "string" ? body.error : `请求失败（${response.status}）`, response.status);
-  if (!body) throw new Error("响应不完整，请重试。");
+  if (!response.ok) throw new PreferenceRequestError(typeof body?.error === "string" ? body.error : tr`请求失败（${response.status}）`, response.status);
+  if (!body) throw new Error(t("响应不完整，请重试。"));
   return body as T;
 }
 
 const timeLabel = (value: string | null) => {
-  if (!value) return "尚未重置";
+  if (!value) return t("尚未重置");
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("zh-CN", { hour12: false });
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale(), { hour12: false });
 };
 
 export function PreferenceActions() {
@@ -88,7 +89,7 @@ export function PreferenceActions() {
       if (reset) setResetOpen(true);
     } catch (cause) {
       if (!mounted.current || current !== generation.current || abort.signal.aborted) return;
-      setError(cause instanceof Error ? cause.message : "读取偏好失败，请重试。");
+      setError(cause instanceof Error ? cause.message : t("读取偏好失败，请重试。"));
     } finally {
       if (mounted.current && current === generation.current) setLoading(false);
     }
@@ -115,11 +116,11 @@ export function PreferenceActions() {
     const current = generation.current;
     try {
       const data = await request<ResetResult>("/api/recommendation/preferences/reset", { method: "POST", body: JSON.stringify(payload) });
-      if (data.request_id !== payload.request_id) throw new Error("重置响应不匹配，请重试确认结果。");
+      if (data.request_id !== payload.request_id) throw new Error(t("重置响应不匹配，请重试确认结果。"));
       pendingReset.current = null;
       if (!mounted.current || current !== generation.current) return;
       setResetOpen(false);
-      setMessage("用户偏好已重置");
+      setMessage(t("用户偏好已重置"));
       setResult(null);
     } catch (cause) {
       const conflict = cause instanceof PreferenceRequestError && cause.status === 409;
@@ -130,12 +131,12 @@ export function PreferenceActions() {
       if (!mounted.current || current !== generation.current) return;
       if (conflict) {
         setResetOpen(false);
-        setError("偏好已在其他操作中重置，请重新确认。");
+        setError(t("偏好已在其他操作中重置，请重新确认。"));
         void load(1).then(() => {
-          if (mounted.current && current + 1 === generation.current) setError("偏好已在其他操作中重置，请重新确认。");
+          if (mounted.current && current + 1 === generation.current) setError(t("偏好已在其他操作中重置，请重新确认。"));
         });
       } else {
-        setError(cause instanceof Error ? cause.message : "重置结果未确认，请重试。");
+        setError(cause instanceof Error ? cause.message : t("重置结果未确认，请重试。"));
       }
     } finally {
       posting.current = false;
@@ -146,51 +147,51 @@ export function PreferenceActions() {
   const busy = loading || resetting;
   return <div className="settings-preferences flex flex-col gap-2">
     <div className="flex items-center justify-between gap-3">
-      <span className="text-sm font-medium">用户偏好</span>
+      <span className="text-sm font-medium">{t("用户偏好")}</span>
       <div className="flex items-center gap-1">
-        <IconButton ref={viewEntry} type="button" icon={Eye} label="查看用户偏好" disabled={busy} onClick={showPreferences} />
-        <IconButton ref={resetEntry} type="button" icon={RotateCcw} label="重置用户偏好" disabled={busy} onClick={askReset} />
-        {loading && !viewOpen && <LoaderCircle className="size-4 animate-spin text-muted-foreground" aria-label="读取用户偏好" />}
+        <IconButton ref={viewEntry} type="button" icon={Eye} label={t("查看用户偏好")} disabled={busy} onClick={showPreferences} />
+        <IconButton ref={resetEntry} type="button" icon={RotateCcw} label={t("重置用户偏好")} disabled={busy} onClick={askReset} />
+        {loading && !viewOpen && <LoaderCircle className="size-4 animate-spin text-muted-foreground" aria-label={t("读取用户偏好")} />}
       </div>
     </div>
-    {!viewOpen && !resetOpen && error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    {message && <p role="status" className="text-xs text-muted-foreground">{message}</p>}
+    {!viewOpen && !resetOpen && error && <p role="alert" className="text-sm text-destructive">{t(messageKey(error))}</p>}
+    {message && <p role="status" className="text-xs text-muted-foreground">{t(messageKey(message))}</p>}
 
     <Dialog open={viewOpen} onOpenChange={(open) => { setViewOpen(open); if (!open) { cancelRead(); setError(""); } }}>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl" onCloseAutoFocus={(event) => { event.preventDefault(); if (!viewEntry.current?.closest("[hidden],[inert]")) viewEntry.current?.focus(); }}>
         <DialogHeader>
-          <DialogTitle>用户偏好</DialogTitle>
-          <DialogDescription className="sr-only">查看喜欢与不喜欢反馈形成的标签关联权重。</DialogDescription>
+          <DialogTitle>{t("用户偏好")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("查看喜欢与不喜欢反馈形成的标签关联权重。")}</DialogDescription>
         </DialogHeader>
         <div className="flex min-h-0 flex-col gap-4" aria-busy={loading}>
           {result && <>
             <dl className="flex flex-wrap gap-x-6 gap-y-2 text-xs">
-              <div><dt className="text-muted-foreground inline-flex items-center gap-1">有效学习反馈<HelpTip text="当前参与偏好学习的图片反馈数量。" /></dt><dd className="mt-1 text-sm font-medium">{result.evidence_count}</dd></div>
-              <div><dt className="text-muted-foreground">学习标签</dt><dd className="mt-1 text-sm font-medium">{result.term_count}</dd></div>
-              <div><dt className="text-muted-foreground">上次重置</dt><dd className="mt-1">{timeLabel(result.reset_at)}</dd></div>
+              <div><dt className="text-muted-foreground inline-flex items-center gap-1">{t("有效学习反馈")}<HelpTip text={t("当前参与偏好学习的图片反馈数量。")} /></dt><dd className="mt-1 text-sm font-medium">{result.evidence_count.toLocaleString(locale())}</dd></div>
+              <div><dt className="text-muted-foreground">{t("学习标签")}</dt><dd className="mt-1 text-sm font-medium">{result.term_count.toLocaleString(locale())}</dd></div>
+              <div><dt className="text-muted-foreground">{t("上次重置")}</dt><dd className="mt-1">{timeLabel(result.reset_at)}</dd></div>
             </dl>
-            {!result.available && <p role="status" className="text-sm text-muted-foreground">{result.error || "推荐模型暂不可用，仍可重置偏好。"}</p>}
+            {!result.available && <p role="status" className="text-sm text-muted-foreground">{result.error || t("推荐模型暂不可用，仍可重置偏好。")}</p>}
             {result.terms.length > 0 ? <div className="min-w-0 overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-border text-muted-foreground"><tr>
-                  <th className="py-2 pr-3 font-normal">标签</th>
-                  <th className="px-2 py-2 font-normal">方向</th>
-                  <th className="px-2 py-2 text-right font-normal"><span className="inline-flex items-center gap-1">关联权重<HelpTip text="反馈形成的偏好参数中心值，不是喜欢概率。" /></span></th>
-                  <th className="py-2 pl-3 text-right font-normal"><span className="inline-flex items-center gap-1">证据次数<HelpTip text="包含该标签的有效学习反馈数量。" /></span></th>
+                  <th className="py-2 pr-3 font-normal">{t("标签")}</th>
+                  <th className="px-2 py-2 font-normal">{t("方向")}</th>
+                  <th className="px-2 py-2 text-right font-normal"><span className="inline-flex items-center gap-1">{t("关联权重")}<HelpTip text={t("反馈形成的偏好参数中心值，不是喜欢概率。")} /></span></th>
+                  <th className="py-2 pl-3 text-right font-normal"><span className="inline-flex items-center gap-1">{t("证据次数")}<HelpTip text={t("包含该标签的有效学习反馈数量。")} /></span></th>
                 </tr></thead>
                 <tbody>{result.terms.map((term) => <tr key={`${term.channel}:${term.text}`} className="border-b border-border/60 last:border-0">
                   <td className="max-w-64 break-words py-2 pr-3">{term.text}</td>
-                  <td className="px-2 py-2"><Badge variant="outline">{term.channel === "positive" ? "正向" : "负向"}</Badge></td>
-                  <td className="px-2 py-2 text-right tabular-nums"><span tabIndex={0} data-tooltip={term.weight > 0 ? "正值倾向提高组合评分。" : term.weight < 0 ? "负值倾向降低组合评分，不会永久屏蔽标签。" : "零值不提高或降低组合评分。"}>{term.weight.toFixed(4)}</span></td>
-                  <td className="py-2 pl-3 text-right tabular-nums">{term.evidence_count}</td>
+                  <td className="px-2 py-2"><Badge variant="outline">{term.channel === "positive" ? t("正向") : t("负向")}</Badge></td>
+                  <td className="px-2 py-2 text-right tabular-nums"><span tabIndex={0} data-tooltip={term.weight > 0 ? t("正值倾向提高组合评分。") : term.weight < 0 ? t("负值倾向降低组合评分，不会永久屏蔽标签。") : t("零值不提高或降低组合评分。")}>{term.weight.toLocaleString(locale(), { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span></td>
+                  <td className="py-2 pl-3 text-right tabular-nums">{term.evidence_count.toLocaleString(locale())}</td>
                 </tr>)}</tbody>
               </table>
-            </div> : result.available && <p className="py-6 text-center text-sm text-muted-foreground">暂无学习记录</p>}
+            </div> : result.available && <p className="py-6 text-center text-sm text-muted-foreground">{t("暂无学习记录")}</p>}
           </>}
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          {loading && <div role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />读取中</div>}
-          {error && <div className="flex justify-end"><IconButton type="button" icon={RefreshCw} label="重试读取用户偏好" disabled={busy} onClick={() => void load(result?.page ?? 1)} /></div>}
-          {result && result.term_count > 0 && <PageControls label="偏好" page={result.page} totalPages={result.total_pages} loading={busy} onPageChange={page => void load(page)} />}
+          {error && <p role="alert" className="text-sm text-destructive">{t(messageKey(error))}</p>}
+          {loading && <div role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("读取中")}</div>}
+          {error && <div className="flex justify-end"><IconButton type="button" icon={RefreshCw} label={t("重试读取用户偏好")} disabled={busy} onClick={() => void load(result?.page ?? 1)} /></div>}
+          {result && result.term_count > 0 && <PageControls label={t("偏好")} page={result.page} totalPages={result.total_pages} loading={busy} onPageChange={page => void load(page)} />}
         </div>
       </DialogContent>
     </Dialog>
@@ -198,14 +199,14 @@ export function PreferenceActions() {
     <AlertDialog open={resetOpen} onOpenChange={(open) => { if (!resetting) { setResetOpen(open); if (!open) setError(""); } }}>
       <AlertDialogContent onCloseAutoFocus={(event) => { event.preventDefault(); if (!resetEntry.current?.closest("[hidden],[inert]")) resetEntry.current?.focus(); }}>
         <AlertDialogHeader>
-          <AlertDialogTitle>重置用户偏好？</AlertDialogTitle>
-          <AlertDialogDescription>清空喜欢与不喜欢反馈形成的偏好，保留图片的评价。从此后的新反馈重新学习。</AlertDialogDescription>
+          <AlertDialogTitle>{t("重置用户偏好？")}</AlertDialogTitle>
+          <AlertDialogDescription>{t("清空喜欢与不喜欢反馈形成的偏好，保留图片的评价。从此后的新反馈重新学习。")}</AlertDialogDescription>
         </AlertDialogHeader>
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        {error && <p role="alert" className="text-sm text-destructive">{t(messageKey(error))}</p>}
         <AlertDialogFooter>
-          <AlertDialogCancel type="button" disabled={resetting}>取消</AlertDialogCancel>
+          <AlertDialogCancel type="button" disabled={resetting}>{t("取消")}</AlertDialogCancel>
           <AlertDialogAction type="button" variant="destructive" disabled={busy || !result} onClick={(event) => { event.preventDefault(); void resetPreferences(); }}>
-            {resetting && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}{resetting ? "重置中" : "重置偏好"}
+            {resetting && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}{resetting ? t("重置中") : t("重置偏好")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

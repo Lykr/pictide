@@ -1,6 +1,7 @@
 // Official shadcn/ui radix-luma (MIT); local aliases and Lucide icon substitution.
 
 
+import { t } from "../../i18n/index.mjs"
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { Dialog as DialogPrimitive } from "radix-ui"
@@ -76,7 +77,7 @@ function DialogContent({
               size="icon-sm"
             >
               <XIcon />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{t("关闭")}</span>
             </Button>
           </DialogPrimitive.Close>
         )}
@@ -115,7 +116,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          <Button variant="outline">{t("关闭")}</Button>
         </DialogPrimitive.Close>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { t, messageKey } from "../i18n/index.mjs";
 import { useLayoutEffect, useSyncExternalStore, useRef } from "react";
 import { createPortal, flushSync } from "react-dom";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -37,12 +38,12 @@ function property(source: HTMLElement, name: string) {
 }
 function title(source: HTMLElement) {
   const explicit = source.getAttribute("aria-label");
-  if (explicit) return explicit;
+  if (explicit) return t(messageKey(explicit));
   const label = source.closest("label") ?? (source.id ? document.querySelector(`label[for="${CSS.escape(source.id)}"]`) : null);
-  if (!label) return "选择";
+  if (!label) return t("选择");
   const copy = label.cloneNode(true) as HTMLElement;
   copy.querySelectorAll("input,select,textarea,button,[data-control-host],[data-help]").forEach(node => node.remove());
-  return copy.textContent?.trim() || "选择";
+  return t(messageKey(copy.textContent?.trim() || "选择"));
 }
 function emit(source: HTMLElement) {
   source.dispatchEvent(new Event("input", { bubbles: true }));
@@ -158,10 +159,10 @@ function SelectControl({ control }: { control: Control }) {
   const selected = source.options[source.selectedIndex];
   return <Select value={selected ? selected.value || empty : ""} disabled={disabled} onValueChange={(value: string) => { source.value = value === empty ? "" : value; emit(source); }}>
     <SelectTrigger id={source.id ? `${source.id}--control` : undefined} className="w-full min-w-0" size={source.dataset.size === "sm" ? "sm" : "default"} aria-label={title(source)} aria-invalid={!source.validity.valid || source.getAttribute("aria-invalid") === "true"} data-tooltip={source.dataset.tooltip}>
-      <SelectValue placeholder={source.getAttribute("placeholder") || "选择"} />
+      <SelectValue placeholder={source.getAttribute("placeholder") || t("选择")} />
     </SelectTrigger>
     <SelectContent position="popper" align="start"><SelectGroup>
-      {[...source.options].map((option, index) => <SelectItem key={`${index}:${option.value}`} value={option.value || empty} disabled={option.disabled || option.parentElement instanceof HTMLOptGroupElement && option.parentElement.disabled}>{option.label || "选择"}</SelectItem>)}
+      {[...source.options].map((option, index) => <SelectItem key={`${index}:${option.value}`} value={option.value || empty} disabled={option.disabled || option.parentElement instanceof HTMLOptGroupElement && option.parentElement.disabled}>{option.label || t("选择")}</SelectItem>)}
     </SelectGroup></SelectContent>
   </Select>;
 }
@@ -180,9 +181,10 @@ function Transplanted({ nodes, className, returnTo }: { nodes: Node[]; className
 function CollapsibleControl({ control }: { control: Control }) {
   const source = control.source as HTMLDetailsElement;
   const summary = control.summary;
+  const label = summary?.getAttribute("aria-label") || control.summaryNodes?.map(node => node.textContent).join("").trim() || summary?.textContent?.trim() || control.summaryLabel || "展开";
   return <Collapsible className={source.className} open={source.open} onOpenChange={(open: boolean) => { source.open = open; source.dispatchEvent(new Event("toggle")); }}>
-    <CollapsibleTrigger asChild><Button variant="ghost" className="collapsible-label" aria-label={control.summaryLabel || summary?.textContent?.trim() || "展开"} data-tooltip={summary?.dataset.tooltip}>
-      {source.open ? <ChevronDown /> : <ChevronRight />}{control.summaryNodes ? <Transplanted nodes={control.summaryNodes} returnTo={summary!} className="contents" /> : summary?.textContent}
+    <CollapsibleTrigger asChild><Button variant="ghost" className="collapsible-label" aria-label={t(messageKey(label))} data-tooltip={summary?.dataset.tooltip}>
+      {source.open ? <ChevronDown /> : <ChevronRight />}{control.summaryNodes ? <Transplanted nodes={control.summaryNodes} returnTo={summary!} className="contents" /> : t(messageKey(summary?.textContent ?? ""))}
     </Button></CollapsibleTrigger>
     <CollapsibleContent forceMount hidden={!source.open}><Transplanted nodes={control.content!} returnTo={source} /></CollapsibleContent>
   </Collapsible>;
@@ -200,7 +202,7 @@ function DialogControl({ control }: { control: Control }) {
     if (!event.defaultPrevented) source.close();
   }}>
     <DialogContent ref={content} className={`${source.className} controller-dialog`} aria-describedby={undefined} showCloseButton={false} onInteractOutside={contain} onPointerDownOutside={contain} onCloseAutoFocus={(event: Event) => { event.preventDefault(); control.opener?.focus(); }}>
-      <DialogTitle asChild><span className="sr-only">{source.getAttribute("aria-label") || control.content?.map(node => node instanceof Element ? node.querySelector("h2,h3")?.textContent || (node.matches("h2,h3") ? node.textContent : "") : "").join("").trim() || "编辑"}</span></DialogTitle>
+      <DialogTitle asChild><span className="sr-only">{source.getAttribute("aria-label") || control.content?.map(node => node instanceof Element ? node.querySelector("h2,h3")?.textContent || (node.matches("h2,h3") ? node.textContent : "") : "").join("").trim() || t("编辑")}</span></DialogTitle>
       <Transplanted nodes={control.content!} returnTo={source} className="dialog-scroll-content" />
     </DialogContent>
   </Dialog>;
@@ -209,15 +211,15 @@ function ToggleControl({ control }: { control: Control }) {
   const source = control.source as HTMLElement;
   const buttons = (control.content ?? []).filter((node): node is HTMLButtonElement => node instanceof HTMLButtonElement);
   const active = buttons.findIndex(button => button.getAttribute("aria-pressed") === "true");
-  return <ToggleGroup type="single" value={String(active)} size="sm" aria-label={source.getAttribute("aria-label") || "切换视图"} onValueChange={(value: string) => { if (value !== "") buttons[Number(value)]?.click(); }}>
-    {buttons.map((button, index) => <ToggleGroupItem key={index} value={String(index)} disabled={button.disabled}>{button.textContent}</ToggleGroupItem>)}
+  return <ToggleGroup type="single" value={String(active)} size="sm" aria-label={source.getAttribute("aria-label") || t("切换视图")} onValueChange={(value: string) => { if (value !== "") buttons[Number(value)]?.click(); }}>
+    {buttons.map((button, index) => <ToggleGroupItem key={index} value={String(index)} disabled={button.disabled}>{t(messageKey(button.textContent ?? ""))}</ToggleGroupItem>)}
   </ToggleGroup>;
 }
 function TabsControl({ control }: { control: Control }) {
   const buttons = (control.content ?? []).filter((node): node is HTMLButtonElement => node instanceof HTMLButtonElement);
   const active = buttons.findIndex(button => button.classList.contains("active"));
   return <Tabs value={String(active)} orientation="horizontal" onValueChange={(value: string) => buttons[Number(value)]?.click()}>
-    <TabsList aria-label={control.source.getAttribute("aria-label") || "设置分类"}>{buttons.map((button, index) => <TabsTrigger key={index} value={String(index)} disabled={button.disabled}>{button.textContent}</TabsTrigger>)}</TabsList>
+    <TabsList aria-label={control.source.getAttribute("aria-label") || t("设置分类")}>{buttons.map((button, index) => <TabsTrigger key={index} value={String(index)} disabled={button.disabled}>{t(messageKey(button.textContent ?? ""))}</TabsTrigger>)}</TabsList>
   </Tabs>;
 }
 export function ControlLayer() {

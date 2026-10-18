@@ -1,3 +1,4 @@
+import { t, messageKey } from "../i18n/index.mjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, Settings2 } from "lucide-react";
 import { Button } from "./ui/button";
@@ -20,7 +21,7 @@ function usePlaybackState() {
 }
 export function RoamPlaybackButton({ immersive = false }: { immersive?: boolean }) {
   const state = usePlaybackState();
-  const label = state.playing ? "暂停播放" : "自动播放";
+  const label = state.playing ? t("暂停播放") : t("自动播放");
   const delay = useMemo(() => state.startedAt === null ? 0 : -Math.max(0, performance.now() - state.startedAt), [state.startedAt, state.cycle]);
   return <Button id={immersive ? "roam-immersive-playback" : "roam-playback"} type="button" variant="ghost" size="icon-sm" className="relative" aria-label={label} data-tooltip={label} aria-pressed={state.playing} disabled={!state.canPlay} onClick={() => document.dispatchEvent(new Event("pictide:roam-playback-toggle"))}>
     {state.playing && <svg className="playback-progress absolute left-1/2 top-1/2 size-8 -translate-x-1/2 -translate-y-1/2 -rotate-90" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -39,26 +40,26 @@ function RoamChoices({ value, disabled = false, onChange, compact = false }: {
   value: ModeChoices; disabled?: boolean; onChange: (patch: Partial<ModeChoices>) => void; compact?: boolean;
 }) {
   return <div className={compact ? "grid gap-1" : "form-grid"}>
-    <div className={compact ? "roam-choice flex min-h-8 items-center justify-between gap-2" : "settings-field"}>
-      <span className="field-caption whitespace-nowrap">偏好范围<HelpTip text={value.prompt_mode === "stay" ? "停泊不重新抽取，暂不能切换范围；原选择会保留。" : "切换后保留当前图，清空旧预取并重新准备后续图片。"} /></span>
-      <ToggleGroup type="single" size="sm" value={value.liked_tags_only ? "liked" : "all"} disabled={disabled || value.prompt_mode === "stay"} aria-label="偏好范围" onValueChange={next => { if (next) onChange({ liked_tags_only: next === "liked" }); }}>
-        <ToggleGroupItem value="all" aria-label="全部" data-tooltip="从完整词库抽取；固定词和 PMI 条件保持。">全部</ToggleGroupItem>
-        <ToggleGroupItem value="liked" aria-label="喜欢" data-tooltip="仅从喜欢图片的标签中抽取；固定词和 PMI 条件保持。">喜欢</ToggleGroupItem>
+    <div className={compact ? "roam-choice flex min-h-8 flex-wrap items-center justify-between gap-2" : "settings-field"}>
+      <span className="field-caption whitespace-nowrap">{t("偏好范围")}<HelpTip text={value.prompt_mode === "stay" ? t("停泊不重新抽取，暂不能切换范围；原选择会保留。") : t("切换后保留当前图，清空旧预取并重新准备后续图片。")} /></span>
+      <ToggleGroup type="single" size="sm" value={value.liked_tags_only ? "liked" : "all"} disabled={disabled || value.prompt_mode === "stay"} aria-label={t("偏好范围")} onValueChange={next => { if (next) onChange({ liked_tags_only: next === "liked" }); }}>
+        <ToggleGroupItem value="all" aria-label={t("全部")} data-tooltip={t("从完整词库抽取；固定词和 PMI 条件保持。")}>{t("全部")}</ToggleGroupItem>
+        <ToggleGroupItem value="liked" aria-label={t("喜欢")} data-tooltip={t("仅从喜欢图片的标签中抽取；固定词和 PMI 条件保持。")}>{t("喜欢")}</ToggleGroupItem>
       </ToggleGroup>
     </div>
-    <div className={compact ? "roam-choice flex min-h-8 items-center justify-between gap-2" : "settings-field"}>
-      <span className="field-caption whitespace-nowrap">漫游方式<HelpTip text="切换后保留当前图，清空旧预取并重新准备后续图片。" /></span>
-      <ToggleGroup type="single" size="sm" value={value.prompt_mode} disabled={disabled} aria-label="漫游方式" onValueChange={next => { if (next) onChange({ prompt_mode: next as PromptMode }); }}>
-        <ToggleGroupItem value="random" aria-label="漂流" data-tooltip="每张重新随机抽取提示词组合。">漂流</ToggleGroupItem>
-        <ToggleGroupItem value="along" aria-label="顺流" data-tooltip="从当前组合逐步变化；变化预算取自所选候选预设。">顺流</ToggleGroupItem>
-        <ToggleGroupItem value="stay" aria-label="停泊" data-tooltip="保持整组正负提示词，图像种子仍随机。">停泊</ToggleGroupItem>
+    <div className={compact ? "roam-choice flex min-h-8 flex-wrap items-center justify-between gap-2" : "settings-field"}>
+      <span className="field-caption whitespace-nowrap">{t("漫游方式")}<HelpTip text={t("切换后保留当前图，清空旧预取并重新准备后续图片。")} /></span>
+      <ToggleGroup type="single" size="sm" value={value.prompt_mode} disabled={disabled} aria-label={t("漫游方式")} onValueChange={next => { if (next) onChange({ prompt_mode: next as PromptMode }); }}>
+        <ToggleGroupItem value="random" aria-label={t("漂流")} data-tooltip={t("每张重新随机抽取提示词组合。")}>{t("漂流")}</ToggleGroupItem>
+        <ToggleGroupItem value="along" aria-label={t("顺流")} data-tooltip={t("从当前组合逐步变化；变化预算取自所选候选预设。")}>{t("顺流")}</ToggleGroupItem>
+        <ToggleGroupItem value="stay" aria-label={t("停泊")} data-tooltip={t("保持整组正负提示词，图像种子仍随机。")}>{t("停泊")}</ToggleGroupItem>
       </ToggleGroup>
     </div>
-    <div className={compact ? "roam-choice flex min-h-8 items-center justify-between gap-2" : "settings-field"}>
-      <span className="field-caption whitespace-nowrap">推荐力度<HelpTip text="只影响新任务，保留已有预取。停泊已有提示词时不参与评分。" /></span>
-      <ToggleGroup type="single" size="sm" value={value.recommendation_strength} disabled={disabled} aria-label="推荐力度" onValueChange={next => { if (next) onChange({ recommendation_strength: next as RecommendationStrength }); }}>
-        <ToggleGroupItem value="standard" aria-label="标准" data-tooltip="保留探索，发现更多可能喜欢的组合。">标准</ToggleGroupItem>
-        <ToggleGroupItem value="strong" aria-label="强力" data-tooltip="比较更多候选，按当前偏好评分择优，不引入探索。">强力</ToggleGroupItem>
+    <div className={compact ? "roam-choice flex min-h-8 flex-wrap items-center justify-between gap-2" : "settings-field"}>
+      <span className="field-caption whitespace-nowrap">{t("推荐力度")}<HelpTip text={t("只影响新任务，保留已有预取。停泊已有提示词时不参与评分。")} /></span>
+      <ToggleGroup type="single" size="sm" value={value.recommendation_strength} disabled={disabled} aria-label={t("推荐力度")} onValueChange={next => { if (next) onChange({ recommendation_strength: next as RecommendationStrength }); }}>
+        <ToggleGroupItem value="standard" aria-label={t("标准")} data-tooltip={t("保留探索，发现更多可能喜欢的组合。")}>{t("标准")}</ToggleGroupItem>
+        <ToggleGroupItem value="strong" aria-label={t("强力")} data-tooltip={t("比较更多候选，按当前偏好评分择优，不引入探索。")}>{t("强力")}</ToggleGroupItem>
       </ToggleGroup>
     </div>
   </div>;
@@ -125,19 +126,19 @@ export function RoamOptions() {
     setOpen(next);
     if (next) { dirty.current = false; setDraft(String(settings.playback_interval_seconds)); setError(""); }
   }}>
-    <PopoverTrigger asChild><IconButton id="roam-options" icon={Settings2} label="漫游选项" /></PopoverTrigger>
-    <PopoverContent forceMount hidden={!open} align="end" className="roam-options-panel w-80 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
+    <PopoverTrigger asChild><IconButton id="roam-options" icon={Settings2} label={t("漫游选项")} /></PopoverTrigger>
+    <PopoverContent forceMount hidden={!open} align="end" className="roam-options-panel w-80 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label={t("漫游选项")} onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
       <div className="grid gap-1">
         <form className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-3" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
-          <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap font-normal">展示时间</Label>
+          <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap font-normal">{t("展示时间")}</Label>
           <InputGroup className="h-8" data-disabled={!ready || saving.interval}>
-          <InputGroupInput id="roam-playback-seconds" aria-label="展示时间（秒）" aria-busy={saving.interval} className="h-8 min-w-0 pl-3 text-right tabular-nums" type="number" min={1} max={600} step={1} value={draft} disabled={!ready || saving.interval} onChange={event => { dirty.current = true; setDraft(event.target.value); }} onBlur={() => void save("interval")} />
-          <InputGroupAddon align="inline-end" className="py-0 text-xs" aria-hidden="true">秒</InputGroupAddon>
+          <InputGroupInput id="roam-playback-seconds" aria-label={t("展示时间（秒）")} aria-busy={saving.interval} className="h-8 min-w-0 pl-3 text-right tabular-nums" type="number" min={1} max={600} step={1} value={draft} disabled={!ready || saving.interval} onChange={event => { dirty.current = true; setDraft(event.target.value); }} onBlur={() => void save("interval")} />
+          <InputGroupAddon align="inline-end" className="py-0 text-xs" aria-hidden="true">{t("秒")}</InputGroupAddon>
           </InputGroup>
         </form>
         <RoamChoices compact value={settings} disabled={!ready || saving.choices} onChange={patch => void save("choices", patch)} />
       </div>
-      {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
+      {error && <p className="text-xs text-destructive" role="alert">{t(messageKey(error))}</p>}
     </PopoverContent>
   </Popover>;
 }

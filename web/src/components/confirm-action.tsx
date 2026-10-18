@@ -1,3 +1,4 @@
+import { t, messageKey } from "../i18n/index.mjs";
 import { useEffect, useState } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 
@@ -15,8 +16,8 @@ export function ConfirmationLayer() {
   const request = requests[0];
   const finish = (value: boolean) => { request?.resolve(value); setRequests(items => items.slice(1)); };
   return <AlertDialog open={!!request} onOpenChange={(open: boolean) => { if (!open && request) finish(false); }}>
-    <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>确认操作</AlertDialogTitle><AlertDialogDescription>{request?.message}</AlertDialogDescription></AlertDialogHeader>
-      <AlertDialogFooter><AlertDialogCancel onClick={(event: React.MouseEvent) => { event.preventDefault(); finish(false); }}>取消</AlertDialogCancel><AlertDialogAction onClick={(event: React.MouseEvent) => { event.preventDefault(); finish(true); }}>确认</AlertDialogAction></AlertDialogFooter>
+    <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t("确认操作")}</AlertDialogTitle><AlertDialogDescription>{t(messageKey(request?.message ?? ""))}</AlertDialogDescription></AlertDialogHeader>
+      <AlertDialogFooter><AlertDialogCancel onClick={(event: React.MouseEvent) => { event.preventDefault(); finish(false); }}>{t("取消")}</AlertDialogCancel><AlertDialogAction onClick={(event: React.MouseEvent) => { event.preventDefault(); finish(true); }}>{t("确认")}</AlertDialogAction></AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>;
 }

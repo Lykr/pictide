@@ -1,3 +1,4 @@
+import { t, tr } from "../i18n/index.mjs";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, CornerDownLeft } from "lucide-react";
 import { IconButton } from "./actions";
@@ -17,16 +18,16 @@ export function PageControls({ label, page, totalPages, loading = false, onPageC
     setDraft(String(target));
     if (target !== page) onPageChange(target);
   };
-  return <form className="mt-4 flex items-center justify-center gap-2" aria-label={`${label}分页`} aria-busy={loading} onSubmit={event => {
+  return <form className="mt-4 flex items-center justify-center gap-2" aria-label={tr`${label}分页`} aria-busy={loading} onSubmit={event => {
     event.preventDefault();
     const target = Number(draft);
     if (!loading && Number.isSafeInteger(target) && target >= 1 && target <= totalPages) navigate(target);
   }}>
-    <IconButton icon={ArrowLeft} label={`上一页${label}`} disabled={loading || page <= 1} onClick={() => navigate(page - 1)} />
-    <Input className="h-8 w-20 text-center tabular-nums" type="number" min={1} max={totalPages} step={1} required aria-label={`${label}页码`} value={draft} disabled={loading} onChange={event => setDraft(event.target.value)} />
+    <IconButton icon={ArrowLeft} label={tr`上一页${label}`} disabled={loading || page <= 1} onClick={() => navigate(page - 1)} />
+    <Input className="h-8 w-20 text-center tabular-nums" type="number" min={1} max={totalPages} step={1} required aria-label={tr`${label}页码`} value={draft} disabled={loading} onChange={event => setDraft(event.target.value)} />
     <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground" aria-live="polite">/ {totalPages}</span>
-    <IconButton icon={CornerDownLeft} label={`跳转${label}页`} type="submit" disabled={loading} />
-    <IconButton icon={ArrowRight} label={`下一页${label}`} disabled={loading || page >= totalPages} onClick={() => navigate(page + 1)} />
+    <IconButton icon={CornerDownLeft} label={tr`跳转${label}页`} type="submit" disabled={loading} />
+    <IconButton icon={ArrowRight} label={tr`下一页${label}`} disabled={loading || page >= totalPages} onClick={() => navigate(page + 1)} />
   </form>;
 }
 
@@ -38,5 +39,5 @@ export function JobPageControls() {
     document.addEventListener("pictide:jobs-pagination", receive);
     return () => document.removeEventListener("pictide:jobs-pagination", receive);
   }, []);
-  return <div hidden={!state.visible}><PageControls label="任务" {...state} onPageChange={page => document.dispatchEvent(new CustomEvent("pictide:jobs-page", { detail: { page } }))} /></div>;
+  return <div hidden={!state.visible}><PageControls label={t("任务")} {...state} onPageChange={page => document.dispatchEvent(new CustomEvent("pictide:jobs-page", { detail: { page } }))} /></div>;
 }

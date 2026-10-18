@@ -1,3 +1,4 @@
+import { t, tr, messageKey } from "../i18n/index.mjs";
 import { copyText } from "../lib/copy-text";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Copy, X } from "lucide-react";
@@ -27,10 +28,10 @@ function CopyValue({ title, text, disabled = false }: { title: string; text: str
       if (request.current === token) setStatus("error");
     }
   };
-  const feedback = status === "success" ? "已复制" : status === "error" ? "复制失败，请选中文本复制" : "";
+  const feedback = status === "success" ? t("已复制") : status === "error" ? t("复制失败，请选中文本复制") : "";
   return <span className="image-detail-copy">
     <IconButton icon={status === "success" ? Check : status === "error" ? X : Copy}
-      label={feedback ? `${title}：${feedback}` : `复制${title}`}
+      label={feedback ? t("{title}：{feedback}", { title, feedback }) : tr`复制${title}`}
       disabled={disabled || !text || status === "copying"} onClick={copy} />
     <span className="sr-only" role="status">{feedback}</span>
   </span>;
@@ -42,22 +43,22 @@ function DetailField({ title, text, disabled = false }: { title: string; text: s
       <h3>{title}</h3>
       <CopyValue title={title} text={text} disabled={disabled} />
     </div>
-    <pre className="image-prompt-text" tabIndex={text ? 0 : undefined}>{text || "（无）"}</pre>
+    <pre className="image-prompt-text" tabIndex={text ? 0 : undefined}>{text || t("（无）")}</pre>
   </section>;
 }
 
 export function ImagePromptDetails({ seed, positive, negative, actions }: {
   seed: string | number; positive: string; negative: string; actions?: ReactNode;
 }) {
-  const seedText = String(seed);
+  const seedText = t(messageKey(String(seed)));
   const hasSeed = /^\d+$/.test(seedText);
   return <div className="image-prompt-details">
     <div className="image-detail-heading image-detail-title">
-      <h2>图片信息</h2>
+      <h2>{t("图片信息")}</h2>
       {actions}
     </div>
-    <DetailField title="图像种子" text={seedText} disabled={!hasSeed} />
-    <DetailField title="正向提示词" text={positive} />
-    <DetailField title="负向提示词" text={negative} />
+    <DetailField title={t("图像种子")} text={seedText} disabled={!hasSeed} />
+    <DetailField title={t("正向提示词")} text={positive} />
+    <DetailField title={t("负向提示词")} text={negative} />
   </div>;
 }
