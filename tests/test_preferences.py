@@ -128,6 +128,7 @@ class PreferenceInspectionTests(unittest.TestCase):
 class PreferenceHTTPTests(unittest.IsolatedAsyncioTestCase):
     asyncSetUp = app_tests.RecommendationApplicationTests.asyncSetUp
     asyncTearDown = app_tests.RecommendationApplicationTests.asyncTearDown
+    observe_learning = app_tests.RecommendationApplicationTests.observe_learning
     output = app_tests.RecommendationApplicationTests.output
     rate = app_tests.RecommendationApplicationTests.rate
     policy = app_tests.RecommendationApplicationTests.policy
@@ -138,6 +139,31 @@ class PreferenceHTTPTests(unittest.IsolatedAsyncioTestCase):
         data = await response.json()
         self.assertEqual(response.status, 200, data)
         return data
+
+    async def test_full_preferences_export_reuses_view_and_preserves_state(self):
+        empty = await (await self.client.get("/api/recommendation/preferences?all=1")).json()
+        self.assertTrue(empty["available"])
+        self.assertEqual(empty["terms"], [])
+        self.candidate = candidate(positive=tuple(f"neutral {index:02}" for index in range(25)))
+        await self.rate(self.output(1)[0], 1)
+        before = self.policy()
+        jobs = self.app.storage.jobs()
+        with patch.object(self.app, "_sync_recommendation", side_effect=AssertionError("Export learned")), \
+             patch.object(self.app.recommendation.encoder, "encode", side_effect=AssertionError("Export encoded")):
+            first = await (await self.client.get("/api/recommendation/preferences")).json()
+            last = await (await self.client.get("/api/recommendation/preferences?page=2")).json()
+            full = await (await self.client.get("/api/recommendation/preferences?all=1")).json()
+        self.assertEqual((len(first["terms"]), len(last["terms"]), len(full["terms"])), (15, 10, 25))
+        self.assertEqual(full["terms"], first["terms"] + last["terms"])
+        self.assertEqual((full["page"], full["total_pages"], full["term_count"]), (1, 1, 25))
+        self.assertEqual(full["state_revision"], first["state_revision"])
+        self.assertEqual(full["feature_version"], self.version)
+        self.assertEqual(self.policy(), before)
+        self.assertEqual(self.app.storage.jobs(), jobs)
+        with patch.object(self.app.recommendation.encoder, "available", return_value=False):
+            unavailable = await (await self.client.get("/api/recommendation/preferences?all=1")).json()
+            self.assertFalse(unavailable["available"])
+        self.assertEqual((await self.client.get("/api/recommendation/preferences?all=2")).status, 400)
 
     async def test_http_reset_retains_likes_restart_and_version_no_resurrection(self):
         image = self.output(1)[0]

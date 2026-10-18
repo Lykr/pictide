@@ -187,9 +187,12 @@ async def roam_settings(request):
 
 
 async def preferences(request):
-    if set(request.query) - {"page"}:
-        raise ValidationError("偏好查看只接受 page 参数。")
-    return web.json_response(await request.app[APPLICATION].preferences(request.query.get("page", "1")))
+    if set(request.query) - {"page", "all"}:
+        raise ValidationError("偏好查看只接受 page 和 all 参数。")
+    if request.query.get("all", "0") not in {"0", "1"}:
+        raise ValidationError("all 参数须为 0 或 1。")
+    return web.json_response(await request.app[APPLICATION].preferences(
+        request.query.get("page", "1"), all_terms=request.query.get("all") == "1"))
 
 
 async def reset_preferences(request):

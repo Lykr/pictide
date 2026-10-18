@@ -130,13 +130,13 @@ class PictideApplication:
                 "capabilities": {"generation": True, "feedback": True, "preference_learning": await self._learning_available(),
                                  "cooccurrence_prompts": True, "prompt_sequences": True, "events": True, "roam_prefetch": True}}
 
-    async def preferences(self, page="1"):
+    async def preferences(self, page="1", all_terms=False):
         if not isinstance(page, str) or not re.fullmatch(r"[0-9]+", page):
             raise ValidationError("页码必须是正整数。")
         digits = page.lstrip("0")
         if not digits or len(digits) > 16 or int(digits) > 2**53 - 1:
             raise ValidationError("页码必须是 1 至 9007199254740991 的整数。")
-        return asdict(await asyncio.to_thread(self.recommendation.preferences, "local", int(digits)))
+        return asdict(await asyncio.to_thread(self.recommendation.preferences, "local", int(digits), all_terms=all_terms))
 
     async def reset_preferences(self, payload):
         if set(payload) != {"request_id", "expected_reset_revision"}:

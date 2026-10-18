@@ -1,6 +1,6 @@
 import { t, tr, locale, messageKey } from "../i18n/index.mjs";
 import { useEffect, useRef, useState } from "react";
-import { Eye, LoaderCircle, RefreshCw, RotateCcw } from "lucide-react";
+import { Check, Download, Eye, LoaderCircle, RefreshCw, RotateCcw } from "lucide-react";
 import { HelpTip, IconButton } from "./actions";
 import { PageControls } from "./page-controls";
 import { Badge } from "./ui/badge";
@@ -41,6 +41,8 @@ export function PreferenceActions() {
   const [result, setResult] = useState<PreferencesResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const generation = useRef(0);
@@ -65,6 +67,7 @@ export function PreferenceActions() {
       generation.current += 1;
       readAbort.current?.abort();
       setLoading(false); setViewOpen(false); setResetOpen(false);
+      setExporting(false); setExported(false);
       setError(""); setMessage("");
     };
     window.addEventListener("hashchange", navigate);
@@ -92,6 +95,44 @@ export function PreferenceActions() {
       setError(cause instanceof Error ? cause.message : t("读取偏好失败，请重试。"));
     } finally {
       if (mounted.current && current === generation.current) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!exported) return;
+    const timer = setTimeout(() => setExported(false), 2000);
+    return () => clearTimeout(timer);
+  }, [exported]);
+
+  const exportPreferences = async () => {
+    readAbort.current?.abort();
+    const abort = new AbortController();
+    readAbort.current = abort;
+    const current = ++generation.current;
+    setExporting(true); setExported(false); setError(""); setMessage("");
+    try {
+      const data = await request<PreferencesResult>("/api/recommendation/preferences?all=1", { signal: abort.signal });
+      if (!mounted.current || current !== generation.current) return;
+      if (!data.available) throw new Error(data.error || t("暂无法导出用户偏好，请稍后重试。"));
+      const now = new Date();
+      const report = {
+        exported_at: now.toISOString(), feature_version: data.feature_version,
+        state_revision: data.state_revision, reset_revision: data.reset_revision, reset_at: data.reset_at,
+        evidence_count: data.evidence_count, term_count: data.term_count, terms: data.terms,
+      };
+      const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: "application/json;charset=utf-8" }));
+      const stamp = [now.getFullYear(), now.getMonth() + 1, now.getDate()].map(value => String(value).padStart(2, "0")).join("")
+        + "-" + [now.getHours(), now.getMinutes(), now.getSeconds()].map(value => String(value).padStart(2, "0")).join("");
+      const link = document.createElement("a");
+      link.href = url; link.download = `pictide-preferences-${stamp}.json`;
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setExported(true);
+    } catch (cause) {
+      if (!mounted.current || current !== generation.current || abort.signal.aborted) return;
+      setError(cause instanceof Error ? cause.message : t("导出用户偏好失败，请重试。"));
+    } finally {
+      if (mounted.current && current === generation.current) setExporting(false);
     }
   };
 
@@ -144,12 +185,13 @@ export function PreferenceActions() {
     }
   };
 
-  const busy = loading || resetting;
+  const busy = loading || resetting || exporting;
   return <div className="settings-preferences flex flex-col gap-2">
     <div className="flex items-center justify-between gap-3">
       <span className="text-sm font-medium">{t("用户偏好")}</span>
       <div className="flex items-center gap-1">
         <IconButton ref={viewEntry} type="button" icon={Eye} label={t("查看用户偏好")} disabled={busy} onClick={showPreferences} />
+        <IconButton type="button" icon={exporting ? LoaderCircle : exported ? Check : Download} className={exporting ? "[&_svg]:animate-spin" : ""} label={exporting ? t("正在导出用户偏好") : exported ? t("用户偏好已导出") : t("导出用户偏好")} disabled={busy} onClick={exportPreferences} />
         <IconButton ref={resetEntry} type="button" icon={RotateCcw} label={t("重置用户偏好")} disabled={busy} onClick={askReset} />
         {loading && !viewOpen && <LoaderCircle className="size-4 animate-spin text-muted-foreground" aria-label={t("读取用户偏好")} />}
       </div>

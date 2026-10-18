@@ -43,7 +43,7 @@ class RecommendationService:
         if not isinstance(value, str) or not value.strip():
             raise ValueError(name + " must be non-empty text")
 
-    def preferences(self, user_id, page=1):
+    def preferences(self, user_id, page=1, *, all_terms=False):
         """Read a coherent posterior center without encoding, sampling or learning."""
         self._identity(user_id, "user_id")
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
@@ -52,7 +52,7 @@ class RecommendationService:
             status = self.status()
             reset = self.store.get_reset_state(user_id)
             def result(available, error=None, revision=0, count=0, terms=()):
-                page_size = 15
+                page_size = max(1, len(terms)) if all_terms else 15
                 total_pages = max(1, (len(terms) + page_size - 1) // page_size)
                 current = min(page, total_pages)
                 return PreferencesResult(available, error, status.feature_version, revision,

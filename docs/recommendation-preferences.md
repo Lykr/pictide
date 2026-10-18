@@ -58,7 +58,7 @@ sequenceDiagram
 
 | 接口 | 输入 | 输出 |
 | --- | --- | --- |
-| `GET /api/recommendation/preferences` | `page`，默认1，每页15条 | `PreferencesResult` |
+| `GET /api/recommendation/preferences` | `page`，默认1，每页15条；`all=1` 返回全量，详见 [导出](preference-export.md) | `PreferencesResult` |
 | `POST /api/recommendation/preferences/reset` | `request_id`、`expected_reset_revision` | `ResetResult` |
 
 App 使用现有用户 `local`，不接受客户端指定其他用户。非法输入返回400，重置修订冲突返回409；相同重置请求重试返回原结果，不再次清除新积累的偏好。模型不可用通过可用状态及原因表达，重置操作不依赖编码器可用。
@@ -67,7 +67,7 @@ App 使用现有用户 `local`，不接受客户端指定其他用户。非法�
 
 | 新增接口 | 输入 | 输出 |
 | --- | --- | --- |
-| `preferences(user_id, page=1)` | 当前用户、页码 | `PreferencesResult` |
+| `preferences(user_id, page=1, *, all_terms=False)` | 当前用户、页码 | `PreferencesResult` |
 | `reset_preferences(user_id, request_id, expected_reset_revision)` | 当前用户、幂等请求标识、预期重置修订 | `ResetResult` |
 
 已有 `score`、`apply_feedback`、`status` 的签名保持。
