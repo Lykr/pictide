@@ -26,7 +26,7 @@ test('loaded pictures get one interval, pending generation waits and resumes on 
   const firstTimer = [...f.timers.keys()][0];
   f.update({ ready: true });
   assert.equal([...f.timers.keys()][0], firstTimer); // Refreshes do not postpone the deadline.
-  assert.equal([...f.timers.values()][0].delay, 5000);
+  assert.equal([...f.timers.values()][0].delay, 8000);
   await f.fire();
   assert.equal(f.calls, 1);
   f.update({ busy: true }); f.playback.retry();
@@ -70,7 +70,7 @@ test('progress shares the deadline, restarts on manual navigation, and stays ful
     schedule: run => { timers.set(++serial, run); return serial; }, cancel: id => timers.delete(id) });
   const picture = { imageId: 'a', ready: true, active: true, busy: false, blocked: false };
   playback.update(picture); playback.toggle();
-  assert.equal(state.startedAt, 100); assert.equal(state.durationMs, 5000);
+  assert.equal(state.startedAt, 100); assert.equal(state.durationMs, 8000);
   const firstCycle = state.cycle;
   clock = 1100; playback.update(picture);
   assert.equal(state.startedAt, 100); assert.equal(state.cycle, firstCycle);
@@ -102,7 +102,7 @@ test('liking holds playback, repeats do not restart it, and the next loaded pict
   assert.equal(f.playback.playing, true); assert.equal(f.timers.size, 0);
   f.update({ ready: true });
   assert.equal(f.timers.size, 1);
-  assert.equal([...f.timers.values()][0].delay, 5000);
+  assert.equal([...f.timers.values()][0].delay, 8000);
 });
 
 test('like cancels an automatic wait; explicit pause and leaving the page cancel automatic resumption', async () => {

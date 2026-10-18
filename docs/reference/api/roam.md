@@ -16,13 +16,13 @@
 
 | 字段 | 类型及范围 | 默认 |
 | --- | --- | --- |
-| `prefetch_count` | 整数 0–20；0 关闭自动预取 | 0 |
-| `max_history_images` | 整数 0–100000；0 关闭数量清理 | 0 |
+| `prefetch_count` | 整数 0–20；0 关闭自动预取 | 2 |
+| `max_history_images` | 整数 0–100000；0 关闭数量清理 | 20 |
 | `backend_id` / `preset_id` | 字符串；空串自动选择 | 空串 |
-| `playback_interval_seconds` | 整数 1–600 | 5 |
+| `playback_interval_seconds` | 整数 1–600 | 8 |
 | `liked_tags_only` | 布尔值；喜欢范围 / 全部范围 | `false` |
 | `prompt_mode` | `random` 漂流 / `along` 顺流 / `stay` 停泊 | `random` |
-| `candidate_count` | 整数 1–20 | 4 |
+| `candidate_count` | 整数 1–20 | 10 |
 | `recommendation_strength` | `standard / strong` | `standard` |
 | `strong_candidate_multiplier` | 整数 1–5 | 2 |
 | `pinned_positive` | 非空完整词项的字符串数组 | `[]` |

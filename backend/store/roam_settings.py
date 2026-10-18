@@ -99,7 +99,7 @@ class RoamSettings:
 
     @staticmethod
     def defaults():
-        return {"prefetch_count": 0, "max_history_images": 0, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 5, "liked_tags_only": False, "prompt_mode": "random", "candidate_count": 4, "pinned_positive": [], "preset_base_positive": [], **RECOMMENDATION_DEFAULTS}
+        return {"prefetch_count": 2, "max_history_images": 20, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 8, "liked_tags_only": False, "prompt_mode": "random", "candidate_count": 10, "pinned_positive": [], "preset_base_positive": [], **RECOMMENDATION_DEFAULTS}
 
     @classmethod
     def _get(cls, db):
@@ -109,9 +109,9 @@ class RoamSettings:
         playback = db.execute("SELECT interval_seconds FROM roam_playback_settings WHERE id=1").fetchone()
         document = dict(row) if row else cls.defaults()
         document["liked_tags_only"] = bool(document["liked_tags_only"])
-        document["playback_interval_seconds"] = playback[0] if playback else 5
+        document["playback_interval_seconds"] = playback[0] if playback else 8
         candidate = db.execute("SELECT candidate_count FROM roam_candidate_settings WHERE id=1").fetchone()
-        document["candidate_count"] = candidate[0] if candidate else 4
+        document["candidate_count"] = candidate[0] if candidate else 10
         recommendation = db.execute("SELECT recommendation_strength,strong_candidate_multiplier "
                                     "FROM roam_recommendation_settings WHERE id=1").fetchone()
         document.update(dict(recommendation) if recommendation else RECOMMENDATION_DEFAULTS)

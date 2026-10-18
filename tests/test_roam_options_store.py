@@ -41,7 +41,7 @@ class RoamOptionsStoreTests(unittest.TestCase):
         self.assertIs(self.settings.get()['liked_tags_only'], False)
         interval_only = self.settings.save_options(playback_interval=10)
         self.assertEqual(interval_only['epoch'], '0' * 32)
-        self.assertEqual(interval_only['prefetch_count'], 0)
+        self.assertEqual(interval_only['prefetch_count'], 2)
         self.assertEqual(interval_only['playback_interval_seconds'], 10)
         for value in (0, 1, 'true', [], {}):
             with self.subTest(value=value), self.assertRaises(ValidationError):

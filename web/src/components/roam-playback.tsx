@@ -11,7 +11,7 @@ import { playbackInterval } from "../controllers/roam-playback.mjs";
 
 type PlaybackState = { playing: boolean; canPlay: boolean; startedAt: number | null; durationMs: number; cycle: number; waiting: boolean };
 function usePlaybackState() {
-  const [state, setState] = useState<PlaybackState>({ playing: false, canPlay: false, startedAt: null, durationMs: 5000, cycle: 0, waiting: false });
+  const [state, setState] = useState<PlaybackState>({ playing: false, canPlay: false, startedAt: null, durationMs: 8000, cycle: 0, waiting: false });
   useEffect(() => {
     const receive = (event: Event) => setState((event as CustomEvent<PlaybackState>).detail);
     document.addEventListener("pictide:roam-playback-state", receive);
@@ -86,9 +86,9 @@ export function RoamSettingsChoices() {
 }
 export function RoamOptions() {
   const [open, setOpen] = useState(false);
-  const [settings, setSettings] = useState<RoamSettings>({ playback_interval_seconds: 5, liked_tags_only: false, prompt_mode: "random", recommendation_strength: "standard" });
+  const [settings, setSettings] = useState<RoamSettings>({ playback_interval_seconds: 8, liked_tags_only: false, prompt_mode: "random", recommendation_strength: "standard" });
   const [ready, setReady] = useState(false);
-  const [draft, setDraft] = useState("5");
+  const [draft, setDraft] = useState("8");
   const [saving, setSaving] = useState({ interval: false, choices: false });
   const intervalPending = useRef(false);
   const [error, setError] = useState("");

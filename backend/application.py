@@ -538,7 +538,7 @@ class PictideApplication:
         previous = self.storage.roam_prompt_reference(context["epoch"], context.get("anchor_id")) if mode != "random" else None
         strong = context.get("recommendation_strength", "standard") == "strong"
         strategy = "mean" if strong else "thompson"
-        count = context.get("candidate_count", 4) * (context.get("strong_candidate_multiplier", 2) if strong else 1)
+        count = context.get("candidate_count", 10) * (context.get("strong_candidate_multiplier", 2) if strong else 1)
         constraints = {"count": count, "prompt_mode": mode, "previous_candidate": previous,
                        "pinned_positive": context.get("pinned_positive", [])}
         if context.get("liked_tags_only") and not (mode == "stay" and previous):

@@ -10,8 +10,8 @@ def default_txt2img(checkpoint):
         "1":{"class_type":"CheckpointLoaderSimple","inputs":{"ckpt_name":checkpoint},"_meta":{"title":"模型"}},
         "2":{"class_type":"CLIPTextEncode","inputs":{"text":"","clip":["1",1]},"_meta":{"title":"正向提示词"}},
         "3":{"class_type":"CLIPTextEncode","inputs":{"text":"","clip":["1",1]},"_meta":{"title":"负向提示词"}},
-        "4":{"class_type":"EmptyLatentImage","inputs":{"width":1024,"height":1024,"batch_size":1}},
-        "5":{"class_type":"KSampler","inputs":{"seed":0,"steps":28,"cfg":5.5,"sampler_name":"dpmpp_2m","scheduler":"karras","denoise":1.0,"model":["1",0],"positive":["2",0],"negative":["3",0],"latent_image":["4",0]}},
+        "4":{"class_type":"EmptyLatentImage","inputs":{"width":832,"height":1216,"batch_size":1}},
+        "5":{"class_type":"KSampler","inputs":{"seed":0,"steps":16,"cfg":2.5,"sampler_name":"dpmpp_2m","scheduler":"karras","denoise":1.0,"model":["1",0],"positive":["2",0],"negative":["3",0],"latent_image":["4",0]}},
         "6":{"class_type":"VAEDecode","inputs":{"samples":["5",0],"vae":["1",2]}},
         "7":{"class_type":"PreviewImage","inputs":{"images":["6",0]}},
     },"bindings":{"positive":{"node_id":"2","input":"text"},"negative":{"node_id":"3","input":"text"},"seed":{"node_id":"5","input":"seed"}},"output_nodes":["7"]}

@@ -41,7 +41,11 @@ class RoamPlaybackSettingsTests(unittest.IsolatedAsyncioTestCase):
     async def test_default_event_and_restart_persistence(self):
         response = await self.client.get("/api/settings/roam")
         self.assertEqual(response.status, 200)
-        self.assertEqual((await response.json())["playback_interval_seconds"], 5)
+        defaults = await response.json()
+        self.assertEqual({key: defaults[key] for key in
+                          ("prefetch_count", "max_history_images", "playback_interval_seconds", "candidate_count")},
+                         {"prefetch_count": 2, "max_history_images": 20,
+                          "playback_interval_seconds": 8, "candidate_count": 10})
         stream = self.app.events.stream()
         self.assertEqual((await anext(stream))["topic"], "ready")
         saved = await self.put({"playback_interval_seconds": 12})
@@ -87,7 +91,7 @@ class RoamPlaybackSettingsTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_candidate_count_persists_and_preserves_pause(self):
         response = await self.client.get("/api/settings/roam")
-        self.assertEqual((await response.json())["candidate_count"], 4)
+        self.assertEqual((await response.json())["candidate_count"], 10)
         previous = self.app.roam.save(0, "selected-backend", "selected-preset", 25)
         self.app.storage.pause_roam(previous["epoch"], "Paused smoke")
         saved = await self.put({"candidate_count": 7})

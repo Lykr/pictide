@@ -8,7 +8,7 @@ export function playbackInterval(value) {
 
 /** One timeout per loaded picture; unavailable next images are resumed by gallery events. */
 export function createRoamPlayback({ advance, changed = () => {}, cancelWait = () => {}, schedule = setTimeout, cancel = clearTimeout, now = () => performance.now() }) {
-  let playing = false, seconds = 5, timer, startedAt = null, cycle = 0;
+  let playing = false, seconds = 8, timer, startedAt = null, cycle = 0;
   let imageId = null, ready = false, active = false, busy = false, blocked = false;
   let due = false, advancing = false, revision = 0;
   let resumeAfterLike = false, nextAfterLike = null;

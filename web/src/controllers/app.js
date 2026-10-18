@@ -88,7 +88,7 @@ let availabilityRevision = 0;
 let availabilitySignature = '';
 let hasSavedApiKey = false;
 let roamSettingsLoaded = false, roamSettingsLoading = false;
-let roamSettings = { prefetch_count: 0, max_history_images: 0, backend_id: '', preset_id: '', liked_tags_only: false, prompt_mode: 'random', playback_interval_seconds: 5, candidate_count: 4, recommendation_strength: 'standard', strong_candidate_multiplier: 2 };
+let roamSettings = { prefetch_count: 2, max_history_images: 20, backend_id: '', preset_id: '', liked_tags_only: false, prompt_mode: 'random', playback_interval_seconds: 8, candidate_count: 10, recommendation_strength: 'standard', strong_candidate_multiplier: 2 };
 let roamError = '';
 let roamAnchorRetried = false;
 let roamPageActive = true, roamVersion = 0;
@@ -111,7 +111,7 @@ function syncRoamPlayback(artifact = null) {
   });
 }
 function publishPlaybackInterval(settings) {
-  document.dispatchEvent(new CustomEvent('pictide:roam-playback-interval', { detail: settings.playback_interval_seconds ?? 5 }));
+  document.dispatchEvent(new CustomEvent('pictide:roam-playback-interval', { detail: settings.playback_interval_seconds ?? 8 }));
   document.dispatchEvent(new CustomEvent('pictide:roam-options-settings', { detail: settings }));
 }
 const immersive = createImmersiveViewer({
@@ -989,7 +989,7 @@ function finishRoamSwitch() {
   refillRoam();
 }
 async function applyRoamSettings(settings, savedFields = []) {
-  const next = { ...settings, recommendation_strength: settings.recommendation_strength ?? 'standard', strong_candidate_multiplier: strongCandidateMultiplier(settings.strong_candidate_multiplier ?? 2), candidate_count: candidateCount(settings.candidate_count ?? 4), prefetch_count: prefetchCount(settings.prefetch_count), max_history_images: maxHistoryImages(settings.max_history_images ?? 0), liked_tags_only: !!settings.liked_tags_only, prompt_mode: settings.prompt_mode ?? 'random', playback_interval_seconds: settings.playback_interval_seconds ?? 5 };
+  const next = { ...settings, recommendation_strength: settings.recommendation_strength ?? 'standard', strong_candidate_multiplier: strongCandidateMultiplier(settings.strong_candidate_multiplier ?? 2), candidate_count: candidateCount(settings.candidate_count ?? 10), prefetch_count: prefetchCount(settings.prefetch_count ?? 2), max_history_images: maxHistoryImages(settings.max_history_images ?? 20), liked_tags_only: !!settings.liked_tags_only, prompt_mode: settings.prompt_mode ?? 'random', playback_interval_seconds: settings.playback_interval_seconds ?? 8 };
   const switched = roamSettingsLoaded && roamGenerationChanged(roamSettings, next);
   if (roamSettingsLoaded && JSON.stringify(roamSettings.pinned_positive ?? []) !== JSON.stringify(next.pinned_positive ?? [])) {
     // Saving anchors still discards the old window, but editing must not launch

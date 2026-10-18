@@ -225,6 +225,9 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         saved = await response.json()
         self.assertEqual(saved["workflow_mode"],"default")
         self.assertEqual(saved["default_checkpoint"],"test-model.safetensors")
+        self.assertEqual(saved["workflow"]["4"]["inputs"], {"width":832,"height":1216,"batch_size":1})
+        sampler = saved["workflow"]["5"]["inputs"]
+        self.assertEqual((sampler["steps"], sampler["cfg"]), (16, 2.5))
         self.assertFalse(any(n["class_type"]=="LoadImage" for n in saved["workflow"].values()))
         payload = {"backend_id":"default","request_id":"default-request-1","positive":"a landscape","negative":"blurry","seed":42}
         response = await self.client.post("/api/jobs",json=payload)
