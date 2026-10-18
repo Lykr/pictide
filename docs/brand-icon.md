@@ -19,3 +19,14 @@
 - [D：24 段](../web/public/icons/studies/pictide-wave-24.svg)
 
 中间的背景负形沿回卷方向逐渐收窄。当前为比较稿，主图继续保留已确认版本。离线拟合脚本、参考轮廓与局部放大预览保存在 data/verification/wave-curve-studies-20261018。
+
+## 新版草图直接拟合
+
+从用户提供的新版黑白草图提取实际边界，轻度平滑笔迹噪声，保留尾尖和内勾的转折；在同一画布比例下比较四种三次贝塞尔段数：
+
+- [A：12 段](../web/public/icons/studies/pictide-sketch-v2-12.svg)
+- [B：18 段](../web/public/icons/studies/pictide-sketch-v2-18.svg)
+- [C：24 段](../web/public/icons/studies/pictide-sketch-v2-24.svg)
+- [D：32 段](../web/public/icons/studies/pictide-sketch-v2-32.svg)
+
+新版具有较厚外圈、较短尖尾和收窄的白色回卷通道。各稿为独立闭合矢量路径；仍是比较稿，未替换应用图标。边界提取、拟合脚本与渲染预览保存在 data/verification/wave-new-sketch-20261018。
