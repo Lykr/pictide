@@ -426,7 +426,10 @@ function requestNextRoamImage() {
 async function moveImage(direction, automatic = null) {
   if (state.feedbackPending || !galleryCursors.ready || roamWindowLoading || roamSwitch) return;
   if (automatic && !automatic()) return;
-  if (!automatic && state.view === 'feed') roamPlayback.restart();
+  if (!automatic && state.view === 'feed') {
+    roamPlayback.prepareNavigation(direction);
+    roamPlayback.restart();
+  }
   if (!state.pages[pageView()].loaded) { refresh(true); return; }
   if (state.view === 'feed' && direction === 'older') nextImageWait.cancel();
   else if (state.view === 'feed' && nextImageWait.current) return;
@@ -457,6 +460,7 @@ async function moveImage(direction, automatic = null) {
   state.activeId = items[destination].id; renderArtifacts(); refillRoam();
 }
 async function feedback(value, toggle = true) {
+  if (value === 1 && state.view === 'feed') roamPlayback.pauseForLike();
   if (state.feedbackPending) return;
   const artifact = artifactsForView().find((item) => item.id === state.activeId); if (!artifact) { showNotice(t("还没有可以评价的图片。")); return; }
   const nextValue = feedbackValue(artifact.feedback, value, toggle);
@@ -1296,7 +1300,7 @@ document.addEventListener('keydown', (event) => {
   const action = keyboardAction(event, { editing: !!event.target.closest('input,textarea,select,[data-help],[role=combobox],[role=listbox],[role=option],[role=checkbox],[role=radio],[role=tab],[role=dialog],[data-slot=select-content],[data-slot=popover-content],[contenteditable]:not([contenteditable="false"])'), dialogOpen: !!document.querySelector('dialog[open],[role=dialog][data-state=open],[role=alertdialog]'), view: state.view, immersive: immersive.active, feedbackPending: state.feedbackPending && event.key !== 'ArrowUp' });
   if (!action) return;
   event.preventDefault();
-  if (action === 'like') { roamPlayback.restart(); feedback(1, false); }
+  if (action === 'like') feedback(1, false);
   else if (action === 'dislike') feedback(-1, false);
   else if (action === 'privacy') {
     const control = ['generate', 'liked'].includes(state.view) ? document.querySelector(`.generated-privacy-toggle[data-collection="${state.view}"]`) : $(immersive.active ? 'roam-immersive-privacy' : 'roam-privacy');

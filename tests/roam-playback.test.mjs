@@ -62,7 +62,7 @@ test('interval accepts integers from 1 to 600 and rejects blanks and invalid val
   for (const value of ['', ' ', 0, 601, 1.5, true, null]) assert.throws(() => playbackInterval(value));
 });
 
-test('progress shares the deadline, restarts on repeated likes, and stays full while awaiting a next image', async () => {
+test('progress shares the deadline, restarts on manual navigation, and stays full while awaiting a next image', async () => {
   let clock = 100, state;
   const timers = new Map(); let serial = 0, cancelled = 0;
   const playback = createRoamPlayback({ now: () => clock, changed: next => state = next,
@@ -83,4 +83,37 @@ test('progress shares the deadline, restarts on repeated likes, and stays full w
   clock = 8000; playback.restart();
   assert.equal(cancelled, 1); assert.equal(state.waiting, false); assert.equal(state.startedAt, 8000);
   playback.pause(); assert.equal(state.playing, false); assert.equal(state.startedAt, null); assert.equal(timers.size, 0);
+});
+
+test('liking holds playback, repeats do not restart it, and the next loaded picture resumes', async () => {
+  const f = fixture(); f.update({ ready: true }); f.playback.toggle();
+  f.playback.pauseForLike();
+  assert.equal(f.playback.playing, false); assert.equal(f.timers.size, 0);
+  f.playback.pauseForLike(); f.update({ ready: true });
+  assert.equal(f.timers.size, 0);
+  // Previous images do not resume; the next image does, even when returning from history.
+  f.playback.prepareNavigation('older'); f.update({ imageId: 'older' });
+  assert.equal(f.playback.playing, false);
+  f.playback.prepareNavigation('newer'); f.playback.restart();
+  assert.equal(f.playback.playing, false); assert.equal(f.timers.size, 0);
+  f.update({ busy: true }); f.playback.retry();
+  assert.equal(f.calls, 0); assert.equal(f.timers.size, 0);
+  f.update({ imageId: 'first', ready: false, busy: false });
+  assert.equal(f.playback.playing, true); assert.equal(f.timers.size, 0);
+  f.update({ ready: true });
+  assert.equal(f.timers.size, 1);
+  assert.equal([...f.timers.values()][0].delay, 5000);
+});
+
+test('like cancels an automatic wait; explicit pause and leaving the page cancel automatic resumption', async () => {
+  const f = fixture(); f.update({ ready: true }); f.playback.toggle();
+  await f.fire(); assert.equal(f.guard(), true);
+  f.playback.pauseForLike();
+  assert.equal(f.cancelledWaits, 1); assert.equal(f.guard(), false);
+  f.playback.prepareNavigation('newer'); f.playback.pause();
+  f.update({ imageId: 'second' });
+  assert.equal(f.playback.playing, false); assert.equal(f.timers.size, 0);
+  f.playback.toggle(); f.playback.pauseForLike(); f.playback.prepareNavigation('newer');
+  f.update({ active: false }); f.update({ active: true, imageId: 'third' });
+  assert.equal(f.playback.playing, false); assert.equal(f.timers.size, 0);
 });

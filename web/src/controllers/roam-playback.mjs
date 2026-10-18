@@ -11,6 +11,7 @@ export function createRoamPlayback({ advance, changed = () => {}, cancelWait = (
   let playing = false, seconds = 5, timer, startedAt = null, cycle = 0;
   let imageId = null, ready = false, active = false, busy = false, blocked = false;
   let due = false, advancing = false, revision = 0;
+  let resumeAfterLike = false, nextAfterLike = null;
   const clear = () => { if (timer !== undefined) cancel(timer); timer = undefined; startedAt = null; };
   const notify = () => changed({ playing, canPlay: active && !!imageId && !blocked, startedAt, durationMs: seconds * 1000, cycle, waiting: due });
   const go = async () => {
@@ -27,14 +28,19 @@ export function createRoamPlayback({ advance, changed = () => {}, cancelWait = (
   };
   function pause() {
     const ownedWait = playing && due;
-    playing = false; due = false; revision++; clear();
+    playing = false; due = false; resumeAfterLike = false; nextAfterLike = null; revision++; clear();
     if (ownedWait) cancelWait();
     notify();
   }
   return {
     get playing() { return playing; },
     update(next) {
-      if (next.imageId !== imageId) { clear(); due = false; imageId = next.imageId; }
+      if (next.imageId !== imageId) {
+        clear(); due = false; imageId = next.imageId;
+        if (resumeAfterLike && nextAfterLike !== null && imageId && imageId !== nextAfterLike && next.active && !next.blocked) {
+          playing = true; resumeAfterLike = false; nextAfterLike = null; revision++;
+        }
+      }
       ready = next.ready; active = next.active; busy = next.busy; blocked = next.blocked;
       if (!active || blocked) { pause(); return; }
       if (!ready || busy) clear();
@@ -42,9 +48,17 @@ export function createRoamPlayback({ advance, changed = () => {}, cancelWait = (
     },
     toggle() {
       if (playing) pause();
-      else if (active && imageId && !blocked) { playing = true; due = false; revision++; arm(); notify(); }
+      else if (active && imageId && !blocked) { playing = true; due = false; resumeAfterLike = false; nextAfterLike = null; revision++; arm(); notify(); }
     },
     pause,
+    pauseForLike() {
+      if (!playing) return;
+      pause();
+      resumeAfterLike = true;
+    },
+    prepareNavigation(direction) {
+      if (resumeAfterLike) nextAfterLike = direction === 'newer' ? imageId : null;
+    },
     restart() {
       const ownedWait = playing && due;
       clear(); due = false; revision++;
