@@ -7,10 +7,11 @@ import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from "./ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "./ui/select";
 
 type LikedTag = { text: string; count: number };
 
-export function LikedTagFilter({ visible, revision, disabled = false }: { visible: boolean; revision: number; disabled?: boolean }) {
+export function LikedTagFilter({ visible, revision, disabled = false, sort = "latest", loading: rankingLoading = false }: { visible: boolean; revision: number; disabled?: boolean; sort?: "latest" | "score"; loading?: boolean }) {
   const [open, setOpen] = useState(false);
   const [tags, setTags] = useState<LikedTag[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -80,5 +81,12 @@ export function LikedTagFilter({ visible, revision, disabled = false }: { visibl
       <IconButton icon={X} label={tr`移除筛选：${text}`} size="icon-xs" disabled={disabled} onClick={() => change(selected.filter(tag => tag !== text))} />
     </Badge>)}
     {selected.length > 0 && <IconButton icon={X} label={t("清空标签筛选")} disabled={disabled} onClick={() => change([])} />}
+    <div className="ml-auto flex items-center gap-1">
+      <Select value={sort} disabled={disabled} onValueChange={next => document.dispatchEvent(new CustomEvent("pictide:liked-sort", { detail: { sort: next } }))}>
+        <SelectTrigger size="sm" aria-label={t("喜欢图片排序")}><SelectValue /></SelectTrigger>
+        <SelectContent><SelectItem value="latest">{t("最新优先")}</SelectItem><SelectItem value="score">{t("偏好评分")}</SelectItem></SelectContent>
+      </Select>
+      {sort === "score" && <IconButton icon={rankingLoading ? LoaderCircle : RotateCw} className={rankingLoading ? "[&_svg]:animate-spin" : ""} label={rankingLoading ? t("正在计算偏好评分") : t("刷新偏好评分排序")} disabled={disabled || rankingLoading} onClick={() => document.dispatchEvent(new CustomEvent("pictide:liked-refresh"))} />}
+    </div>
   </div>;
 }

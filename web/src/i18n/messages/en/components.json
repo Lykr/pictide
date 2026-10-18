@@ -155,5 +155,11 @@
   "按当前偏好对提示词组合评分；0–100 是历史范围中的相对刻度，不是喜欢概率。": "Scores the prompt combination using current preferences. The 0–100 scale is relative to the historical range, not a probability of liking.",
   "偏好评分": "Preference score",
   "缺少完整生成快照，暂无法评分。": "The full generation snapshot is missing, so this image cannot be scored.",
-  "推荐服务暂不可用，请检查模型和学习状态。": "The recommendation service is unavailable. Check the model and learning status."
+  "推荐服务暂不可用，请检查模型和学习状态。": "The recommendation service is unavailable. Check the model and learning status.",
+  "喜欢图片排序": "Sort liked images",
+  "最新优先": "Newest first",
+  "正在计算偏好评分": "Calculating preference scores",
+  "刷新偏好评分排序": "Refresh preference ranking",
+  "加载更多": "Load more",
+  "暂无法按偏好评分排序，已按时间展示。": "Preference ranking is unavailable. Images are shown newest first."
 }

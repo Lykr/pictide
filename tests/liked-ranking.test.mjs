@@ -1,0 +1,43 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createLikedRanking } from '../web/src/controllers/liked-ranking.mjs';
+import { applyArtifactPage, observeArtifactRevision } from '../web/src/controllers/history-controls.mjs';
+
+const artifacts = Array.from({ length: 34 }, (_, i) => ({ id: String(i), feedback: 1 }));
+test('ranked liked browsing keeps server order and pages locally, including an unlike', async () => {
+  let calls = 0, latest;
+  const ranked = createLikedRanking({ request: async path => {
+    calls++; assert.equal(path, '/api/liked/ranked?tag=blue+sky&tag=solo');
+    return { artifacts, scoring_available: true };
+  }, changed: value => { latest = value; } });
+  await ranked.load(['blue sky', 'solo', 'solo']);
+  assert.equal(latest.artifacts.length, 15); assert.equal(latest.total, 34);
+  ranked.more(); assert.equal(latest.artifacts.length, 30);
+  ranked.update({ id: '2', feedback: null });
+  assert.deepEqual(latest.artifacts.map(item => item.id), artifacts.filter(item => item.id !== '2').slice(0, 30).map(item => item.id));
+  ranked.update({ id: 'outside', feedback: 1 }); assert.equal(latest.total, 33);
+  ranked.more(); assert.equal(latest.hasMore, false); assert.equal(calls, 1);
+});
+
+test('filter changes and navigation discard late requests; backend and HTTP errors stay visible', async () => {
+  const requests = []; let latest;
+  const ranked = createLikedRanking({ request: (path, options) => new Promise((resolve, reject) => requests.push({ path, ...options, resolve, reject })), changed: value => { latest = value; } });
+  const old = ranked.load(['old']); const current = ranked.load(['new']);
+  assert.equal(requests[0].signal.aborted, true);
+  requests[1].resolve({ artifacts: artifacts.slice(3, 4), scoring_available: false, error: 'Encoder unavailable' }); await current;
+  requests[0].resolve({ artifacts, scoring_available: true }); await old;
+  assert.deepEqual(latest.artifacts.map(item => item.id), ['3']); assert.equal(latest.error, 'Encoder unavailable');
+  const failed = ranked.load(); requests[2].reject(new Error('HTTP 503')); await failed;
+  assert.equal(latest.error, 'HTTP 503'); assert.equal(latest.loading, false);
+  const leaving = ranked.load(); ranked.cancel(); requests[3].resolve({ artifacts, scoring_available: true }); await leaving;
+  assert.deepEqual(ranked.snapshot().artifacts.map(item => item.id), ['3']);
+});
+
+test('other collections and deletion revisions preserve a ranked liked browsing snapshot', () => {
+  const page = { total: 34, hasMore: true, loaded: true, cursor: null };
+  const state = { likedSort: 'score', artifactRevision: 1, artifacts: [], likedArtifacts: artifacts.slice(0, 15), generatedArtifacts: [], pages: { feed: {}, liked: page, generate: {} } };
+  observeArtifactRevision(state, 2);
+  assert.equal(state.pages.liked, page); assert.equal(state.likedArtifacts.length, 15);
+  applyArtifactPage(state, 'generate', { artifacts: [], revision: 2, counts: { liked: 99 } });
+  assert.equal(state.pages.liked.total, 34);
+});

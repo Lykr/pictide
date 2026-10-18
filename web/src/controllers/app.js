@@ -17,6 +17,7 @@ import { createImmersiveViewer } from './immersive-controls.mjs';
 import { bindTouchNavigation } from './touch-navigation.mjs';
 import { createJobPager } from './job-pages.mjs';
 import { createPageScroll } from './page-scroll.mjs';
+import { createLikedRanking } from './liked-ranking.mjs';
 
 import { playImageTransition, cancelImageTransition } from './image-transitions.mjs';
 
@@ -43,6 +44,14 @@ function selectImage(id, view = state.view) {
 state.likedArtifacts = [];
 state.likedError = "";
 state.likedTags = [];
+state.likedSort = 'latest';
+const likedRanking = createLikedRanking({ request: api, changed: ranked => {
+  if (state.likedSort !== 'score') return;
+  state.likedArtifacts = ranked.artifacts;
+  state.likedError = ranked.error;
+  state.pages.liked = { total: ranked.total, hasMore: ranked.hasMore, loaded: !ranked.loading, loadedMore: false, cursor: null };
+  renderLikedResults();
+} });
 let likedFilterVersion = 0;
 state.generatedArtifacts = [];
 state.generatedLoaded = false;
@@ -202,6 +211,7 @@ function seedLabel(item) { return item.seed_applied === false ? t("使用工作�
 function artifactsForView() { return state.view === 'liked' ? state.likedArtifacts : state.artifacts; }
 function pageView() { return ['liked', 'generate'].includes(state.view) ? state.view : 'feed'; }
 function applyPage(view, result, append = false) {
+  if (view === 'liked' && state.likedSort === 'score') return { accepted: false, reset: false, refresh: false };
   return applyArtifactPage(state, view, result, typeof append === 'object' ? append : { append });
 }
 const viewTitles = { feed: "漫游", generate: "生成", liked: "喜欢", prompts: "提示词", settings: "设置" };
@@ -209,6 +219,8 @@ function setView(route, updateUrl = true) {
   const [requested, section] = String(route || 'feed').split('/');
   const view = Object.hasOwn(viewTitles, requested) ? requested : 'feed';
   if (state.feedbackPending) { showNotice(t("正在保存评价，请稍候。")); return; }
+  const enteringLiked = view === 'liked' && state.view !== 'liked';
+  if (view !== 'liked') likedRanking.cancel();
   pageScroll.save();
   if (view !== state.view) { if (view !== 'feed') roamPlayback.pause(); immersive.leave(); viewRevision++; nextImageWait.cancel(); roamWindowLoading = false; }
   state.view = view;
@@ -240,6 +252,7 @@ function setView(route, updateUrl = true) {
   if (updateUrl) history.replaceState(null, '', `${location.pathname}${location.search}#${view}${view === 'settings' ? `/${state.settingsSection}` : ''}`);
   // Keep controllers and their inputs mounted: navigation never discards drafts.
   if (!editor) { renderArtifacts(); renderJobs(); if (galleryCursors.ready) refresh(true); }
+  if (enteringLiked && state.likedSort === 'score') likedRanking.load(state.likedTags);
   refillRoam();
   pageScroll.restore(view);
 }
@@ -477,7 +490,7 @@ async function feedback(value, toggle = true) {
   renderArtifacts();
   try {
     if (state.view === 'liked' && nextValue === null && !await confirmAction(t("确定取消喜欢这张图片？取消后将从喜欢页面移除，并受自动清理规则影响。"))) return;
-    const result = await api(`/api/artifacts/${encodeURIComponent(artifact.id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value: nextValue }) }); state.feedbackRevision++; observeArtifactRevision(state, result.revision ?? result.artifact_revision); if (artifactRevision === state.artifactRevision) { const delta = Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); if (matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += delta; replaceArtifact(result.artifact); } renderArtifacts();
+    const result = await api(`/api/artifacts/${encodeURIComponent(artifact.id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value: nextValue }) }); state.feedbackRevision++; observeArtifactRevision(state, result.revision ?? result.artifact_revision); if (artifactRevision === state.artifactRevision) { const delta = Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); if (state.likedSort !== 'score' && matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += delta; replaceArtifact(result.artifact); } renderArtifacts();
   }
   catch (error) { showNotice(error.status === 404 || error.status === 410 ? t("图片已清理或不可用，正在刷新列表。") : error.message, true); }
   finally { state.feedbackPending = false; renderArtifacts(); await refresh(true); }
@@ -485,6 +498,7 @@ async function feedback(value, toggle = true) {
 function replaceArtifact(artifact) {
   state.artifacts = state.artifacts.map((item) => item.id === artifact.id ? artifact : item);
   state.generatedArtifacts = state.generatedArtifacts.map((item) => item.id === artifact.id ? artifact : item);
+  if (state.likedSort === 'score') { if (state.view === 'liked') likedRanking.update(artifact); return; }
   if (artifact.feedback === 1 && matchesLikedTags(artifact, state.likedTags)) {
     const index = state.likedArtifacts.findIndex((item) => item.id === artifact.id);
     if (index >= 0) state.likedArtifacts[index] = artifact;
@@ -557,8 +571,8 @@ function renderGeneratedResults() {
 function renderLikedResults() {
   document.dispatchEvent(new CustomEvent('pictide:liked-results', { detail: {
     artifacts: state.likedArtifacts, total: state.pages.liked.total,
-    tags: state.likedTags, filterVersion: likedFilterVersion, revision: state.feedbackRevision + state.artifactRevision,
-    hasMore: state.pages.liked.hasMore, loading: !state.pages.liked.loaded && !state.likedError || state.loadingMore,
+    sort: state.likedSort, tags: state.likedTags, filterVersion: likedFilterVersion, revision: state.feedbackRevision + state.artifactRevision,
+    hasMore: state.pages.liked.hasMore, loading: state.likedSort === 'score' ? likedRanking.snapshot().loading : !state.pages.liked.loaded && !state.likedError || state.loadingMore,
     error: state.likedError, feedbackPending: state.feedbackPending,
     mutationPending: state.generatedMutationPending, visible: state.view === 'liked', configured: state.backends.length > 0,
   } }));
@@ -577,7 +591,8 @@ async function feedbackGenerated(id, toggle = true, view = 'generate') {
     const result = await api(`/api/artifacts/${encodeURIComponent(id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value }) });
     state.feedbackRevision++;
     observeArtifactRevision(state, result.revision ?? result.artifact_revision);
-    if (revision === state.artifactRevision) { if (matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); replaceArtifact(result.artifact); }
+    if (view === 'liked' && state.likedSort === 'score') { replaceArtifact(result.artifact); }
+    else if (revision === state.artifactRevision) { if (state.likedSort !== 'score' && matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); replaceArtifact(result.artifact); }
   } catch (error) { const message = error.status === 404 || error.status === 410 ? t("图片已清理或不可用，正在刷新列表。") : error.message; if (view === 'liked') state.likedError = message; else state.generatedMutationError = message; }
   finally { state.feedbackPending = false; renderArtifacts(); await refresh(true); }
 }
@@ -618,16 +633,17 @@ async function refresh(force = false) {
   const windowVersion = roamVersion;
   const view = pageView();
   const filterVersion = likedFilterVersion;
+  const rankedLiked = view === 'liked' && state.likedSort === 'score';
   const anchor = galleryCursors.get('feed');
   try {
-    const [jobs, artifacts] = await Promise.all([api('/api/jobs'), api(view === 'feed' ? roamArtifactPath(anchor) : artifactPath(view, null, state.likedTags)), viewingHistory() ? jobPager.load() : Promise.resolve()]);
+    const [jobs, artifacts] = await Promise.all([api('/api/jobs'), rankedLiked ? Promise.resolve(null) : api(view === 'feed' ? roamArtifactPath(anchor) : artifactPath(view, null, state.likedTags)), viewingHistory() ? jobPager.load() : Promise.resolve()]);
     state.jobs = jobs.jobs;
     // Multi-round counters must come from the idempotent response, even if jobs
     // already appear in events. Retain the original request for a safe retry.
     for (const [key, request] of uncertainRequests) if (request.payload.repetitions === undefined && state.jobs.some((job) => job.request_id === request.payload.request_id)) uncertainRequests.delete(key);
     if (!state.feedbackPending && !state.generatedMutationPending && feedbackRevision === state.feedbackRevision) {
       if (view !== 'feed') {
-        if (view !== 'liked' || filterVersion === likedFilterVersion) applyPage(view, artifacts, { replace: !state.pages[view].loaded });
+        if (artifacts && (view !== 'liked' || filterVersion === likedFilterVersion)) applyPage(view, artifacts, { replace: !state.pages[view].loaded });
       }
       else if (!roamSwitch && windowVersion === roamVersion && anchor === galleryCursors.get('feed')) {
         const applied = applyPage(view, artifacts, { replace: true });
@@ -643,14 +659,14 @@ async function refresh(force = false) {
       } else if (!roamSwitch) state.refreshQueued = true;
     }
     if (view === 'generate' && !state.generatedMutationPending) { state.generatedLoaded = true; state.generatedError = ''; }
-    if (view === 'liked' && filterVersion === likedFilterVersion) state.likedError = '';
+    if (view === 'liked' && state.likedSort !== 'score' && filterVersion === likedFilterVersion) state.likedError = '';
     renderJobs(); renderArtifacts();
     if (state.view === 'feed') roamPlayback.retry();
   }
   catch (error) {
     if (view === 'liked' && filterVersion !== likedFilterVersion) return;
     if (view === 'generate') { state.generatedError = tr`同步失败：${error.message}`; renderGeneratedResults(); }
-    if (view === 'liked') { state.likedError = tr`同步失败：${error.message}`; renderLikedResults(); }
+    if (view === 'liked' && state.likedSort !== 'score') { state.likedError = tr`同步失败：${error.message}`; renderLikedResults(); }
     if (nextImageWait.current) { nextImageWait.cancel(); roamBlocked = !isTemporaryRefillError(error); renderArtifacts(); }
     showNotice(tr`同步失败：${error.message}`, true);
   }
@@ -658,7 +674,9 @@ async function refresh(force = false) {
 }
 async function loadMore() {
   if (state.loadingMore || state.feedbackPending || state.generatedMutationPending) return;
-  const view = pageView(); const page = state.pages[view]; if (!page.hasMore || !page.cursor) return;
+  const view = pageView();
+  if (view === 'liked' && state.likedSort === 'score') { likedRanking.more(); return; }
+  const page = state.pages[view]; if (!page.hasMore || !page.cursor) return;
   state.loadingMore = true; const revision = state.feedbackRevision; renderArtifacts();
   const artifactRevision = state.artifactRevision;
   const filterVersion = likedFilterVersion;
@@ -1283,11 +1301,26 @@ document.addEventListener('pictide:liked-filter', event => {
   state.likedArtifacts = []; state.likedError = '';
   state.pages.liked = { hasMore: false, cursor: null, total: 0, loadedMore: false, loaded: false };
   $('liked-view').scrollTop = 0;
-  renderLikedResults(); refresh(true);
+  if (state.likedSort === 'score') { likedRanking.clear(); likedRanking.load(state.likedTags); }
+  else { renderLikedResults(); refresh(true); }
+});
+
+document.addEventListener('pictide:liked-sort', event => {
+  const sort = event.detail.sort;
+  if (!['latest', 'score'].includes(sort) || state.likedSort === sort || state.feedbackPending) return;
+  likedRanking.cancel(); state.likedSort = sort; likedFilterVersion++;
+  state.likedArtifacts = []; state.likedError = '';
+  state.pages.liked = { hasMore: false, cursor: null, total: 0, loadedMore: false, loaded: false };
+  $('liked-view').scrollTop = 0;
+  if (sort === 'score') { likedRanking.clear(); likedRanking.load(state.likedTags); }
+  else { renderLikedResults(); refresh(true); }
 });
 
 document.addEventListener('pictide:liked-more', () => { if (state.view === 'liked') loadMore(); });
-document.addEventListener('pictide:liked-refresh', () => { state.likedError = ''; refresh(true); });
+document.addEventListener('pictide:liked-refresh', () => {
+  if (state.likedSort === 'score') likedRanking.load(state.likedTags);
+  else { state.likedError = ''; refresh(true); }
+});
 document.addEventListener('pictide:liked-feedback', event => feedbackGenerated(event.detail.id, event.detail.toggle !== false, 'liked'));
 $('main-image').addEventListener('load', () => {
   if (roamImageSwitchPending) { roamImageSwitchPending = false; playImageTransition($('main-image')); }
@@ -1337,7 +1370,7 @@ function connectEvents() {
       if (topic === 'general_settings') syncTheme();
       if (topic === 'feedback') {
         state.feedbackRevision++;
-        if (state.likedTags.length) { state.pages.liked.loaded = false; state.pages.liked.loadedMore = false; }
+        if (state.likedTags.length && state.likedSort !== 'score') { state.pages.liked.loaded = false; state.pages.liked.loadedMore = false; }
         renderLikedResults();
       }
     } catch {}

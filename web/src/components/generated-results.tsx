@@ -9,8 +9,8 @@ import { IconButton } from "./actions";
 import { LikedTagFilter } from "./liked-tag-filter";
 import { GeneratedViewer, type GeneratedArtifact } from "./generated-viewer";
 
-type ResultState = { artifacts: GeneratedArtifact[]; total: number; hasMore: boolean; loading: boolean; error: string; pending: boolean; status: string; feedbackPending: boolean; mutationPending: boolean; visible: boolean; configured: boolean; tags: string[]; filterVersion: number; revision: number };
-const initial: ResultState = { artifacts: [], total: 0, hasMore: false, loading: true, error: "", pending: false, status: "", feedbackPending: false, mutationPending: false, visible: false, configured: false, tags: [], filterVersion: 0, revision: 0 };
+type ResultState = { artifacts: GeneratedArtifact[]; total: number; hasMore: boolean; loading: boolean; error: string; pending: boolean; status: string; feedbackPending: boolean; mutationPending: boolean; visible: boolean; configured: boolean; tags: string[]; sort: "latest" | "score"; filterVersion: number; revision: number };
+const initial: ResultState = { artifacts: [], total: 0, hasMore: false, loading: true, error: "", pending: false, status: "", feedbackPending: false, mutationPending: false, visible: false, configured: false, tags: [], sort: "latest", filterVersion: 0, revision: 0 };
 const emit = (name: string, detail?: unknown) => document.dispatchEvent(new CustomEvent(`pictide:${name}`, { detail }));
 const imagePath = (item: GeneratedArtifact) => `/api/artifacts/${encodeURIComponent(item.id)}/image`;
 const seedLabel = (item: GeneratedArtifact) => item.seed_applied === false ? t("使用工作流种子设置") : `seed ${item.seed ?? "—"}`;
@@ -39,14 +39,14 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
   }, [prefix]);
   useEffect(() => { if (!state.visible) setSelectedId(null); }, [state.visible]);
   useEffect(() => { if (liked) setSelectedId(null); }, [liked, state.filterVersion]);
-  const busy = state.feedbackPending || state.mutationPending;
+  const busy = state.feedbackPending || state.mutationPending || liked && state.loading;
   const like = (item: GeneratedArtifact, toggle = true) => emit(`${prefix}-feedback`, { id: item.id, toggle });
   const privacyLabel = privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格");
   const privacyControl = <Toggle size="sm" className="generated-privacy-toggle" data-collection={collection} pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={privacyLabel} aria-keyshortcuts="Space" data-tooltip={privacyLabel}>{privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}</Toggle>;
   const privacyHost = liked ? document.getElementById("liked-privacy-controls") : null;
   return <section className="generated-results" aria-label={liked ? t("喜欢的图片") : t("生成结果")}>
     {liked && privacyHost && createPortal(privacyControl, privacyHost)}
-    {liked && <LikedTagFilter visible={state.visible} revision={state.revision} disabled={busy} />}
+    {liked && <LikedTagFilter visible={state.visible} revision={state.revision} disabled={state.feedbackPending || state.mutationPending} sort={state.sort} loading={state.loading} />}
     {liked && state.loading && !state.artifacts.length && <div className="hint" role="status">{t("加载中…")}</div>}
     {!liked && <div className="generated-results-heading">
       <h2>{t("生成结果")}</h2>
@@ -62,7 +62,7 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
       <Button type="button" variant="ghost" className="generated-image-button" aria-label={tr`查看${label} · ${seedLabel(item)}`} onClick={() => setSelectedId(item.id)}><ArtifactImage item={item} label={label} /></Button>
       <IconButton icon={Heart} className="generated-card-like" label={item.feedback === 1 ? t("已喜欢，点击撤回") : t("喜欢图片")} aria-pressed={item.feedback === 1} disabled={busy} onClick={() => like(item)} />
     </Card>)}</div>
-    {state.hasMore && <div className="load-more-row"><Button variant="outline" type="button" disabled={state.loading || busy} onClick={() => emit(`${prefix}-more`)} data-tooltip={tr`已加载 ${state.artifacts.length} / ${state.total} 张图片`}>{state.loading ? t("加载中…") : t("更早图片")}</Button></div>}
+    {state.hasMore && <div className="load-more-row"><Button variant="outline" type="button" disabled={state.loading || busy} onClick={() => emit(`${prefix}-more`)} data-tooltip={tr`已加载 ${state.artifacts.length} / ${state.total} 张图片`}>{state.loading ? t("加载中…") : liked && state.sort === "score" ? t("加载更多") : t("更早图片")}</Button></div>}
     <GeneratedViewer imageLabel={label} confirmUnlike={liked} items={state.artifacts} activeId={state.visible ? selectedId : null} onActiveChange={setSelectedId} privacyBlur={privacyBlur} onPrivacyChange={setPrivacyBlur} busy={busy} onLike={like} hasMore={state.hasMore} loadingMore={state.loading} onMore={() => emit(`${prefix}-more`)} error={state.error} />
   </section>;
 }

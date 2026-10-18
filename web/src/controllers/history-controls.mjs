@@ -15,8 +15,9 @@ function emptyPage() { return { hasMore: false, cursor: null, total: 0, loadedMo
 export function observeArtifactRevision(store, revision) {
   if (!Number.isSafeInteger(revision) || revision <= store.artifactRevision) return false;
   store.artifactRevision = revision;
-  store.artifacts = []; store.likedArtifacts = [];
-  store.pages = { feed: emptyPage(), liked: emptyPage() };
+  store.artifacts = [];
+  if (store.likedSort !== 'score') store.likedArtifacts = [];
+  store.pages = { feed: emptyPage(), liked: store.likedSort === 'score' ? store.pages.liked : emptyPage() };
   if ('generatedArtifacts' in store) { store.generatedArtifacts = []; store.pages.generate = emptyPage(); }
   store.currentImage = null;
   return true;
@@ -45,7 +46,7 @@ export function applyArtifactPage(store, view, result, { append = false, replace
   if (result.counts) {
     if (Number.isSafeInteger(result.counts.roam)) store.pages.feed.total = result.counts.roam;
     else if (Number.isSafeInteger(result.counts.artifacts)) store.pages.feed.total = result.counts.artifacts;
-    if (!store.likedTags?.length && Number.isSafeInteger(result.counts.liked)) store.pages.liked.total = result.counts.liked;
+    if (store.likedSort !== 'score' && !store.likedTags?.length && Number.isSafeInteger(result.counts.liked)) store.pages.liked.total = result.counts.liked;
     if (store.pages.generate && Number.isSafeInteger(result.counts.generate)) store.pages.generate.total = result.counts.generate;
   }
   return { accepted: true, reset, refresh: false };
