@@ -94,6 +94,6 @@ pictide/
 | 生成、预取与反馈的模块调用 | [调用和数据流](architecture/flows.md) |
 | 推荐内部职责、特征和当前能力 | [推荐模块](architecture/recommendation.md) |
 | 所有 HTTP 字段与状态码 | [API 参考](api.md) |
-| 数据文件、备份与表的归属 | [数据目录](../../docs/data-layout.md)、[存储参考](reference/storage.md) |
+| 数据文件、备份与表的归属 | [数据目录](data-layout.md)、[存储参考](reference/storage.md) |
 | 如何新增前端或生图适配器 | [开发流程](development.md)、[页面设计规范](design-system.md) |
 | 当时的设计决定与验证 | [需求记录](issues/README.md) |

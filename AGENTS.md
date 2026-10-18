@@ -5,7 +5,7 @@
 ## 工作方式
 
 - 优先正向表达：围绕“有什么、要什么、是什么”，说明事实、能力、目标和具体行动。
-- 默认中文、表达简洁；从 [README](README.md) 获取入口，按需阅读 [架构](dev/docs/architecture.md)、[设计规范](dev/docs/design-system.md)、[数据目录](docs/data-layout.md) 与 [Git 开发流程](dev/docs/development.md)。
+- 默认中文、表达简洁；从 [README](README.md) 获取入口，按需阅读 [架构](dev/docs/architecture.md)、[设计规范](dev/docs/design-system.md)、[数据目录](dev/docs/data-layout.md) 与 [Git 开发流程](dev/docs/development.md)。
 - 当前为概念验证阶段，优先最小完整方案和现有机制，避免过度设计、防御性编程及迁移兼容层；少数有意义的冒烟即可，不运行全量测试。
 - 独立且值得并行的任务可交给 subagent；主管协调共享接口，核对集成结果。简单任务直接完成。
 - 实现使用独立分支；并行或涉及运行实例时使用独立 worktree、数据目录和端口。先检查 Git 状态，只提交本任务文件，不覆盖用户或其他任务的修改，不擅自 reset、stash 或改写历史。

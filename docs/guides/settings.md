@@ -30,4 +30,4 @@
 
 - [漫游范围、方式和预取](roam.md)
 - [后端与工作流编辑](getting-started.md#接入-comfyui)
-- [数据备份与恢复](../data-layout.md#备份与恢复)
+- [数据备份与恢复](backup.md#备份与恢复)

@@ -31,7 +31,7 @@ $env:PICTIDE_PYTHON = 'C:\Path\To\python.exe'
 .\start.cmd -Port 8191 -DataDir 'E:\PictideData'
 ```
 
-开发验证使用独立端口与数据：`.\start.cmd -Port 8191 -DataDir .\dev\verification\example\data`。数据目录选择规则见[数据位置](../../data-layout.md#数据位置)。
+开发验证使用独立端口与数据：`.\start.cmd -Port 8191 -DataDir .\dev\verification\example\data`。数据目录选择规则见[数据位置](../backup.md#数据位置)。
 
 ## 局域网访问
 

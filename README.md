@@ -35,7 +35,7 @@
 ### 更多帮助
 
 - [局域网与主屏幕应用](docs/guides/access.md)：手机访问与 PWA。
-- [数据目录与备份](docs/data-layout.md)：数据保存位置、备份和恢复。
+- [数据备份与恢复](docs/guides/backup.md)：数据保存位置、备份和恢复。
 - [用户文档导航](docs/README.md#用户文档)：按使用问题查找说明。
 
 ComfyUI 是独立的生成后端；Pictide 不作为其插件加载。当前为概念验证版本，尚无多用户账号、图像特征学习或离线网页缓存。

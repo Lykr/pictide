@@ -1,6 +1,6 @@
 # SQLite 存储参考
 
-[数据目录与备份](../../../docs/data-layout.md) · [调用和数据流](../architecture/flows.md)
+[数据目录与职责](../data-layout.md) · [调用和数据流](../architecture/flows.md)
 
 业务主库保存应用状态，个人预设库保存预设与词库选择，libraries 中的词库文件保存离线统计。这里记录当前归属和关联，不作为旧版本升级操作手册。
 

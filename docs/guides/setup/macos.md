@@ -36,7 +36,7 @@ PICTIDE_PYTHON=/path/to/python3 ./start.command
 ./start.command --port 8191 --data-dir "$HOME/PictideData"
 ```
 
-开发验证使用独立端口与数据：`./start.command --port 8191 --data-dir ./dev/verification/example/data`。`./start.command --help` 查看参数；数据目录选择规则见[数据位置](../../data-layout.md#数据位置)。
+开发验证使用独立端口与数据：`./start.command --port 8191 --data-dir ./dev/verification/example/data`。`./start.command --help` 查看参数；数据目录选择规则见[数据位置](../backup.md#数据位置)。
 
 ## 局域网访问
 

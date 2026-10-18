@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | 模块与调用 | [架构与边界](architecture.md) | [调用和数据流](architecture/flows.md)、[推荐模块](architecture/recommendation.md) |
 | HTTP 接口 | [API 索引与通用约定](api.md) | 按操作进入专题接口页 |
-| 数据 | [目录与备份](../../docs/data-layout.md) | [SQLite 存储参考](reference/storage.md) |
+| 数据 | [目录与职责](data-layout.md) | [SQLite 存储参考](reference/storage.md) |
 
 ## 开发与维护
 
