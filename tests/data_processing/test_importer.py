@@ -8,7 +8,7 @@ import unittest
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from backend.candidate.importer import import_parquet
+from data_processing.importer import import_parquet
 
 
 class ImportSmoke(unittest.TestCase):

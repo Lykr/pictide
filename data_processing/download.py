@@ -87,7 +87,7 @@ def download(destination, *, source=SOURCE, revision=None, progress=print):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('destination', type=Path, help='Dataset directory under the application data directory')
+    parser.add_argument('destination', type=Path, help='Offline dataset directory, for example dev/datasets/danbooru-2026')
     parser.add_argument('--source', default=SOURCE)
     parser.add_argument('--revision')
     args = parser.parse_args()

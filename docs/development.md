@@ -26,7 +26,7 @@ cd ../pictide-example
 
 源码环境由开发者按本节准备。[便携发行包设计](issues/automatic-startup.md)将运行环境、前端成品、词库和推荐模型统一纳入构建发布流程，Windows 目录式产物已验证，Linux/macOS 原生验证待完成。
 
-需要 Git、Python 3.10+、Node.js 20.19+（或 22.12+）和 `web/package.json` 指定的 pnpm。Python 运行依赖放在 `backend/requirements.txt`，离线导入依赖放在 `backend/requirements-import.txt`；前端依赖由 `web/package.json` 管理。依赖安装遵循锁文件，不复制或提交 `node_modules`。
+需要 Git、Python 3.10+、Node.js 20.19+（或 22.12+）和 `web/package.json` 指定的 pnpm。Python 运行依赖放在 `backend/requirements.txt`，离线数据处理工具与依赖集中在 [`data_processing/`](../data_processing/README.md)；前端依赖由 `web/package.json` 管理。依赖安装遵循锁文件，不复制或提交 `node_modules`。
 
 按当前系统准备环境和构建前端：
 

@@ -40,8 +40,8 @@
 
 数据集内部按空格拆分标签，下划线连接词；词库界面显示原始名称，不保存显示副本；推荐和生图输出在内存中将下划线转空格，标签间用 `, ` 分隔。固定自由文本按完整条目保存，不按内部空格拆分。
 
-当前试用词库仅保留共现次数 ≥1,000 的关系，标签和预设保持。缺失关系表示未保留统计；预览显示“未保留统计”，次数显示“—”。裁剪结果和恢复位置见[极限裁剪记录](../issues/candidate-pair1000.md)。基础离线导入仍保留 ≥10 次的完整统计库。评级可作为固定正向锚点参与统计。运行时词库原名、词频、PMI、共现次数及来源保存在 `data/libraries/*.sqlite3`；个人预设和当前选择保存在 `data/db/candidate.sqlite3`，导入素材在 `dev/datasets/`。导入命令及分析依赖见 importer 的 CLI 帮助；导入在离线工具中执行，不放在启动或页面请求里。
+当前试用词库仅保留共现次数 ≥1,000 的关系，标签和预设保持。缺失关系表示未保留统计；预览显示“未保留统计”，次数显示“—”。裁剪结果和恢复位置见[极限裁剪记录](../issues/candidate-pair1000.md)。基础离线导入仍保留 ≥10 次的完整统计库。评级可作为固定正向锚点参与统计。运行时词库原名、词频、PMI、共现次数及来源保存在 `data/libraries/*.sqlite3`；个人预设和当前选择保存在 `data/db/candidate.sqlite3`，导入素材在 `dev/datasets/`。导入命令及分析依赖见[数据处理工具](../../data_processing/README.md)；导入在离线工具中执行，不放在启动或页面请求里。
 
 ## 数据准备
 
-离线下载和导入使用 `backend.candidate.download` 与 `backend.candidate.importer`，运行模块的 `--help` 查看命令；源 Parquet、中间 SQLite 和待导入成品库放在 dev/datasets，运行词库放在 data/libraries。成品数据口径与文件布局见[存储参考](../reference/storage.md#候选数据)，设计与验证见[共现候选记录](../issues/cooccurrence-candidates-v1.md#离线导入)。处理完成后，在词库页面上传成品 SQLite，或复制到 libraries 目录后刷新选择，即可用于共现预览和漫游。
+离线下载和导入集中在根目录 [`data_processing/`](../../data_processing/README.md)，包含工具、依赖与处理步骤；源 Parquet、中间 SQLite 和待导入成品库放在 dev/datasets，运行词库放在 data/libraries。成品数据口径与文件布局见[存储参考](../reference/storage.md#候选数据)，设计与验证见[共现候选记录](../issues/cooccurrence-candidates-v1.md#离线导入)。处理完成后，在词库页面上传成品 SQLite，或复制到 libraries 目录后刷新选择，即可用于共现预览和漫游。

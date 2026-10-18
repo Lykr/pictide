@@ -35,6 +35,7 @@
 
 | 路径 | 内容 |
 | --- | --- |
+| [`data_processing/`](../data_processing/README.md) | 版本管理的离线下载、统计导入工具和依赖清单 |
 | `dev/datasets/` | 原始 Parquet、下载校验与离线统计中间文件 |
 | `dev/runtime/frontend/`、`dev/runtime/importer/` | 前端开发依赖与离线导入环境 |
 | `dev/cache/`、`dev/tmp/`、`dev/build/` | 开发缓存、临时文件与便携构建工作区 |
