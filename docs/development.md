@@ -79,6 +79,6 @@ git merge --ff-only feat/example
 
 ## 版本管理范围
 
-跟踪源码、测试样例、文档、锁文件及手工维护的工作流模板。忽略 `data/`、虚拟环境、前端依赖与 `web/dist/`、环境密钥、数据库、模型、原始数据集和本地执行结果。下载素材按现有脚本恢复，不把 Git 当作用户数据备份。换行由 `.gitattributes` 统一：源码使用 LF，Windows 启动脚本使用 CRLF。
+跟踪源码、测试样例、文档、锁文件、图标素材及手工维护的工作流模板。`.gitignore` 排除 `data/`、虚拟环境与依赖、构建产物、缓存与测试报告、日志与临时文件、环境密钥、SQLite 及辅助文件、模型权重和原始 Parquet 数据。保留 `.env.example` / `.env.template`（含分环境示例）及 VS Code 的共享 settings / extensions / tasks / launch 配置，示例中只填占位值；不要按图片、JSON 或锁文件扩展名整体忽略。新增规则不会自动停止跟踪已有文件，调整时用 `git ls-files -ci --exclude-standard` 核对。下载素材按现有脚本恢复，不把 Git 当作用户数据备份。换行由 `.gitattributes` 统一：源码使用 LF，Windows 启动脚本使用 CRLF。
 
 初始化时保留现有本地文件，并创建 `main` 上的首个源码快照；远程仓库、推送与托管 CI 按需另行配置。

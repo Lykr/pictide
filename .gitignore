@@ -1,19 +1,96 @@
-# Application data, environments and resolver links.
+# Application data and local worktrees (including backups, images and models).
 data/
-**/node_modules/
-**/__pycache__/
-*.pyc
-.venv/
 .runtime/
 .worktrees/
-web/dist/
+
+# Python environments, packages and caches.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+*.egg
+*.whl
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+
+# Frontend dependencies, build output and tool caches.
+node_modules/
+dist/
+build/
+.pnpm-store/
+.npm/
+.vite/
+.vite-temp/
+*.tsbuildinfo
+.eslintcache
+
+# Test reports and coverage.
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+playwright-report/
+test-results/
+
+# Runtime logs, process files and temporary downloads.
+logs/
+tmp/
+temp/
+.cache/
+*.log
+*.log.*
+*.pid
+*.pid.lock
+*.part
+*.tmp
+
+# Local environment values; commit only explicit examples/templates.
 .env
 .env.*
 !.env.example
+!.env.*.example
+!.env.template
+!.env.*.template
+
+# SQLite databases and their WAL, shared-memory and journal files.
 *.sqlite
+*.sqlite-*
 *.sqlite3
-*.sqlite3-wal
-*.sqlite3-shm
+*.sqlite3-*
+*.db
+*.db-*
+
+# Downloaded datasets and model weights; keep source assets and JSON fixtures.
+*.parquet
 *.safetensors
 *.ckpt
+*.pt
 *.pth
+*.onnx
+*.onnx_data
+*.gguf
+pytorch_model*.bin
+model*.bin
+
+# Editor state, backup files and operating-system metadata.
+.idea/
+.history/
+**/.vscode/*
+!**/.vscode/extensions.json
+!**/.vscode/settings.json
+!**/.vscode/tasks.json
+!**/.vscode/launch.json
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+*.rej
+.DS_Store
+Thumbs.db
+Desktop.ini
