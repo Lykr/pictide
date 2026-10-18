@@ -11,6 +11,7 @@ import { createImmersiveViewer } from "../controllers/immersive-controls.mjs";
 import { bindTouchNavigation } from "../controllers/touch-navigation.mjs";
 import { generatedNeighbour, generatedReplacement, generatedShortcut } from "../controllers/generated-viewer-controls.mjs";
 import "../styles/generated-viewer.css";
+import { playImageTransition, cancelImageTransition } from "../controllers/image-transitions.mjs";
 
 export type GeneratedArtifact = { id: string; positive?: string; negative?: string; seed?: number; seed_applied?: boolean; created_at: string; feedback?: number | null };
 export type GeneratedViewerProps = {
@@ -30,9 +31,14 @@ export type GeneratedViewerProps = {
 };
 const artifactPath = (item: GeneratedArtifact, kind: string) => `/api/artifacts/${encodeURIComponent(item.id)}/${kind}`;
 
-function ViewerImage({ item, privacyBlur, label, onNavigate, busy }: { item: GeneratedArtifact; privacyBlur: boolean; label: string; onNavigate: (direction: string) => void; busy: boolean }) {
+function ViewerImage({ item, privacyBlur, label, onNavigate, busy, transition }: { item: GeneratedArtifact; privacyBlur: boolean; label: string; onNavigate: (direction: string) => void; busy: boolean; transition: boolean }) {
   const [status, setStatus] = useState("loading");
   const stageRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    const image = imageRef.current;
+    return () => cancelImageTransition(image);
+  }, []);
   const latest = useRef({ onNavigate, busy });
   latest.current = { onNavigate, busy };
   useEffect(() => {
@@ -43,13 +49,18 @@ function ViewerImage({ item, privacyBlur, label, onNavigate, busy }: { item: Gen
     });
   }, []);
   return <div ref={stageRef} className="generated-viewer-stage" data-privacy-blur={privacyBlur}>
-    <img src={artifactPath(item, "image")} alt={label} draggable={false} onLoad={() => setStatus("ready")} onError={() => setStatus("error")} />
+    <img ref={imageRef} src={artifactPath(item, "image")} alt={label} draggable={false} onLoad={event => {
+      setStatus("ready");
+      if (transition) playImageTransition(event.currentTarget);
+    }} onError={() => setStatus("error")} />
     {status !== "ready" && <div className="generated-viewer-loading" role="status">{status === "loading" ? <><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("图片加载中")}</span></> : t("图片已清理或读取失败")}</div>}
   </div>;
 }
 
 function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }) {
   const { item, items, onActiveChange, privacyBlur, onPrivacyChange, busy, onLike, hasMore, loadingMore, onMore, error } = props;
+  const imageChange = useRef({ id: item.id, transition: false });
+  if (imageChange.current.id !== item.id) imageChange.current = { id: item.id, transition: true };
   const [cardElement, setCardElement] = useState<HTMLDivElement | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const entryRef = useRef<HTMLButtonElement>(null);
@@ -136,7 +147,7 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
       </Toggle>
       <IconButton ref={exitRef} icon={Minimize} label={t("退出沉浸模式")} hidden={!immersive} />
     </div>
-    <ViewerImage key={item.id} item={item} privacyBlur={privacyBlur} label={props.imageLabel ?? t("生成的图片")} onNavigate={navigate} busy={busy || infoOpen} />
+    <ViewerImage key={item.id} item={item} transition={imageChange.current.transition} privacyBlur={privacyBlur} label={props.imageLabel ?? t("生成的图片")} onNavigate={navigate} busy={busy || infoOpen} />
     {waitingOlder && loadingMore && <div className="generated-viewer-paging" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("正在加载更早图片")}</span></div>}
     {error && <div className="generated-viewer-error" role="alert">{error}</div>}
     <div ref={toolbarRef} className="generated-viewer-toolbar" aria-label={t("图片操作")}>

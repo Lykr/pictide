@@ -18,6 +18,9 @@ import { bindTouchNavigation } from './touch-navigation.mjs';
 import { createJobPager } from './job-pages.mjs';
 import { createPageScroll } from './page-scroll.mjs';
 
+import { playImageTransition, cancelImageTransition } from './image-transitions.mjs';
+
+let roamImageSwitchPending = false;
 const $ = (id) => document.getElementById(id);
 const localizedMessages = new Map();
 function setStatusText(id, message) {
@@ -390,9 +393,11 @@ function renderArtifacts() {
   $('roam-loading-label').textContent = artifact ? t("正在加载下一张漫游图片") : t("正在生成漫游图片");
   $('image-card').setAttribute('aria-busy', String(waiting));
   $('roam-immersive').disabled = !roam || !artifact;
-  if (!artifact) { syncRoamPlayback(); immersive.leave(); state.currentImage = null; document.dispatchEvent(new CustomEvent('pictide:image-info', { detail: null })); return; }
+  if (!artifact) { cancelImageTransition($('main-image')); roamImageSwitchPending = false; syncRoamPlayback(); immersive.leave(); state.currentImage = null; document.dispatchEvent(new CustomEvent('pictide:image-info', { detail: null })); return; }
   document.dispatchEvent(new CustomEvent('pictide:image-info', { detail: { id: artifact.id, seed: artifact.seed_applied === false ? t("使用工作流种子设置") : String(artifact.seed ?? '—'), positive: artifact.positive || '', negative: artifact.negative || '' } }));
   if (state.currentImage !== artifact.id) {
+    cancelImageTransition($('main-image'));
+    roamImageSwitchPending = state.currentImage !== null;
     state.currentImage = artifact.id; $('image-error').hidden = true;
     const imageUrl = `/api/artifacts/${encodeURIComponent(artifact.id)}/image`;
     $('main-image').src = imageUrl;
@@ -1273,8 +1278,11 @@ document.addEventListener('pictide:liked-filter', event => {
 document.addEventListener('pictide:liked-more', () => { if (state.view === 'liked') loadMore(); });
 document.addEventListener('pictide:liked-refresh', () => { state.likedError = ''; refresh(true); });
 document.addEventListener('pictide:liked-feedback', event => feedbackGenerated(event.detail.id, event.detail.toggle !== false, 'liked'));
-$('main-image').addEventListener('load', () => syncRoamPlayback(state.artifacts.find(item => item.id === state.activeId)));
-$('main-image').addEventListener('error', () => { $('image-error').hidden = false; roamPlayback.pause(); });
+$('main-image').addEventListener('load', () => {
+  if (roamImageSwitchPending) { roamImageSwitchPending = false; playImageTransition($('main-image')); }
+  syncRoamPlayback(state.artifacts.find(item => item.id === state.activeId));
+});
+$('main-image').addEventListener('error', () => { roamImageSwitchPending = false; cancelImageTransition($('main-image')); $('image-error').hidden = false; roamPlayback.pause(); });
 document.addEventListener('pictide:roam-playback-toggle', () => roamPlayback.toggle());
 document.addEventListener('pictide:roam-playback-interval', event => {
   roamSettings.playback_interval_seconds = event.detail;

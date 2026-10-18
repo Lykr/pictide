@@ -2,21 +2,27 @@ import { useEffect, useState } from "react";
 import { LoaderCircle, Monitor, Moon, Sun } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { Label } from "./ui/label";
-import { applyTheme, currentTheme, saveTheme, saveLanguage } from "../controllers/theme.mjs";
+import { Checkbox } from "./ui/checkbox";
+import { HelpTip } from "./actions";
+import { imageTransitionsEnabled, applyImageTransitions } from "../controllers/image-transitions.mjs";
+import { applyTheme, currentTheme, saveTheme, saveLanguage, saveImageTransitions } from "../controllers/theme.mjs";
 import { applyLanguage, language, languages, t, tr, subscribe } from "../i18n/index.mjs";
 
 export function GeneralSettings({ initialError = "" }: { initialError?: string }) {
   const [theme, setTheme] = useState(currentTheme);
   const [selectedLanguage, setSelectedLanguage] = useState(language);
+  const [effects, setEffects] = useState(imageTransitionsEnabled);
   const [saving, setSaving] = useState("");
   const [error, setError] = useState(initialError);
   useEffect(() => {
     const sync = () => { setTheme(currentTheme()); setError(""); };
     const failed = (event: Event) => setError((event as CustomEvent<string>).detail);
     const unsubscribe = subscribe(() => setSelectedLanguage(language()));
+    const syncEffects = () => setEffects(imageTransitionsEnabled());
+    document.addEventListener("pictide:image-transitions-changed", syncEffects);
     document.addEventListener("pictide:theme-changed", sync);
     document.addEventListener("pictide:theme-error", failed);
-    return () => { unsubscribe(); document.removeEventListener("pictide:theme-changed", sync); document.removeEventListener("pictide:theme-error", failed); };
+    return () => { document.removeEventListener("pictide:image-transitions-changed", syncEffects); unsubscribe(); document.removeEventListener("pictide:theme-changed", sync); document.removeEventListener("pictide:theme-error", failed); };
   }, []);
   const change = async (next: string) => {
     if (!next || saving || next === theme) return;
@@ -32,6 +38,14 @@ export function GeneralSettings({ initialError = "" }: { initialError?: string }
     setSaving("language"); setError(""); applyLanguage(next);
     try { await saveLanguage(next); }
     catch (failure) { applyLanguage(previous); setError(tr`语言保存失败：${failure instanceof Error ? failure.message : String(failure)}`); }
+    finally { setSaving(""); }
+  };
+  const changeEffects = async (next: boolean) => {
+    if (saving || next === effects) return;
+    const previous = effects;
+    setSaving("effects"); setError(""); applyImageTransitions(next);
+    try { await saveImageTransitions(next); }
+    catch (failure) { applyImageTransitions(previous); setError(t("效果保存失败：{error}", { error: failure instanceof Error ? failure.message : String(failure) })); }
     finally { setSaving(""); }
   };
   return <div className="space-y-5">
@@ -50,6 +64,13 @@ export function GeneralSettings({ initialError = "" }: { initialError?: string }
           </ToggleGroupItem>
         )}
       </ToggleGroup>
+    </div>
+    <div className="settings-field">
+      <Label htmlFor="image-transitions" className="flex items-center gap-2">
+        <Checkbox id="image-transitions" aria-label={t("图片切换动效")} checked={effects} disabled={!!saving} onCheckedChange={next => changeEffects(next === true)} />
+        {t("图片切换动效")}
+        {saving === "effects" ? <LoaderCircle className="size-3.5 animate-spin" aria-label={t("正在保存")} /> : <HelpTip text={t("切换图片时淡入；系统启用减少动态效果时不播放。")} />}
+      </Label>
     </div>
     {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
   </div>;

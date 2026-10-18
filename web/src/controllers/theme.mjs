@@ -1,4 +1,5 @@
 import { applyLanguage, tr } from '../i18n/index.mjs';
+import { applyImageTransitions } from './image-transitions.mjs';
 const systemAppearance = window.matchMedia('(prefers-color-scheme: dark)');
 let selectedTheme = 'system';
 
@@ -39,6 +40,7 @@ async function requestTheme(options = {}) {
       appliedRead = serial;
       applyTheme(data.theme);
       applyLanguage(data.language);
+      applyImageTransitions(data.image_transitions);
     }
     return data.theme;
   } finally { if (writing) { pendingWrites--; settingsRevision++; } }
@@ -48,3 +50,5 @@ export const loadTheme = () => requestTheme();
 export const saveTheme = theme => requestTheme({ method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme }) });
 
 export const saveLanguage = language => requestTheme({ method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language }) });
+
+export const saveImageTransitions = image_transitions => requestTheme({ method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image_transitions }) });

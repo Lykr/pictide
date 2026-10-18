@@ -144,5 +144,9 @@
   "取消锚点": "Unpin anchor",
   "设为锚点": "Pin as anchor",
   "停泊保持整组提示词，切换漫游方式后可编辑锚点。": "Anchor mode keeps the entire prompt. Switch roam mode to edit visual anchors.",
-  "点选正向词，让后续图片保留这个元素；修改后清空旧预取。": "Pin a positive term to keep it in future images. Changes clear the prefetched images."
+  "点选正向词，让后续图片保留这个元素；修改后清空旧预取。": "Pin a positive term to keep it in future images. Changes clear the prefetched images.",
+  "图片切换动效": "Image transitions",
+  "切换图片时淡入；系统启用减少动态效果时不播放。": "Fade in when switching images. Disabled when your system requests reduced motion.",
+  "效果保存失败：{error}": "Could not save effects: {error}",
+  "正在保存": "Saving"
 }

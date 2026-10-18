@@ -7,7 +7,7 @@ test('system follows appearance changes; explicit themes stay fixed and the choi
   const classes = new Set();
   const doc = new EventTarget();
   doc.documentElement = { classList: { toggle(name, enabled) { enabled ? classes.add(name) : classes.delete(name); } } };
-  globalThis.window = { matchMedia: query => { assert.equal(query, '(prefers-color-scheme: dark)'); return media; } };
+  globalThis.window = { matchMedia: query => query === '(prefers-reduced-motion: reduce)' ? Object.assign(new EventTarget(), { matches: false }) : media };
   globalThis.document = doc;
   let chromeColor;
   doc.querySelector = query => { assert.equal(query, 'meta[name="theme-color"]'); return { setAttribute(name, color) { assert.equal(name, 'content'); chromeColor = color; } }; };
@@ -57,4 +57,19 @@ test('an old settings read cannot undo a newly saved language', async () => {
   completeOldRead({ ok: true, json: async () => ({ theme: 'system', language: 'en' }) });
   await oldRead;
   assert.equal(locale(), 'zh-CN');
+});
+
+test('an old settings read cannot re-enable a newly disabled image transition preference', async () => {
+  const { loadTheme, saveImageTransitions } = await import('../web/src/controllers/theme.mjs');
+  const { imageTransitionsEnabled, applyImageTransitions } = await import('../web/src/controllers/image-transitions.mjs');
+  applyImageTransitions(true);
+  let completeOldRead;
+  globalThis.fetch = (url, options) => options.method === 'PUT'
+    ? Promise.resolve({ ok: true, json: async () => ({ theme: 'system', language: 'en', image_transitions: false }) })
+    : new Promise(resolve => { completeOldRead = resolve; });
+  const oldRead = loadTheme();
+  await saveImageTransitions(false);
+  completeOldRead({ ok: true, json: async () => ({ theme: 'system', language: 'en', image_transitions: true }) });
+  await oldRead;
+  assert.equal(imageTransitionsEnabled(), false);
 });

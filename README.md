@@ -52,6 +52,8 @@ New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -
 
 「设置 → 通用」提供“跟随系统 / 黑色 / 白色”主题选择，立即生效并保存于 `data/pictide.sqlite3`，刷新和重启后保留；同一应用的其他已打开页面通过实时事件同步。默认跟随系统，已有明确选择保留；系统外观变化实时生效，所有栏目及浮层共用主题。接口说明见 [通用设置](docs/general-settings.md)。
 
+「设置 → 通用」提供默认开启的「图片切换动效」开关，控制漫游及生成／喜欢大图的淡入效果，刷新后保留；系统开启减少动态效果时不播放。详见 [通用设置](docs/general-settings.md)。
+
 ## 接入 ComfyUI
 
 1. 启动 ComfyUI，打开 Pictide「设置 → 后端」，填写后端名称和实际地址，例如 `http://127.0.0.1:8188`。Desktop 的实际端口可能不同。
