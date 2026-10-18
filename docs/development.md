@@ -24,7 +24,7 @@ Set-Location ..\pictide-example
 
 ## 首次准备检出目录
 
-需要 Git、Python 3.10+、Node.js 20.19+（或 22.12+）和 `web/package.json` 指定的 pnpm。依赖安装遵循锁文件，不复制或提交 `node_modules`。
+需要 Git、Python 3.10+、Node.js 20.19+（或 22.12+）和 `web/package.json` 指定的 pnpm。Python 运行依赖放在 `backend/requirements.txt`，离线导入依赖放在 `backend/requirements-import.txt`；前端依赖由 `web/package.json` 管理。依赖安装遵循锁文件，不复制或提交 `node_modules`。
 
 在仓库根目录执行以下 PowerShell 命令；运行环境、包缓存和临时文件都放入该检出目录的 `data/`：
 
@@ -36,7 +36,7 @@ $env:TMP = $env:TEMP
 $env:PIP_CACHE_DIR = "$projectData\cache\pip"
 $env:PYTHONPYCACHEPREFIX = "$projectData\cache\python"
 python -m venv "$projectData\runtime\venv"
-& "$projectData\runtime\venv\Scripts\python.exe" -m pip install -r requirements.txt
+& "$projectData\runtime\venv\Scripts\python.exe" -m pip install -r backend/requirements.txt
 Push-Location web
 pnpm install --frozen-lockfile
 pnpm run typecheck
@@ -52,7 +52,7 @@ mkdir -p "$project_data/tmp" "$project_data/cache/pip" "$project_data/cache/pyth
 export TMPDIR="$project_data/tmp" TEMP="$project_data/tmp" TMP="$project_data/tmp"
 export PIP_CACHE_DIR="$project_data/cache/pip" PYTHONPYCACHEPREFIX="$project_data/cache/python"
 python3 -m venv "$project_data/runtime/venv"
-"$project_data/runtime/venv/bin/python" -m pip install -r requirements.txt
+"$project_data/runtime/venv/bin/python" -m pip install -r backend/requirements.txt
 (cd web && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run build)
 bash start.sh
 ```

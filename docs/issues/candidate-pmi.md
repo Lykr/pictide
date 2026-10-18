@@ -34,7 +34,7 @@ PMI(a,b) = log2(count(a,b) * N / (count(a) * count(b)))。
 离线命令保持以下入口，默认中间库为成品文件名加 -state.sqlite3，也可通过 --state 显式指定；成品要求新路径。可复用中间库恢复已完成的阶段和块，不扩展旧成品 schema。
 
 ```powershell
-python -m pip install -r requirements-import.txt
+python -m pip install -r backend/requirements-import.txt
 python -m backend.candidate.importer data/datasets/danbooru-2026/raw data/import/candidate.sqlite3 --revision 203df76a018bd5d463c37666c394b88b5acaa202
 ```
 

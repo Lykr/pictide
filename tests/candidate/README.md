@@ -6,7 +6,7 @@
 
 ```powershell
 python -m unittest discover -s tests/candidate -p test_cooccurrence.py -v
-# 需要 requirements-import.txt 的离线依赖
+# 需要 backend/requirements-import.txt 的离线依赖
 python -m unittest discover -s tests/candidate -p test_cooccurrence_importer.py -v
 python -m unittest discover -s tests -p test_cooccurrence_integration.py -v
 ```

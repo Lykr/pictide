@@ -46,7 +46,7 @@ if (-not (Test-Path -LiteralPath $venvPython)) {
 }
 & $venvPython -c "import importlib.util,sys; sys.exit(0 if all(importlib.util.find_spec(name) for name in ('aiohttp', 'fastembed', 'numpy')) and __import__('importlib.metadata', fromlist=['version']).version('fastembed') == '0.9.0' and __import__('importlib.metadata', fromlist=['version']).version('numpy') == ('2.5.4' if sys.version_info >= (3,12) else '2.2.6') else 1)"
 if ($LASTEXITCODE -ne 0) {
-    & $venvPython -m pip install -r (Join-Path $projectPath 'requirements.txt')
+    & $venvPython -m pip install -r (Join-Path $projectPath 'backend/requirements.txt')
     if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
 }
 $listenAddress = if ($Lan) { '0.0.0.0' } else { '127.0.0.1' }

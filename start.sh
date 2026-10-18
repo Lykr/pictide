@@ -66,7 +66,7 @@ if [[ ! -x "$venv_python" ]]; then
 fi
 check_python "$venv_python" || fail 'The virtual environment requires Python 3.10+.'
 if ! "$venv_python" -c "import importlib.util,sys; sys.exit(0 if all(importlib.util.find_spec(name) for name in ('aiohttp', 'fastembed', 'numpy')) and __import__('importlib.metadata', fromlist=['version']).version('fastembed') == '0.9.0' and __import__('importlib.metadata', fromlist=['version']).version('numpy') == ('2.5.4' if sys.version_info >= (3,12) else '2.2.6') else 1)"; then
-  "$venv_python" -m pip install -r "$project_dir/requirements.txt" || fail 'Dependency installation failed.'
+  "$venv_python" -m pip install -r "$project_dir/backend/requirements.txt" || fail 'Dependency installation failed.'
 fi
 
 printf 'Pictide: http://127.0.0.1:%s\n' "$port"
