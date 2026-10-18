@@ -1314,7 +1314,7 @@ function connectEvents() {
   eventSource.addEventListener('change', event => {
     try {
       const topic = JSON.parse(event.data).topic;
-      if (topic === 'roam_settings') loadRoamSettings({ preserveDraft: true });
+      if (topic === 'roam_settings' || topic === 'candidate') loadRoamSettings({ preserveDraft: true });
       if (topic === 'general_settings') syncTheme();
       if (topic === 'feedback') {
         state.feedbackRevision++;

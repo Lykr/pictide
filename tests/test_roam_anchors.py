@@ -8,7 +8,14 @@ class RoamAnchorsSmoke(fixtures.RoamModesSmoke):
         await self.put(dict(prefetch_count=5, backend_id="local", preset_id="neutral"))
         current = self.finish((await self.ensure())["job"])
         self.app.storage.roam_view(dict(artifact_id=current["id"], viewed_at=1))
-        self.finish((await self.ensure())["job"])
+        future = self.finish((await self.ensure())["job"])
+        # A new anchor table must not invalidate pre-existing prefetch on first install.
+        epoch = self.app.roam.get()["epoch"]
+        with self.app.roam.connect() as db:
+            db.execute("DELETE FROM roam_anchor_settings")
+        await self.app.roam_settings()
+        self.assertEqual(self.app.roam.get()["epoch"], epoch)
+        self.assertIn(future["id"], [a["id"] for a in self.app.storage.artifacts(source="roam")])
         queued = (await self.ensure())["job"]
         running = (await self.ensure())["job"]
         self.app.storage.claim_job(running["id"])

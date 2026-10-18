@@ -333,3 +333,12 @@ body.pictide-immersive { overflow: hidden; }
   .immersive-actions [data-slot=button], .immersive-actions [data-slot=toggle] { min-width: 44px; min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { .image-card.immersive > .immersive-actions { transition: none; } }
+
+/* Keep anchors below the image, outside immersive controls. */
+.roam-anchors { flex: 0 0 auto; min-width: 0; margin-top: 8px; }
+#gallery-view:has(#image-card[hidden]) > .roam-anchors,
+#gallery-view:has(#image-card.immersive) > .roam-anchors { display: none; }
+.roam-anchor-terms { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; padding: 8px; max-height: 30dvh; overflow-y: auto; }
+.feed-page .roam-anchor-term { height: auto; min-height: 32px; max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; }
+.feed-page .roam-anchor-term:disabled { opacity: 0.65; }
+@media (pointer: coarse) { .feed-page .roam-anchor-term { min-height: 44px; } }

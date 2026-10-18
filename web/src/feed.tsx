@@ -6,6 +6,7 @@ import { JobPageControls } from "./components/page-controls";
 import { GeneralSettings } from "./components/general-settings";
 import { PreferenceActions } from "./components/preference-actions";
 import { ImageInfo } from "./components/image-info";
+import { RoamAnchors } from "./components/roam-anchors";
 import { RoamPlaybackButton, RoamOptions, RoamSettingsChoices } from "./components/roam-playback";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, Minimize, RefreshCw, Settings, Settings2, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown, ChevronRight } from "lucide-react";
 import { IconButton, HelpTip } from "./components/actions";
@@ -102,6 +103,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 </div>
 </Card>
+<RoamAnchors />
 {"\n        "}<div className="load-more-row">
 <Button id="load-more" className="quiet" hidden variant="outline" type="button">{t("加载更早图片")}</Button>
 </div>

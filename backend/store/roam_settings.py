@@ -213,10 +213,12 @@ class RoamSettings:
         with self.lock, self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             document = self._get(db)
+            has_anchor_snapshot = db.execute("SELECT 1 FROM roam_anchor_settings WHERE id=1").fetchone() is not None
             changed = ((liked_tags_only is not None and liked_tags_only != document["liked_tags_only"])
                        or (prompt_mode is not None and prompt_mode != document["prompt_mode"])
-                       or (anchors is not None and any(anchors[key] != document[key]
-                           for key in ("pinned_positive", "preset_base_positive"))))
+                       or (anchors is not None and (
+                           anchors["pinned_positive"] != document["pinned_positive"]
+                           or (has_anchor_snapshot and anchors["preset_base_positive"] != document["preset_base_positive"]))))
             if changed:
                 if anchors is not None:
                     document.update(anchors)
@@ -228,6 +230,9 @@ class RoamSettings:
                 Repository.discard_roam_prefetch(db)
                 self._save_settings(db, document)
                 self._save_anchors(db, document)
+            elif anchors is not None:
+                # First install records the current preset baseline without discarding valid images.
+                self._save_anchors(db, anchors)
             if playback_interval is not None:
                 self._save_playback(db, playback_interval)
             if candidate_count is not None:
