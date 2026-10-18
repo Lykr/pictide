@@ -70,7 +70,7 @@ function ImagePreferenceScore({ imageId, active }: { imageId: string; active: bo
       minimum: result.score_min?.toFixed(4) ?? "—", maximum: result.score_max?.toFixed(4) ?? "—",
     })
     : result?.reason ? t(messageKey(result.reason)) : "";
-  const explanation = t("按当前偏好对提示词组合评分；0–100 是历史范围中的相对刻度，不是喜欢概率。");
+  const explanation = t("缓存的提示词组合偏好分；0–100 按历史范围换算，不是喜欢概率。");
   return <section className="image-prompt-section image-preference-score" aria-label={t("偏好评分")}>
     <div className="image-detail-heading">
       <h3>{t("偏好评分")}</h3>

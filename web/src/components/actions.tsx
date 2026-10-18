@@ -4,8 +4,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 import { CircleHelp, type LucideIcon } from "lucide-react";
 import { Button } from "./ui/button";
 
-export function IconButton({ icon: Icon, label, ...props }: ComponentProps<typeof Button> & { icon: LucideIcon; label: string }) {
-  return <Button type="button" variant="ghost" size="icon-sm" {...props} aria-label={label} data-tooltip={label}>
+export function IconButton({ icon: Icon, label, tooltip = label, ...props }: ComponentProps<typeof Button> & { icon: LucideIcon; label: string; tooltip?: string }) {
+  return <Button type="button" variant="ghost" size="icon-sm" {...props} aria-label={label} data-tooltip={tooltip}>
     <Icon aria-hidden="true" />
   </Button>;
 }

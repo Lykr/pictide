@@ -1,7 +1,7 @@
-import { t, tr, messageKey } from "../i18n/index.mjs";
+import { t, tr, messageKey, locale } from "../i18n/index.mjs";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Eye, EyeOff, Heart, ImageIcon, LoaderCircle, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Heart, ImageIcon, LoaderCircle, RotateCw, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Toggle } from "./ui/toggle";
@@ -9,8 +9,8 @@ import { IconButton } from "./actions";
 import { LikedTagFilter } from "./liked-tag-filter";
 import { GeneratedViewer, type GeneratedArtifact } from "./generated-viewer";
 
-type ResultState = { artifacts: GeneratedArtifact[]; total: number; hasMore: boolean; loading: boolean; error: string; pending: boolean; status: string; feedbackPending: boolean; mutationPending: boolean; visible: boolean; configured: boolean; tags: string[]; sort: "latest" | "score"; filterVersion: number; revision: number };
-const initial: ResultState = { artifacts: [], total: 0, hasMore: false, loading: true, error: "", pending: false, status: "", feedbackPending: false, mutationPending: false, visible: false, configured: false, tags: [], sort: "latest", filterVersion: 0, revision: 0 };
+type ResultState = { artifacts: GeneratedArtifact[]; total: number; hasMore: boolean; loading: boolean; error: string; pending: boolean; status: string; feedbackPending: boolean; mutationPending: boolean; visible: boolean; configured: boolean; tags: string[]; sort: "latest" | "score"; refreshedAt: string | null; filterVersion: number; revision: number };
+const initial: ResultState = { artifacts: [], total: 0, hasMore: false, loading: true, error: "", pending: false, status: "", feedbackPending: false, mutationPending: false, visible: false, configured: false, tags: [], sort: "latest", refreshedAt: null, filterVersion: 0, revision: 0 };
 const emit = (name: string, detail?: unknown) => document.dispatchEvent(new CustomEvent(`pictide:${name}`, { detail }));
 const imagePath = (item: GeneratedArtifact) => `/api/artifacts/${encodeURIComponent(item.id)}/image`;
 const seedLabel = (item: GeneratedArtifact) => item.seed_applied === false ? t("使用工作流种子设置") : `seed ${item.seed ?? "—"}`;
@@ -43,10 +43,16 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
   const like = (item: GeneratedArtifact, toggle = true) => emit(`${prefix}-feedback`, { id: item.id, toggle });
   const privacyLabel = privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格");
   const privacyControl = <Toggle size="sm" className="generated-privacy-toggle" data-collection={collection} pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={privacyLabel} aria-keyshortcuts="Space" data-tooltip={privacyLabel}>{privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}</Toggle>;
+  const refreshTooltip = state.refreshedAt
+    ? t("刷新偏好评分 · 上次刷新：{time}", { time: new Date(state.refreshedAt).toLocaleString(locale()) })
+    : t("刷新偏好评分 · 尚未刷新");
   const privacyHost = liked ? document.getElementById("liked-privacy-controls") : null;
   return <section className="generated-results" aria-label={liked ? t("喜欢的图片") : t("生成结果")}>
-    {liked && privacyHost && createPortal(privacyControl, privacyHost)}
-    {liked && <LikedTagFilter visible={state.visible} revision={state.revision} disabled={state.feedbackPending || state.mutationPending} sort={state.sort} loading={state.loading} />}
+    {liked && privacyHost && createPortal(<span className="inline-flex items-center gap-1">
+      {state.sort === "score" && <IconButton icon={state.loading ? LoaderCircle : RotateCw} className={state.loading ? "[&_svg]:animate-spin" : ""} label={state.loading ? t("正在计算偏好评分") : t("刷新偏好评分")} tooltip={refreshTooltip} disabled={busy} onClick={() => emit("liked-refresh")} />}
+      {privacyControl}
+    </span>, privacyHost)}
+    {liked && <LikedTagFilter visible={state.visible} revision={state.revision} disabled={state.feedbackPending || state.mutationPending} sort={state.sort} />}
     {liked && state.loading && !state.artifacts.length && <div className="hint" role="status">{t("加载中…")}</div>}
     {!liked && <div className="generated-results-heading">
       <h2>{t("生成结果")}</h2>

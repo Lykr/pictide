@@ -19,13 +19,34 @@ test('ranked liked browsing keeps server order and pages locally, including an u
   ranked.more(); assert.equal(latest.hasMore, false); assert.equal(calls, 1);
 });
 
+test('only explicit refresh posts the current filter and local pagination keeps scores and server refresh time', async () => {
+  const calls = []; let latest;
+  const ranked = createLikedRanking({ request: async (path, options) => {
+    calls.push({ path, ...options });
+    return { artifacts, scoring_available: true, refreshed_at: calls.length > 1 ? "2026-10-18T11:00:00+00:00" : null };
+  }, changed: value => { latest = value; } });
+  await ranked.load(['solo']);
+  assert.equal(calls[0].path, '/api/liked/ranked?tag=solo');
+  assert.equal(calls[0].method, undefined);
+  assert.equal(latest.refreshedAt, null);
+  await ranked.load(['blue sky', 'solo', 'solo'], true);
+  assert.equal(calls[1].path, '/api/liked/ranked/refresh');
+  assert.equal(calls[1].method, 'POST');
+  assert.deepEqual(JSON.parse(calls[1].body), { tags: ['blue sky', 'solo'] });
+  ranked.more();
+  assert.equal(latest.artifacts.length, 30);
+  assert.equal(calls.length, 2);
+  assert.equal(latest.refreshedAt, "2026-10-18T11:00:00+00:00");
+});
+
 test('filter changes and navigation discard late requests; backend and HTTP errors stay visible', async () => {
   const requests = []; let latest;
   const ranked = createLikedRanking({ request: (path, options) => new Promise((resolve, reject) => requests.push({ path, ...options, resolve, reject })), changed: value => { latest = value; } });
-  const old = ranked.load(['old']); const current = ranked.load(['new']);
+  const old = ranked.load(['old'], true); const current = ranked.load(['new']);
   assert.equal(requests[0].signal.aborted, true);
   requests[1].resolve({ artifacts: artifacts.slice(3, 4), scoring_available: false, error: 'Encoder unavailable' }); await current;
-  requests[0].resolve({ artifacts, scoring_available: true }); await old;
+  requests[0].resolve({ artifacts, scoring_available: true, refreshed_at: '2026-10-18T11:00:00+00:00' }); await old;
+  assert.equal(latest.refreshedAt, null);
   assert.deepEqual(latest.artifacts.map(item => item.id), ['3']); assert.equal(latest.error, 'Encoder unavailable');
   const failed = ranked.load(); requests[2].reject(new Error('HTTP 503')); await failed;
   assert.equal(latest.error, 'HTTP 503'); assert.equal(latest.loading, false);

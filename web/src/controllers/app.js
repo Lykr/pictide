@@ -571,7 +571,7 @@ function renderGeneratedResults() {
 function renderLikedResults() {
   document.dispatchEvent(new CustomEvent('pictide:liked-results', { detail: {
     artifacts: state.likedArtifacts, total: state.pages.liked.total,
-    sort: state.likedSort, tags: state.likedTags, filterVersion: likedFilterVersion, revision: state.feedbackRevision + state.artifactRevision,
+    sort: state.likedSort, tags: state.likedTags, refreshedAt: likedRanking.snapshot().refreshedAt, filterVersion: likedFilterVersion, revision: state.feedbackRevision + state.artifactRevision,
     hasMore: state.pages.liked.hasMore, loading: state.likedSort === 'score' ? likedRanking.snapshot().loading : !state.pages.liked.loaded && !state.likedError || state.loadingMore,
     error: state.likedError, feedbackPending: state.feedbackPending,
     mutationPending: state.generatedMutationPending, visible: state.view === 'liked', configured: state.backends.length > 0,
@@ -1318,7 +1318,7 @@ document.addEventListener('pictide:liked-sort', event => {
 
 document.addEventListener('pictide:liked-more', () => { if (state.view === 'liked') loadMore(); });
 document.addEventListener('pictide:liked-refresh', () => {
-  if (state.likedSort === 'score') likedRanking.load(state.likedTags);
+  if (state.likedSort === 'score') likedRanking.load(state.likedTags, true);
   else { state.likedError = ''; refresh(true); }
 });
 document.addEventListener('pictide:liked-feedback', event => feedbackGenerated(event.detail.id, event.detail.toggle !== false, 'liked'));
