@@ -31,6 +31,10 @@ class PictideApplication:
         self.history, self.cleanup, self.workflows = history, cleanup, workflows
         self.recommendation_store = recommendation_store
         self._recommendation_error = None
+        self._learning_wake = asyncio.Event()
+        self._learning_task = None
+        self._learning_stopping = False
+        self._loop = None
         self.general = general
         self.roam = roam
         self._roam_lock = asyncio.Lock()
@@ -39,12 +43,42 @@ class PictideApplication:
 
     async def start(self, session):
         self.tasks.session = self.tasks.connections.session = session
-        await asyncio.to_thread(self._sync_recommendation)
+        self._loop = asyncio.get_running_loop()
+        self._learning_stopping = False
         await self.cleanup.maybe_cleanup(force=True)
         await self.tasks.start()
+        self._learning_task = asyncio.create_task(self._learn_feedback(), name="pictide-feedback-learning")
+        self._request_learning()
 
     async def stop(self):
+        self._learning_stopping = True
+        self._learning_wake.set()
         await self.tasks.stop()
+        if self._learning_task is not None:
+            await self._learning_task
+            self._learning_task = None
+        self._loop = None
+
+    def _request_learning(self):
+        # Scoring runs in a thread. Marshal all wake-ups onto the application loop.
+        if self._loop is not None and not self._learning_stopping:
+            self._loop.call_soon_threadsafe(self._learning_wake.set)
+
+    async def _learn_feedback(self):
+        while True:
+            await self._learning_wake.wait()
+            self._learning_wake.clear()
+            if self._learning_stopping:
+                return
+            try:
+                await asyncio.to_thread(self._sync_recommendation)
+            except Exception:
+                logging.getLogger(__name__).exception("Background preference learning remains pending")
+                self._recommendation_error = "推荐学习暂不可用，反馈已保存，将在下次操作重试。"
+            try:
+                await self.clean_history()
+            except Exception:
+                logging.getLogger(__name__).exception("Background feedback cleanup failed")
 
     async def clean_history(self, force=False, *, roam_only=False):
         before = self.cleanup.stats.get("revision", 0)
@@ -54,7 +88,7 @@ class PictideApplication:
         return result
 
     def _sync_recommendation(self):
-        """Drain durable feedback at existing application entry points."""
+        """Apply durable feedback in the single application learning worker."""
         status = self.recommendation.status()
         self._recommendation_error = status.error
         if not status.available or self.recommendation_store is None:
@@ -284,18 +318,16 @@ class PictideApplication:
             raise ValidationError("缺少反馈状态 value。")
         value = feedback_value(payload["value"])
         try:
-            await self.tasks.database(self.storage.rate, identifier, value)
+            artifact = await self.tasks.database(self.storage.rate, identifier, value)
         except ValidationError:
             if not await asyncio.to_thread(self.storage.artifact, identifier):
                 raise NotFoundError("图片已清理或不存在。") from None
             raise
-        await self.clean_history()
-        artifact = await asyncio.to_thread(self.storage.artifact, identifier)
         if not artifact:
-            raise GoneError("图片已按历史清理规则移除。")
-        await asyncio.to_thread(self._sync_recommendation)
+            raise NotFoundError("图片已清理或不存在。")
         revision = await asyncio.to_thread(self.storage.artifact_revision)
         self.events.publish("feedback")
+        self._request_learning()
         return {"artifact": artifact, "artifact_revision": revision}
 
     async def general_settings(self, payload=None):
@@ -396,7 +428,8 @@ class PictideApplication:
         pool = self.candidates.provider.generate({"preset_id": context["preset_id"], "mode": "random_each_run"}, constraints)
         if not pool:
             raise ValidationError("候选模块未提供合法提示词组合。")
-        status = self._sync_recommendation()
+        self._request_learning()
+        status = self.recommendation.status()
         chosen, scored = pool[0], None
         if status.available and not self._recommendation_error and not (mode == "stay" and previous):
             request_id = uuid.uuid4().hex

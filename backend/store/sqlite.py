@@ -642,13 +642,16 @@ class Repository:
 
     def artifact(self, iid):
         with self.connection() as db:
-            row = db.execute("""SELECT a.*,j.positive,j.negative,j.seed,f.value AS feedback,
-                CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id) THEN 'roam' ELSE 'generate' END AS source,
-                json_type(r.config,'$.bindings.seed')='object' AS seed_applied
-                FROM artifacts a JOIN jobs j ON j.id=a.job_id
-                JOIN backend_revisions r ON r.id=j.revision_id
-                LEFT JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local' WHERE a.id=? AND a.deleted_at IS NULL""", (iid,)).fetchone()
-            return self._artifact(row) if row else None
+            return self._read_artifact(db, iid)
+
+    def _read_artifact(self, db, iid):
+        row = db.execute("""SELECT a.*,j.positive,j.negative,j.seed,f.value AS feedback,
+            CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id) THEN 'roam' ELSE 'generate' END AS source,
+            json_type(r.config,'$.bindings.seed')='object' AS seed_applied
+            FROM artifacts a JOIN jobs j ON j.id=a.job_id
+            JOIN backend_revisions r ON r.id=j.revision_id
+            LEFT JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local' WHERE a.id=? AND a.deleted_at IS NULL""", (iid,)).fetchone()
+        return self._artifact(row) if row else None
 
     def artifact_source(self, iid):
         with self.connection() as db:
@@ -734,4 +737,6 @@ class Repository:
                 db.execute("INSERT INTO feedback VALUES (?,'local',?,?) ON CONFLICT(artifact_id,actor_id) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", (iid,value,now()))
             if previous_value != value:
                 record_feedback(db, iid, "local", value)
-        return self.artifact(iid)
+            # Capture the saved state before releasing the write transaction;
+            # concurrent cleanup after commit must not turn success into a 404.
+            return self._read_artifact(db, iid)

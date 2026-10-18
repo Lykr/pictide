@@ -1,4 +1,5 @@
 """Durable recommendation feedback, version isolation and atomic CAS."""
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 import json
@@ -38,6 +39,30 @@ class RecommendationStoreTests(unittest.TestCase):
         return PolicyRecord(revision,('positive:forest',),struct.pack('<4d',1,0,0,1),struct.pack('<2d',1,2),count)
     def pending(self,version='v1'):
         return self.store.pending_feedback('local',version)
+    def test_feedback_success_returns_snapshot_before_post_commit_cleanup(self):
+        iid = self.image()
+        self.repo.rate(iid, 1)
+        connection = self.repo.connection
+        cleaned = False
+
+        @contextmanager
+        def cleanup_after_commit():
+            nonlocal cleaned
+            with connection() as db:
+                yield db
+            if not cleaned:
+                cleaned = True
+                with connection() as db:
+                    db.execute("UPDATE artifacts SET deleted_at='2026-10-01' WHERE id=?", (iid,))
+
+        with patch.object(self.repo, 'connection', side_effect=cleanup_after_commit):
+            result = self.repo.rate(iid, None)
+        self.assertTrue(cleaned)
+        self.assertEqual(result['id'], iid)
+        self.assertIsNone(result['feedback'])
+        self.assertIsNone(self.repo.artifact(iid))
+        self.assertIsNone(self.pending()[-1].value)
+
     def test_vectors_float32_and_version_validation(self):
         self.store.save_vectors('enc1',{'forest':(0.1,0.5,-2.0)})
         result=self.store.load_vectors('enc1',['forest','absent'])

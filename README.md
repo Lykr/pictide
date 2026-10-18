@@ -116,6 +116,8 @@ ComfyUI 只执行生图 API，不再安装提示词生成、预览或提示词�
 
 **推荐第一版已实现。** 漫游候选组合由应用编排交给推荐模块评分，编排选择后提交任务。MiniLM 在 CPU 上按基础标签编码并缓存，用户喜欢/不喜欢分别以 +1/-1 更新组合关联，撤回移除对应证据，未评价保持未知。仅有完整生成快照的图片参与学习；缺快照的图片仍可保存反馈，但不推断标签来源。分数不是点赞概率，复杂搭配、参考图上传、图像特征与多用户登录仍未实现。详见 [推荐设计](docs/recommendation-v1.md) 与 [不喜欢反馈](docs/dislike-feedback.md)。
 
+喜欢、不喜欢和撤回在反馈状态及待学习记录落库后返回；应用编排的单个后台任务处理推荐学习和本次反馈触发的清理，失败保留记录，启动及后续操作继续处理。新偏好稍后生效，已有预取保持；接口成功表示反馈已保存。详见 [后台偏好学习](docs/feedback-background-learning.md)。
+
 「设置 → 漫游 → 用户偏好」可查看已学习标签的关联权重，或二次确认后重置。重置保留喜欢的图片、任务和标签库，只从此后的新反馈重新学习；历史反馈不会在重启或特征版本切换后自动恢复偏好。详见 [偏好查看与重置](docs/recommendation-preferences.md)。
 
 推荐模型使用离线 FastEmbed 格式的 [MiniLM ONNX 模型](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx)，完整缓存目录 `models--Qdrant--all-MiniLM-L6-v2-onnx` 放在所选数据目录的 `cache/embeddings/` 下，包含 `refs/main` 和对应 `snapshots` 文件。应用不自动下载模型；模型或依赖缺失时保持生图可用，并在 bootstrap 的 `recommendation` 与漫游响应报告状态。应用启动脚本会安装版本化 CPU 依赖；此版本在 Python 3.12 上完成验证，较旧 Python 的兼容依赖由安装器选择。
