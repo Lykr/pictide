@@ -2,86 +2,92 @@
 
 ## 概述
 
-让用户以最少、最简单的操作完成依赖准备与项目启动，达到能够进行一次完整漫游体验的就绪状态。
+将程序、运行依赖、前端、精简词库和 MiniLM 一起交付，让用户解压后双击启动，达到能够完整漫游的就绪状态。
 
-发行方向已确认，打包与启动实现待完成；运行环境、前端、词库和推荐模型由构建发布流程准备，用户通过便携发行包直接启动应用。词库上传与选择已独立完成，见[词库管理](library-selection.md)。
+发行方向已确认，以下补齐本次构建与启动接口，待确认后实施。词库上传与选择已完成，详见[词库管理](library-selection.md)。
 
 ## 架构
 
 ```mermaid
 flowchart TD
-    Build["构建发布流程"] --> Python["Python 解释器 / 后端 / 运行依赖"]
-    Build --> Web["前端静态成品 web/dist"]
-    Build --> Assets["成品词库 / MiniLM / 默认预设"]
-    Python --> Package["各系统便携发行包"]
-    Web --> Package
+    Build["backend.release：构建发行包"] --> Program["PyInstaller 程序与依赖"]
+    Build --> Assets["已构建前端 / 干净词库 / MiniLM / 资源清单"]
+    Program --> Package["各系统便携目录与压缩包"]
     Assets --> Package
-    Package --> Start["启动入口：检查资源 / 初始化数据 / 启动服务"]
-    Start --> Host["现有 Host"]
-    Start --> UI["浏览器：应用页面 / 替换词库"]
-    Library["用户选择的 SQLite 词库文件"] --> UI
-    UI --> Host
-    Host --> Data[("data：资源与用户数据")]
+    Package --> Entry["平台启动入口"]
+    Entry --> Host["现有 Host：路径 / HTTP / 生命周期"]
+    Host --> Init["应用编排：首次资源初始化"]
+    Init --> Data[("用户所选 data")]
+    Host --> Browser["就绪后打开浏览器"]
 ```
 
 ## 职责边界
 
-- 构建发布负责安装开发依赖、构建前端、打包 Python 后端、准备词库和推荐模型、验证产物；用户收到可以直接运行的完整目录式压缩包。
-- Python 后端优先采用 PyInstaller 目录式打包，将解释器、Python 包及原生依赖随程序交付；FastEmbed、ONNX Runtime、NumPy 和动态导入在实际产物中验证。
-- 前端以已构建的 `web/dist/` 随包提供。Node.js、pnpm、前端依赖安装和编译归属开发构建流程。
-- 词库提供预处理成品；资源导出包含 `tags/correlations/dataset` 及所需索引。MiniLM 提供当前编码器要求的固定版本 ONNX 和 tokenizer 文件；默认预设提供可用的候选配置。
-- 发行包使用干净的种子资源。首次启动将所需资源初始化到所选 `data/`，后续启动沿用用户的预设、图片、评价和偏好。
-- 词库文件与个人配置沿用[数据布局](../data-layout.md)，首次初始化与升级保留用户选择；上传、目录发现与选择的契约统一见[词库管理](library-selection.md)。
-- 启动入口负责资源完整性检查、首次数据初始化、启动现有 Host、等待服务就绪并打开浏览器；资源异常显示原因和恢复操作。资源清单记录版本、文件大小和 SHA-256。
-- 服务就绪与后端状态复用 `GET /api/bootstrap`。首次使用可进入现有后端设置，配置完成后具备开始漫游的条件；正常启动打开漫游页面。
-- 生图能力由用户提供的 ComfyUI 与文生图模型承担。此次交付聚焦 Pictide 自身的依赖准备与启动，后端连接采用现有配置和只读检查路径。
-- Windows 优先验证真实产物；Linux、macOS 分别本机构建并记录原生验证结果。各系统按 CPU 架构交付，并提供独立启动说明。
-- 具体构建与首次初始化接口，在本需求实施前提交设计确认。
-- 源码启动脚本继续服务开发与调试，依赖安装和构建步骤放在开发者路径；候选、推荐、任务继续通过应用编排协作。
+| 组成 | 接口及职责 |
+| --- | --- |
+| 发行构建 `backend.release` | `python -m backend.release --source-data-dir PATH --output-dir PATH`：读取源数据目录中当前选中的词库与 MiniLM，导出干净资源，打包当前已构建前端和后端，生成便携目录及 ZIP；输出目录使用新目录。 |
+| 平台启动入口 | Windows 双击 `start.cmd`；Linux 执行 `start.sh`；macOS 双击 `start.command`。入口仅运行随包程序并传递参数。 |
+| Host 启动 | 沿用 `--port`、`--data-dir`、`--host`；增加 `--lan` 作为局域网入口、`--no-browser` 用于验证。便携启动默认就绪后打开浏览器，源码入口保留现有默认行为。 |
+| 应用编排初始化 | 新增 `PictideApplication.prepare_startup(paths, seed_dir)`：在服务组装前补齐所选数据目录中缺失的默认词库和模型；预设复用候选模块现有默认值。已有个人预设、所选词库、模型和业务数据保留。 |
+| 数据路径 `DataPaths` | 便携程序默认使用发行目录下的 `data/`，与当前工作目录无关；显式路径和环境变量继续按[数据目录约定](../data-layout.md#数据位置)生效。 |
+| 资源清单 | 记录种子资源的相对路径、大小、SHA-256 与来源版本，供构建校验和定位资源问题；启动检查所需文件齐备。 |
+
+Windows 发行目录示意：
+
+```text
+Pictide/
+  start.cmd
+  data/
+    runtime/pictide/
+      Pictide.exe
+      _internal/                  Python 与运行依赖
+        web/dist/                 前端成品
+        resources/                默认词库、固定版本 MiniLM、资源清单
+    libraries/                    首次启动生成，可替换词库
+    cache/embeddings/             首次启动生成，离线 MiniLM
+    candidate.sqlite3             首次启动生成，个人预设与选择
+    pictide.sqlite3                首次启动生成，业务数据
+```
+
+- 随包词库仅含 `tags/correlations/dataset` 和索引，默认使用当前精简版；推荐模型只导出当前编码器实际需要的 ONNX、tokenizer 配套文件及快照引用。
+- 发行资源与个人数据分开，包内种子用于首次初始化和指定新数据目录；后续启动沿用用户已有资源。压缩包包含种子，个人运行副本在首次启动时生成。
+- 前端依赖安装、构建和 PyInstaller 安装属于开发构建流程；所需打包依赖统一列在 `backend/requirements-release.txt`。
+- 发行导出读取统计与模型，个人后端配置、密钥、图片、评价和偏好留在本地数据目录。
+- HTTP 接口保持现有契约；候选、推荐与任务继续由应用编排协调。ComfyUI 和生图模型由用户配置。
 
 ## 调用和数据流
 
 ```mermaid
 sequenceDiagram
-    participant Dev as 构建发布流程
-    participant Package as 便携发行包
+    participant Dev as 发行构建
+    participant Source as 源词库 / 模型 / 前端成品
+    participant Package as 便携目录与 ZIP
     actor User as 用户
-    participant Start as 启动入口
-    participant Data as data
-    participant Host as 现有 Host
-    participant UI as 浏览器
-    Dev->>Dev: 安装构建依赖，打包后端与前端，准备词库和 MiniLM
-    Dev->>Package: 生成并验证对应系统的完整产物
-    User->>Package: 下载并解压
-    User->>Start: 启动 Pictide
-    Start->>Data: 检查资源，首次初始化数据
-    Start->>Host: 启动应用
-    Start->>Host: GET /api/bootstrap，检查服务状态
-    Host-->>Start: 服务就绪与后端配置状态
-    Start->>UI: 打开可用页面
+    participant Host as Host
+    participant App as 应用编排
+    participant Data as 所选 data
+    Dev->>Source: 读取资源，导出干净统计与所需模型文件
+    Dev->>Package: 打包程序、依赖、页面和种子资源
+    User->>Host: 解压后运行平台启动入口
+    Host->>Host: 解析数据目录与启动参数
+    Host->>App: prepare_startup(paths, seed_dir)
+    App->>Data: 补充缺失资源，保留个人配置与选择
+    App-->>Host: 初始化完成
+    Host->>Host: 组装现有服务并开始监听
+    Host->>User: 打开浏览器
     opt 首次配置生图后端
-        User->>UI: 填写后端并保存
-        UI->>Host: 现有配置与只读连接检查
-        Host-->>UI: 后端可用状态
-    end
-    Note over User,UI: 依赖与启动准备完成，具备完整漫游条件
-    opt 用户后续选择词库
-        User->>UI: 上传词库，或复制文件到词库目录后刷新
-        UI->>Host: 获取可选词库并选用
-        Host->>Data: 保存当前选择，读取对应统计库
-        Host-->>UI: 刷新词库内容，立即生效
+        User->>Host: 现有后端设置与连接检查
+        Host-->>User: 后端可用，具备漫游条件
     end
 ```
 
 ## 重点关注
 
-- 验收终点是“能够开始完整漫游”的就绪状态：应用启动成功、页面可访问、候选词库与默认预设可用、推荐模型可执行，连接已就绪生图后端后具备生成条件。
-- 用户操作集中在获取发行包、解压、启动和首次后端配置；依赖安装、前端构建和模型资源准备由发行流程承担。
-- 使用仅具备受支持操作系统、浏览器及已就绪 ComfyUI 的干净机器验证；确认 Pictide 所需 Python、原生库、前端、词库和推荐模型均由产物提供。
-- 少数冒烟覆盖首次启动、再次启动、既有数据保留与资源异常提示；验证页面、候选生成、MiniLM 编码和后端只读连接。浏览、评价、收藏等交互沿用现有功能验证。
-- 发行验证检查首次资源初始化和升级后继续使用用户所选词库；词库选择功能的验证记录见[词库管理](library-selection.md)。
-- 目录式打包便于启动、资源定位和排查问题；记录下载体积、解压占用与应用就绪耗时，围绕依赖准备和启动成本优化。
-- 程序依赖、模型、运行数据、缓存和日志遵循项目 `data/` 约定；已有用户数据继续保留。
-- 当前已实现源码启动路径；便携发行包完成构建与平台验证后，同步各系统的用户启动说明。
+- 验收终点是应用、前端、词库和推荐模型就绪，连接可用 ComfyUI 后能够开始完整漫游。
+- Windows 优先验证真实产物：从新的解压目录运行程序，确认随包依赖、候选生成、离线 MiniLM 编码和页面资源可用；记录 ZIP 体积、解压占用与启动耗时。
+- 少数冒烟覆盖首次启动、再次启动、带空格的移动路径、自定义数据目录和已有个人配置保留；验证实例使用独立端口与数据。
+- Linux/macOS 按系统与 CPU 架构在本机构建；分别维护启动说明，原生运行结果按实际验证状态记录。
+- 发行依赖的第三方许可证与现有前端声明随包保留。用户操作集中在获取、解压、启动和首次后端配置。
+- 源码启动脚本继续用于开发，发布完成后同步 [README](../../README.md) 与各系统[安装路径](../guides/getting-started.md)。
 
-参考：[PyInstaller 打包方式](https://pyinstaller.org/en/stable/operating-mode.html)、[平台构建要求](https://pyinstaller.org/en/stable/index.html)。
+参考：[PyInstaller 打包方式](https://pyinstaller.org/en/stable/operating-mode.html)。
