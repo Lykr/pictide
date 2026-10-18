@@ -13,5 +13,6 @@
 .image-prompt-details .image-prompt-text { margin: 4px 0 0; padding: 12px; border-radius: var(--radius-lg); background: var(--muted); max-height: 24dvh; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 var(--font-mono); user-select: text; }
 .image-prompt-text:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
+.image-preference-score .image-detail-heading { justify-content: flex-start; gap: 4px; }
 .image-preference-value { padding: 4px 0; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .image-preference-value[data-scored=true] { font-size: 24px; font-weight: 600; letter-spacing: -0.025em; }
