@@ -16,6 +16,10 @@ def initialize_recommendation(db):
         user_id TEXT NOT NULL, feature_version TEXT NOT NULL, policy_version TEXT NOT NULL,
         score_min REAL NOT NULL, score_max REAL NOT NULL,
         PRIMARY KEY(user_id,feature_version,policy_version));
+    CREATE TABLE IF NOT EXISTS artifact_preference_scores (
+        artifact_id TEXT PRIMARY KEY REFERENCES artifacts(id), score REAL NOT NULL,
+        feature_version TEXT NOT NULL, policy_version TEXT NOT NULL,
+        state_revision INTEGER NOT NULL, scored_at TEXT NOT NULL, refreshed_at TEXT);
     CREATE TABLE IF NOT EXISTS recommendation_vectors (
         encoder_version TEXT NOT NULL, text TEXT NOT NULL, vector BLOB NOT NULL,
         PRIMARY KEY(encoder_version,text));
@@ -137,6 +141,8 @@ class SQLiteRecommendationStore:
                                (user_id,)).fetchone()[0]
             reset_at = datetime.now(timezone.utc).isoformat()
             revision += 1
+            if user_id == "local":
+                db.execute("DELETE FROM artifact_preference_scores")
             db.execute("DELETE FROM recommendation_score_range WHERE user_id=?", (user_id,))
             db.execute("DELETE FROM recommendation_policy WHERE user_id=?", (user_id,))
             db.execute("DELETE FROM recommendation_evidence WHERE user_id=?", (user_id,))

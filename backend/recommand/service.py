@@ -154,7 +154,8 @@ class RecommendationService:
                 raise ValueError("Non-finite recommendation score")
             minimum, maximum = self.store.observe_score_range(request.user_id, version, policy.POLICY_VERSION,
                                                              float(means.min()), float(means.max()))
-            return ScoreResult(tuple(CandidateScore(c.candidate_id, float(v)) for c, v in zip(request.candidates, values)),
+            return ScoreResult(tuple(CandidateScore(c.candidate_id, float(v), float(m))
+                                     for c, v, m in zip(request.candidates, values, means)),
                                version, policy.POLICY_VERSION, record.revision if record else 0, minimum, maximum)
 
     def _score_mean(self, request, version):
@@ -194,7 +195,7 @@ class RecommendationService:
                 for semantic, exact in prepared]
             if not np.isfinite(values).all():
                 raise ValueError("Non-finite recommendation score")
-            scores.extend(CandidateScore(candidate.candidate_id, float(value))
+            scores.extend(CandidateScore(candidate.candidate_id, float(value), float(value))
                           for candidate, value in zip(batch, values))
         minimum, maximum = self.store.observe_score_range(request.user_id, version, policy.POLICY_VERSION,
             min(item.score for item in scores), max(item.score for item in scores))

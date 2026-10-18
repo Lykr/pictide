@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 from pathlib import Path
 import sqlite3
 import uuid
@@ -444,7 +445,7 @@ class Repository:
     def complete(self, iid, outputs):
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
-            job = db.execute("SELECT j.status,r.discarded_at FROM jobs j LEFT JOIN roam_jobs r ON r.job_id=j.id WHERE j.id=?", (iid,)).fetchone()
+            job = db.execute("SELECT j.status,r.discarded_at,r.candidate FROM jobs j LEFT JOIN roam_jobs r ON r.job_id=j.id WHERE j.id=?", (iid,)).fetchone()
             # A late retry may have copied an expired output again. Never revive it.
             for item in outputs:
                 old = db.execute("SELECT id FROM artifacts WHERE job_id=? AND node_id=? AND output_index=? AND deleted_at IS NOT NULL",
@@ -455,6 +456,17 @@ class Repository:
                 return
             for item in outputs:
                 db.execute("INSERT OR IGNORE INTO artifacts (id,job_id,node_id,output_index,descriptor,created_at,local_path,content_type,roam_hidden_at) VALUES (?,?,?,?,?,?,?,?,?)", (str(uuid.uuid4()),iid,str(item["node_id"]),item["index"],encode(item),now(),item.get("local_path"),item.get("content_type"),job["discarded_at"]))
+            if job["candidate"]:
+                snapshot = json.loads(job["candidate"])
+                score = snapshot.get("mean_score")
+                if (isinstance(score, (int, float)) and math.isfinite(score)
+                        and all(snapshot.get(key) is not None for key in (
+                            "feature_version", "policy_version", "state_revision", "score_reset_revision"))):
+                    images = db.execute("SELECT id FROM artifacts WHERE job_id=? AND deleted_at IS NULL", (iid,))
+                    self._save_image_scores(db, [dict(artifact_id=image["id"], score=score,
+                        feature_version=snapshot["feature_version"], policy_version=snapshot["policy_version"],
+                        state_revision=snapshot["state_revision"]) for image in images],
+                        snapshot["score_reset_revision"])
             db.execute("UPDATE jobs SET status='completed',error=NULL,updated_at=? WHERE id=?", (now(),iid))
 
     def recover_submissions(self):
@@ -490,6 +502,47 @@ class Repository:
         generated = db.execute("SELECT count(*) FROM artifacts a WHERE a.deleted_at IS NULL AND a.generated_hidden_at IS NULL AND NOT EXISTS (SELECT 1 FROM roam_jobs r WHERE r.job_id=a.job_id)").fetchone()[0]
         return {"artifacts": total, "roam": roam, "generate": generated,
                 "liked":db.execute("SELECT count(*) FROM feedback f JOIN artifacts a ON a.id=f.artifact_id WHERE a.deleted_at IS NULL AND f.actor_id='local' AND f.value=1").fetchone()[0]}
+
+    def image_score_cache(self, identifiers, feature_version, policy_version):
+        identifiers = tuple(dict.fromkeys(identifiers))
+        scores = {}
+        with self.connection() as db:
+            for start in range(0, len(identifiers), 500):
+                batch = identifiers[start:start + 500]
+                placeholders = ",".join("?" for _ in batch)
+                rows = db.execute(f"SELECT * FROM artifact_preference_scores WHERE artifact_id IN ({placeholders}) "
+                                  "AND feature_version=? AND policy_version=?",
+                                  (*batch, feature_version, policy_version))
+                for row in rows:
+                    item = dict(row)
+                    scores[item.pop("artifact_id")] = item
+            score_range = db.execute("SELECT score_min,score_max FROM recommendation_score_range "
+                                    "WHERE user_id='local' AND feature_version=? AND policy_version=?",
+                                    (feature_version, policy_version)).fetchone()
+            refreshed_at = db.execute("SELECT MAX(refreshed_at) FROM artifact_preference_scores "
+                                      "WHERE feature_version=? AND policy_version=?",
+                                      (feature_version, policy_version)).fetchone()[0]
+        return dict(scores=scores, score_min=score_range["score_min"] if score_range else None,
+                    score_max=score_range["score_max"] if score_range else None, refreshed_at=refreshed_at)
+
+    @staticmethod
+    def _save_image_scores(db, records, reset_revision, refreshed_at=None):
+        reset = db.execute("SELECT revision FROM recommendation_resets WHERE user_id='local'").fetchone()
+        if (reset["revision"] if reset else 0) != reset_revision:
+            return
+        scored_at = now()
+        db.executemany("INSERT INTO artifact_preference_scores VALUES (?,?,?,?,?,?,?) "
+                       "ON CONFLICT(artifact_id) DO UPDATE SET score=excluded.score, "
+                       "feature_version=excluded.feature_version,policy_version=excluded.policy_version, "
+                       "state_revision=excluded.state_revision,scored_at=excluded.scored_at, "
+                       "refreshed_at=COALESCE(excluded.refreshed_at,artifact_preference_scores.refreshed_at)",
+                       [(record["artifact_id"], record["score"], record["feature_version"], record["policy_version"],
+                         record["state_revision"], scored_at, refreshed_at) for record in records])
+
+    def save_image_scores(self, records, reset_revision, refreshed_at=None):
+        with self.connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self._save_image_scores(db, records, reset_revision, refreshed_at)
 
     def liked_positive_prompts(self, actor_id="local"):
         with self.connection() as db:

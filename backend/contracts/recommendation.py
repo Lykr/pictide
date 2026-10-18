@@ -30,6 +30,7 @@ class ScoreRequest:
 class CandidateScore:
     candidate_id: str
     score: float
+    mean_score: float | None = None
 
 
 @dataclass(frozen=True)
