@@ -98,3 +98,6 @@ sequenceDiagram
 - 少数冒烟覆盖 SQLite/gzip 上传、复制后刷新选择、即时生效、重启保留选择、同名文件与异常文件提示。
 - 已通过：SQLite/gzip 上传、目录新增后刷新选择、即时切换、重启保留、预设保留、异常文件与所选文件替换的 HTTP 冒烟；前端类型检查和构建；真实浏览器上传、跨客户端刷新、草稿保留和 390px 窄屏布局。
 - 验证采用中性词库与模拟后端，记录位于 `data/dev/verification/library-selection-20261019/`。集成前备份混合库与前端，统计和个人预设分开保存。
+
+
+当前目录约定见[开发资料与发行产物分离](development-release-directories.md)：历史 data/dev 下的开发材料现位于根目录 dev，发行包现位于根目录 releases。

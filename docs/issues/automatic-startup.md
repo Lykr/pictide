@@ -98,3 +98,6 @@ sequenceDiagram
 - 三项冒烟通过：干净资源导出与已有数据保留、便携默认路径、服务就绪后打开浏览器；实际解压程序通过页面资源、候选、MiniLM 编码与推荐评分验证。
 - 在本机已缓存磁盘条件下，新数据目录初始化至 bootstrap 响应约 1.04 秒，再次启动约 0.62 秒，移动目录后约 1.13 秒；该时间包含资源准备和服务就绪，浏览器展示及首次模型推理另计。
 - 验证采用独立数据和端口，只配置测试生图地址；真实 GPU 生图和 Linux/macOS 原生运行未执行。报告与日志保存在 `data/dev/verification/portable-startup-20261019/`。
+
+
+当前目录约定见[开发资料与发行产物分离](development-release-directories.md)：历史 data/dev 下的开发材料现位于根目录 dev，发行包现位于根目录 releases。 旧 portable-compact-20261019 包已按用户确认删除，个人数据保留在 data/backups/old-portable-personal-20261019；当前包为 releases/portable-data-layout-20261019。

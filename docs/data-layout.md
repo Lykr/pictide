@@ -1,6 +1,6 @@
 # 数据目录与备份
 
-[文档导航](README.md)。本页说明当前数据布局与备份；表结构见[SQLite 存储参考](reference/storage.md)，本次整理记录见[数据目录整理](issues/data-directory-organization.md)。
+[文档导航](README.md)。本页说明当前数据布局与备份；表结构见[SQLite 存储参考](reference/storage.md)，最新整理记录见[开发与发行目录分离](issues/development-release-directories.md)。
 
 ## 数据位置
 
@@ -21,32 +21,34 @@
 | `images/` | 图片及同名提示词 JSON，仅含 positive / negative |
 | `workflows/` | API 工作流；.backups 保存更新或删除前的版本 |
 | `history-cleanup.json` | 历史图片保留天数，缺省 1 天 |
-| `runtime/` | 程序与依赖：源码版 venv、前端开发依赖；便携版 pictide 程序及随包资源 |
-| `cache/` | Python、pip、pnpm、Vite 等可重新生成的缓存 |
+| `runtime/` | 程序与依赖：源码版 venv；便携版 pictide 程序及随包资源 |
+| `cache/` | Python、pip 等运行缓存，可重新生成 |
 | `tmp/` | 运行临时文件 |
 | `logs/` | 运行日志 |
 | `backups/` | 数据备份 |
 
-词库添加与选择见[提示词指南](guides/prompts.md#添加与切换词库)。MiniLM 是推荐运行所需资源，独立放在 models，日常缓存清理保留该目录。前端构建成品由程序提供，源码中的 web/node_modules 可以是指向 runtime/frontend/node_modules 的链接。
+词库添加与选择见[提示词指南](guides/prompts.md#添加与切换词库)。MiniLM 是推荐运行所需资源，独立放在 models，日常缓存清理保留该目录。前端构建成品由程序提供，源码中的 web/node_modules 指向根目录 dev/runtime/frontend/node_modules。
 
 ## 开发材料
 
-主项目的开发内容统一归入 data/dev；普通便携运行会按需创建运行目录。
+开发材料和发行产物相对于项目根目录组织，data 专用于程序运行：
 
 | 路径 | 内容 |
 | --- | --- |
 | `dev/datasets/` | 原始 Parquet、下载校验与离线统计中间文件 |
-| `dev/releases/` | 便携发行目录、ZIP 和构建报告 |
+| `dev/runtime/frontend/`、`dev/runtime/importer/` | 前端开发依赖与离线导入环境 |
+| `dev/cache/`、`dev/tmp/`、`dev/build/` | 开发缓存、临时文件与便携构建工作区 |
 | `dev/verification/` | 独立验证实例、截图和报告 |
 | `dev/maintenance/` | 本机维护脚本和执行记录 |
 | `dev/designs/`、`dev/previews/` | 设计素材及历史截图 |
 | `dev/legacy/` | 退役的词库目录、模型下载缓存与历史临时材料 |
+| `releases/` | 便携发行目录、ZIP 和构建报告 |
 
-开发材料与运行数据分别管理；历史文件的原路径以当时报告为准，整理后的对应位置见维护记录。ComfyUI 的模型、环境与输出由 ComfyUI 管理。
+源码版和便携版使用相同的运行数据职责与相对路径；源码版的启动环境是 data/runtime/venv，便携版的程序与依赖是 data/runtime/pictide。历史报告中的路径反映当时位置，当前映射见 dev/maintenance。ComfyUI 的模型、环境与输出由 ComfyUI 管理。
 
 ## 备份与恢复
 
-1. 停止 Pictide，备份 db、images、workflows 和 history-cleanup.json；同时保存 libraries、models，便于完整离线恢复。需要保留开发材料时另备份 dev。
+1. 停止 Pictide，备份 db、images、workflows 和 history-cleanup.json；同时保存 libraries、models，便于完整离线恢复。需要保留开发材料和发行产物时，另备份根目录 dev、releases。
 2. 数据库包含后端密钥与历史修订，按含密钥文件保管。删除当前后端配置后，历史快照继续保留。
 3. 恢复前保留当前数据备份，再恢复相应文件。跨机器使用时重新准备源码虚拟环境，或使用对应系统的便携包。
 4. 单独恢复工作流时，将 workflows/.backups 中目标版本复制回原工作流文件，并在后端设置中重新选择、保存。

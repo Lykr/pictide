@@ -1,5 +1,7 @@
 # Application data and local worktrees (including backups, images and models).
 data/
+/dev/
+/releases/
 .runtime/
 .worktrees/
 

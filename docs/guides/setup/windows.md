@@ -26,9 +26,9 @@ $env:PICTIDE_PYTHON = 'C:\Path\To\python.exe'
 首次检出源码时，先准备[开发环境要求](../../development.md#首次准备检出目录)中的 Node.js 和 pnpm，再构建前端：
 
 ```powershell
-$projectData = Join-Path (Get-Location) 'data'
-New-Item -ItemType Directory -Path "$projectData\tmp" -Force | Out-Null
-$env:TEMP = "$projectData\tmp"
+$projectDev = Join-Path (Get-Location) 'dev'
+New-Item -ItemType Directory -Path "$projectDev\tmp" -Force | Out-Null
+$env:TEMP = "$projectDev\tmp"
 $env:TMP = $env:TEMP
 Push-Location web
 pnpm install --frozen-lockfile
@@ -46,7 +46,7 @@ Pop-Location
 .\start.cmd -Port 8191 -DataDir 'E:\PictideData'
 ```
 
-开发验证使用独立端口与数据：`.\start.cmd -Port 8191 -DataDir .\data`。数据目录选择规则见[数据位置](../../data-layout.md#数据位置)。
+开发验证使用独立端口与数据：`.\start.cmd -Port 8191 -DataDir .\dev\verification\example\data`。数据目录选择规则见[数据位置](../../data-layout.md#数据位置)。
 
 ## 局域网访问
 
@@ -68,7 +68,7 @@ New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -
 
 ```powershell
 .\data\runtime\venv\Scripts\python.exe -m pip install -r backend/requirements-release.txt
-.\data\runtime\venv\Scripts\python.exe scripts/build_portable.py --source-data-dir ./data --output-dir ./data/dev/releases/windows-portable
+.\data\runtime\venv\Scripts\python.exe scripts/build_portable.py --source-data-dir ./data --output-dir ./releases/windows-portable
 ```
 
 指定的数据目录提供当前所选词库和 MiniLM；输出目录使用新目录。构建完成后使用其中的 Pictide 目录或 ZIP。详情见[发行记录](../../issues/automatic-startup.md)。

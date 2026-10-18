@@ -26,13 +26,13 @@ class DataPathsTests(unittest.TestCase):
             self.assertIs(paths.ensure(), paths)
             self.assertEqual(paths.database, paths.root / "db" / "pictide.sqlite3")
             for child in (paths.database, paths.images, paths.models, paths.workflows, paths.cache, paths.logs,
-                          paths.dev, paths.tmp, paths.runtime):
+                          paths.tmp, paths.runtime):
                 self.assertTrue(child.is_relative_to(paths.root))
             for child in (paths.images, paths.models, paths.workflows, paths.cache, paths.logs, paths.database.parent,
                           paths.tmp, paths.runtime, paths.cache / "python", paths.cache / "pip"):
                 self.assertTrue(child.is_dir())
             self.assertFalse(paths.database.exists())
-            self.assertFalse(paths.dev.exists())
+            self.assertFalse((paths.root / "dev").exists())
             self.assertFalse((paths.root / "prompts").exists())
             self.assertFalse((paths.root / "previews").exists())
             paths.ensure()

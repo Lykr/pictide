@@ -51,6 +51,7 @@
 
 ## 项目与部署历史
 
+- [开发资料与发行产物分离](development-release-directories.md)
 - [数据目录整理](data-directory-organization.md)
 - [开箱即用的便携发行包](automatic-startup.md)
 - [项目独立迁移记录](project-move.md)

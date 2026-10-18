@@ -106,7 +106,7 @@ def copy_licenses(destination):
 def build(source_data_dir, output_dir):
     started = time.perf_counter()
     source_data = DataPaths(source_data_dir)
-    build_paths = DataPaths(ROOT / 'data').configure_runtime()
+    build_paths = DataPaths(ROOT / 'dev/build').configure_runtime()
     output = Path(output_dir).expanduser().resolve()
     if output.exists():
         raise RuntimeError('Choose a new output directory: ' + str(output))
@@ -163,6 +163,7 @@ def build(source_data_dir, output_dir):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-data-dir', required=True)
-    parser.add_argument('--output-dir', required=True)
+    parser.add_argument('--output-dir', default=ROOT / 'releases' / f'pictide-{__version__}-{sys.platform}-{time.strftime("%Y%m%d-%H%M%S")}',
+                        help='New release directory (default: releases/<version-platform-time>).')
     options = parser.parse_args()
     build(options.source_data_dir, options.output_dir)

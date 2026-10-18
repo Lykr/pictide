@@ -1,7 +1,7 @@
-modulesDir: ../data/runtime/frontend/node_modules
-virtualStoreDir: ../data/runtime/frontend/node_modules/.pnpm
-storeDir: ../data/cache/pnpm-store
-cacheDir: ../data/cache/pnpm
+modulesDir: ../dev/runtime/frontend/node_modules
+virtualStoreDir: ../dev/runtime/frontend/node_modules/.pnpm
+storeDir: ../dev/cache/pnpm-store
+cacheDir: ../dev/cache/pnpm
 minimumReleaseAge: 1440
 allowBuilds:
   esbuild: true

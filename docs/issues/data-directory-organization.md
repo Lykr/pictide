@@ -86,3 +86,6 @@ sequenceDiagram
 - 路径、便携资源导出与个人配置保留、词库上传/选择/重启三项冒烟通过；真实 Windows 便携程序通过新数据库路径、平铺模型、离线编码和评分、移动目录及自定义数据目录验证。
 - 新产物位于 data/dev/releases/portable-data-layout-20261019，ZIP 约 147.6 MiB；旧试用包及个人数据保留在 data/dev/releases/portable-compact-20261019。
 - 验证记录位于 data/dev/verification/data-layout-20261019。验证实例已停止，真实 GPU 生图和 Linux/macOS 原生运行未执行。
+
+
+当前目录约定见[开发资料与发行产物分离](development-release-directories.md)：历史 data/dev 下的开发材料现位于根目录 dev，发行包现位于根目录 releases。 旧 portable-compact-20261019 包已按用户确认删除，个人数据保留在 data/backups/old-portable-personal-20261019；当前包为 releases/portable-data-layout-20261019。

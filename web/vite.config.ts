@@ -6,7 +6,7 @@ export default defineConfig({
   base: '/static/ui/',
   plugins: [tailwindcss()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
-  cacheDir: '../data/cache/vite',
+  cacheDir: '../dev/cache/vite',
   build: {
     target: 'es2022',
     outDir: 'dist',

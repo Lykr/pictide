@@ -53,10 +53,6 @@ class DataPaths:
         return self.root / "models"
 
     @property
-    def dev(self):
-        return self.root / "dev"
-
-    @property
     def tmp(self):
         return self.root / "tmp"
 

@@ -34,7 +34,7 @@ cd ../pictide-example
 - [Linux：从源码准备](guides/setup/linux.md#从源码准备)
 - [macOS：从源码准备](guides/setup/macos.md#从源码准备)
 
-`web/dist/` 不提交，首次构建后才能使用页面和静态资源测试。运行数据、依赖、缓存和临时文件放在各自检出目录的 `data/`，现有主目录的构建与运行数据保持原样。
+`web/dist/` 不提交，首次构建后才能使用页面和静态资源测试。运行数据与启动环境放在各自检出目录的 `data/`；开发依赖、缓存、临时文件与验证材料放在根目录 `dev/`。
 
 浏览器验证按各系统页面的「端口与数据目录」步骤使用独立实例。每个并行实例使用不同端口，不共用主实例的 SQLite、词库或图片目录。默认使用模拟后端与中性样例；真实 ComfyUI 接入先只读检查，不为普通回归测试提交 GPU 任务。新启动脚本的 Git 执行位与换行约定见仓库属性；POSIX 启动脚本通过 `exec` 交接应用进程。
 
@@ -42,7 +42,7 @@ cd ../pictide-example
 
 完成当前检出的前端构建后，按本机系统阅读：[Windows](guides/setup/windows.md#构建便携包) · [Linux](guides/setup/linux.md#构建便携包) · [macOS](guides/setup/macos.md#构建便携包)。构建工具为 `scripts/build_portable.py`，仅从指定数据目录导出所选统计词库与编码器所需模型，个人后端、图片、预设与偏好留在本地。
 
-构建与验证材料归入 `data/dev/`，运行环境保留在 `data/runtime/`。输出目录使用新目录，产物包括 Pictide 目录、ZIP 和 build-report.json。默认词库由源数据目录的选择决定；正式发布优先选择精简词库。构建阶段安装 `backend/requirements-release.txt`，用户直接启动已构建产物。
+构建与验证材料归入根目录 `dev/`，发行产物归入根目录 `releases/`，启动环境保留在 `data/runtime/`。省略 --output-dir 时自动在 releases 下按版本、平台与时间创建新目录；也可指定新目录。产物包括 Pictide 目录、ZIP 和 build-report.json。默认词库由源数据目录的选择决定；正式发布优先选择精简词库。构建阶段安装 `backend/requirements-release.txt`，用户直接启动已构建产物。
 
 ## 验证与提交
 
@@ -69,6 +69,6 @@ git merge --ff-only feat/example
 
 ## 版本管理范围
 
-跟踪源码、测试样例、文档、锁文件、图标素材及手工维护的工作流模板。`.gitignore` 排除 `data/`、虚拟环境与依赖、构建产物、缓存与测试报告、日志与临时文件、环境密钥、SQLite 及辅助文件、模型权重和原始 Parquet 数据。保留 `.env.example` / `.env.template`（含分环境示例）及 VS Code 的共享 settings / extensions / tasks / launch 配置，示例中只填占位值；不要按图片、JSON 或锁文件扩展名整体忽略。新增规则不会自动停止跟踪已有文件，调整时用 `git ls-files -ci --exclude-standard` 核对。下载素材按现有脚本恢复，不把 Git 当作用户数据备份。换行由 `.gitattributes` 统一：源码使用 LF，Windows 启动脚本使用 CRLF。
+跟踪源码、测试样例、文档、锁文件、图标素材及手工维护的工作流模板。`.gitignore` 排除 `data/`、`dev/`、`releases/`、虚拟环境与依赖、构建产物、缓存与测试报告、日志与临时文件、环境密钥、SQLite 及辅助文件、模型权重和原始 Parquet 数据。保留 `.env.example` / `.env.template`（含分环境示例）及 VS Code 的共享 settings / extensions / tasks / launch 配置，示例中只填占位值；不要按图片、JSON 或锁文件扩展名整体忽略。新增规则不会自动停止跟踪已有文件，调整时用 `git ls-files -ci --exclude-standard` 核对。下载素材按现有脚本恢复，不把 Git 当作用户数据备份。换行由 `.gitattributes` 统一：源码使用 LF，Windows 启动脚本使用 CRLF。
 
 初始化时保留现有本地文件，并创建 `main` 上的首个源码快照；远程仓库、推送与托管 CI 按需另行配置。

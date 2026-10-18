@@ -31,9 +31,9 @@ PICTIDE_PYTHON=/path/to/python3 bash start.sh
 首次检出源码时，先准备[开发环境要求](../../development.md#首次准备检出目录)中的 Node.js 和 pnpm，再构建前端：
 
 ```bash
-project_data="$PWD/data"
-mkdir -p "$project_data/tmp"
-export TMPDIR="$project_data/tmp" TEMP="$project_data/tmp" TMP="$project_data/tmp"
+project_dev="$PWD/dev"
+mkdir -p "$project_dev/tmp"
+export TMPDIR="$project_dev/tmp" TEMP="$project_dev/tmp" TMP="$project_dev/tmp"
 (cd web && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run build)
 bash start.sh
 ```
@@ -46,7 +46,7 @@ bash start.sh
 bash start.sh --port 8191 --data-dir "$HOME/PictideData"
 ```
 
-开发验证使用独立端口与数据：`bash start.sh --port 8191 --data-dir ./data`。`bash start.sh --help` 查看参数；数据目录选择规则见[数据位置](../../data-layout.md#数据位置)。
+开发验证使用独立端口与数据：`bash start.sh --port 8191 --data-dir ./dev/verification/example/data`。`bash start.sh --help` 查看参数；数据目录选择规则见[数据位置](../../data-layout.md#数据位置)。
 
 ## 局域网访问
 
@@ -62,7 +62,7 @@ bash start.sh --lan
 
 ```bash
 ./data/runtime/venv/bin/python -m pip install -r backend/requirements-release.txt
-./data/runtime/venv/bin/python scripts/build_portable.py --source-data-dir ./data --output-dir ./data/dev/releases/linux-portable
+./data/runtime/venv/bin/python scripts/build_portable.py --source-data-dir ./data --output-dir ./releases/linux-portable
 ```
 
 指定的数据目录提供当前所选词库和 MiniLM；输出目录使用新目录。构建完成后使用其中的 Pictide 目录或 ZIP。详情见[发行记录](../../issues/automatic-startup.md)。
