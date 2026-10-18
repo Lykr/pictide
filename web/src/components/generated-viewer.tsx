@@ -160,7 +160,7 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
         <Popover open={infoOpen && !immersive} onOpenChange={setInfoOpen}>
           <PopoverTrigger asChild><IconButton icon={Info} label={t("图片信息")} /></PopoverTrigger>
           <PopoverContent className="generated-viewer-info image-details-popover" align="end" side="top" aria-label={t("图片信息")}>
-            <ImagePromptDetails key={item.id} seed={item.seed_applied === false ? t("使用工作流种子设置") : item.seed ?? "—"} positive={item.positive || ""} negative={item.negative || ""}
+            <ImagePromptDetails key={item.id} imageId={item.id} active={infoOpen && !immersive} seed={item.seed_applied === false ? t("使用工作流种子设置") : item.seed ?? "—"} positive={item.positive || ""} negative={item.negative || ""}
               actions={<Button asChild variant="ghost" size="icon-sm"><a href={artifactPath(item, "prompts")} download aria-label={t("下载提示词 JSON")} data-tooltip={t("下载提示词 JSON")}><Download aria-hidden="true" /></a></Button>} />
           </PopoverContent>
         </Popover>
