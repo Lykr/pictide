@@ -52,7 +52,7 @@ export function RoamAnchors() {
       <CollapsibleTrigger asChild>
         <Button variant="ghost" size="sm" className="group min-w-0 justify-start">
           <ChevronDown className="size-4 transition-transform group-data-[state=closed]:-rotate-90" />
-          {t("画面锚点")}<Badge variant="secondary">{pins.length}</Badge>
+          {t("锚点")}<Badge variant="secondary">{pins.length}</Badge>
         </Button>
       </CollapsibleTrigger>
       <HelpTip text={locked ? t("停泊保持整组提示词，切换漫游方式后可编辑锚点。") : t("点选正向词，让后续图片保留这个元素；修改后清空旧预取。")} />
