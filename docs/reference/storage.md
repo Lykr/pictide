@@ -83,8 +83,10 @@ App 的单个后台学习任务处理未应用的反馈记录，启动及后续�
 
 ## 候选数据
 
+词库 dataset.min_cooccurrence 记录加工时的关系次数下限，随导入、上传和发行导出保留；编排与候选生成以它作为最低共现次数下限。基础库为 10，当前精简库为 1000。
+
 `libraries/*.sqlite3` 中 tags 保存 `id,name,post_count`，correlations 保存无序标签对的 `pmi,count`，dataset 保存来源/状态。个人配置独立存放在 `db/candidate.sqlite3`：presets 保存可编辑预设，library_selection 保存当前词库文件名。上传仅导入统计表，个人预设始终沿用本地记录。没有重复保存显示名称或类别列；显示下划线原名，推荐/生图调用时转换为空格文本。
 
 普通标签只保留 Danbooru general 类别且频次至少 100 的项，并加入由图片 rating 转成的 general / sensitive / questionable / explicit 四种评级标签。当前试用成品库保留共现至少 1,000 次的词对，基础离线导入保留至少 10 次。裁剪保留标签、频次、PMI 和预设原值，详见[极限裁剪记录](../issues/candidate-pair1000.md)。缺记录表示统计未保留，具体次数未知。PMI 采用以 2 为底的对数。
 
-原始 Parquet 位于 `datasets/danbooru-2026/raw/`，下载校验另存 download.sqlite3；导入去重 ID、临时计数和进度只在离线 SQLite 中，成品库不保留。更新统计库不重写主库历史任务或反馈。具体处理见[PMI 设计](../issues/candidate-pmi.md)和[共现候选记录](../issues/cooccurrence-candidates-v1.md)。
+原始 Parquet 位于项目根目录 `dev/datasets/danbooru-2026/raw/`，下载校验另存 download.sqlite3；导入去重 ID、临时计数和进度只在离线 SQLite 中，成品库不保留。更新统计库不重写主库历史任务或反馈。具体处理见[PMI 设计](../issues/candidate-pmi.md)和[共现候选记录](../issues/cooccurrence-candidates-v1.md)。

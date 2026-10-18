@@ -15,12 +15,12 @@ from backend.host import APPLICATION, create_app
 from backend.store.candidate import SQLiteCandidateStore
 
 
-def vocabulary(path, first="blue_sky", second="garden"):
+def vocabulary(path, first="blue_sky", second="garden", minimum=10):
     store = SQLiteCandidateStore(path)
     with store.connect() as db:
         db.executemany("INSERT INTO tags VALUES(?,?,5000)", [(1, first), (2, second)])
         db.execute("INSERT INTO correlations VALUES(1,2,0.6780719051126377,4000)")
-        db.execute("INSERT INTO dataset VALUES(1,'neutral library smoke','v1',10000,'ready')")
+        db.execute("INSERT INTO dataset VALUES(1,'neutral library smoke','v1',10000,'ready',?)", (minimum,))
         db.execute("INSERT INTO presets VALUES('foreign','foreign','{}')")
     return path
 
@@ -96,6 +96,54 @@ class LibrarySmoke(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved["document"], document)
         jobs = await (await self.client.get("/api/jobs")).json()
         self.assertEqual(jobs["jobs"], [])
+
+    async def test_library_floor_survives_upload_and_applies_without_rewriting_other_presets(self):
+        response = await self.upload(self.first.read_bytes(), "full.sqlite3")
+        self.assertEqual(response.status, 201)
+        await self.select("full.sqlite3")
+        document = dict(base_positive=["custom anchor"], base_negative=[], blocked_keywords=[],
+                        min_tags=3, max_tags=3, pmi_threshold=0, min_cooccurrence=10, change_budget=2)
+        response = await self.client.post("/api/candidate/presets", json={"name": "personal", "document": document})
+        original = await response.json()
+        high = vocabulary(self.root / "compact.sqlite3", minimum=1000)
+        response = await self.upload(gzip.compress(high.read_bytes()), "compact.sqlite3.gz")
+        self.assertEqual(response.status, 201)
+        await self.select("compact.sqlite3")
+        info = await (await self.client.get("/api/candidate/dataset")).json()
+        self.assertEqual(info["min_cooccurrence"], 1000)
+        with closing(sqlite3.connect(self.data / "libraries/compact.sqlite3")) as db:
+            self.assertEqual(db.execute("SELECT min_cooccurrence FROM dataset").fetchone()[0], 1000)
+        unchanged = await (await self.client.get("/api/candidate/presets/" + original["id"])).json()
+        self.assertEqual(unchanged["document"], document)
+
+        service = self.client.server.app[APPLICATION].candidates
+        with patch.object(service.store, "qualified_relations", wraps=service.store.qualified_relations) as relations:
+            response = await self.client.post("/api/candidate/generate",
+                                             json={"preset_id": original["id"], "mode": "fixed_seed", "seed": 7})
+            self.assertEqual(response.status, 200, await response.text())
+            self.assertTrue(relations.call_args_list)
+            self.assertTrue(all(call.args[2] == 1000 for call in relations.call_args_list))
+        # Roam's complete-combination pool shares the same preparation and effective floor.
+        with patch.object(service.store, "qualified_relations", wraps=service.store.qualified_relations) as relations:
+            candidates = service.provider.generate({"preset_id": original["id"], "mode": "fixed_seed", "seed": 7},
+                                                   {"count": 2})
+            self.assertEqual(len(candidates), 2)
+            self.assertTrue(relations.call_args_list)
+            self.assertTrue(all(call.args[2] == 1000 for call in relations.call_args_list))
+
+        response = await self.client.post("/api/candidate/presets",
+                                         json={"id": original["id"], "name": "personal", "document": document})
+        self.assertEqual((await response.json())["document"]["min_cooccurrence"], 1000)
+        higher = dict(document, min_cooccurrence=1500)
+        response = await self.client.post("/api/candidate/presets",
+                                         json={"id": original["id"], "name": "personal", "document": higher})
+        self.assertEqual((await response.json())["document"]["min_cooccurrence"], 1500)
+        await self.select("full.sqlite3")
+        info = await (await self.client.get("/api/candidate/dataset")).json()
+        self.assertEqual(info["min_cooccurrence"], 10)
+        response = await self.client.post("/api/candidate/presets",
+                                         json={"id": original["id"], "name": "personal", "document": higher})
+        self.assertEqual((await response.json())["document"]["min_cooccurrence"], 1500)
 
     async def test_invalid_upload_and_path_keep_active_library(self):
         response = await self.upload(self.first.read_bytes(), "active.sqlite3")

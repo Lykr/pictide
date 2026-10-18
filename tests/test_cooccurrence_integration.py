@@ -28,7 +28,7 @@ class CooccurrenceIntegrationSmoke(unittest.IsolatedAsyncioTestCase):
                 names = ["illustration", "garden", "sunlight", "standing", "smiling", "blue_sky"]
                 db.executemany("INSERT INTO tags VALUES(?,?,?)", [(i+1,name,100) for i,name in enumerate(names)])
                 db.executemany("INSERT INTO correlations VALUES(?,?,?,?)", [(a,b,1.0,100) for a,b in itertools.combinations(range(1,7),2)])
-                db.execute("INSERT INTO dataset VALUES(1,'neutral smoke','smoke-v1',100,'ready')")
+                db.execute("INSERT INTO dataset VALUES(1,'neutral smoke','smoke-v1',100,'ready',1)")
             backend = FakeBackend()
             backend.pending = True
             (root / "static").mkdir()

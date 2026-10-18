@@ -14,7 +14,7 @@
 
 也可以把 `.sqlite3` 文件放进当前数据目录的 `libraries/`（默认 `data/libraries/`），点击刷新按钮，再从下拉列表选择。多个版本可以并存，选中立即生效，重启后记住选择；同名上传自动加编号。
 
-切换后个人预设、固定词和编辑草稿保留。固定词按新词库重新识别，匹配到的参与共现统计，自定义词继续输出。已有任务和预取图片保留，新建候选使用所选词库。
+切换后个人预设、固定词和编辑草稿保留。词库携带最低共现次数：编排输入框随所选词库设置下限，当前草稿不足时自动提高，较高值保留；保存后写入预设。实际生成也应用词库下限。固定词按新词库重新识别，匹配到的参与共现统计，自定义词继续输出。已有任务和预取图片保留，新建候选使用所选词库。
 
 上传接受 Pictide 成品统计库（tags、correlations、dataset），单个文件及解压后各支持最大 2 GiB；原始 Parquet 的处理见[数据准备](#数据准备)。词库选择的接口与实现见[需求记录](../issues/library-selection.md)。
 
@@ -44,4 +44,4 @@
 
 ## 数据准备
 
-离线下载和导入使用 `backend.candidate.download` 与 `backend.candidate.importer`，运行模块的 `--help` 查看命令；源 Parquet、中间 SQLite 和成品库均放在 data 目录内。成品数据口径与文件布局见[存储参考](../reference/storage.md#候选数据)，设计与验证见[共现候选记录](../issues/cooccurrence-candidates-v1.md#离线导入)。处理完成后，在词库页面上传成品 SQLite，或复制到 libraries 目录后刷新选择，即可用于共现预览和漫游。
+离线下载和导入使用 `backend.candidate.download` 与 `backend.candidate.importer`，运行模块的 `--help` 查看命令；源 Parquet、中间 SQLite 和待导入成品库放在 dev/datasets，运行词库放在 data/libraries。成品数据口径与文件布局见[存储参考](../reference/storage.md#候选数据)，设计与验证见[共现候选记录](../issues/cooccurrence-candidates-v1.md#离线导入)。处理完成后，在词库页面上传成品 SQLite，或复制到 libraries 目录后刷新选择，即可用于共现预览和漫游。

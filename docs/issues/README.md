@@ -5,7 +5,7 @@
 ## 候选与提示词
 
 - [词库上传与选择](library-selection.md)
-- [词库最低共现次数约束（待确认）](library-cooccurrence-floor.md)
+- [词库最低共现次数约束](library-cooccurrence-floor.md)
 - [共现提示词候选](cooccurrence-candidates-v1.md)
 - [PMI 候选数据与生成调整](candidate-pmi.md)
 - [共现 ≥1,000 次的极限裁剪](candidate-pair1000.md)

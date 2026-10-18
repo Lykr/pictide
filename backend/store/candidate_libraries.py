@@ -66,11 +66,13 @@ class CandidateLibraries:
                     raise CandidateError("请选择包含标签、关系和来源统计的词库文件。")
                 db.execute("SELECT id,name,post_count FROM tags LIMIT 1")
                 db.execute("SELECT tag_a,tag_b,pmi,count FROM correlations LIMIT 1")
-                source = db.execute("SELECT source,revision,post_count,status FROM dataset WHERE id=1").fetchone()
+                source = db.execute("SELECT source,revision,post_count,status,min_cooccurrence FROM dataset WHERE id=1").fetchone()
                 tags = db.execute("SELECT count(*) FROM tags").fetchone()[0]
                 relations = db.execute("SELECT count(*) FROM correlations").fetchone()[0]
                 if not source or source[3] != "ready" or not tags or not isinstance(source[2], int) or source[2] <= 0:
                     raise CandidateError("词库需要有效的标签和已就绪的来源统计。")
+                if type(source[4]) is not int or not 1 <= source[4] <= 2**53 - 1:
+                    raise CandidateError("词库最低共现次数须为正整数。")
                 if integrity and db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                     raise CandidateError("词库完整性检查失败。")
         except sqlite3.Error as error:
@@ -153,7 +155,7 @@ class CandidateLibraries:
                     with db:
                         db.execute("INSERT INTO tags SELECT id,name,post_count FROM incoming.tags")
                         db.execute("INSERT INTO correlations SELECT tag_a,tag_b,pmi,count FROM incoming.correlations")
-                        db.execute("INSERT INTO dataset SELECT id,source,revision,post_count,status FROM incoming.dataset WHERE id=1")
+                        db.execute("INSERT INTO dataset SELECT id,source,revision,post_count,status,min_cooccurrence FROM incoming.dataset WHERE id=1")
                     db.execute("ANALYZE main")
                 destination = self.directory / name
                 index = 2

@@ -64,7 +64,7 @@ class CandidateService:
         self._sequence_cache = OrderedDict()
         self._sequence_lock = threading.RLock()
         if not self.store.list_presets():
-            self.store.save_preset("default", "默认", DEFAULT_DOCUMENT)
+            self.store.save_preset("default", "默认", self._with_library_floor(DEFAULT_DOCUMENT))
         from .provider import CooccurrenceCandidateProvider
         self.provider = CooccurrenceCandidateProvider(self)
 
@@ -110,11 +110,15 @@ class CandidateService:
         return dict(preset_base_positive=[term["text"] for term in base],
                     pinned_positive=[term["text"] for term in pins if term["id"] not in base_ids])
 
+    def _with_library_floor(self, document):
+        return {**document, "min_cooccurrence": max(document["min_cooccurrence"],
+                                                   self.dataset_status()["min_cooccurrence"])}
+
     def save_preset(self, payload):
         name = payload.get("name", "").strip()
         if not name:
             raise CandidateError("请填写预设名称 name")
-        document = validate_document(payload["document"])
+        document = self._with_library_floor(validate_document(payload["document"]))
         return self.store.save_preset(payload.get("id"), name, document)
 
     def delete_preset(self, preset_id):
@@ -273,6 +277,7 @@ class CandidateService:
         dataset = self.dataset_status()
         if dataset["status"] != "ready":
             raise CandidateError("共现数据尚未导入完成，请等待 dataset 状态为 ready 后再生成")
+        document["min_cooccurrence"] = max(document["min_cooccurrence"], dataset["min_cooccurrence"])
         source_id = "danbooru:pmi-v2:general+ratings:min100:pair10:" + (dataset.get("revision") or dataset.get("source") or "local")
         fixed, anchors = self._fixed(document["base_positive"], "positive", source_id)
         negative, _ = self._fixed(document["base_negative"], "negative", source_id)

@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS correlations(
  PRIMARY KEY(tag_a,tag_b)) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS correlations_b ON correlations(tag_b,tag_a);
 CREATE TABLE IF NOT EXISTS dataset(
- id INTEGER PRIMARY KEY CHECK(id=1), source TEXT, revision TEXT, post_count INTEGER, status TEXT);
+ id INTEGER PRIMARY KEY CHECK(id=1), source TEXT, revision TEXT, post_count INTEGER, status TEXT,
+ min_cooccurrence INTEGER NOT NULL CHECK(min_cooccurrence >= 1));
 """
 
 
@@ -161,5 +162,5 @@ class SQLiteCandidateStore:
         with self.connect_library() as db:
             row = db.execute("SELECT * FROM dataset WHERE id=1").fetchone()
             count = db.execute("SELECT count(*) FROM tags").fetchone()[0]
-        return {**(dict(row) if row else {"status": "empty", "source": "", "revision": "", "post_count": 0}),
+        return {**(dict(row) if row else {"status": "empty", "source": "", "revision": "", "post_count": 0, "min_cooccurrence": 1}),
                 "tag_count": count}

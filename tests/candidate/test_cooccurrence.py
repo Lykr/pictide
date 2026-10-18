@@ -17,7 +17,7 @@ class CooccurrenceSmoke(unittest.TestCase):
         self.path = Path(self.directory.name)/"candidate.sqlite3"
         self.service = CandidateService(SQLiteCandidateStore(self.path))
         with closing(sqlite3.connect(self.path)) as db, db:
-            db.execute("INSERT INTO dataset VALUES(1,'neutral-fixture','v1',100,'ready')")
+            db.execute("INSERT INTO dataset VALUES(1,'neutral-fixture','v1',100,'ready',1)")
             db.executemany("INSERT INTO tags VALUES(?,?,?)", [
                 (1,"blue_sky",100),
                 (2,"green_grass",100),

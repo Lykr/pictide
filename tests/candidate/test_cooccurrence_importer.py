@@ -56,6 +56,7 @@ class ImportSmoke(unittest.TestCase):
             root = Path(folder); files = self.make_files(root); target = root / 'candidate.sqlite3'
             result = import_parquet(files, target, block_size=2, progress=lambda _: None)
             self.assertEqual(result['post_count'], 500)
+            self.assertEqual(result['min_cooccurrence'], 10)
             tags, pairs, status = self.inspect(target)
             self.assertEqual(tags, [('black_hair', 200), ('every_fifth', 100), ('exact_100', 100), ('explicit', 497), ('general', 1), ('nine_overlap', 100), ('questionable', 1), ('sensitive', 1), ('standing', 200)])
             self.assertEqual(status, (500, 'ready'))

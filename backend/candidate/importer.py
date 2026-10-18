@@ -28,7 +28,8 @@ CREATE TABLE correlations (
 ) WITHOUT ROWID;
 CREATE TABLE dataset (
  id INTEGER PRIMARY KEY CHECK(id=1), source TEXT, revision TEXT,
- post_count INTEGER, status TEXT
+ post_count INTEGER, status TEXT,
+ min_cooccurrence INTEGER NOT NULL CHECK(min_cooccurrence >= 1)
 );
 """
 STATE_SCHEMA = """
@@ -54,8 +55,8 @@ def _post_tags(text, rating):
 
 
 def _summary(db):
-    result = dict(zip(("source", "revision", "post_count", "status"),
-                      db.execute("SELECT source,revision,post_count,status FROM dataset WHERE id=1").fetchone()))
+    result = dict(zip(("source", "revision", "post_count", "status", "min_cooccurrence"),
+                      db.execute("SELECT source,revision,post_count,status,min_cooccurrence FROM dataset WHERE id=1").fetchone()))
     result["tag_count"] = db.execute("SELECT count(*) FROM tags").fetchone()[0]
     result["pair_count"] = db.execute("SELECT count(*) FROM correlations").fetchone()[0]
     return result
@@ -181,7 +182,7 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
     try:
         output.executescript(SCHEMA)
         output.executemany("INSERT INTO tags VALUES(?,?,?)", ((index + 1, name, count) for index, (name, count) in enumerate(tags)))
-        output.execute("INSERT INTO dataset VALUES(1,?,?,?,'importing')", (source, revision, n_posts))
+        output.execute("INSERT INTO dataset VALUES(1,?,?,?,'importing',?)", (source, revision, n_posts, MIN_PAIR_COUNT))
         output.commit()
         output.execute("ATTACH DATABASE ? AS intermediate", (str(state_path),))
         with output:

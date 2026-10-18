@@ -17,7 +17,7 @@ class BlockedKeywordsHttpSmoke(unittest.IsolatedAsyncioTestCase):
                 with store.connect() as db:
                     db.executemany("INSERT INTO tags VALUES(?,?,?)",[(1,"blue_sky",100),(2,"soft_light",100),(3,"green_grass",100)])
                     db.executemany("INSERT INTO correlations VALUES(?,?,?,?)",[(1,2,1,100),(1,3,1,100),(2,3,1,100)])
-                    db.execute("INSERT INTO dataset VALUES(1,'neutral','blocked-smoke',100,'ready')")
+                    db.execute("INSERT INTO dataset VALUES(1,'neutral','blocked-smoke',100,'ready',1)")
                 document = dict(base_positive=["blue sky"],base_negative=["blurry"],min_tags=3,max_tags=3,
                                 blocked_keywords=[" LIGHT ","sky","light"," ",""])
                 async with TestClient(TestServer(app)) as client:

@@ -10,14 +10,14 @@
 | POST | `/api/candidate/library` | multipart/form-data，字段 `file`，`.sqlite3` 或 `.sqlite3.gz` | 201，`{filename,tag_count,relation_count,bytes}` |
 | PUT | `/api/candidate/library` | JSON `{filename}` | `{selected}`，立即使用 |
 
-文件放在所选数据目录的 `libraries/`。GET 刷新目录和所选文件状态；有效文件需要 tags、correlations、dataset 表，来源为 ready。上传和 gzip 解压各支持最大 2 GiB，同名自动编号，仅复制统计表。页面在上传成功后调用 PUT 自动选用。选择保存到个人配置库，已有预设、任务和预取保留，状态变化复用 candidate 事件。详情见[词库管理](../../issues/library-selection.md)。
+文件放在所选数据目录的 `libraries/`。GET 刷新目录和所选文件状态；有效文件需要 tags、correlations、dataset 表，来源为 ready，dataset.min_cooccurrence 是词库保留关系的正整数下限。上传和 gzip 解压各支持最大 2 GiB，同名自动编号，仅复制统计表。页面在上传成功后调用 PUT 自动选用。选择保存到个人配置库，已有预设、任务和预取保留，状态变化复用 candidate 事件。详情见[词库管理](../../issues/library-selection.md)。
 
 ## 候选词库、预设与预览
 
 | 方法 | 路径 | 请求 | 响应 |
 | --- | --- | --- | --- |
 | GET | `/api/candidate/tags` | `query`，`page=1`，`page_size=15`（1–200） | `{tags:[{id,name,post_count}],total,page,page_size}` |
-| GET | `/api/candidate/dataset` | 无 | 数据状态、来源、修订、图片总数和 `tag_count` |
+| GET | `/api/candidate/dataset` | 无 | 数据状态、来源、修订、图片总数、`tag_count` 和词库下限 `min_cooccurrence` |
 | GET | `/api/candidate/presets` | 无 | `{presets:[{id,name}]}` |
 | GET | `/api/candidate/presets/{id}` | 无 | `{id,name,document}` |
 | POST | `/api/candidate/presets` | `{name,document,id?}` | 保存后的 `{id,name,document}` |
@@ -27,7 +27,7 @@
 
 词库只读，无添加、编辑、删除词库词项的 HTTP 接口。原名保留下划线，例如 black_hair；搜索支持空格等价匹配，按词频降序、同频名称排序。候选最终输出使用逗号分隔、空格连接词。
 
-预设 POST 省略 id 创建，提供已有 id 更新。预设是可编辑的固定词和共现参数，不修改只读词库。
+预设 POST 省略 id 创建，提供已有 id 更新。预设是可编辑的固定词和共现参数，不修改只读词库。保存与生成均使用 max(预设最低共现次数, 当前词库下限)；切换词库保留已存预设，页面只自动提高不足的草稿值，保存才写入。
 
 ### 预设 document
 
@@ -37,7 +37,7 @@
 | `min_tags` | 整数 1–1000 | 10 |
 | `max_tags` | 整数 min_tags–1000 | 30 |
 | `pmi_threshold` | 有限数值 | 0 |
-| `min_cooccurrence` | 正整数，最大安全整数 | 10 |
+| `min_cooccurrence` | 正整数，最大安全整数；有效值至少为当前词库下限 | max(10, 词库下限) |
 | `change_budget` | 整数 0–2000 | 2 |
 | `blocked_keywords` | 关键词字符串数组 | `[]` |
 

@@ -24,7 +24,7 @@ class RoamModesSmoke(unittest.IsolatedAsyncioTestCase):
             names = ["illustration", "garden", "sunlight", "night", "blue_sky"]
             db.executemany("INSERT INTO tags VALUES(?,?,?)", [(i+1, name, 100) for i, name in enumerate(names)])
             db.executemany("INSERT INTO correlations VALUES(?,?,?,?)", [(a,b,1,100) for a,b in itertools.combinations(range(1,6),2)])
-            db.execute("INSERT INTO dataset VALUES(1,'neutral','smoke-v1',100,'ready')")
+            db.execute("INSERT INTO dataset VALUES(1,'neutral','smoke-v1',100,'ready',1)")
         await self.open_app()
         self.app.storage.save_backend(dict(configuration(), id="local"))
         self.app.candidates.save_preset(dict(id="neutral", name="Neutral", document=dict(
