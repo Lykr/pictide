@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { GripVertical, Check, ChevronRight, Settings2, ChevronsUpDown, Copy, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react";
+import { GripVertical, Check, ChevronRight, Settings2, ChevronsUpDown, Copy, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Textarea } from "./components/ui/textarea";
@@ -21,6 +21,8 @@ import "./styles/theme.css";
 import "./styles/editor.css";
 
 type Tag = { id: number; name: string; post_count: number };
+type Library = { filename: string; tag_count: number; relation_count: number; bytes: number };
+type LibraryListing = { selected: string; libraries: Library[] };
 type TagPage = { tags: Tag[]; total: number; page: number; page_size: number };
 type PresetDocument = { base_positive: string[]; base_negative: string[]; blocked_keywords: string[]; min_tags: number; max_tags: number; pmi_threshold: number; min_cooccurrence: number; change_budget: number };
 type Preset = { id: string; name: string; document: PresetDocument };
@@ -139,6 +141,11 @@ export function EditorWorkspace() {
   const [loaded, setLoaded] = useState(false);
   const [notice, setNotice] = useState("");
   const [success, setSuccess] = useState(false);
+  const [library, setLibrary] = useState<LibraryListing>({ selected: "", libraries: [] });
+  const [libraryAction, setLibraryAction] = useState("");
+  const [libraryError, setLibraryError] = useState("");
+  const [libraryRevision, setLibraryRevision] = useState(0);
+  const libraryInput = useRef<HTMLInputElement>(null);
   const [dataset, setDataset] = useState<Record<string, unknown>>({});
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -179,6 +186,34 @@ export function EditorWorkspace() {
       .then(data => { setTags(data); setTagError(""); }).catch(error => { if (!abort.signal.aborted) setTagError(message(error)); }).finally(() => { if (!abort.signal.aborted) setTagLoading(false); }), 180);
     return () => { clearTimeout(timer); abort.abort(); };
   }, [query, page, refresh]);
+  useEffect(() => {
+    const abort = new AbortController();
+    api<LibraryListing>("/api/candidate/library", { signal: abort.signal }).then(setLibrary)
+      .catch(error => { if (!abort.signal.aborted) setLibraryError(message(error)); });
+    return () => abort.abort();
+  }, []);
+  const refreshLibrary = async () => {
+    const [listing, info] = await Promise.all([
+      api<LibraryListing>("/api/candidate/library"), api<Record<string, unknown>>("/api/candidate/dataset"),
+    ]);
+    setLibrary(listing); setDataset(info); setPage(1); setTags({ tags: [], total: 0, page: 1, page_size: DEFAULT_PAGE_SIZE });
+    setRefresh(value => value + 1); setLibraryRevision(value => value + 1); setResult(null);
+  };
+  const libraryOperation = async (action: string, filename?: string, file?: File) => {
+    setBusy(true); setLibraryAction(action); setLibraryError("");
+    try {
+      if (file) {
+        const body = new FormData(); body.append("file", file);
+        const response = await fetch("/api/candidate/library", { method: "POST", body });
+        const data = await response.json();
+        if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : data.error?.message || tr`请求失败（${response.status}）`);
+        filename = (data as Library).filename;
+      }
+      if (filename) await api("/api/candidate/library", { method: "PUT", body: JSON.stringify({ filename }) });
+      await refreshLibrary();
+    } catch (error) { setLibraryError(message(error)); }
+    finally { setBusy(false); setLibraryAction(""); }
+  };
   const update = <K extends keyof PresetDocument>(key: K, value: PresetDocument[K]) => { setPreset(current => ({ ...current, document: { ...current.document, [key]: value } })); setSuccess(false); };
   const discard = async () => !dirty || await confirmAction(t("当前预设有未保存的修改，继续会放弃这些修改。"));
   const selectPreset = async (id: string) => {
@@ -243,22 +278,41 @@ export function EditorWorkspace() {
     {notice && <div className="notice error" role="alert">{notice}</div>}
     <main>
       {tab === "library" ? <section className="cooc-library">
-        <div className="cooc-library-filters"><Input aria-label={t("搜索词库标签")} placeholder={t("搜索标签")} value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} /><IconButton icon={RefreshCw} label={t("刷新词库")} onClick={() => setRefresh(value => value + 1)} disabled={tagLoading} /><span className="text-xs text-muted-foreground" data-tooltip={t("词库只读：普通标签保留出现至少 100 次的项，另含四个图片评级标签。")}>{t("只读")}</span></div>
+        <div className="cooc-library-filters">
+          <div className="cooc-library-selection">
+            <Select value={library.selected || undefined} onValueChange={filename => void libraryOperation("select", filename)} disabled={busy || !library.libraries.length}>
+              <SelectTrigger aria-label={t("当前词库")}><SelectValue placeholder={t("选择词库")} /></SelectTrigger>
+              <SelectContent>{library.libraries.map(item => <SelectItem key={item.filename} value={item.filename}>{item.filename}</SelectItem>)}</SelectContent>
+            </Select>
+            <HelpTip text={t("上传词库文件，或放入 data/libraries/ 后刷新选择。支持 .sqlite3 和 .sqlite3.gz，选中立即生效。")} />
+          </div>
+          <Input aria-label={t("搜索词库标签")} placeholder={t("搜索标签")} value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} />
+          <div className="cooc-library-actions">
+            <input ref={libraryInput} type="file" hidden accept=".sqlite3,.sqlite3.gz" aria-label={t("选择词库文件")} onChange={event => {
+              const file = event.target.files?.[0]; event.target.value = "";
+              if (file) void libraryOperation("upload", undefined, file);
+            }} />
+            <IconButton icon={libraryAction === "upload" ? LoaderCircle : Upload} className={libraryAction === "upload" ? "[&>svg]:animate-spin" : ""} label={libraryAction === "upload" ? t("正在上传词库") : t("上传词库")} onClick={() => libraryInput.current?.click()} disabled={busy} />
+            <IconButton icon={libraryAction === "refresh" ? LoaderCircle : RefreshCw} className={libraryAction === "refresh" ? "[&>svg]:animate-spin" : ""} label={t("刷新词库")} onClick={() => void libraryOperation("refresh")} disabled={busy || tagLoading} />
+          </div>
+        </div>
+        {libraryAction === "select" && <p className="text-xs text-muted-foreground" role="status">{t("正在切换词库…")}</p>}
+        {libraryError && <p className="cooc-error" role="alert">{libraryError}</p>}
         {tagError && <p className="cooc-error" role="alert">{tagError}</p>}
-        <div className="cooc-tags" aria-busy={tagLoading}>{tagLoading ? <div className="cooc-empty" role="status"><LoaderCircle className="size-4 animate-spin" />{t("加载中")}</div> : tags.tags.length ? tags.tags.map(tag => <div className="cooc-tag" key={tag.id}><span className="min-w-0 break-words" data-tooltip={["general", "sensitive", "questionable", "explicit"].includes(tag.name) ? t("图片评级标签，可添加为固定正向词以参与共现筛选。") : undefined}>{tag.name}</span><span className="cooc-frequency" data-tooltip={t("数据集中包含此标签的图片数量")}>{tag.post_count.toLocaleString(locale())}</span></div>) : <p className="cooc-empty">{query ? t("没有匹配标签") : t("词库尚无标签，请先导入数据。")}</p>}</div>
+        <div className="cooc-tags" aria-busy={tagLoading}>{tagLoading ? <div className="cooc-empty" role="status"><LoaderCircle className="size-4 animate-spin" />{t("加载中")}</div> : tags.tags.length ? tags.tags.map(tag => <div className="cooc-tag" key={tag.id}><span className="min-w-0 break-words" data-tooltip={["general", "sensitive", "questionable", "explicit"].includes(tag.name) ? t("图片评级标签，可添加为固定正向词以参与共现筛选。") : undefined}>{tag.name}</span><span className="cooc-frequency" data-tooltip={t("数据集中包含此标签的图片数量")}>{tag.post_count.toLocaleString(locale())}</span></div>) : <p className="cooc-empty">{query ? t("没有匹配标签") : t("上传或选择词库，开始浏览标签。")}</p>}</div>
         <PageControls label={t("词库")} page={page} totalPages={pages} loading={tagLoading} onPageChange={setPage} />
       </section> : <>
         <div className="cooc-preset-toolbar"><Choice label={t("生成预设")} value={preset.id || "__new"} onChange={selectPreset} disabled={busy} options={[...presets.map(item => ({ value: item.id, text: item.name })), ...(!preset.id ? [{ value: "__new", text: t("未保存预设") }] : [])]} /><IconButton icon={Plus} label={t("新建预设")} disabled={busy} onClick={() => create()} /><IconButton icon={Copy} label={t("复制预设")} disabled={busy || !loaded} onClick={() => create(true)} /><IconButton icon={Trash2} label={t("删除预设")} disabled={busy || !preset.id} onClick={remove} /><span className="spacer" /><span className="text-xs text-muted-foreground" role="status">{loaded && dirty ? t("未保存") : ""}</span><Button disabled={busy || !dirty} onClick={save} data-tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")}>{busy ? <LoaderCircle className="animate-spin" /> : success ? <Check /> : <Save />}{success ? t("已保存") : t("保存")}</Button></div>
         {tab === "settings" ? <form className="cooc-settings" onSubmit={event => { event.preventDefault(); save(); }}>
           <Field label={t("预设名称")}><Input aria-label={t("预设名称")} value={preset.name} disabled={busy} required onChange={event => { setPreset(current => ({ ...current, name: event.target.value })); setSuccess(false); }} /></Field>
           <section className="cooc-positive-settings" aria-label={t("正向生成")}>
-            <FixedTags positive label={t("固定正向词")} values={preset.document.base_positive} disabled={busy} onChange={values => update("base_positive", values)} />
+            <FixedTags key={`positive:${libraryRevision}`} positive label={t("固定正向词")} values={preset.document.base_positive} disabled={busy} onChange={values => update("base_positive", values)} />
             <div className="cooc-section-heading"><h2>{t("共现扩展")}</h2><HelpTip text={t("根据标签共同出现的情况扩展正向提示词。统计相关不保证画面协调。")} /></div>
             <div className="cooc-number-grid">
               {numberField("min_tags", t("标签数量下限"), t("在上下限之间等概率抽取目标数量；无法达到时返回已生成的内容。"), 1, 1000)}
               {numberField("max_tags", t("标签数量上限"), t("数量包含固定正向词。固定词超过下限时，以固定词数作为有效下限。"), 1, 1000)}
               {numberField("pmi_threshold", t("PMI 阈值"), t("新标签与每个已有可统计正向标签的 PMI 都须达到此值。0 为独立预期，正数更常共同出现，负数更少。"), undefined, undefined, "any")}
-              {numberField("min_cooccurrence", t("最低共现次数"), t("每对标签须共同出现至少此次数。词库只保留共现 ≥10 次的关系，降低门槛不会恢复已裁剪关系。"), 1, Number.MAX_SAFE_INTEGER)}
+              {numberField("min_cooccurrence", t("最低共现次数"), t("每对标签须共同出现至少此次数，并且关系已收录于当前词库。"), 1, Number.MAX_SAFE_INTEGER)}
               {numberField("change_budget", t("连续变化预算"), t("限制连续序列和顺流漫游每帧的标签增删数，替换计 2 次。固定词保留；无合法变化时保持上一帧，预算 0 不变。"), 0, 1000)}
             </div>
             <Field label={t("屏蔽关键词")} help={t("跳过包含关键词的新抽取标签。固定正负词与停泊保持的提示词不重新过滤。")}>
@@ -275,7 +329,7 @@ export function EditorWorkspace() {
               <HelpTip text={t("用于生图；共现扩展跳过同名词，不参与 PMI 计算。")} />
             </div>
             <CollapsibleContent forceMount className="data-[state=closed]:hidden">
-              <FixedTags label={t("固定负向词")} values={preset.document.base_negative} disabled={busy} onChange={values => update("base_negative", values)} />
+              <FixedTags key={`negative:${libraryRevision}`} label={t("固定负向词")} values={preset.document.base_negative} disabled={busy} onChange={values => update("base_negative", values)} />
             </CollapsibleContent>
           </Collapsible>
           <button type="submit" hidden />

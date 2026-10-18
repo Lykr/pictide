@@ -9,8 +9,12 @@
 .editor-toolbar, .editor-tabs { flex-shrink: 0; }
 .editor-page .notice { margin: 0 0 12px; padding: 10px 12px; background: var(--muted); border-radius: var(--radius); overflow-wrap: anywhere; }
 .editor-page .error, .cooc-error { color: var(--destructive); font-size: 12px; }
-.cooc-library-filters { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
-.cooc-library-filters > input { max-width: 420px; min-width: 120px; }
+.cooc-library-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+.cooc-library-selection { display: flex; align-items: center; gap: 2px; flex: 0 1 260px; min-width: 0; }
+.cooc-library-selection > [data-slot=select-trigger] { min-width: 0; flex: 1; }
+.cooc-library-selection [data-slot=select-value] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cooc-library-actions { display: flex; align-items: center; gap: 4px; }
+.cooc-library-filters > input { flex: 1 1 180px; max-width: 420px; min-width: 120px; }
 .cooc-tags { min-height: 250px; }
 .cooc-tag { display: flex; align-items: center; gap: 12px; padding: 9px 12px; }
 .cooc-tag:nth-child(even) { background: var(--muted); border-radius: var(--radius); }
@@ -94,6 +98,7 @@
   .cooc-result-summary { gap: 8px; }
   .cooc-prompt { padding: 10px 12px; }
   .cooc-library-filters { align-items: stretch; }
+  .cooc-library-selection { flex-basis: 100%; }
   .cooc-library-filters > input { flex: 1 1 180px; min-width: 0; max-width: none; }
 }
 
