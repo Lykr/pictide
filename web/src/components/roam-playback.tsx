@@ -88,7 +88,7 @@ export function RoamOptions() {
   const [settings, setSettings] = useState<RoamSettings>({ playback_interval_seconds: 5, liked_tags_only: false, prompt_mode: "random", recommendation_strength: "standard" });
   const [ready, setReady] = useState(false);
   const [draft, setDraft] = useState("5");
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState({ interval: false, choices: false });
   const intervalPending = useRef(false);
   const [error, setError] = useState("");
   const dirty = useRef(false);
@@ -106,19 +106,19 @@ export function RoamOptions() {
       document.removeEventListener("pictide:roam-options-close", close);
     };
   }, []);
-  const save = async () => {
-    if (!ready || !dirty.current || intervalPending.current) return;
+  const save = async (kind: "interval" | "choices", choices?: Partial<ModeChoices>) => {
+    if (kind === "interval" && (!ready || !dirty.current || intervalPending.current)) return;
     setError("");
     try {
-      const patch = { playback_interval_seconds: playbackInterval(draft) };
-      intervalPending.current = true;
-      setSaving(true);
+      const patch = kind === "interval" ? { playback_interval_seconds: playbackInterval(draft) } : choices;
+      if (kind === "interval") intervalPending.current = true;
+      setSaving(value => ({ ...value, [kind]: true }));
       const data = await new Promise<RoamSettings>((resolve, reject) => document.dispatchEvent(new CustomEvent("pictide:roam-settings-save", { detail: { patch, resolve, reject } })));
-      dirty.current = false; setDraft(String(data.playback_interval_seconds));
+      if (kind === "interval") { dirty.current = false; setDraft(String(data.playback_interval_seconds)); }
     } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
     finally {
-      intervalPending.current = false;
-      setSaving(false);
+      if (kind === "interval") intervalPending.current = false;
+      setSaving(value => ({ ...value, [kind]: false }));
     }
   };
   return <Popover open={open} onOpenChange={next => {
@@ -126,14 +126,17 @@ export function RoamOptions() {
     if (next) { dirty.current = false; setDraft(String(settings.playback_interval_seconds)); setError(""); }
   }}>
     <PopoverTrigger asChild><IconButton id="roam-options" icon={Settings2} label="漫游选项" /></PopoverTrigger>
-    <PopoverContent forceMount hidden={!open} align="end" className="roam-options-panel w-60 max-w-[calc(100vw-24px)] p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
-      <form className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-3" onSubmit={event => { event.preventDefault(); void save(); }}>
-        <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap font-normal">展示时间</Label>
-        <InputGroup className="h-8" data-disabled={!ready || saving}>
-          <InputGroupInput id="roam-playback-seconds" aria-label="展示时间（秒）" aria-busy={saving} className="h-8 min-w-0 pl-3 text-right tabular-nums" type="number" min={1} max={600} step={1} value={draft} disabled={!ready || saving} onChange={event => { dirty.current = true; setDraft(event.target.value); }} onBlur={() => void save()} />
+    <PopoverContent forceMount hidden={!open} align="end" className="roam-options-panel w-80 max-w-[calc(100vw-24px)] gap-1 p-3" aria-label="漫游选项" onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
+      <div className="grid gap-1">
+        <form className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-3" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
+          <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap font-normal">展示时间</Label>
+          <InputGroup className="h-8" data-disabled={!ready || saving.interval}>
+          <InputGroupInput id="roam-playback-seconds" aria-label="展示时间（秒）" aria-busy={saving.interval} className="h-8 min-w-0 pl-3 text-right tabular-nums" type="number" min={1} max={600} step={1} value={draft} disabled={!ready || saving.interval} onChange={event => { dirty.current = true; setDraft(event.target.value); }} onBlur={() => void save("interval")} />
           <InputGroupAddon align="inline-end" className="py-0 text-xs" aria-hidden="true">秒</InputGroupAddon>
-        </InputGroup>
-      </form>
+          </InputGroup>
+        </form>
+        <RoamChoices compact value={settings} disabled={!ready || saving.choices} onChange={patch => void save("choices", patch)} />
+      </div>
       {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
     </PopoverContent>
   </Popover>;
