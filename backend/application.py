@@ -640,6 +640,31 @@ class PictideApplication:
             raise NotFoundError()
         return {"positive": artifact["positive"], "negative": artifact["negative"]}
 
+    async def candidate_library(self, action, payload=None, upload_path=None, filename=None):
+        if action == "add":
+            result = await asyncio.to_thread(self.candidates.add_library, upload_path, filename)
+            self.events.publish("candidate")
+            return result
+        async with self._roam_lock:
+            if action == "select":
+                name = (payload or {}).get("filename")
+                self.candidates = await asyncio.to_thread(self.candidates.select_library, name)
+                await self._refresh_roam_anchors()
+                self.events.publish("candidate")
+                return {"selected": name}
+            if action == "list":
+                result = await asyncio.to_thread(self.candidates.list_libraries)
+                selected = result["selected"]
+                path = self.candidates.store.library_path
+                current_name = "" if path.name.startswith(".") else path.name
+                stamp = self.candidates.libraries.stamp(path)
+                if selected != current_name or stamp != self.candidates.library_stamp:
+                    self.candidates = await asyncio.to_thread(self.candidates.select_library, selected)
+                    await self._refresh_roam_anchors()
+                    self.events.publish("candidate")
+                return result
+        raise NotFoundError()
+
     async def candidate(self, action, payload=None, identifier=None, query=None):
         data, query = payload or {}, query or {}
         if action == "tags":

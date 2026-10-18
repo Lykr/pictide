@@ -23,7 +23,7 @@ class CooccurrenceIntegrationSmoke(unittest.IsolatedAsyncioTestCase):
     async def test_preset_preview_rounds_and_sqlite_roam(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            store = SQLiteCandidateStore(root / "candidate.sqlite3")
+            store = SQLiteCandidateStore(root / "libraries" / "neutral.sqlite3")
             with store.connect() as db:
                 names = ["illustration", "garden", "sunlight", "standing", "smiling", "blue_sky"]
                 db.executemany("INSERT INTO tags VALUES(?,?,?)", [(i+1,name,100) for i,name in enumerate(names)])
@@ -79,6 +79,7 @@ class CooccurrenceIntegrationSmoke(unittest.IsolatedAsyncioTestCase):
                     application.storage.update_job(job["id"], "completed")
                 policy = LastCombinationPolicy()
                 application.recommendation = policy
+                application._recommendation_error = None
                 application.recommendation_store = None
                 await client.put("/api/settings/roam",json={"prefetch_count":1,"backend_id":"local","preset_id":preset["id"]})
                 response = await client.post("/api/roam/ensure",json={"anchor_id":None})

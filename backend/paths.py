@@ -28,6 +28,10 @@ class DataPaths:
         return self.root / "candidate.sqlite3"
 
     @property
+    def libraries(self):
+        return self.root / "libraries"
+
+    @property
     def images(self):
         return self.root / "images"
 
@@ -60,7 +64,7 @@ class DataPaths:
         return self.root / "runtime"
 
     def ensure(self):
-        for directory in (self.root, self.images, self.prompts, self.workflows, self.cache, self.logs,
+        for directory in (self.root, self.libraries, self.images, self.prompts, self.workflows, self.cache, self.logs,
                           self.previews, self.tmp, self.runtime,
                           self.cache / "python", self.cache / "pip"):
             directory.mkdir(parents=True, exist_ok=True)

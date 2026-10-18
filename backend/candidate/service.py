@@ -57,14 +57,28 @@ def validate_document(document):
 
 
 class CandidateService:
-    def __init__(self, store):
+    def __init__(self, store, libraries=None):
         self.store = store
+        self.libraries = libraries
+        self.library_stamp = libraries.stamp(store.library_path) if libraries else None
         self._sequence_cache = OrderedDict()
         self._sequence_lock = threading.RLock()
         if not self.store.list_presets():
             self.store.save_preset("default", "默认", DEFAULT_DOCUMENT)
         from .provider import CooccurrenceCandidateProvider
         self.provider = CooccurrenceCandidateProvider(self)
+
+    def list_libraries(self):
+        return self.libraries.listing()
+
+    def add_library(self, path, filename):
+        return self.libraries.add(path, filename)
+
+    def select_library(self, filename):
+        if not isinstance(filename, str):
+            raise CandidateError("请选择词库文件。")
+        path = self.libraries.refresh_path(filename)
+        return CandidateService(self.store.with_library(path), self.libraries)
 
     def list_tags(self, query="", page=1, page_size=15):
         integer(page, "page", 1, 2**31-1)

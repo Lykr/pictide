@@ -6,25 +6,32 @@ import sqlite3
 import uuid
 
 
+STATISTICS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS tags(
+ id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, post_count INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS tags_frequency ON tags(post_count DESC,name);
+CREATE TABLE IF NOT EXISTS correlations(
+ tag_a INTEGER NOT NULL, tag_b INTEGER NOT NULL, pmi REAL NOT NULL, count INTEGER NOT NULL,
+ PRIMARY KEY(tag_a,tag_b)) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS correlations_b ON correlations(tag_b,tag_a);
+CREATE TABLE IF NOT EXISTS dataset(
+ id INTEGER PRIMARY KEY CHECK(id=1), source TEXT, revision TEXT, post_count INTEGER, status TEXT);
+"""
+
+
 class SQLiteCandidateStore:
-    def __init__(self, path):
+    def __init__(self, path, library_path=None):
         self.path = Path(path)
+        self.library_path = Path(library_path) if library_path is not None else self.path
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
-            db.executescript("""
-                CREATE TABLE IF NOT EXISTS tags(
-                    id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, post_count INTEGER NOT NULL);
-                CREATE INDEX IF NOT EXISTS tags_frequency ON tags(post_count DESC,name);
-                CREATE TABLE IF NOT EXISTS correlations(
-                    tag_a INTEGER NOT NULL, tag_b INTEGER NOT NULL, pmi REAL NOT NULL, count INTEGER NOT NULL,
-                    PRIMARY KEY(tag_a, tag_b)) WITHOUT ROWID;
-                CREATE INDEX IF NOT EXISTS correlations_b ON correlations(tag_b,tag_a);
-                CREATE TABLE IF NOT EXISTS dataset(
-                    id INTEGER PRIMARY KEY CHECK(id=1), source TEXT, revision TEXT,
-                    post_count INTEGER, status TEXT);
-                CREATE TABLE IF NOT EXISTS presets(
-                    id TEXT PRIMARY KEY, name TEXT NOT NULL, document TEXT NOT NULL);
-            """)
+            db.execute("CREATE TABLE IF NOT EXISTS presets("
+                       "id TEXT PRIMARY KEY, name TEXT NOT NULL, document TEXT NOT NULL)")
+            if self.library_path == self.path:
+                db.executescript(STATISTICS_SCHEMA)
+
+    def with_library(self, path):
+        return SQLiteCandidateStore(self.path, path)
 
     @contextmanager
     def connect(self):
@@ -36,10 +43,19 @@ class SQLiteCandidateStore:
         finally:
             db.close()
 
+    @contextmanager
+    def connect_library(self):
+        db = sqlite3.connect(self.library_path.resolve().as_uri() + "?mode=ro", uri=True, timeout=30)
+        db.row_factory = sqlite3.Row
+        try:
+            yield db
+        finally:
+            db.close()
+
     def list_tags(self, query, page, page_size):
         query = query.replace(" ", "_")
         where, args = (" WHERE instr(lower(name), lower(?)) > 0", [query]) if query else ("", [])
-        with self.connect() as db:
+        with self.connect_library() as db:
             total = db.execute("SELECT count(*) FROM tags" + where, args).fetchone()[0]
             tags = [dict(row) for row in db.execute(
                 "SELECT id,name,post_count FROM tags" + where + " ORDER BY post_count DESC,name LIMIT ? OFFSET ?",
@@ -47,7 +63,7 @@ class SQLiteCandidateStore:
         return dict(tags=tags, total=total, page=page, page_size=page_size)
 
     def find_tag(self, text):
-        with self.connect() as db:
+        with self.connect_library() as db:
             row = db.execute("SELECT id,name,post_count FROM tags WHERE name=?",
                              (text.replace(" ", "_"),)).fetchone()
         return dict(row) if row else None
@@ -56,7 +72,7 @@ class SQLiteCandidateStore:
         """Resolve a unique pool in batches, preserving library spelling."""
         names = sorted(set(name.strip().replace(" ", "_") for name in names))
         result = []
-        with self.connect() as db:
+        with self.connect_library() as db:
             for offset in range(0, len(names), 800):
                 batch = names[offset:offset+800]
                 marks = ",".join("?" for _ in batch)
@@ -66,7 +82,7 @@ class SQLiteCandidateStore:
 
     def pair_relations(self, anchor_id, other_ids):
         result = {}
-        with self.connect() as db:
+        with self.connect_library() as db:
             for offset in range(0, len(other_ids), 400):
                 ids = other_ids[offset:offset+400]
                 marks = ",".join("?" for _ in ids)
@@ -80,7 +96,7 @@ class SQLiteCandidateStore:
 
     def generation_tags(self):
         """Read immutable tag metadata once for a generation batch."""
-        with self.connect() as db:
+        with self.connect_library() as db:
             cursor = db.cursor()
             cursor.row_factory = None
             return tuple(cursor.execute("SELECT id,name,post_count FROM tags ORDER BY id"))
@@ -91,7 +107,7 @@ class SQLiteCandidateStore:
             candidate_ids = sorted(set(candidate_ids) - {anchor_id})
             if not candidate_ids:
                 return ()
-        with self.connect() as db:
+        with self.connect_library() as db:
             cursor = db.cursor()
             cursor.row_factory = None
             if candidate_ids is None:
@@ -142,7 +158,7 @@ class SQLiteCandidateStore:
         return dict(deleted=deleted, id=preset_id)
 
     def dataset_status(self):
-        with self.connect() as db:
+        with self.connect_library() as db:
             row = db.execute("SELECT * FROM dataset WHERE id=1").fetchone()
             count = db.execute("SELECT count(*) FROM tags").fetchone()[0]
         return {**(dict(row) if row else {"status": "empty", "source": "", "revision": "", "post_count": 0}),

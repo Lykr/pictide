@@ -3,6 +3,7 @@ import argparse
 import ipaddress
 import json
 import math
+import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -11,6 +12,7 @@ from aiohttp import ClientSession, ClientTimeout, web
 from .application import PictideApplication
 from .candidate import CandidateService
 from .store.candidate import SQLiteCandidateStore
+from .store.candidate_libraries import CandidateLibraries, MAX_LIBRARY_BYTES
 from .domain import BackendError, ConflictError, GoneError, NotFoundError, ValidationError
 from .generation import create_backend
 from .paths import DataPaths
@@ -52,8 +54,10 @@ async def boundary(request, handler):
                 raise web.HTTPForbidden(text="不允许跨站修改本地应用。")
             if request.headers.get("Sec-Fetch-Site") == "cross-site":
                 raise web.HTTPForbidden(text="不允许跨站修改本地应用。")
-            if request.content_type != "application/json":
-                raise web.HTTPUnsupportedMediaType(text="请求需要 application/json。")
+            library_upload = request.path == "/api/candidate/library" and request.method == "POST"
+            expected_type = "multipart/form-data" if library_upload else "application/json"
+            if request.content_type != expected_type:
+                raise web.HTTPUnsupportedMediaType(text=f"请求需要 {expected_type}。")
         response = await handler(request)
     except ConflictError as exc:
         response = web.json_response({"error": str(exc)}, status=409)
@@ -221,6 +225,33 @@ async def prompts(request):
                         headers={"Content-Disposition": f'attachment; filename="{request.match_info["id"]}.json"'})
 
 
+async def candidate_library(request):
+    application = request.app[APPLICATION]
+    if request.method == "GET":
+        return web.json_response(await application.candidate_library("list"))
+    if request.method == "PUT":
+        return web.json_response(await application.candidate_library("select", await body(request)))
+    path = None
+    try:
+        reader = await request.multipart()
+        part = await reader.next()
+        if part is None or part.name != "file" or not part.filename:
+            raise ValidationError("请选择词库文件上传。")
+        with tempfile.NamedTemporaryFile(dir=application.paths.tmp, suffix=".upload", delete=False) as target:
+            path = Path(target.name)
+            total = 0
+            while chunk := await part.read_chunk(1024 * 1024):
+                total += len(chunk)
+                if total > MAX_LIBRARY_BYTES:
+                    raise ValidationError("词库上传最大支持 2 GiB。")
+                target.write(chunk)
+        result = await application.candidate_library("add", upload_path=path, filename=part.filename)
+        return web.json_response(result, status=201)
+    finally:
+        if path is not None:
+            path.unlink(missing_ok=True)
+
+
 async def candidate(request):
     data = await body(request, limit=1_100_000) if request.method in ("POST", "DELETE") else None
     identifier = request.match_info.get("id")
@@ -283,6 +314,8 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
     app = web.Application(middlewares=[boundary], client_max_size=MAX_BYTES)
     app[ALLOW_LAN] = allow_lan
     paths = DataPaths(data_dir).ensure()
+    libraries = CandidateLibraries(paths)
+    candidate_store = SQLiteCandidateStore(paths.candidate_database, libraries.selected_path())
     storage = Repository(paths.database)
     recommendation_store = SQLiteRecommendationStore(storage)
     recommendation = RecommendationService(recommendation_store, MiniLMEncoder(paths.cache / "embeddings"))
@@ -290,7 +323,7 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
     history = HistorySettings(paths)
     roam = RoamSettings(paths)
     app[APPLICATION] = PictideApplication(paths, storage, tasks,
-        CandidateService(SQLiteCandidateStore(paths.candidate_database)), recommendation,
+        CandidateService(candidate_store, libraries), recommendation,
         history, LazyCleanup(storage, paths, history.retention, max_roam_history=roam.history_limit),
         WorkflowLibrary(paths.workflows, tasks.connections.validate), roam, recommendation_store, GeneralSettings(paths))
     app.cleanup_ctx.append(lifecycle)
@@ -316,6 +349,9 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get("/api/artifacts", artifacts), web.put("/api/artifacts/{id}/feedback", feedback),
         web.delete("/api/generated", clear_generated), web.delete("/api/generated/{id}", clear_generated),
         web.get("/api/artifacts/{id}/image", image), web.get("/api/artifacts/{id}/prompts", prompts),
+        web.get("/api/candidate/library", candidate_library),
+        web.post("/api/candidate/library", candidate_library),
+        web.put("/api/candidate/library", candidate_library),
         web.get("/api/candidate/{action:tags|presets|dataset}", candidate),
         web.get("/api/candidate/presets/{id}", candidate),
         web.post("/api/candidate/{action:presets|generate|relations}", candidate),
