@@ -301,9 +301,7 @@ class PictideApplication:
     async def general_settings(self, payload=None):
         if payload is None:
             return await asyncio.to_thread(self.general.get)
-        if "theme" not in payload:
-            raise ValidationError("请选择主题。")
-        document = await asyncio.to_thread(self.general.save, payload["theme"])
+        document = await asyncio.to_thread(self.general.save, payload)
         self.events.publish("general_settings")
         return document
 
