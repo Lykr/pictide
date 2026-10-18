@@ -6,11 +6,11 @@
 
 ## 用户指南
 
-### 快速开始
+### 快速开始（源码版本）
 
 1. 启动 ComfyUI，准备可用的文生图模型。
 2. 按系统完成安装与启动：[Windows](docs/guides/setup/windows.md) · [Linux](docs/guides/setup/linux.md) · [macOS](docs/guides/setup/macos.md)。打开 http://127.0.0.1:8189 。
-3. 在「设置 → 后端」填写 ComfyUI 地址、测试并保存；进入「生成」提交图片。
+3. 在「设置 → 后端」填写 ComfyUI 地址、测试并保存；词库与推荐模型准备完成后，进入「漫游」点击「开始漫游」，浏览、评价并切换下一张。
 
 共现生成需要词库，推荐学习需要本地 MiniLM；准备与接入步骤见[安装与接入](docs/guides/getting-started.md)。关闭启动窗口或按 Ctrl+C 停止应用。
 
@@ -34,6 +34,7 @@ ComfyUI 是独立的生成后端；Pictide 不作为其插件加载。当前为�
 
 ## 开发者文档
 
+- [便携发行包设计](docs/issues/automatic-startup.md)：运行环境、前端、词库与推荐模型随包交付，首次启动聚焦数据初始化和后端接入。
 - [开发流程](docs/development.md)：从源码安装、构建、验证及发布；首次检出从[准备环境](docs/development.md#首次准备检出目录)开始。
 - [架构与模块边界](docs/architecture.md)：模块职责、依赖和调用流程。
 - [HTTP API 参考](docs/api.md)：接口索引、请求参数和响应。
