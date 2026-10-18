@@ -112,7 +112,7 @@ export function TooltipLayer() {
       <TooltipTrigger asChild>
         <span aria-hidden="true" tabIndex={-1} style={{ position: "fixed", pointerEvents: "none", left: target.rect.left, top: target.rect.top, width: target.rect.width, height: target.rect.height }} />
       </TooltipTrigger>
-        <TooltipContent container={target.container} id="pictide-tooltip" className="z-[100] max-w-[min(300px,calc(100vw-24px))] whitespace-normal break-words leading-relaxed select-text" side="top" sideOffset={7} collisionPadding={12}>
+        <TooltipContent container={target.container} id="pictide-tooltip" className="z-[1200] max-w-[min(300px,calc(100vw-24px))] whitespace-normal break-words leading-relaxed select-text" side="top" sideOffset={7} collisionPadding={12}>
           {target.text}
         </TooltipContent>
     </Tooltip>
