@@ -6,6 +6,7 @@
 
 - [共现提示词候选](cooccurrence-candidates-v1.md)
 - [PMI 候选数据与生成调整](candidate-pmi.md)
+- [共现 ≥1,000 次的极限裁剪](candidate-pair1000.md)
 - [共现扩展屏蔽关键词](candidate-blocked-keywords.md)
 - [候选生成增量优化方案](candidate-generation-optimization.md)
 - [加权随机正向锚点（待确认）](weighted-positive-anchors.md)

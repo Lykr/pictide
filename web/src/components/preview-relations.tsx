@@ -62,8 +62,8 @@ export function PreviewPrompts({ terms, positive, negative }: { terms: PreviewTe
             <TooltipContent side="bottom" align="start" sideOffset={6} className="cooc-relations-tooltip">
               <strong>{term.text}</strong>
               {!query || !query.data && !query.error ? <p role="status"><LoaderCircle className="size-3 animate-spin" />{t("读取相关性…")}</p> : query.error ? <p role="status">{t("读取失败：{error}。移开后重试。", { error: query.error })}</p> : !query.data!.anchor.known ? <p>{t("自定义词，无统计；不参与 PMI 比较。")}</p> : !query.data!.relations.length ? <p>{t("当前组合没有其他正向词。")}</p> : <>
-                <div className="cooc-relations-scroll"><table><thead><tr><th>{t("提示词")}</th><th>PMI</th><th>{t("共现次数（≥10）")}</th></tr></thead><tbody>{query.data!.relations.map(relation => <tr key={relation.text}>
-                  <td>{relation.text}</td><td>{!relation.known ? t("无统计") : relation.count === null ? t("未保留统计") : relation.pmi!.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>{!relation.known ? "—" : relation.count === null ? "<10" : relation.count.toLocaleString(locale())}</td>
+                <div className="cooc-relations-scroll"><table><thead><tr><th>{t("提示词")}</th><th>PMI</th><th>{t("共现次数")}</th></tr></thead><tbody>{query.data!.relations.map(relation => <tr key={relation.text}>
+                  <td>{relation.text}</td><td>{!relation.known ? t("无统计") : relation.count === null ? t("未保留统计") : relation.pmi!.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>{!relation.known ? "—" : relation.count === null ? "—" : relation.count.toLocaleString(locale())}</td>
                 </tr>)}</tbody></table></div>
                 <p className="cooc-relations-note">{t("PMI 表示统计关联，不代表画面协调或冲突。")}</p>
               </>}

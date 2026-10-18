@@ -103,7 +103,7 @@
   "读取失败：{error}。移开后重试。": "Could not load: {error}. Move away and retry.",
   "自定义词，无统计；不参与 PMI 比较。": "Custom term with no statistics; excluded from PMI comparisons.",
   "当前组合没有其他词项。": "No other terms in this combination.",
-  "共现次数（≥10）": "Co-occurrences (≥10)",
+  "共现次数": "Co-occurrences",
   "无统计": "No statistics",
   "未保留统计": "Statistics not retained",
   "PMI 表示统计关联，不代表画面协调或冲突。": "PMI measures statistical association, not visual harmony or conflict.",

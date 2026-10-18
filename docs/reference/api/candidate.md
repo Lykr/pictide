@@ -51,4 +51,4 @@
 
 目标长度在上下限内均匀抽取，共现不足或搜索上限到达时返回当前组合，不因未达到目标长度报错。stop_reason 可能为 `target_length,search_limit,no_eligible_tags,budget_zero`。数据未 ready 或参数无效仍返回错误。
 
-Relations 仅查询当前词项关系，不创建生成任务；已知词对缺记录表示共现不足 10、未保留统计，pmi/count 为 null；自定义词 known=false，无统计。不能将 null 当作零共现或 PMI=0。统计口径见[PMI 数据设计](../../issues/candidate-pmi.md)。
+Relations 仅查询当前词项关系，不创建生成任务；已知词对缺记录表示未保留统计，pmi/count 为 null；当前试用词库按共现 ≥1,000 次保留关系；自定义词 known=false，无统计。不能将 null 当作零共现或 PMI=0。统计口径见[PMI 数据设计](../../issues/candidate-pmi.md)。
