@@ -227,3 +227,15 @@ body { position: fixed; inset: 0; }
   .workspace-content { padding: 12px; }
   #feed-main > section, .editor-page main { scrollbar-gutter: auto; }
 }
+
+/* iPhone WebKit needs native scroll chaining to collapse its browser chrome.
+   The fixed application still owns each view's scroll position; only the
+   small/large viewport difference is available to the document itself. */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
+    html, body { height: auto; min-height: 100lvh; overflow-x: clip; overflow-y: auto; }
+    body { position: static; }
+    #feed-main > section, .editor-page main { overscroll-behavior-y: auto; }
+    html:has(body.pictide-immersive), html:has(body[data-scroll-locked]) { min-height: 100dvh; overflow: hidden; }
+  }
+}
