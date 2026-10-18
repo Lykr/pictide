@@ -82,7 +82,7 @@ class RepositoryTests(unittest.TestCase):
         self.repo.update_job(job["id"],"submitting")
         self.repo.recover_submissions()
         self.assertEqual(self.repo.job(job["id"])["status"],"unknown")
-        self.assertIsNone(self.repo.next_job())
+        self.assertEqual([j["status"] for j in self.repo.dispatch_jobs()], ["unknown"])
 
     def test_generation_validation_preserves_exact_text(self):
         text = "  library, warm light\n"

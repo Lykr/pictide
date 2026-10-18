@@ -544,7 +544,11 @@ class ComfyBackend:
         for item in self._queue_items(queue, "queue_pending"):
             if isinstance(item, list) and len(item) > 3 and item[1] == prompt_id and isinstance(item[3], dict) and item[3].get("pictide_request_id"):
                 await self._json("POST", "/queue", payload={"delete": [prompt_id]}, allow_empty=True)
-                return True
+                # Deletion may race with the GPU taking this pending item.
+                # Only release the Pictide slot after it is absent from queue.
+                remaining = await self._json("GET", "/queue")
+                return not any(isinstance(x, list) and len(x) > 1 and x[1] == prompt_id
+                               for key in ("queue_running", "queue_pending") for x in self._queue_items(remaining, key))
         return False
 
     async def image(self, output: dict) -> tuple[bytes, str]:

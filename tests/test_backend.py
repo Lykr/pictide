@@ -142,7 +142,9 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
 
     async def delete_queue(self, request):
         self.record(request)
-        self.deleted.append(await request.json())
+        deleted = await request.json()
+        self.deleted.append(deleted)
+        self.queue['queue_pending'] = [x for x in self.queue['queue_pending'] if x[1] not in deleted['delete']]
         return web.Response(status=200)
 
     async def view(self, request):
@@ -335,6 +337,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         self.queue["queue_pending"] = [[1, "job", {}, {}]]
         self.assertFalse(await self.backend.cancel("job"))
         self.queue["queue_pending"][0][3] = {"pictide_request_id": "req"}
+        self.queue["queue_running"] = []
         self.assertTrue(await self.backend.cancel("job"))
         self.assertEqual(self.deleted, [{"delete": ["job"]}])
         self.assertNotIn(("POST", "/interrupt"), self.request_paths)

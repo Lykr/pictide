@@ -124,7 +124,7 @@ class RoamPipelineTests(unittest.IsolatedAsyncioTestCase):
                          {k:v for k,v in before.items() if k != "epoch"})
         self.assertFalse((await self.app.roam_settings())["paused"])
         self.assertEqual(self.app.storage.artifacts(source="roam"), images)
-        self.assertEqual(self.app.storage.job(pending["id"])["status"], "queued")
+        self.assertEqual(self.app.storage.job(pending["id"])["status"], "failed")
         self.assertEqual(self.app.storage.job_backend(pending["id"]), pending_backend)
         self.assertEqual(self.app.storage.job(failed["id"])["status"], "failed")
         # Old failed jobs must not re-pause the new epoch, and are never resubmitted.
@@ -184,11 +184,11 @@ class RoamPipelineTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(full["paused"])
         self.assertNotIn("job", full)
         self.assertEqual(len(self.pool.overlaps), 1)
-        self.assertEqual(self.app.storage.next_job()["source"], "generate")
+        self.assertEqual(self.app.storage.dispatch_jobs()[0]["source"], "generate")
         self.app.storage.update_job(manual[0]["id"], "cancelled")
         second = await self.ensure()
         self.assertEqual((second["pending"], second["roam_pending"]), (10, 2))
-        self.assertEqual(self.app.storage.next_job()["source"], "generate")
+        self.assertEqual(self.app.storage.dispatch_jobs()[0]["source"], "generate")
         self.app.roam.save(5, "local", "neutral")  # Old epoch jobs still occupy pipeline slots.
         old_epoch = await self.ensure()
         self.assertNotIn("job", old_epoch)

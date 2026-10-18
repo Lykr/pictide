@@ -124,22 +124,29 @@ class TaskEventSmoke(unittest.IsolatedAsyncioTestCase):
     async def test_event_during_inspect_saves_once_and_hands_off_without_poll_delay(self):
         first = self.create('first')
         self.create('second')
+        self.create('third')
         self.hold_first_inspect = True
         await self.worker.start()
         self.assertEqual(await asyncio.wait_for(self.submitted.get(), 1), 'first')
-        self.assertEqual(await asyncio.wait_for(self.inspected.get(), 1), 'first')
+        self.assertEqual(await asyncio.wait_for(self.submitted.get(), 1), 'second')
+        await asyncio.wait_for(self.inspected.get(), 1)
+        await asyncio.wait_for(self.inspected.get(), 1)
         began = time.perf_counter()
         await self.finish('first')
         self.release_inspect.set()
-        self.assertEqual(await asyncio.wait_for(self.submitted.get(), 1), 'second')
+        self.assertEqual(await asyncio.wait_for(self.submitted.get(), 1), 'third')
+        self.assertEqual(await asyncio.wait_for(self.completed.get(), 1), first['id'])
         elapsed = time.perf_counter() - began
         self.assertLess(elapsed, 1)
         self.assertEqual(self.repo.job(first['id'])['status'], 'completed')
         self.assertEqual(len(list(self.paths.images.glob('*.png'))), 1)
         self.assertEqual(len(list(self.paths.images.glob('*.json'))), 1)
-        self.assertEqual(self.submissions, ['first', 'second'])
-        await asyncio.wait_for(self.inspected.get(), 1)  # first's recheck
-        await asyncio.wait_for(self.inspected.get(), 1)  # second starts running
+        self.assertEqual(self.submissions, ['first', 'second', 'third'])
+        while True:
+            try:
+                await asyncio.wait_for(self.inspected.get(), .1)
+            except asyncio.TimeoutError:
+                break
         self.assertEqual(self.worker._wait_timeout(), 30)
         before = len(self.inspections)
         ws = self.sockets[self.client_ids['second']]
@@ -155,13 +162,14 @@ class TaskEventSmoke(unittest.IsolatedAsyncioTestCase):
 
     async def test_disconnect_wakes_http_verification_and_releases_subscription(self):
         first = self.create('disconnected')
-        self.create('next')
         await self.worker.start()
         await asyncio.wait_for(self.submitted.get(), 1)
         await asyncio.wait_for(self.inspected.get(), 1)
+        self.create('next')
         await self.finish('disconnected', notify=False)
         await self.sockets[self.client_ids['disconnected']].close()
         self.assertEqual(await asyncio.wait_for(self.submitted.get(), 1), 'next')
+        self.assertEqual(await asyncio.wait_for(self.completed.get(), 1), first['id'])
         self.assertEqual(self.repo.job(first['id'])['status'], 'completed')
         self.assertEqual(self.submissions.count('disconnected'), 1)
         self.assertFalse(self.adapters[0].events_connected)

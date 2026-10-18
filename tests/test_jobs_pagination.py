@@ -16,7 +16,7 @@ def add_jobs(repo, count, start=0):
     """All timestamps deliberately tie, exposing unstable page boundaries."""
     with repo.connection() as db:
         revision = db.execute("SELECT revision_id FROM backends WHERE id='local'").fetchone()[0]
-        db.executemany("INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+        db.executemany("INSERT INTO jobs (id,request_id,payload_hash,backend_id,revision_id,status,positive,negative,seed,backend_prompt_id,error,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", [
             (f"job-{index:04}", f"request-{index:04}", "fixture", "local", revision,
              "completed", f"prompt {index}", "blurry", index, None, None,
              "2026-10-15T00:00:00+00:00", "2026-10-15T00:00:00+00:00")

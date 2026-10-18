@@ -67,37 +67,44 @@ class WorkerHandoffSmoke(unittest.IsolatedAsyncioTestCase):
         self.repo.update_job(first['id'], 'running')
         self.create('queued-roam', roam=True)
         self.create('queued-manual')
-        self.backend.pending_requests.add('queued-roam')
+        self.backend.pending_requests.update({'queued-roam', 'queued-manual'})
         await self.worker.start()
         self.assertEqual(await asyncio.wait_for(self.backend.submitted.get(), 1), 'queued-manual')
-        self.assertLess(self.backend.submitted_at['queued-manual'] - self.repo.completed_at[first['id']], 0.8)
         self.assertEqual(await asyncio.wait_for(self.backend.submitted.get(), 1), 'queued-roam')
         self.assertEqual([request for _, request in self.backend.submissions], ['queued-manual', 'queued-roam'])
 
     async def test_running_job_waits_and_wakes_without_submitting_again(self):
         first = self.create('running-first')
         second = self.create('queued-second')
-        self.backend.pending_requests.add('running-first')
+        third = self.create('queued-third')
+        self.backend.pending_requests.update({'running-first', 'queued-second', 'queued-third'})
         await self.worker.start()
+        await asyncio.wait_for(self.backend.inspected.get(), 1)
         await asyncio.wait_for(self.backend.inspected.get(), 1)
         with self.assertRaises(asyncio.TimeoutError):
             await asyncio.wait_for(self.backend.inspected.get(), 0.1)
         self.worker.wake.set()
         await asyncio.wait_for(self.backend.inspected.get(), 1)
-        self.assertEqual(len(self.backend.submissions), 1)
+        self.assertEqual(len(self.backend.submissions), 2)
         self.assertEqual(self.repo.job(first['id'])['status'], 'running')
-        self.assertEqual(self.repo.job(second['id'])['status'], 'queued')
+        self.assertEqual(self.repo.job(second['id'])['status'], 'running')
+        self.assertEqual(self.repo.job(third['id'])['status'], 'queued')
 
     async def test_empty_queue_waits_then_new_work_wakes_it(self):
         checks = asyncio.Queue()
-        original = self.repo.next_job
+        original = self.repo.dispatch_jobs
         loop = asyncio.get_running_loop()
-        def next_job():
+        def dispatch_jobs(limit=2):
             loop.call_soon_threadsafe(checks.put_nowait, None)
-            return original()
-        self.repo.next_job = next_job
+            return original(limit)
+        self.repo.dispatch_jobs = dispatch_jobs
         await self.worker.start()
         await asyncio.wait_for(checks.get(), 1)
+        while True:
+            try:
+                await asyncio.wait_for(checks.get(), .1)
+            except asyncio.TimeoutError:
+                break
         with self.assertRaises(asyncio.TimeoutError):
             await asyncio.wait_for(checks.get(), 0.1)
         self.create('new-work')
