@@ -8,7 +8,7 @@
 
 便携版随包提供程序、前端、精简词库和离线 MiniLM。解压后运行对应系统的启动入口即可，详见 [Windows](setup/windows.md#便携版本) · [Linux](setup/linux.md#便携版本) · [macOS](setup/macos.md#便携版本)。
 
-源码版需要 Python 3.10+；新检出的源码还需要先构建前端，Node.js 与 pnpm 版本见[开发环境要求](../development.md#首次准备检出目录)。已准备好前端的目录日常运行不需要 Node.js 服务。
+源码版需要 Python 3.10+；新检出的源码还需要先构建前端，Node.js 与 pnpm 版本见[开发环境要求](../../dev/docs/development.md#首次准备检出目录)。已准备好前端的目录日常运行不需要 Node.js 服务。
 
 启动器自动准备所选数据目录下的 Python 环境、依赖与缓存，不下载生图模型、词库或推荐模型。不同系统分别创建运行环境，不直接复用其他系统的 venv。Linux 与 macOS 的脚本流程已做 Bash 冒烟，原生环境安装尚未验证。
 
@@ -50,10 +50,10 @@ ComfyUI 只执行生图 API，不再安装提示词生成、预览或提示词�
 
 ### 任务执行与检查
 
-多个后端可分别保存。修改某个后端的地址或工作流后，旧任务继续使用提交时的后端配置，防止任务和图片指向错误的服务。新任务先订阅 ComfyUI 结束事件，再提交生图；全应用最多两个任务在途，通常一个出图、一个在 ComfyUI 排队；收到通知后通过 HTTP 核实，先补入下一项，再保存图片。通知不可用时自动回到轮询，详见 [任务事件通知](../issues/task-events.md) 和 [提交窗口](../issues/task-window.md)。生成完成后，Feed 将图片复制到 `data/images`，并保存同名 JSON，仅包含实际提交的正负提示词；不保存配置或额外 TXT。已保存图片可以在 ComfyUI 关闭后浏览。升级前的历史图片首次访问时补存，需要对应后端图片仍可读取。ComfyUI 自己的 output/temp 文件仍由 ComfyUI 管理。
+多个后端可分别保存。修改某个后端的地址或工作流后，旧任务继续使用提交时的后端配置，防止任务和图片指向错误的服务。新任务先订阅 ComfyUI 结束事件，再提交生图；全应用最多两个任务在途，通常一个出图、一个在 ComfyUI 排队；收到通知后通过 HTTP 核实，先补入下一项，再保存图片。通知不可用时自动回到轮询，详见 [任务事件通知](../../dev/docs/issues/task-events.md) 和 [提交窗口](../../dev/docs/issues/task-window.md)。生成完成后，Feed 将图片复制到 `data/images`，并保存同名 JSON，仅包含实际提交的正负提示词；不保存配置或额外 TXT。已保存图片可以在 ComfyUI 关闭后浏览。升级前的历史图片首次访问时补存，需要对应后端图片仍可读取。ComfyUI 自己的 output/temp 文件仍由 ComfyUI 管理。
 
 测试连接执行只读预检，能发现常见的缺模型、缺输入图、连接或枚举错误；不提交生图，也不替代 ComfyUI 自定义节点的正式校验。HTTP 400 会展示可识别的节点及输入原因。
 
 ## 从源码开始
 
-新检出仓库没有依赖、词库、推荐模型或前端构建产物。先按[开发流程](../development.md#首次准备检出目录)安装和构建；词库导入见[提示词指南](prompts.md#数据准备)，推荐模型准备见[推荐模块](../architecture/recommendation.md#模型准备)。数据路径和备份见[数据目录](../data-layout.md)。
+新检出仓库没有依赖、词库、推荐模型或前端构建产物。先按[开发流程](../../dev/docs/development.md#首次准备检出目录)安装和构建；词库导入见[提示词指南](prompts.md#数据准备)，推荐模型准备见[推荐模块](../../dev/docs/architecture/recommendation.md#模型准备)。数据路径和备份见[数据目录](../data-layout.md)。

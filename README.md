@@ -42,10 +42,10 @@ ComfyUI 是独立的生成后端；Pictide 不作为其插件加载。当前为�
 
 ## 开发者文档
 
-- [便携发行构建与验证](docs/issues/automatic-startup.md)：目录式打包、资源初始化和平台验证。
-- [开发流程](docs/development.md)：从源码安装、构建、验证及发布；首次检出从[准备环境](docs/development.md#首次准备检出目录)开始。
-- [架构与模块边界](docs/architecture.md)：模块职责、依赖和调用流程。
-- [数据处理工具](data_processing/README.md)：词库下载、离线统计与处理记录。
-- [HTTP API 参考](docs/api.md)：接口索引、请求参数和响应。
-- [页面设计规范](docs/design-system.md)：组件、视觉与交互约定。
-- [开发者文档导航](docs/README.md#开发者文档)：代码入口、存储参考、需求记录与设计模板。
+- [便携发行构建与验证](dev/docs/issues/automatic-startup.md)：目录式打包、资源初始化和平台验证。
+- [开发流程](dev/docs/development.md)：从源码安装、构建、验证及发布；首次检出从[准备环境](dev/docs/development.md#首次准备检出目录)开始。
+- [架构与模块边界](dev/docs/architecture.md)：模块职责、依赖和调用流程。
+- [数据处理工具](dev/docs/data-processing.md)：词库下载、离线统计与处理记录。
+- [HTTP API 参考](dev/docs/api.md)：接口索引、请求参数和响应。
+- [页面设计规范](dev/docs/design-system.md)：组件、视觉与交互约定。
+- [开发者文档导航](dev/docs/README.md)：代码入口、存储参考、需求记录与设计模板。

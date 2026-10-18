@@ -1,6 +1,6 @@
 # SQLite 存储参考
 
-[数据目录与备份](../data-layout.md) · [调用和数据流](../architecture/flows.md)
+[数据目录与备份](../../../docs/data-layout.md) · [调用和数据流](../architecture/flows.md)
 
 业务主库保存应用状态，个人预设库保存预设与词库选择，libraries 中的词库文件保存离线统计。这里记录当前归属和关联，不作为旧版本升级操作手册。
 
@@ -79,7 +79,7 @@ App 的单个后台学习任务处理未应用的反馈记录，启动及后续�
 
 ## 图片评分缓存
 
-图片原始均值分数、特征/策略版本和学习修订保存在 `artifact_preference_scores`；普通读取补缺失缓存，显式刷新重算所选范围。手动刷新时间保存在评分行的 refreshed_at，查询取其最大值；历史评分范围保存在 recommendation_score_range；重置偏好清除相应缓存。HTTP 返回和字段语义见[图片评分接口](api/images.md#喜欢筛选与图片偏好评分)，实现以[主库](../../backend/store/sqlite.py)为准。
+图片原始均值分数、特征/策略版本和学习修订保存在 `artifact_preference_scores`；普通读取补缺失缓存，显式刷新重算所选范围。手动刷新时间保存在评分行的 refreshed_at，查询取其最大值；历史评分范围保存在 recommendation_score_range；重置偏好清除相应缓存。HTTP 返回和字段语义见[图片评分接口](api/images.md#喜欢筛选与图片偏好评分)，实现以[主库](../../../backend/store/sqlite.py)为准。
 
 ## 候选数据
 

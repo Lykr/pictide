@@ -17,7 +17,7 @@ Pictide 当前已实现的 HTTP API 统一入口。先阅读通用约定，再�
 
 ## 通用约定
 
-- 默认地址：`http://127.0.0.1:8189`；以下路径均相对此地址。局域网启动方式见[项目 README](guides/access.md#局域网访问)。当前没有账号认证，数据和偏好共用本地用户 `local`。
+- 默认地址：`http://127.0.0.1:8189`；以下路径均相对此地址。局域网启动方式见[项目 README](../../docs/guides/access.md#局域网访问)。当前没有账号认证，数据和偏好共用本地用户 `local`。
 - 除图片、下载和 SSE 外，响应为 JSON。成功通常返回 `200`；提交任务为 `202`，单独新建工作流为 `201`。
 - 词库上传 `POST /api/candidate/library` 使用 multipart/form-data；其余非 GET/HEAD 的 `/api/` 请求，包括 DELETE，必须携带 `Content-Type: application/json`；无参数时发送 `{}`。请求体须为 JSON 对象，不允许重复字段或 NaN/Infinity。通常上限 8 MiB，候选请求 1,100,000 字节，重置偏好请求 2,048 字节。
 - 修改请求的 `Origin` 若存在须与访问地址同源，`Sec-Fetch-Site: cross-site` 被拒绝；Host 限制为本机地址或局域网入口允许的本机内网 IP。未开放通用跨域调用。
@@ -65,10 +65,10 @@ events.addEventListener('change', (event) => {
 
 ## 实现与维护入口
 
-- [HTTP 路由、请求解析及状态码](../backend/host.py)
-- [应用编排与 HTTP 返回对象](../backend/application.py)
-- [候选参数与结果](../backend/candidate/service.py)、[种子和序列参数](../backend/candidate/rounds.py)
-- [推荐模块内部契约](../backend/contracts/recommendation.py)
-- [任务存储与分页模型](../backend/store/sqlite.py)
+- [HTTP 路由、请求解析及状态码](../../backend/host.py)
+- [应用编排与 HTTP 返回对象](../../backend/application.py)
+- [候选参数与结果](../../backend/candidate/service.py)、[种子和序列参数](../../backend/candidate/rounds.py)
+- [推荐模块内部契约](../../backend/contracts/recommendation.py)
+- [任务存储与分页模型](../../backend/store/sqlite.py)
 
 本文是 HTTP 参考，不将模块内部的评分、学习等 Python 方法作为额外公开 HTTP 接口；当前没有 OpenAPI / Swagger 页面。新增、删除或调整路由时同步维护对应章节和导航。

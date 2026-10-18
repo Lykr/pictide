@@ -1,6 +1,6 @@
 # 数据目录与备份
 
-[文档导航](README.md)。本页说明当前数据布局与备份；表结构见[SQLite 存储参考](reference/storage.md)，最新整理记录见[开发与发行目录分离](issues/development-release-directories.md)。
+[文档导航](README.md)。本页说明当前数据布局与备份；表结构见[SQLite 存储参考](../dev/docs/reference/storage.md)，最新整理记录见[开发与发行目录分离](../dev/docs/issues/development-release-directories.md)。
 
 ## 数据位置
 
@@ -35,7 +35,8 @@
 
 | 路径 | 内容 |
 | --- | --- |
-| [`data_processing/`](../data_processing/README.md) | 版本管理的离线下载、统计导入工具和依赖清单 |
+| [`data_processing/`](../dev/docs/data-processing.md) | 版本管理的离线下载、统计导入工具和依赖清单 |
+| [`dev/docs/`](../dev/docs/README.md) | 开发指南、架构、接口、设计规范与需求记录，纳入版本管理 |
 | `dev/datasets/` | 原始 Parquet、下载校验与离线统计中间文件 |
 | `dev/runtime/frontend/`、`dev/runtime/importer/` | 前端开发依赖与离线导入环境 |
 | `dev/cache/`、`dev/tmp/`、`dev/build/` | 开发缓存、临时文件与便携构建工作区 |
@@ -63,4 +64,4 @@
 - 时间清理和漫游历史数量清理在启动与操作入口执行，说明见[设置与清理](guides/settings.md#历史图片清理)。
 - 反馈与待学习记录同事务落库，推荐在后台处理；历史记录按生成时快照解释。
 
-继续查阅：[存储表与快照](reference/storage.md) · [设置接口](reference/api/settings.md)
+继续查阅：[存储表与快照](../dev/docs/reference/storage.md) · [设置接口](../dev/docs/reference/api/settings.md)

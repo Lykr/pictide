@@ -28,6 +28,6 @@
 - 可见下拉菜单、复选框、单选、分段切换、弹窗及折叠区域复用官方 `radix-luma` 源码组件和 Radix 行为，不使用原生菜单或自行开发交互。DOM 控制器通过共享状态适配层接入组件；隐藏状态接口不是可见 UI。新控件同时验证展开样式、键盘、表单提交、焦点与禁用继承。
 - Node.js 仅用于开发构建。发布的静态资源由现有 aiohttp 应用提供；正常启动不需要 Node 服务、CDN、远程字体或额外前端进程。
 
-新增基础组件先查现有源码，再按 [官方 Vite 接入说明](https://ui.shadcn.com/docs/installation/vite) 引入需要的组件。引入时使用 `radix-luma` 样式，保留预设配方，并更新 [第三方声明](../web/src/THIRD_PARTY_NOTICES.md)。不要手工编辑构建产物。
+新增基础组件先查现有源码，再按 [官方 Vite 接入说明](https://ui.shadcn.com/docs/installation/vite) 引入需要的组件。引入时使用 `radix-luma` 样式，保留预设配方，并更新 [第三方声明](../../web/src/THIRD_PARTY_NOTICES.md)。不要手工编辑构建产物。
 
 项目使用 pnpm，按 `package.json` 的 `packageManager` 版本和 `pnpm-lock.yaml` 安装。重新应用预设先在副本运行 `pnpm dlx shadcn@4.21.4 apply --preset b1VlIttI -y` 并核对差异；保留动态 DOM 所需的样式配方导出，不直接覆盖业务适配。新增组件可运行 `pnpm dlx shadcn@latest add <组件名>`；检查生成的别名，将共享工具导入统一为 `@/lib/utils`，避免升级生成器时引入第二套工具函数或主题。
