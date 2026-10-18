@@ -115,5 +115,5 @@
   "正在切换词库…": "Switching library…",
   "上传词库文件，或放入 data/libraries/ 后刷新选择。支持 .sqlite3 和 .sqlite3.gz，选中立即生效。": "Upload a library, or place it in data/libraries/ and refresh to select it. Supports .sqlite3 and .sqlite3.gz. Your selection takes effect immediately.",
   "上传或选择词库，开始浏览标签。": "Upload or select a library to browse tags.",
-  "每对标签须共同出现至少此次数，并且关系已收录于当前词库。": "Each pair must meet this co-occurrence count and have a relationship included in the current library."
+  "每对标签须共同出现至少此次数，并且关系已收录于当前词库。当前词库下限为 {0} 次。": "Each pair must meet this co-occurrence count and have a relationship included in the current library. The current library minimum is {0}."
 }

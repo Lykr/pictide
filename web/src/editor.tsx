@@ -29,6 +29,11 @@ type Preset = { id: string; name: string; document: PresetDocument };
 type Mode = "random_each_run" | "fixed_seed" | "sequence";
 type Result = { candidate_id: string; positive: string; negative: string; seed: number; selected_tags: PreviewTerm[]; sequence?: { seed?: number; step?: number; changes?: number; change_budget?: number }; report: Record<string, unknown> };
 const defaults: PresetDocument = { base_positive: [], base_negative: [], blocked_keywords: [], min_tags: 10, max_tags: 30, pmi_threshold: 0, min_cooccurrence: 10, change_budget: 2 };
+function withCooccurrenceFloor(preset: Preset, floor: number): Preset {
+  const value = preset.document.min_cooccurrence;
+  if (Number.isFinite(value) && value >= floor) return preset;
+  return { ...preset, document: { ...preset.document, min_cooccurrence: floor } };
+}
 const stopReasons: Record<string, string> = { target_length: "达到目标长度", no_candidates: "无可用候选", budget_exhausted: "达到变化预算", max_steps: "达到搜索上限", search_limit: "已达搜索上限", no_eligible_tags: "已无可扩展标签", budget_zero: "保持上一帧", held_no_legal_change: "无合法变化，保持上一帧" };
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json" } });
@@ -147,6 +152,8 @@ export function EditorWorkspace() {
   const [libraryRevision, setLibraryRevision] = useState(0);
   const libraryInput = useRef<HTMLInputElement>(null);
   const libraryRequest = useRef(0);
+  const presetRequest = useRef(0);
+  const cooccurrenceFloor = useRef(defaults.min_cooccurrence);
   const [dataset, setDataset] = useState<Record<string, unknown>>({});
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -162,9 +169,16 @@ export function EditorWorkspace() {
   const [result, setResult] = useState<Result | null>(null);
   const [refresh, setRefresh] = useState(0);
   const dirty = JSON.stringify(preset) !== saved;
+  const minCooccurrence = typeof dataset.min_cooccurrence === "number" ? dataset.min_cooccurrence : defaults.min_cooccurrence;
+  const updateDataset = (info: Record<string, unknown>) => {
+    const floor = typeof info.min_cooccurrence === "number" ? info.min_cooccurrence : defaults.min_cooccurrence;
+    cooccurrenceFloor.current = floor; setDataset(info);
+    setPreset(current => withCooccurrenceFloor(current, floor));
+    setSuccess(false);
+  };
   const loadPreset = (next: Preset) => {
     const loaded = { ...next, document: { ...next.document, blocked_keywords: next.document.blocked_keywords ?? [] } };
-    setPreset(loaded); setBlockedText(loaded.document.blocked_keywords.join("\n")); setSaved(JSON.stringify(loaded));
+    setPreset(withCooccurrenceFloor(loaded, cooccurrenceFloor.current)); setBlockedText(loaded.document.blocked_keywords.join("\n")); setSaved(JSON.stringify(loaded));
   };
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { if (dirty && loaded) { event.preventDefault(); event.returnValue = ""; } };
@@ -172,11 +186,14 @@ export function EditorWorkspace() {
   }, [dirty, loaded]);
   useEffect(() => {
     let active = true;
+    const libraryLoad = ++libraryRequest.current;
+    const presetLoad = ++presetRequest.current;
     Promise.all([api<{ presets: { id: string; name: string }[] }>("/api/candidate/presets"), api<Record<string, unknown>>("/api/candidate/dataset")]).then(async ([listing, info]) => {
       if (!active) return;
-      setPresets(listing.presets); setDataset(info);
+      setPresets(listing.presets);
+      if (libraryLoad === libraryRequest.current) updateDataset(info);
       const initial = listing.presets[0] ? await api<Preset>(`/api/candidate/presets/${encodeURIComponent(listing.presets[0].id)}`) : { id: "", name: t("新预设"), document: { ...defaults } };
-      if (active) { loadPreset(initial); setLoaded(true); }
+      if (active && presetLoad === presetRequest.current) { loadPreset(initial); setLoaded(true); }
     }).catch(error => { if (active) setNotice(message(error)); });
     return () => { active = false; };
   }, []);
@@ -198,7 +215,7 @@ export function EditorWorkspace() {
     const listing = await api<LibraryListing>("/api/candidate/library");
     const info = await api<Record<string, unknown>>("/api/candidate/dataset");
     if (request !== libraryRequest.current) return;
-    setLibrary(listing); setDataset(info); setPage(1); setTags({ tags: [], total: 0, page: 1, page_size: DEFAULT_PAGE_SIZE });
+    setLibrary(listing); updateDataset(info); setPage(1); setTags({ tags: [], total: 0, page: 1, page_size: DEFAULT_PAGE_SIZE });
     setRefresh(value => value + 1); setLibraryRevision(value => value + 1); setResult(null);
   };
   useEffect(() => {
@@ -225,17 +242,24 @@ export function EditorWorkspace() {
   const discard = async () => !dirty || await confirmAction(t("当前预设有未保存的修改，继续会放弃这些修改。"));
   const selectPreset = async (id: string) => {
     if (id === preset.id || !(await discard())) return;
+    const request = ++presetRequest.current;
     setBusy(true); setNotice("");
-    try { const next = await api<Preset>(`/api/candidate/presets/${encodeURIComponent(id)}`); loadPreset(next); setResult(null); setSuccess(false); setLoaded(true); }
-    catch (error) { setNotice(message(error)); } finally { setBusy(false); }
+    try {
+      const next = await api<Preset>(`/api/candidate/presets/${encodeURIComponent(id)}`);
+      if (request !== presetRequest.current) return;
+      loadPreset(next); setResult(null); setSuccess(false); setLoaded(true);
+    } catch (error) { if (request === presetRequest.current) setNotice(message(error)); }
+    finally { if (request === presetRequest.current) setBusy(false); }
   };
   const create = async (copy = false) => {
     if (!copy && !(await discard())) return;
-    const next = copy ? { ...preset, id: "", name: tr`${preset.name} 副本`, document: structuredClone(preset.document) } : { id: "", name: t("新预设"), document: { ...defaults } };
+    presetRequest.current++;
+    const source = copy ? { ...preset, id: "", name: tr`${preset.name} 副本`, document: structuredClone(preset.document) } : { id: "", name: t("新预设"), document: { ...defaults } };
+    const next = withCooccurrenceFloor(source, cooccurrenceFloor.current);
     setPreset(next); setBlockedText(next.document.blocked_keywords.join("\n"));
     setSaved(""); setResult(null); setSuccess(false); setLoaded(true); setTab("settings");
   };
-  const validate = () => {
+  const validate = (preset: Preset) => {
     if (!preset.name.trim()) throw new Error(t("请输入预设名称。"));
     for (const [key, value] of Object.entries(preset.document)) {
       if (typeof value === "number" && !Number.isFinite(value)) throw new Error(tr`${key} 需要有效数值。`);
@@ -248,9 +272,10 @@ export function EditorWorkspace() {
   const save = async () => {
     setBusy(true); setNotice(""); setSuccess(false);
     try {
-      validate();
-      const next = await api<Preset>("/api/candidate/presets", { method: "POST", body: JSON.stringify({ ...preset, id: preset.id || undefined }) });
-      loadPreset(next); setSuccess(true); setLoaded(true);
+      const draft = withCooccurrenceFloor(preset, cooccurrenceFloor.current);
+      setPreset(draft); validate(draft);
+      const next = await api<Preset>("/api/candidate/presets", { method: "POST", body: JSON.stringify({ ...draft, id: draft.id || undefined }) });
+      loadPreset(next); setSuccess(next.document.min_cooccurrence >= cooccurrenceFloor.current); setLoaded(true);
       const listing = await api<{ presets: { id: string; name: string }[] }>("/api/candidate/presets"); setPresets(listing.presets);
       document.dispatchEvent(new Event("pictide:candidate-presets-changed"));
     } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
@@ -269,15 +294,16 @@ export function EditorWorkspace() {
   const preview = async () => {
     setBusy(true); setNotice("");
     try {
-      validate();
-      const next = await api<Result>("/api/candidate/generate", { method: "POST", body: JSON.stringify({ preset_id: preset.id || "draft", document: preset.document, mode, seed, sequence_step: mode === "sequence" ? step : 0, max_steps: maxSteps }) });
+      const draft = withCooccurrenceFloor(preset, cooccurrenceFloor.current);
+      setPreset(draft); validate(draft);
+      const next = await api<Result>("/api/candidate/generate", { method: "POST", body: JSON.stringify({ preset_id: draft.id || "draft", document: draft.document, mode, seed, sequence_step: mode === "sequence" ? step : 0, max_steps: maxSteps }) });
       setResult(next);
       if (mode !== "random_each_run") setSeed(counterAfter(mode === "sequence" ? next.sequence?.seed ?? seed : next.seed, seedControl, Number.MAX_SAFE_INTEGER));
       if (mode === "sequence") setStep(counterAfter(step, stepControl, 1000));
     } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
   };
   const controlOptions = [{ value: "fixed", text: t("固定") }, { value: "increment", text: t("递增") }, { value: "decrement", text: t("递减") }, { value: "randomize", text: t("随机") }];
-  const numberField = (key: keyof Omit<PresetDocument, "base_positive" | "base_negative" | "blocked_keywords">, label: string, help: string, min?: number, max?: number, increment: number | "any" = 1) => <Field label={label} help={help}><Input aria-label={label} type="number" min={min} max={max} step={increment} value={Number.isNaN(preset.document[key]) ? "" : preset.document[key]} required disabled={busy} onChange={event => update(key, event.target.valueAsNumber)} /></Field>;
+  const numberField = (key: keyof Omit<PresetDocument, "base_positive" | "base_negative" | "blocked_keywords">, label: string, help: string, min?: number, max?: number, increment: number | "any" = 1) => <Field label={label} help={help}><Input aria-label={label} type="number" min={min} max={max} step={increment} value={Number.isNaN(preset.document[key]) ? "" : preset.document[key]} required disabled={busy} onChange={event => update(key, event.target.valueAsNumber)} onBlur={key === "min_cooccurrence" ? () => setPreset(current => withCooccurrenceFloor(current, cooccurrenceFloor.current)) : undefined} /></Field>;
   const pages = Math.max(1, Math.ceil(tags.total / tags.page_size));
   return <section id="prompts-view" className="editor-page workspace-content" aria-label={t("提示词")} hidden>
     <header className="editor-toolbar"><h1>{t("提示词")}</h1><span className="spacer" /><Badge variant="secondary" data-tooltip={tr`数据来源：${String(dataset.source || t("尚未导入"))}`}>{dataset.status === "ready" ? t("词库就绪") : t("词库未就绪")}</Badge></header>
@@ -319,7 +345,7 @@ export function EditorWorkspace() {
               {numberField("min_tags", t("标签数量下限"), t("在上下限之间等概率抽取目标数量；无法达到时返回已生成的内容。"), 1, 1000)}
               {numberField("max_tags", t("标签数量上限"), t("数量包含固定正向词。固定词超过下限时，以固定词数作为有效下限。"), 1, 1000)}
               {numberField("pmi_threshold", t("PMI 阈值"), t("新标签与每个已有可统计正向标签的 PMI 都须达到此值。0 为独立预期，正数更常共同出现，负数更少。"), undefined, undefined, "any")}
-              {numberField("min_cooccurrence", t("最低共现次数"), t("每对标签须共同出现至少此次数，并且关系已收录于当前词库。"), 1, Number.MAX_SAFE_INTEGER)}
+              {numberField("min_cooccurrence", t("最低共现次数"), tr`每对标签须共同出现至少此次数，并且关系已收录于当前词库。当前词库下限为 ${minCooccurrence} 次。`, minCooccurrence, Number.MAX_SAFE_INTEGER)}
               {numberField("change_budget", t("连续变化预算"), t("限制连续序列和顺流漫游每帧的标签增删数，替换计 2 次。固定词保留；无合法变化时保持上一帧，预算 0 不变。"), 0, 1000)}
             </div>
             <Field label={t("屏蔽关键词")} help={t("跳过包含关键词的新抽取标签。固定正负词与停泊保持的提示词不重新过滤。")}>
