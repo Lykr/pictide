@@ -349,3 +349,11 @@ body.pictide-immersive { overflow: hidden; }
   .feed-page > .topbar { display: none; }
   .feed-page { padding-top: env(safe-area-inset-top, 0px); }
 }
+
+/* Gesture/keyboard acknowledgement stays separate from auto-hidden toolbars. */
+.immersive-feedback { position: absolute; z-index: 2; left: 50%; top: 68%; transform: translate(-50%, -50%); pointer-events: none; user-select: none; }
+.image-card:not(.immersive) > .immersive-feedback, .immersive-feedback[hidden] { display: none; }
+.immersive-feedback-content { display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); padding: 14px 20px; border-radius: 999px; border: 1px solid var(--border); background: color-mix(in oklch, var(--card) 88%, transparent); color: var(--card-foreground); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 8px 32px #0002; font-size: 14px; font-weight: 500; white-space: nowrap; }
+.immersive-feedback [data-feedback-icon] { display: none; width: 28px; height: 28px; stroke-width: 1.75; flex-shrink: 0; }
+.immersive-feedback[data-value="1"] [data-feedback-icon=like] { display: block; fill: currentColor; }
+.immersive-feedback[data-value="-1"] [data-feedback-icon=dislike], .immersive-feedback[data-value=clear] [data-feedback-icon=clear] { display: block; }

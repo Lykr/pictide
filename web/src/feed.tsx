@@ -85,6 +85,14 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <img id="main-image" alt={t("生成的图片")} draggable={false} />
 <div id="image-error" className="image-error" hidden>{t("图片读取失败，请检查服务与文件是否可用。")}</div>
 </div>
+<div id="immersive-feedback" className="immersive-feedback" role="status" aria-live="polite" aria-atomic="true" hidden>
+<div className="immersive-feedback-content">
+<Heart data-feedback-icon="like" aria-hidden="true" />
+<ThumbsDown data-feedback-icon="dislike" aria-hidden="true" />
+<CircleSlash data-feedback-icon="clear" aria-hidden="true" />
+<span id="immersive-feedback-label" />
+</div>
+</div>
 <div className="image-toolbar">
 <div className="image-meta">
 <strong id="image-index">

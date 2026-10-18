@@ -94,6 +94,7 @@ let roamAnchorRetried = false;
 let roamPageActive = true, roamVersion = 0;
 let roamSettingsSaving = false, roamSwitch = null;
 let anchorPrefetchDeferred = false;
+let feedbackMotion = null, feedbackMotionTimer;
 const roamPlayback = createRoamPlayback({
   advance: current => moveImage('newer', current),
   changed: detail => document.dispatchEvent(new CustomEvent('pictide:roam-playback-state', { detail })),
@@ -117,7 +118,7 @@ const immersive = createImmersiveViewer({
   card: $('image-card'), toolbar: document.querySelector('.image-toolbar'),
   entry: $('roam-immersive'), focusReturn: $('roam-options'), exit: $('roam-immersive-exit'),
   eligible: () => state.view === 'feed' && !$('image-card').hidden && !!state.currentImage,
-  changed: () => document.dispatchEvent(new Event('pictide:roam-options-close')),
+  changed: () => { clearFeedbackMotion(); document.dispatchEvent(new Event('pictide:roam-options-close')); },
 });
 bindTouchNavigation(document.querySelector('#image-card .image-stage'), {
   navigate: direction => moveImage(direction),
@@ -412,6 +413,7 @@ function renderArtifacts() {
   if (!artifact) { cancelImageTransition($('main-image')); roamImageSwitchPending = false; syncRoamPlayback(); immersive.leave(); state.currentImage = null; document.dispatchEvent(new CustomEvent('pictide:image-info', { detail: null })); return; }
   document.dispatchEvent(new CustomEvent('pictide:image-info', { detail: { id: artifact.id, seed: artifact.seed_applied === false ? t("使用工作流种子设置") : String(artifact.seed ?? '—'), positive: artifact.positive || '', negative: artifact.negative || '' } }));
   if (state.currentImage !== artifact.id) {
+    clearFeedbackMotion();
     cancelImageTransition($('main-image'));
     roamImageSwitchPending = state.currentImage !== null;
     state.currentImage = artifact.id; $('image-error').hidden = true;
@@ -476,23 +478,54 @@ async function moveImage(direction, automatic = null) {
   if (destination === null) { showNotice(items.length ? direction === 'newer' ? t("已经是最新的一张。") : state.pages[pageView()].hasMore ? t("已到已加载图片的末尾，请点击加载更早图片。") : t("已经是最早的一张。") : t("还没有可以浏览的图片。")); return; }
   state.activeId = items[destination].id; renderArtifacts(); refillRoam();
 }
+function clearFeedbackMotion() {
+  clearTimeout(feedbackMotionTimer);
+  feedbackMotion?.cancel(); feedbackMotion = null;
+  $('immersive-feedback').hidden = true;
+}
+function showFeedbackMotion(value, previous) {
+  if (!immersive.active) return;
+  clearFeedbackMotion();
+  const overlay = $('immersive-feedback');
+  overlay.dataset.value = value === null ? 'clear' : String(value);
+  $('immersive-feedback-label').textContent = value === 1 ? t("已喜欢") : value === -1 ? t("已不喜欢")
+    : previous === 1 ? t("已取消喜欢") : t("已取消不喜欢");
+  overlay.hidden = false;
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    feedbackMotion = overlay.firstElementChild.animate([
+      { opacity: 0, transform: 'translateY(12px) scale(.86)', offset: 0 },
+      { opacity: 1, transform: 'translateY(0) scale(1.06)', offset: .18 },
+      { opacity: 1, transform: 'translateY(0) scale(1)', offset: .3 },
+      { opacity: 1, transform: 'translateY(0) scale(1)', offset: .7 },
+      { opacity: 0, transform: 'translateY(-8px) scale(.98)', offset: 1 },
+    ], { duration: 900, easing: 'ease-out', fill: 'both' });
+  }
+  feedbackMotionTimer = setTimeout(clearFeedbackMotion, 900);
+}
 function stepFeedback(direction) {
   if (state.feedbackPending) return;
   const artifact = artifactsForView().find(item => item.id === state.activeId);
-  if (artifact) return feedback(steppedFeedbackValue(artifact.feedback, direction), false);
+  if (artifact) {
+    clearFeedbackMotion();
+    return feedback(steppedFeedbackValue(artifact.feedback, direction), false, true);
+  }
 }
-async function feedback(value, toggle = true) {
+async function feedback(value, toggle = true, animate = false) {
   if (value === 1 && state.view === 'feed') roamPlayback.pauseForLike();
   if (state.feedbackPending) return;
   const artifact = artifactsForView().find((item) => item.id === state.activeId); if (!artifact) { showNotice(t("还没有可以评价的图片。")); return; }
   const nextValue = toggle ? feedbackValue(artifact.feedback, value) : value;
-  if (nextValue === artifact.feedback) return;
+  if (nextValue === artifact.feedback) {
+    if (animate) showFeedbackMotion(nextValue, artifact.feedback);
+    return;
+  }
   const artifactRevision = state.artifactRevision;
   state.feedbackPending = true;
   renderArtifacts();
   try {
     if (state.view === 'liked' && nextValue === null && !await confirmAction(t("确定取消喜欢这张图片？取消后将从喜欢页面移除，并受自动清理规则影响。"))) return;
     const result = await api(`/api/artifacts/${encodeURIComponent(artifact.id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value: nextValue }) }); state.feedbackRevision++; observeArtifactRevision(state, result.revision ?? result.artifact_revision); if (artifactRevision === state.artifactRevision) { const delta = Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); if (state.likedSort !== 'score' && matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += delta; replaceArtifact(result.artifact); } renderArtifacts();
+    if (animate && state.view === 'feed' && state.currentImage === artifact.id) showFeedbackMotion(result.artifact.feedback, artifact.feedback);
   }
   catch (error) { showNotice(error.status === 404 || error.status === 410 ? t("图片已清理或不可用，正在刷新列表。") : error.message, true); }
   finally { state.feedbackPending = false; renderArtifacts(); await refresh(true); }
