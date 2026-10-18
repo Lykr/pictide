@@ -42,7 +42,7 @@ cd ../pictide-example
 
 完成当前检出的前端构建后，按本机系统阅读：[Windows](guides/setup/windows.md#构建便携包) · [Linux](guides/setup/linux.md#构建便携包) · [macOS](guides/setup/macos.md#构建便携包)。构建工具为 `scripts/build_portable.py`，仅从指定数据目录导出所选统计词库与编码器所需模型，个人后端、图片、预设与偏好留在本地。
 
-输出目录使用新目录，产物包括 Pictide 目录、ZIP 和 build-report.json。默认词库由源数据目录的选择决定；正式发布优先选择精简词库。构建阶段安装 `backend/requirements-release.txt`，用户直接启动已构建产物。
+构建与验证材料归入 `data/dev/`，运行环境保留在 `data/runtime/`。输出目录使用新目录，产物包括 Pictide 目录、ZIP 和 build-report.json。默认词库由源数据目录的选择决定；正式发布优先选择精简词库。构建阶段安装 `backend/requirements-release.txt`，用户直接启动已构建产物。
 
 ## 验证与提交
 

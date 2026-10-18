@@ -79,7 +79,7 @@ flowchart TD
 
 ## 模型准备
 
-推荐模型使用离线 FastEmbed 格式的 [MiniLM ONNX 模型](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx)，完整缓存目录 `models--Qdrant--all-MiniLM-L6-v2-onnx` 放在所选数据目录的 `cache/embeddings/` 下，包含 `refs/main` 和对应 `snapshots` 文件。应用不自动下载模型；模型或依赖缺失时保持生图可用，并在 bootstrap 的 `recommendation` 与漫游响应报告状态。应用启动脚本会安装版本化 CPU 依赖；此版本在 Python 3.12 上完成验证，较旧 Python 的兼容依赖由安装器选择。
+推荐模型使用离线 FastEmbed 格式的 [MiniLM ONNX 模型](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx)，模型文件平铺在所选数据目录的 `models/minilm/` 下，包含 model.onnx、tokenizer.json、config.json、tokenizer_config.json 和 special_tokens_map.json。可从固定模型快照中取得这五个文件，便携包会自动准备。应用不自动下载模型；模型或依赖缺失时保持生图可用，并在 bootstrap 的 `recommendation` 与漫游响应报告状态。应用启动脚本会安装版本化 CPU 依赖；此版本在 Python 3.12 上完成验证，较旧 Python 的兼容依赖由安装器选择。
 
 ## 进一步查阅
 

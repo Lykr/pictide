@@ -63,7 +63,7 @@ chmod +x start.sh start.command
 
 ```bash
 ./data/runtime/venv/bin/python -m pip install -r backend/requirements-release.txt
-./data/runtime/venv/bin/python scripts/build_portable.py --source-data-dir ./data --output-dir ./data/releases/macos-portable
+./data/runtime/venv/bin/python scripts/build_portable.py --source-data-dir ./data --output-dir ./data/dev/releases/macos-portable
 ```
 
 指定的数据目录提供当前所选词库和 MiniLM；输出目录使用新目录。构建完成后使用其中的 Pictide 目录或 ZIP。详情见[发行记录](../../issues/automatic-startup.md)。

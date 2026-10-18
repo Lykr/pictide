@@ -2,7 +2,7 @@
 
 [数据目录与备份](../data-layout.md) · [调用和数据流](../architecture/flows.md)
 
-主库保存应用状态，候选库保存离线统计与预设。这里记录当前归属和关联，不作为旧版本升级操作手册。
+业务主库保存应用状态，个人预设库保存预设与词库选择，libraries 中的词库文件保存离线统计。这里记录当前归属和关联，不作为旧版本升级操作手册。
 
 ## 主库归属
 
@@ -64,7 +64,7 @@ SQLite 在初始化时以 `CREATE TABLE IF NOT EXISTS` 增加漫游表，保留�
 
 ## 推荐缓存与可撤回学习
 
-推荐数据复用 `pictide.sqlite3`，不另建数据库：
+推荐数据复用 `db/pictide.sqlite3`，不另建数据库：
 
 | 表 | 用途 |
 | --- | --- |
@@ -75,7 +75,7 @@ SQLite 在初始化时以 `CREATE TABLE IF NOT EXISTS` 增加漫游表，保留�
 | `recommendation_reset_requests` | 重置请求的幂等结果，重试不会再次清除后来积累的偏好 |
 | `recommendation_evidence` | 每用户、特征版本、图片的最新已应用证据，包含撤回状态，防止重复或乱序累计 |
 
-App 的单个后台学习任务处理未应用的反馈记录，启动及后续操作唤醒处理，评分不等待本次学习；模型不可用时通知保留，图片喜欢正常保存。新特征版本可以重编码同一批历史实际文本与有效反馈；已重置用户仅处理重置水位之后的真实反馈变化，历史喜欢不重新导入；历史类目和标签库 ID 不作为学习身份。缺失或损坏的派生参数可从保留证据重建。模型缓存位于 `cache/embeddings`，可以重新准备；反馈与快照是恢复学习的依据，备份时应完整保留 SQLite。图片旁 JSON 不增加配置或学习数据。具体接口、特征和学习限制见 [推荐设计](../issues/recommendation-v1.md)。
+App 的单个后台学习任务处理未应用的反馈记录，启动及后续操作唤醒处理，评分不等待本次学习；模型不可用时通知保留，图片喜欢正常保存。新特征版本可以重编码同一批历史实际文本与有效反馈；已重置用户仅处理重置水位之后的真实反馈变化，历史喜欢不重新导入；历史类目和标签库 ID 不作为学习身份。缺失或损坏的派生参数可从保留证据重建。模型资源位于 `models/minilm`，与可重新生成的缓存分别存放；反馈与快照是恢复学习的依据，备份时应完整保留 SQLite。图片旁 JSON 不增加配置或学习数据。具体接口、特征和学习限制见 [推荐设计](../issues/recommendation-v1.md)。
 
 ## 图片评分缓存
 
@@ -83,7 +83,7 @@ App 的单个后台学习任务处理未应用的反馈记录，启动及后续�
 
 ## 候选数据
 
-`libraries/*.sqlite3` 中 tags 保存 `id,name,post_count`，correlations 保存无序标签对的 `pmi,count`，dataset 保存来源/状态。个人配置独立存放在 `candidate.sqlite3`：presets 保存可编辑预设，library_selection 保存当前词库文件名。上传仅导入统计表，个人预设始终沿用本地记录。没有重复保存显示名称或类别列；显示下划线原名，推荐/生图调用时转换为空格文本。
+`libraries/*.sqlite3` 中 tags 保存 `id,name,post_count`，correlations 保存无序标签对的 `pmi,count`，dataset 保存来源/状态。个人配置独立存放在 `db/candidate.sqlite3`：presets 保存可编辑预设，library_selection 保存当前词库文件名。上传仅导入统计表，个人预设始终沿用本地记录。没有重复保存显示名称或类别列；显示下划线原名，推荐/生图调用时转换为空格文本。
 
 普通标签只保留 Danbooru general 类别且频次至少 100 的项，并加入由图片 rating 转成的 general / sensitive / questionable / explicit 四种评级标签。当前试用成品库保留共现至少 1,000 次的词对，基础离线导入保留至少 10 次。裁剪保留标签、频次、PMI 和预设原值，详见[极限裁剪记录](../issues/candidate-pair1000.md)。缺记录表示统计未保留，具体次数未知。PMI 采用以 2 为底的对数。
 

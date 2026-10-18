@@ -11,4 +11,4 @@ python -m unittest discover -s tests/candidate -p test_cooccurrence_importer.py 
 python -m unittest discover -s tests -p test_cooccurrence_integration.py -v
 ```
 
-样例使用临时 SQLite 和中性标签；集成使用模拟生图后端，不提交真实 GPU 任务。浏览器与完整数据导入的实测记录放在 data/verification/，不把模拟样例当作真实出图结论。
+样例使用临时 SQLite 和中性标签；集成使用模拟生图后端，不提交真实 GPU 任务。浏览器与完整数据导入的实测记录放在 data/dev/verification/，不把模拟样例当作真实出图结论。

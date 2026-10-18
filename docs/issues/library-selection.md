@@ -16,7 +16,7 @@ flowchart TD
     App --> Candidate["候选：词库目录 / 选择 / 候选生成"]
     Candidate --> Store["候选存储"]
     Store --> Libraries[("data/libraries/*.sqlite3：只读统计")]
-    Store --> Presets[("data/candidate.sqlite3：个人预设 / 当前选择")]
+    Store --> Presets[("data/db/candidate.sqlite3：个人预设 / 当前选择")]
     Files["用户复制词库文件"] --> Libraries
 ```
 
@@ -25,7 +25,7 @@ flowchart TD
 **词库目录与个人配置**
 
 - `data/libraries/` 专门存放可选词库 SQLite 文件。用户可以从页面上传 `.sqlite3` / `.sqlite3.gz`，上传时校验并将解压后的 SQLite 保存到此目录；也可直接复制 `.sqlite3` 文件到此目录，点击刷新后选择。
-- 个人固定词与预设、当前词库选择保存在 `data/candidate.sqlite3`。选择另一词库只切换统计来源；导入文件中的预设继续由用户本地预设替代。图片、锚点和偏好沿用现有业务存储。
+- 个人固定词与预设、当前词库选择保存在 `data/db/candidate.sqlite3`。选择另一词库只切换统计来源；导入文件中的预设继续由用户本地预设替代。图片、锚点和偏好沿用现有业务存储。
 - 本项目现有混合数据库在集成时先备份，再一次性整理为词库文件与个人配置文件；运行实现使用这套目录布局。
 - 新文件采用可区分的文件名；上传同名文件自动添加编号，已选词库继续可用。初次发行的默认词库可与用户添加的精简版、完整版本并存。
 
@@ -97,4 +97,4 @@ sequenceDiagram
 - 词库统计与个人配置分开保存，避免更换词库影响用户预设。
 - 少数冒烟覆盖 SQLite/gzip 上传、复制后刷新选择、即时生效、重启保留选择、同名文件与异常文件提示。
 - 已通过：SQLite/gzip 上传、目录新增后刷新选择、即时切换、重启保留、预设保留、异常文件与所选文件替换的 HTTP 冒烟；前端类型检查和构建；真实浏览器上传、跨客户端刷新、草稿保留和 390px 窄屏布局。
-- 验证采用中性词库与模拟后端，记录位于 `data/verification/library-selection-20261019/`。集成前备份混合库与前端，统计和个人预设分开保存。
+- 验证采用中性词库与模拟后端，记录位于 `data/dev/verification/library-selection-20261019/`。集成前备份混合库与前端，统计和个人预设分开保存。

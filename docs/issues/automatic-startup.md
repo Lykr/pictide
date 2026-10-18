@@ -44,12 +44,12 @@ Pictide/
         web/dist/                 前端成品
         resources/                默认词库、固定版本 MiniLM、资源清单
     libraries/                    首次启动生成，可替换词库
-    cache/embeddings/             首次启动生成，离线 MiniLM
-    candidate.sqlite3             首次启动生成，个人预设与选择
-    pictide.sqlite3                首次启动生成，业务数据
+    models/minilm/               首次启动生成，离线 MiniLM
+    db/candidate.sqlite3          首次启动生成，个人预设与选择
+    db/pictide.sqlite3             首次启动生成，业务数据
 ```
 
-- 随包词库仅含 `tags/correlations/dataset` 和索引，默认使用当前精简版；推荐模型只导出当前编码器实际需要的 ONNX、tokenizer 配套文件及快照引用。
+- 随包词库仅含 `tags/correlations/dataset` 和索引，默认使用当前精简版；推荐模型只导出当前编码器实际需要的 ONNX、tokenizer 配套文件。
 - 发行资源与个人数据分开，包内种子用于首次初始化和指定新数据目录；后续启动沿用用户已有资源。压缩包包含种子，个人运行副本在首次启动时生成。
 - 前端依赖安装、构建和 PyInstaller 安装属于开发构建流程；所需打包依赖统一列在 `backend/requirements-release.txt`。
 - 发行导出读取统计与模型，个人后端配置、密钥、图片、评价和偏好留在本地数据目录。
@@ -94,7 +94,7 @@ sequenceDiagram
 
 交付与验证（2026-10-19）：
 
-- Windows x64 目录式程序及 ZIP 已构建，产物位于 `data/releases/portable-compact-20261019/`。ZIP 为 154,793,286 B（147.6 MiB），解压目录为 257,461,991 B（245.5 MiB）；首次运行另生成约 110 MiB 的词库与模型工作副本。
+- Windows x64 目录式程序及 ZIP 已构建，产物位于 `data/dev/releases/portable-compact-20261019/`。ZIP 为 154,793,286 B（147.6 MiB），解压目录为 257,461,991 B（245.5 MiB）；首次运行另生成约 110 MiB 的词库与模型工作副本。
 - 三项冒烟通过：干净资源导出与已有数据保留、便携默认路径、服务就绪后打开浏览器；实际解压程序通过页面资源、候选、MiniLM 编码与推荐评分验证。
 - 在本机已缓存磁盘条件下，新数据目录初始化至 bootstrap 响应约 1.04 秒，再次启动约 0.62 秒，移动目录后约 1.13 秒；该时间包含资源准备和服务就绪，浏览器展示及首次模型推理另计。
-- 验证采用独立数据和端口，只配置测试生图地址；真实 GPU 生图和 Linux/macOS 原生运行未执行。报告与日志保存在 `data/verification/portable-startup-20261019/`。
+- 验证采用独立数据和端口，只配置测试生图地址；真实 GPU 生图和 Linux/macOS 原生运行未执行。报告与日志保存在 `data/dev/verification/portable-startup-20261019/`。

@@ -68,7 +68,7 @@ New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -
 
 ```powershell
 .\data\runtime\venv\Scripts\python.exe -m pip install -r backend/requirements-release.txt
-.\data\runtime\venv\Scripts\python.exe scripts/build_portable.py --source-data-dir ./data --output-dir ./data/releases/windows-portable
+.\data\runtime\venv\Scripts\python.exe scripts/build_portable.py --source-data-dir ./data --output-dir ./data/dev/releases/windows-portable
 ```
 
 指定的数据目录提供当前所选词库和 MiniLM；输出目录使用新目录。构建完成后使用其中的 Pictide 目录或 ZIP。详情见[发行记录](../../issues/automatic-startup.md)。

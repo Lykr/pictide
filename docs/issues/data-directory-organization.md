@@ -78,3 +78,11 @@ sequenceDiagram
 - 已关闭的便携试用包随发行产物归入 dev/releases，包内个人数据整包保留；新构建的便携包采用新布局，主项目与试用实例的数据各自独立。
 - 运行环境沿用现有位置，保留 Windows 虚拟环境中的路径；开发源码中的临时产物按实际用途归入 dev。
 - 概念验证阶段采用本次一次性整理，程序直接使用新布局；通过少数路径、模型编码、预设及真实便携启动冒烟验证。
+
+交付记录（2026-10-19）：
+
+- 主项目数据库、模型与开发材料已归位；150 项移动/归档记录保存在 data/dev/maintenance/data-layout-20261019.json。
+- 整理前备份位于 data/backups/before-data-layout-20261019-83bee0。数据库各表记录数保持，模型文件 SHA-256、模型/特征版本和中性文本编码结果与整理前一致。
+- 路径、便携资源导出与个人配置保留、词库上传/选择/重启三项冒烟通过；真实 Windows 便携程序通过新数据库路径、平铺模型、离线编码和评分、移动目录及自定义数据目录验证。
+- 新产物位于 data/dev/releases/portable-data-layout-20261019，ZIP 约 147.6 MiB；旧试用包及个人数据保留在 data/dev/releases/portable-compact-20261019。
+- 验证记录位于 data/dev/verification/data-layout-20261019。验证实例已停止，真实 GPU 生图和 Linux/macOS 原生运行未执行。

@@ -1,49 +1,63 @@
 # 数据目录与备份
 
-[文档导航](README.md)。本页说明数据放在哪里、如何保管和恢复；具体表及关联见[SQLite 存储参考](reference/storage.md)，旧部署步骤留在[历史记录](issues/data-layout-history.md)。
+[文档导航](README.md)。本页说明当前数据布局与备份；表结构见[SQLite 存储参考](reference/storage.md)，本次整理记录见[数据目录整理](issues/data-directory-organization.md)。
 
 ## 数据位置
 
-数据目录按「启动参数 → `PICTIDE_DATA_DIR` → 旧 `PICTIDE_WEB_DATA_DIR` → 项目内 `data/`」选择。选择的是整个目录，不是单个数据库文件。便携版默认使用发行目录中的 data，移动整个发行目录后仍能定位个人数据。
+数据目录按「启动参数 → PICTIDE_DATA_DIR → 旧 PICTIDE_WEB_DATA_DIR → 默认 data」选择。源码版默认使用项目内 data；便携版默认使用发行目录中的 data。移动整个便携目录后，个人数据与程序一起保留。
 
-自定义目录的命令按系统查阅：[Windows](guides/setup/windows.md#端口与数据目录) · [Linux](guides/setup/linux.md#端口与数据目录) · [macOS](guides/setup/macos.md#端口与数据目录)。相对路径按运行命令时所在目录解析。
+自定义目录按系统查阅：[Windows](guides/setup/windows.md#端口与数据目录) · [Linux](guides/setup/linux.md#端口与数据目录) · [macOS](guides/setup/macos.md#端口与数据目录)。相对路径按运行命令时所在目录解析。
 
-## 目录概览
+## 运行数据
 
-| 路径（相对数据根目录） | 保存内容 |
+以下路径相对于所选 data：
+
+| 路径 | 内容 |
 | --- | --- |
-| `pictide.sqlite3` | 后端快照、任务、图片、反馈、漫游设置、用户偏好与评分缓存；运行时可能存在 WAL/SHM |
-| `candidate.sqlite3` | 个人预设、固定词与当前词库选择 |
-| `libraries/*.sqlite3` | 可选择的只读原名词库、词频、PMI/共现次数及来源 |
-| `images/` | 图片和同名提示词 JSON，仅含 positive / negative |
-| `workflows/` | 命名 API 工作流；`.backups/` 保存更新或删除前的版本 |
+| `db/pictide.sqlite3` | 图片、任务、反馈、后端、设置和推荐学习；运行时可能存在 WAL/SHM |
+| `db/candidate.sqlite3` | 个人提示词预设、固定词与当前词库选择 |
+| `libraries/*.sqlite3` | 可选择的只读统计词库 |
+| `models/minilm/` | 离线推荐模型，包含 model.onnx、tokenizer.json、config.json、tokenizer_config.json、special_tokens_map.json |
+| `images/` | 图片及同名提示词 JSON，仅含 positive / negative |
+| `workflows/` | API 工作流；.backups 保存更新或删除前的版本 |
 | `history-cleanup.json` | 历史图片保留天数，缺省 1 天 |
-| `datasets/`、`import/` | 原始 Parquet、下载校验和离线统计中间数据；在线生成不读取 |
-| `cache/embeddings/` | 离线 MiniLM 模型，推荐运行必需，清理时保留 |
-| `cache/` | Python、pip、pnpm、Vite 等缓存 |
-| `runtime/venv/` | 源码版本 Python 运行环境 |
-| `runtime/pictide/` | 便携版程序、随包依赖、前端和首次初始化种子资源 |
-| `runtime/frontend/node_modules/` | 前端开发依赖实体 |
-| `logs/`、`tmp/` | 日志和临时文件 |
-| `previews/`、`verification/` | 预览与验证材料 |
-| `backups/`、`maintenance/` | 备份及本机维护记录 |
+| `runtime/` | 程序与依赖：源码版 venv、前端开发依赖；便携版 pictide 程序及随包资源 |
+| `cache/` | Python、pip、pnpm、Vite 等可重新生成的缓存 |
+| `tmp/` | 运行临时文件 |
+| `logs/` | 运行日志 |
+| `backups/` | 数据备份 |
 
-旧 `prompts/` 可能仍在历史备份内，当前候选不读取。源码 `web/node_modules` 可为数据目录中依赖实体的 Junction，`web/dist/` 是前端构建产物；这些不属于用户图库。ComfyUI 的模型、环境、输入及 output/temp 由 ComfyUI 自行管理。
+词库添加与选择见[提示词指南](guides/prompts.md#添加与切换词库)。MiniLM 是推荐运行所需资源，独立放在 models，日常缓存清理保留该目录。前端构建成品由程序提供，源码中的 web/node_modules 可以是指向 runtime/frontend/node_modules 的链接。
+
+## 开发材料
+
+主项目的开发内容统一归入 data/dev；普通便携运行会按需创建运行目录。
+
+| 路径 | 内容 |
+| --- | --- |
+| `dev/datasets/` | 原始 Parquet、下载校验与离线统计中间文件 |
+| `dev/releases/` | 便携发行目录、ZIP 和构建报告 |
+| `dev/verification/` | 独立验证实例、截图和报告 |
+| `dev/maintenance/` | 本机维护脚本和执行记录 |
+| `dev/designs/`、`dev/previews/` | 设计素材及历史截图 |
+| `dev/legacy/` | 退役的词库目录、模型下载缓存与历史临时材料 |
+
+开发材料与运行数据分别管理；历史文件的原路径以当时报告为准，整理后的对应位置见维护记录。ComfyUI 的模型、环境与输出由 ComfyUI 管理。
 
 ## 备份与恢复
 
-1. 停止 Pictide，再备份整个选定数据目录；同时保留主库、个人预设库、整个 libraries 词库目录、图片、工作流及设置。
-2. 数据库包含后端密钥及历史修订，按含密钥文件保管。删除当前后端配置并不擦除历史快照中的密钥。
-3. 恢复时先保留当前数据备份，再使用相应备份整体恢复。迁往新目录或机器后重建 Python 虚拟环境，避免 Windows 绝对路径失效。
-4. 需要恢复某个工作流版本时，将 `.backups/<id>-<revision>.json` 复制回 `workflows/<id>.json`；重新启动后在后端中重新选择并保存该模板。
+1. 停止 Pictide，备份 db、images、workflows 和 history-cleanup.json；同时保存 libraries、models，便于完整离线恢复。需要保留开发材料时另备份 dev。
+2. 数据库包含后端密钥与历史修订，按含密钥文件保管。删除当前后端配置后，历史快照继续保留。
+3. 恢复前保留当前数据备份，再恢复相应文件。跨机器使用时重新准备源码虚拟环境，或使用对应系统的便携包。
+4. 单独恢复工作流时，将 workflows/.backups 中目标版本复制回原工作流文件，并在后端设置中重新选择、保存。
 
-启动脚本不会自动导入别处的数据库。历史素材按清单确认后再清理；运行数据不进入 Git。
+图片、任务与反馈应使用同一备份时点。保留 db 下运行时的 SQLite 辅助文件，停止服务后再进行文件级备份和整理。
 
 ## 数据生命周期
 
-- 保存新后端生成不可变修订；已提交任务继续引用原配置。工作流编辑核对 revision，修改前保留文件备份。
-- 生成区、漫游区通过任务来源关联区分；喜欢跨来源保留。清理喜欢图只隐藏所在栏目，清理未喜欢图会回收图片与同名 JSON，任务历史保留。
-- 时间清理与漫游历史数量清理在启动和操作入口按需执行，没有定时清理任务；具体操作后果见[设置与清理](guides/settings.md#历史图片清理)。
-- 反馈和待学习记录一起落库，推荐后台处理；图片旁 JSON 不增加配置或训练数据。
+- 后端保存产生不可变修订，已有任务引用提交时快照；工作流编辑前保留版本备份。
+- 喜欢图片跨栏目保留。清理未喜欢图片会回收图片与提示词 JSON，任务历史继续保存。
+- 时间清理和漫游历史数量清理在启动与操作入口执行，说明见[设置与清理](guides/settings.md#历史图片清理)。
+- 反馈与待学习记录同事务落库，推荐在后台处理；历史记录按生成时快照解释。
 
-继续查阅：[存储表与快照](reference/storage.md) · [设置接口](reference/api/settings.md) · [部署历史](issues/data-layout-history.md)
+继续查阅：[存储表与快照](reference/storage.md) · [设置接口](reference/api/settings.md)
