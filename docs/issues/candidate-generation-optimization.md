@@ -18,7 +18,7 @@
 
 10 组串行 profile 总耗时约 5.60 秒，expansion_candidates 累计 5.50 秒（约 98%）；166 次扩展、2227 次 SQL execute、约 29 万次关系结果迭代。热点生成器包含 SQLite 游标继续取行的时间，不能将其全部解释为纯 Python 或 GIL 耗时。EXPLAIN 确认当前受限词对查询使用索引。现有证据支持先减少数据处理量，不支持把缺索引或写锁认定为主要瓶颈。
 
-证据：[函数分析](../data/verification/candidate-profile-20261017/report.json)、[4/8/12 线程对照](../data/verification/candidate-threads-8-12-20261017/report.json)。
+证据：[函数分析](../../data/verification/candidate-profile-20261017/report.json)、[4/8/12 线程对照](../../data/verification/candidate-threads-8-12-20261017/report.json)。
 
 ## 1. 架构与职责
 
@@ -157,4 +157,4 @@ pair_relations 继续服务预览与参考校验，不改其 PMI/count 语义。
 
 少量冒烟与中性旧新对照覆盖：双向索引及分批查询、共享基集隔离、删词恢复、浮点累加顺序、固定自由词与负向词、屏蔽词、允许池、固定种子、sequence 重放、顺流预算、部分结果与异常传播。没有运行全量测试，没有修改业务数据或数据库结构。
 
-原始记录：[性能与查询报告](../data/verification/candidate-incremental-20261017/report.json)。不同负载、预设和组合会影响耗时；以上是本机本次测试结果。
+原始记录：[性能与查询报告](../../data/verification/candidate-incremental-20261017/report.json)。不同负载、预设和组合会影响耗时；以上是本机本次测试结果。

@@ -123,26 +123,26 @@ SQLite 在初始化时以 `CREATE TABLE IF NOT EXISTS` 增加漫游表，保留�
 | `recommendation_reset_requests` | 重置请求的幂等结果，重试不会再次清除后来积累的偏好 |
 | `recommendation_evidence` | 每用户、特征版本、图片的最新已应用证据，包含撤回状态，防止重复或乱序累计 |
 
-启动和评分前由 App 重放未应用的最新通知；模型不可用时通知保留，图片喜欢正常保存。新特征版本可以重编码同一批历史实际文本与有效反馈；已重置用户仅处理重置水位之后的真实反馈变化，历史喜欢不重新导入；历史类目和标签库 ID 不作为学习身份。缺失或损坏的派生参数可从保留证据重建。模型缓存位于 `cache/embeddings`，可以重新准备；反馈与快照是恢复学习的依据，备份时应完整保留 SQLite。图片旁 JSON 不增加配置或学习数据。具体接口、特征和正向学习限制见 [推荐设计](recommendation-v1.md)。
+启动和评分前由 App 重放未应用的最新通知；模型不可用时通知保留，图片喜欢正常保存。新特征版本可以重编码同一批历史实际文本与有效反馈；已重置用户仅处理重置水位之后的真实反馈变化，历史喜欢不重新导入；历史类目和标签库 ID 不作为学习身份。缺失或损坏的派生参数可从保留证据重建。模型缓存位于 `cache/embeddings`，可以重新准备；反馈与快照是恢复学习的依据，备份时应完整保留 SQLite。图片旁 JSON 不增加配置或学习数据。具体接口、特征和正向学习限制见 [推荐设计](issues/recommendation-v1.md)。
 
 ## 共现候选数据
 
 `candidate.sqlite3` 保存原始下划线标签名、展示文本、Danbooru 类别、次数，无序标签对共现次数、数据集来源与处理状态以及可编辑命名预设。共现概率由计数计算，不重复保存。只读词库由离线导入工具生成；下载 Parquet 保留在 `datasets/danbooru-2026/raw/`，下载校验记录存于同目录上级的 download.sqlite3。运行时无需网络或 Parquet。
 
-漫游缓冲、历史上限、后端与 preset_id 保存在主数据库 `roam_settings` 表中；新实现不读取旧 roam.json 或旧候选 JSON。发布前备份数据库、原词库和旧设置文件；不清空任务、图片、喜欢及推荐记录。新候选数据结构与接口见 [共现候选说明](cooccurrence-candidates-v1.md)。
+漫游缓冲、历史上限、后端与 preset_id 保存在主数据库 `roam_settings` 表中；新实现不读取旧 roam.json 或旧候选 JSON。发布前备份数据库、原词库和旧设置文件；不清空任务、图片、喜欢及推荐记录。新候选数据结构与接口见 [共现候选说明](issues/cooccurrence-candidates-v1.md)。
 
 ## PMI 候选库
 
-候选成品只保留 general 且频次至少 100 的标签；tags 保存 id/name/post_count，correlations 保存无序标签对的 pmi/count，另有数据来源和预设。原名是词库显示内容，空格形式仅在推荐和生图调用时转换。导入去重 ID、进度和临时计数只在独立离线 SQLite 中，成品不保留。重建先备份旧 candidate.sqlite3，不做旧概率预设兼容；历史任务快照和推荐反馈仍在主库，保持原文本。完整规则见 [PMI 设计](candidate-pmi.md)。
+候选成品只保留 general 且频次至少 100 的标签；tags 保存 id/name/post_count，correlations 保存无序标签对的 pmi/count，另有数据来源和预设。原名是词库显示内容，空格形式仅在推荐和生图调用时转换。导入去重 ID、进度和临时计数只在独立离线 SQLite 中，成品不保留。重建先备份旧 candidate.sqlite3，不做旧概率预设兼容；历史任务快照和推荐反馈仍在主库，保持原文本。完整规则见 [PMI 设计](issues/candidate-pmi.md)。
 
 ## 正负反馈表更新
 
-不喜欢反馈发布前先停止应用并备份 `pictide.sqlite3`，再执行 `python -m backend.store.feedback_upgrade <数据库绝对路径>`。这是针对当前安装的一次性离线转换，将推荐事件与证据的 `liked` 转为 `value`（喜欢 1、撤回 null），并允许图片反馈 -1；保留已有点赞、策略参数、向量缓存、修订与重置分界。不在应用启动时执行。转换后使用对应新版代码启动；需要回退时恢复完整数据库备份与旧代码。见 [不喜欢反馈](dislike-feedback.md)。
+不喜欢反馈发布前先停止应用并备份 `pictide.sqlite3`，再执行 `python -m backend.store.feedback_upgrade <数据库绝对路径>`。这是针对当前安装的一次性离线转换，将推荐事件与证据的 `liked` 转为 `value`（喜欢 1、撤回 null），并允许图片反馈 -1；保留已有点赞、策略参数、向量缓存、修订与重置分界。不在应用启动时执行。转换后使用对应新版代码启动；需要回退时恢复完整数据库备份与旧代码。见 [不喜欢反馈](issues/dislike-feedback.md)。
 
 ## 喜欢图片标签范围
 
-`roam_settings.liked_tags_only` 为 0/1，默认 0；播放间隔与该开关复用同一设置行。当前安装发布前停止应用、备份主数据库，再离线执行 `ALTER TABLE roam_settings ADD COLUMN liked_tags_only INTEGER NOT NULL DEFAULT 0 CHECK(liked_tags_only IN (0,1))`。新建数据库直接包含该字段，不在启动时迁移；回退需恢复备份数据库与对应旧代码。喜欢图片的标签池按实际正向文本即时解析，不另存派生词库。接口与空池行为见 [喜欢图片标签漫游](roam-liked-tags.md)。
+`roam_settings.liked_tags_only` 为 0/1，默认 0；播放间隔与该开关复用同一设置行。当前安装发布前停止应用、备份主数据库，再离线执行 `ALTER TABLE roam_settings ADD COLUMN liked_tags_only INTEGER NOT NULL DEFAULT 0 CHECK(liked_tags_only IN (0,1))`。新建数据库直接包含该字段，不在启动时迁移；回退需恢复备份数据库与对应旧代码。喜欢图片的标签池按实际正向文本即时解析，不另存派生词库。接口与空池行为见 [喜欢图片标签漫游](issues/roam-liked-tags.md)。
 
 ## 漫游方式与预取失效
 
-发布前停止应用并备份主库，离线增加 `roam_settings.prompt_mode TEXT NOT NULL DEFAULT 'random' CHECK(prompt_mode IN ('random','along','stay'))` 和 `roam_jobs.discarded_at TEXT`；新库直接包含，不在启动时迁移。前者保存漫游方式，后者保存未完成旧任务的失效时间。切换设置事务复用 `roam_hidden_at` 隐藏当前图之后的旧缓存，喜欢和图片文件保留；迟到产物入库时直接隐藏。顺流与停泊参考来自既有任务快照和观看位置，不新增状态表。完整接口见 [漫游方式](roam-modes.md)。
+发布前停止应用并备份主库，离线增加 `roam_settings.prompt_mode TEXT NOT NULL DEFAULT 'random' CHECK(prompt_mode IN ('random','along','stay'))` 和 `roam_jobs.discarded_at TEXT`；新库直接包含，不在启动时迁移。前者保存漫游方式，后者保存未完成旧任务的失效时间。切换设置事务复用 `roam_hidden_at` 隐藏当前图之后的旧缓存，喜欢和图片文件保留；迟到产物入库时直接隐藏。顺流与停泊参考来自既有任务快照和观看位置，不新增状态表。完整接口见 [漫游方式](issues/roam-modes.md)。
