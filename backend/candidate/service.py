@@ -163,7 +163,9 @@ class CandidateService:
             return None
         if allowed_ids is not None and any(tag["id"] not in allowed_ids for tag in variable):
             return None
-        if any(matches_blocked_keyword(tag["name"], document["blocked_keywords"]) for tag in variable):
+        excluded_negative = {keyword_text(text) for text in document["base_negative"]}
+        if any(keyword_text(tag["name"]) in excluded_negative or
+               matches_blocked_keyword(tag["name"], document["blocked_keywords"]) for tag in variable):
             return None
         existing = list(anchors)
         for tag in variable:
@@ -177,6 +179,7 @@ class CandidateService:
 
     def _extend(self, document, fixed_count, anchors, variable, rng, cap, work, allowed_ids=None, prepared=None):
         variable = list(variable)
+        excluded_negative = {keyword_text(term["text"]) for term in prepared.negative}
         reason = "target_length"
         state = None
         while fixed_count + len(variable) < cap:
@@ -188,9 +191,10 @@ class CandidateService:
                 for tag in variable:
                     state.add(tag)
             choices = state.choices()
-            if document["blocked_keywords"]:
+            if excluded_negative or document["blocked_keywords"]:
                 choices = [(tag, weight) for tag, weight in choices
-                           if not matches_blocked_keyword(tag["name"], document["blocked_keywords"])]
+                           if keyword_text(tag["name"]) not in excluded_negative and
+                           not matches_blocked_keyword(tag["name"], document["blocked_keywords"])]
             if not choices:
                 return variable, "no_eligible_tags"
             chosen = rng.choices([item[0] for item in choices], [item[1] for item in choices], k=1)[0]

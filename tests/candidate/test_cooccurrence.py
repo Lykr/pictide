@@ -78,6 +78,50 @@ class CooccurrenceSmoke(unittest.TestCase):
         stay = self.service.provider.generate(blocked, dict(prompt_mode="stay", previous_candidate=reference))[0]
         self.assertEqual(stay.positive, initial["positive"])
 
+    def test_negative_terms_exclude_exact_sampled_matches_in_all_modes(self):
+        document = dict(self.doc, base_negative=["  SOFT__LIGHT  ", "green_grass"],
+                        min_tags=4, max_tags=4)
+        for mode in ("random_each_run", "fixed_seed", "sequence"):
+            with self.subTest(mode=mode):
+                result = self.service.generate(dict(preset_id="test", document=document,
+                    mode=mode, seed=19, sequence_step=3))
+                self.assertEqual(set(result["positive"].split(", ")), {"blue sky", "wide view"})
+                self.assertEqual(result["report"]["tag_count"], 2)
+                self.assertNotIn("soft light", result["positive"])
+        # No statistical anchor, limited liked pool, and threaded candidate pools use the same filter.
+        first_draw = dict(document, base_positive=[])
+        options = dict(preset_id="test", document=first_draw, mode="fixed_seed", seed=19)
+        pool = self.service.provider.generate(options, {
+            "count": 4, "allowed_positive_tags": ["soft_light", "green_grass", "wide_view"]})
+        self.assertTrue(all(item.positive == "wide view" for item in pool))
+        # Whole-term matching is distinct from blocked-keyword substring matching.
+        exact = dict(self.doc, base_negative=["light"], min_tags=4, max_tags=4)
+        result = self.service.generate(dict(preset_id="test", document=exact, mode="fixed_seed", seed=19))
+        self.assertIn("soft light", result["positive"])
+        # Explicit fixed positives are retained even when a user also lists them as negative.
+        explicit = dict(document, base_negative=[*document["base_negative"], "blue_sky"])
+        result = self.service.generate(dict(preset_id="test", document=explicit, mode="fixed_seed", seed=19))
+        self.assertEqual(result["positive"], "blue sky, wide view")
+
+    def test_negative_edits_invalidate_sequence_and_conflicting_along_reference(self):
+        options = dict(preset_id="test", mode="sequence", seed=19, sequence_step=3,
+                       document=dict(self.doc, change_budget=0))
+        initial = self.service.generate(options)
+        variables = [term["text"] for term in initial["selected_tags"]
+                     if term["channel"] == "positive" and term["text"] != "blue sky"]
+        document = dict(options["document"], base_negative=[text.upper().replace(" ", "_") for text in variables])
+        changed = dict(options, document=document)
+        frame = self.service.generate(changed)
+        self.assertTrue(set(frame["positive"].split(", ")).isdisjoint(variables))
+        fresh = CandidateService(SQLiteCandidateStore(self.path))
+        self.assertEqual(frame, fresh.generate(changed))
+        reference = dict(candidate_id=initial["candidate_id"], positive=initial["positive"],
+                         negative=initial["negative"], terms=initial["selected_tags"])
+        along = self.service.provider.generate(changed, dict(prompt_mode="along", previous_candidate=reference))[0]
+        self.assertTrue(set(along.positive.split(", ")).isdisjoint(variables))
+        stay = self.service.provider.generate(changed, dict(prompt_mode="stay", previous_candidate=reference))[0]
+        self.assertEqual(stay.positive, initial["positive"])
+
     def test_anchor_pmi_and_seed(self):
         options = dict(preset_id="test",mode="fixed_seed",seed=19)
         a = self.service.generate(options)

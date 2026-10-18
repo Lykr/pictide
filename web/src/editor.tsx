@@ -121,7 +121,7 @@ function FixedTags({ label, values, onChange, disabled, positive = false }: { la
       <div className="cooc-fixed-value">
         <Input aria-label={tr`${label}第 ${index + 1} 项`} value={value} disabled={disabled} onChange={event => onChange(values.map((item, position) => position === index ? event.target.value : item))} />
         <Badge className="cooc-fixed-origin" variant={origins.get(value.trim().replaceAll("_", " ")) === true ? "secondary" : "outline"} data-tooltip={
-          !value.trim() ? t("输入完整提示词后识别来源") : origins.get(value.trim().replaceAll("_", " ")) === true ? (positive ? t("匹配词库，作为共现扩展的正向锚点。") : t("匹配词库，输出为负向提示词，不参与共现筛选。")) : origins.get(value.trim().replaceAll("_", " ")) === false ? t("未匹配词库，保留完整文本输出，不参与共现筛选。") : originError ? t("词库识别暂不可用，尚未确定来源；编辑词项可重试") : t("正在匹配词库")
+          !value.trim() ? t("输入完整提示词后识别来源") : origins.get(value.trim().replaceAll("_", " ")) === true ? (positive ? t("匹配词库，作为共现扩展的正向锚点。") : t("匹配词库，输出为负向提示词；共现扩展跳过同名词。")) : origins.get(value.trim().replaceAll("_", " ")) === false ? t("未匹配词库，保留完整文本输出，不参与 PMI 比较。") : originError ? t("词库识别暂不可用，尚未确定来源；编辑词项可重试") : t("正在匹配词库")
         }>{!value.trim() ? t("待输入") : origins.get(value.trim().replaceAll("_", " ")) === true ? t("词库词") : origins.get(value.trim().replaceAll("_", " ")) === false ? t("自定义") : originError ? t("未识别") : t("识别中")}</Badge>
       </div>
       <IconButton icon={X} label={tr`移除${label}第 ${index + 1} 项`} disabled={disabled} onClick={() => onChange(values.filter((_, position) => position !== index))} />
@@ -272,7 +272,7 @@ export function EditorWorkspace() {
           <Collapsible className="cooc-negative-settings">
             <div className="cooc-section-heading">
               <CollapsibleTrigger asChild><Button variant="ghost" size="sm" className="group px-0 font-semibold hover:bg-transparent" aria-label={t("负向提示词")}><ChevronRight className="size-4 transition-transform group-data-[state=open]:rotate-90" />{t("负向提示词")}{preset.document.base_negative.length > 0 && <Badge variant="secondary">{preset.document.base_negative.length}</Badge>}</Button></CollapsibleTrigger>
-              <HelpTip text={t("直接用于生图，不参与共现扩展。")} />
+              <HelpTip text={t("用于生图；共现扩展跳过同名词，不参与 PMI 计算。")} />
             </div>
             <CollapsibleContent forceMount className="data-[state=closed]:hidden">
               <FixedTags label={t("固定负向词")} values={preset.document.base_negative} disabled={busy} onChange={values => update("base_negative", values)} />

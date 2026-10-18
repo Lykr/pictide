@@ -102,5 +102,8 @@
   "预览种子生成后": "Preview seed after generation",
   "预设名称": "Preset name",
   "正向生成": "Positive prompt generation",
-  "直接用于生图，不参与共现扩展。": "Used directly for image generation; not part of co-occurrence expansion."
+  "直接用于生图，不参与共现扩展。": "Used directly for image generation; not part of co-occurrence expansion.",
+  "用于生图；共现扩展跳过同名词，不参与 PMI 计算。": "Used for image generation. Co-occurrence expansion skips matching terms; negatives do not take part in PMI calculations.",
+  "匹配词库，输出为负向提示词；共现扩展跳过同名词。": "Matched in the library and used as a negative prompt. Co-occurrence expansion skips the same term.",
+  "未匹配词库，保留完整文本输出，不参与 PMI 比较。": "Not found in the library. Keep the full text in the output without PMI comparisons."
 }
