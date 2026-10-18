@@ -45,6 +45,15 @@ class ImageScoreSmoke(RecommendationApplicationTests):
         revision = self.policy().revision
         response = await self.client.get(path)
         scored = await response.json()
+        self.assertEqual(scored['score'], 0, 'Learning must preserve existing image score cache')
+        refreshed = await self.client.post('/api/liked/ranked/refresh', json={'tags': []})
+        self.assertEqual(refreshed.status, 200)
+        refreshed = await refreshed.json()
+        self.assertTrue(refreshed['refreshed_at'])
+        with patch.object(self.app.recommendation, 'score', side_effect=AssertionError('Cache hit must not score')):
+            scored = await (await self.client.get(path)).json()
+            again = await (await self.client.get('/api/liked/ranked')).json()
+        self.assertEqual(again['refreshed_at'], refreshed['refreshed_at'])
         self.assertGreater(scored['score'], 0)
         self.assertEqual(scored['love_score'], 100)
         self.assertEqual(scored['state_revision'], revision)
@@ -54,8 +63,8 @@ class ImageScoreSmoke(RecommendationApplicationTests):
             self.assertEqual(db.execute('SELECT COUNT(*) FROM recommendation_score_range').fetchone()[0], 1)
         with patch.object(self.app.recommendation.encoder, 'available', return_value=False):
             unavailable = await (await self.client.get(path)).json()
-            self.assertEqual(unavailable['status'], 'unavailable')
-            self.assertIsNone(unavailable['love_score'])
+            self.assertEqual(unavailable['status'], 'scored', 'Cached scores survive encoder unavailability')
+            self.assertEqual(unavailable['love_score'], scored['love_score'])
         self.assertEqual((await self.client.get('/api/artifacts/nonexistent/preference-score')).status, 404)
         manual = self.app.storage.create_job(dict(backend_id='local',request_id='manual-score',positive='forest',negative='',seed=42))
         self.app.storage.complete(manual['id'], [dict(node_id='9',index=0,filename='manual.png')])
@@ -66,6 +75,7 @@ class ImageScoreSmoke(RecommendationApplicationTests):
         self.assertEqual(reset.status, 200)
         with self.app.storage.connection() as db:
             self.assertEqual(db.execute('SELECT COUNT(*) FROM recommendation_score_range').fetchone()[0], 0)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM artifact_preference_scores').fetchone()[0], 0)
         after = await (await self.client.get(path)).json()
         self.assertEqual((after['score_min'],after['score_max']), (0,0))
         self.assertIsNone(after['love_score'])

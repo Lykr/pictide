@@ -151,6 +151,13 @@ async def liked_ranked(request):
     return web.json_response(await request.app[APPLICATION].liked_ranked(tuple(request.query.getall("tag", []))))
 
 
+async def refresh_liked_ranked(request):
+    payload = await body(request)
+    if set(payload) != {"tags"} or not isinstance(payload["tags"], list) or any(not isinstance(tag, str) or not tag for tag in payload["tags"]):
+        raise ValidationError("需要有效的 tags 标签列表。")
+    return web.json_response(await request.app[APPLICATION].liked_ranked(tuple(payload["tags"]), refresh=True))
+
+
 async def liked_tags(request):
     return web.json_response(await request.app[APPLICATION].liked_tags())
 
@@ -301,6 +308,7 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.post("/api/jobs/{id}/cancel", cancel_job),
         web.get("/api/liked/tags", liked_tags),
         web.get("/api/liked/ranked", liked_ranked),
+        web.post("/api/liked/ranked/refresh", refresh_liked_ranked),
         web.get("/api/artifacts/{id}/preference-score", preference_score),
         web.get("/api/artifacts", artifacts), web.put("/api/artifacts/{id}/feedback", feedback),
         web.delete("/api/generated", clear_generated), web.delete("/api/generated/{id}", clear_generated),

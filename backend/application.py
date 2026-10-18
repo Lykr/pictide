@@ -1,6 +1,7 @@
 """Application use cases. HTTP handlers call this boundary, never feature storage."""
 import asyncio
 from dataclasses import asdict
+from datetime import datetime, timezone
 import logging
 import math
 import hashlib
@@ -297,27 +298,49 @@ class PictideApplication:
         artifact = await asyncio.to_thread(self.storage.artifact, identifier)
         if artifact is None:
             raise NotFoundError()
-        result = dict(status="missing_snapshot", score=None, love_score=None, score_min=None, score_max=None,
-                      state_revision=None, feature_version=None, reason="缺少完整生成快照，暂无法评分。")
         snapshot = await asyncio.to_thread(self.storage.roam_snapshot, artifact["job_id"])
-        if snapshot is None:
-            return result
-        candidate = self._image_score_candidate(artifact, snapshot)
-        if candidate is None:
-            return result
-        request = ScoreRequest(uuid.uuid4().hex, "local", 0, (candidate,), strategy="mean")
-        try:
-            scored = await asyncio.to_thread(self.recommendation.score, request)
-        except ValueError:
-            return result
-        except (RuntimeError, OSError):
-            return dict(result, status="unavailable", reason="推荐服务暂不可用，请检查模型和学习状态。")
-        value = scored.scores[0].score
-        minimum, maximum = scored.score_min, scored.score_max
-        relative = (100 * (value - minimum) / (maximum - minimum)
-                    if minimum is not None and maximum is not None and maximum > minimum else None)
-        return dict(result, status="scored", score=value, love_score=relative, score_min=minimum, score_max=maximum,
-                    state_revision=scored.state_revision, feature_version=scored.feature_version, reason=None)
+        cached, error = await self._image_scores([{"artifact": artifact, "snapshot": snapshot}])
+        row = cached["scores"].get(identifier)
+        result = dict(status="missing_snapshot", score=None, love_score=None,
+                      score_min=cached["score_min"], score_max=cached["score_max"],
+                      state_revision=None, feature_version=None, reason="缺少完整生成快照，暂无法评分。")
+        if row is None:
+            return dict(result, status="unavailable", reason=error) if error else result
+        value, minimum, maximum = row["score"], cached["score_min"], cached["score_max"]
+        relative = 100 * ((value - minimum) / (maximum - minimum)) if minimum is not None and maximum is not None and maximum > minimum else None
+        return dict(result, status="scored", score=value, love_score=relative,
+                    state_revision=row["state_revision"], feature_version=row["feature_version"], reason=None)
+
+    async def _image_scores(self, items, refresh=False):
+        status = await asyncio.to_thread(self.recommendation.status)
+        identifiers = [item["artifact"]["id"] for item in items]
+        cached = await asyncio.to_thread(self.storage.image_score_cache, identifiers, status.feature_version, status.policy_version)
+        unique, representative = {}, {}
+        for item in items:
+            identifier = item["artifact"]["id"]
+            if not refresh and identifier in cached["scores"]:
+                continue
+            candidate = self._image_score_candidate(item["artifact"], item["snapshot"])
+            if candidate is not None:
+                key = (candidate.positive, candidate.negative, candidate.terms)
+                canonical = unique.setdefault(key, candidate)
+                representative[identifier] = canonical.candidate_id
+        error = None
+        if unique:
+            reset = await asyncio.to_thread(self.recommendation_store.get_reset_state, "local")
+            request = ScoreRequest(uuid.uuid4().hex, "local", 0, tuple(unique.values()), strategy="mean")
+            try:
+                scored = await asyncio.to_thread(self.recommendation.score, request)
+                by_id = {row.candidate_id: row.mean_score for row in scored.scores}
+                records = [dict(artifact_id=identifier, score=by_id[canonical], feature_version=scored.feature_version,
+                                policy_version=scored.policy_version, state_revision=scored.state_revision)
+                           for identifier, canonical in representative.items()]
+                refreshed_at = datetime.now(timezone.utc).isoformat() if refresh else None
+                await asyncio.to_thread(self.storage.save_image_scores, records, reset.revision, refreshed_at)
+                cached = await asyncio.to_thread(self.storage.image_score_cache, identifiers, scored.feature_version, scored.policy_version)
+            except (RuntimeError, OSError, ValueError):
+                error = "评分更新失败，已保留现有缓存。" if cached["scores"] else "推荐服务暂不可用，请检查模型和学习状态。"
+        return cached, error
 
     @staticmethod
     def _image_score_candidate(artifact, snapshot):
@@ -337,33 +360,18 @@ class PictideApplication:
         except (KeyError, TypeError, AttributeError):
             return None
 
-    async def liked_ranked(self, tags=()):
+    async def liked_ranked(self, tags=(), refresh=False):
         await self.clean_history()
         data = await asyncio.to_thread(self.storage.liked_scoring_inputs, tuple(dict.fromkeys(tags)))
-        items = data["items"]
-        unique, representative = {}, {}
-        for item in items:
-            candidate = self._image_score_candidate(item["artifact"], item["snapshot"])
-            if candidate is not None:
-                key = (candidate.positive, candidate.negative, candidate.terms)
-                canonical = unique.setdefault(key, candidate)
-                representative[candidate.candidate_id] = canonical.candidate_id
-        scores, scored, error = {}, None, None
-        if unique:
-            request = ScoreRequest(uuid.uuid4().hex, "local", 0, tuple(unique.values()), strategy="mean")
-            try:
-                scored = await asyncio.to_thread(self.recommendation.score, request)
-                by_id = {row.candidate_id: row.score for row in scored.scores}
-                scores = {identifier: by_id[canonical] for identifier, canonical in representative.items()}
-            except (RuntimeError, OSError, ValueError):
-                error = "推荐服务暂不可用，暂按时间排序。"
-        # The storage query already orders ties by creation time and ID.
-        artifacts = [item["artifact"] for item in items]
-        artifacts.sort(key=lambda item: (item["id"] in scores, scores.get(item["id"], 0)), reverse=True)
+        cached, error = await self._image_scores(data["items"], refresh)
+        scores = cached["scores"]
+        artifacts = [item["artifact"] for item in data["items"]]
+        # Storage already orders equal scores by creation time and ID.
+        artifacts.sort(key=lambda item: (item["id"] in scores, scores.get(item["id"], {}).get("score", 0)), reverse=True)
         return dict(artifacts=artifacts, revision=data["revision"],
-                    state_revision=scored.state_revision if scored else None,
-                    score_min=scored.score_min if scored else None, score_max=scored.score_max if scored else None,
-                    scoring_available=error is None, error=error)
+                    state_revision=max((row["state_revision"] for row in scores.values()), default=None),
+                    score_min=cached["score_min"], score_max=cached["score_max"],
+                    scoring_available=error is None, error=error, refreshed_at=cached["refreshed_at"])
 
     async def liked_tags(self):
         return {"tags": await asyncio.to_thread(self.storage.liked_tags),
@@ -538,6 +546,7 @@ class PictideApplication:
         self._request_learning()
         status = self.recommendation.status()
         chosen, scored = pool[0], None
+        score_reset_revision = self.recommendation_store.get_reset_state("local").revision if self.recommendation_store else 0
         if status.available and not self._recommendation_error and not (mode == "stay" and previous):
             request_id = uuid.uuid4().hex
             request = ScoreRequest(request_id, "local", int(request_id[:16], 16), tuple(
@@ -560,6 +569,8 @@ class PictideApplication:
                     "feature_version": status.feature_version, "policy_version": status.policy_version,
                     "state_revision": scored.state_revision if scored is not None else None,
                     "scoring_strategy": strategy if scored is not None else None,
+                    "mean_score": next((item.mean_score for item in scored.scores if item.candidate_id == chosen.id), None) if scored else None,
+                    "score_reset_revision": score_reset_revision,
                     "score": next((item.score for item in scored.scores if item.candidate_id == chosen.id), None) if scored else None,
                     "terms": [{"source_id": term.source_id, "id": term.id, "text": term.text,
                                "categories": list(term.categories), "channel": term.channel,

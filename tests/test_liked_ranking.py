@@ -46,9 +46,10 @@ class LikedRankingSmoke(RecommendationApplicationTests):
         empty=await (await self.client.get('/api/liked/ranked?tag=nonexistent')).json()
         self.assertEqual(empty['artifacts'],[])
         with patch.object(self.app.recommendation.encoder,'available',return_value=False):
-            fallback=await (await self.client.get('/api/liked/ranked')).json()
+            cached=await (await self.client.get('/api/liked/ranked')).json()
+            self.assertTrue(cached['scoring_available'])
+            fallback=await (await self.client.post('/api/liked/ranked/refresh',json={'tags':[]})).json()
         self.assertFalse(fallback['scoring_available'])
         self.assertTrue(fallback['error'])
         self.assertEqual(len(fallback['artifacts']),207)
-        expected=sorted(items,key=lambda a:(a['created_at'],a['id']),reverse=True)
-        self.assertEqual([a['id'] for a in fallback['artifacts']],[a['id'] for a in expected])
+        self.assertEqual([a['id'] for a in fallback['artifacts']],[a['id'] for a in items], 'Failed refresh preserves cached ranking')
