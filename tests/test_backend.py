@@ -66,6 +66,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         self.queue = {"queue_running": [], "queue_pending": []}
         self.submissions = []
         self.deleted = []
+        self.cancel_race = False
         self.request_paths = []
         self.post_status = 200
         self.post_body = {"prompt_id": "job-1"}
@@ -144,6 +145,8 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         self.record(request)
         deleted = await request.json()
         self.deleted.append(deleted)
+        if self.cancel_race:
+            self.queue['queue_running'].extend(self.queue['queue_pending'])
         self.queue['queue_pending'] = [x for x in self.queue['queue_pending'] if x[1] not in deleted['delete']]
         return web.Response(status=200)
 
@@ -340,6 +343,9 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         self.queue["queue_running"] = []
         self.assertTrue(await self.backend.cancel("job"))
         self.assertEqual(self.deleted, [{"delete": ["job"]}])
+        self.queue["queue_pending"] = [[1, "raced", {}, {"pictide_request_id": "req"}]]
+        self.cancel_race = True
+        self.assertFalse(await self.backend.cancel("raced"))
         self.assertNotIn(("POST", "/interrupt"), self.request_paths)
 
     async def test_image_paths_type_and_size(self):
