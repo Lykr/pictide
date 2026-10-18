@@ -2,41 +2,38 @@
 
 ## 概述
 
-让新用户以最少、最简单的操作完成第一次完整漫游：下载、解压、启动、连接生图后端，即可生成、浏览、评价并继续观看下一张。
+让用户以最少、最简单的操作完成依赖准备与项目启动，达到能够进行一次完整漫游体验的就绪状态。
 
-发行方向已确认，打包与启动实现待完成；本设计以便携发行包交付已准备好的环境和资源，替代此前在用户启动时安装环境、构建前端和下载模型的方案。
+发行方向已确认，打包与启动实现待完成；运行环境、前端、词库和推荐模型由构建发布流程准备，用户通过便携发行包直接启动应用。
 
 ## 架构
 
 ```mermaid
 flowchart TD
-    Build["构建发布流程"] --> Python["Python 后端：解释器 / 运行依赖 / 启动程序"]
+    Build["构建发布流程"] --> Python["Python 解释器 / 后端 / 运行依赖"]
     Build --> Web["前端静态成品 web/dist"]
     Build --> Assets["成品词库 / MiniLM / 默认预设"]
     Python --> Package["各系统便携发行包"]
     Web --> Package
     Assets --> Package
-    Package --> Start["用户启动程序：检查资源 / 初始化数据 / 打开页面"]
-    Start --> Host["现有 Host 与应用编排"]
-    Host --> UI["浏览器：连接后端 / 开始漫游"]
-    Host --> Task["任务模块"]
-    Task --> Generation["生成适配器"]
-    Generation --> Comfy["用户配置的 ComfyUI"]
-    Host --> Data[("data：本地数据")]
+    Package --> Start["启动入口：检查资源 / 初始化数据 / 启动服务"]
+    Start --> Host["现有 Host"]
+    Start --> UI["浏览器：可用的应用页面"]
+    Host --> Data[("data：资源与用户数据")]
 ```
 
 ## 职责边界
 
 - 构建发布负责安装开发依赖、构建前端、打包 Python 后端、准备词库和推荐模型、验证产物；用户收到可以直接运行的完整目录式压缩包。
-- Python 后端优先采用 PyInstaller 目录式打包，将解释器、Python 包及原生依赖随程序交付；FastEmbed、ONNX Runtime、NumPy 和动态导入需在实际产物中验证。
+- Python 后端优先采用 PyInstaller 目录式打包，将解释器、Python 包及原生依赖随程序交付；FastEmbed、ONNX Runtime、NumPy 和动态导入在实际产物中验证。
 - 前端以已构建的 `web/dist/` 随包提供。Node.js、pnpm、前端依赖安装和编译归属开发构建流程。
-- 词库提供预处理成品；资源导出只包含 `tags/correlations/dataset` 及所需索引。MiniLM 提供当前编码器要求的固定版本 ONNX 和 tokenizer 文件；默认预设提供可以直接开始漫游的候选配置。
-- 发行包的词库、模型和默认配置使用干净的种子资源；用户预设、图片、评价和偏好由各自实例保存。首次启动将所需资源初始化到所选 `data/`，后续启动沿用用户数据。
-- 启动程序负责资源完整性检查、首次数据初始化、启动现有 Host、等待服务就绪并打开浏览器；资源异常显示原因和恢复操作。资源清单记录版本、文件大小和 SHA-256。
-- 服务就绪与后端状态复用 `GET /api/bootstrap`。首次使用进入现有后端设置；保存连接后进入漫游，通过「开始漫游」生成首图。正常使用直接进入漫游。
-- 生图能力由用户选择并连接的 ComfyUI 与文生图模型提供。发行包覆盖 Pictide 自身的完整运行资源，后端接入保持现有职责边界。
-- Windows、Linux、macOS 按操作系统和 CPU 架构分别构建、验证和交付；用户指南提供各系统独立操作路径。
-- 源码启动脚本继续服务开发与调试，环境准备步骤放在开发者路径。便携发行包的启动入口与资源定位在打包验证中落实，业务 HTTP 接口沿用现有契约。
+- 词库提供预处理成品；资源导出包含 `tags/correlations/dataset` 及所需索引。MiniLM 提供当前编码器要求的固定版本 ONNX 和 tokenizer 文件；默认预设提供可用的候选配置。
+- 发行包使用干净的种子资源。首次启动将所需资源初始化到所选 `data/`，后续启动沿用用户的预设、图片、评价和偏好。
+- 启动入口负责资源完整性检查、首次数据初始化、启动现有 Host、等待服务就绪并打开浏览器；资源异常显示原因和恢复操作。资源清单记录版本、文件大小和 SHA-256。
+- 服务就绪与后端状态复用 `GET /api/bootstrap`。首次使用可进入现有后端设置，配置完成后具备开始漫游的条件；正常启动打开漫游页面。
+- 生图能力由用户提供的 ComfyUI 与文生图模型承担。此次交付聚焦 Pictide 自身的依赖准备与启动，后端连接采用现有配置和只读检查路径。
+- Windows、Linux、macOS 按操作系统和 CPU 架构分别构建、验证和交付；各系统用户指南分别说明启动操作。
+- 源码启动脚本继续服务开发与调试，依赖安装和构建步骤放在开发者路径。便携发行包的启动入口与资源定位在打包验证中落实，业务接口沿用现有契约。
 
 ## 调用和数据流
 
@@ -45,43 +42,35 @@ sequenceDiagram
     participant Dev as 构建发布流程
     participant Package as 便携发行包
     actor User as 用户
-    participant Start as 启动程序
-    participant Host as Host / 应用编排
+    participant Start as 启动入口
+    participant Data as data
+    participant Host as 现有 Host
     participant UI as 浏览器
-    participant Task as 任务模块
-    participant Generation as 生成适配器
-    participant Comfy as ComfyUI
-    Dev->>Dev: 构建前端、打包后端、准备词库与 MiniLM
-    Dev->>Package: 交付对应系统的完整产物
+    Dev->>Dev: 安装构建依赖，打包后端与前端，准备词库和 MiniLM
+    Dev->>Package: 生成并验证对应系统的完整产物
     User->>Package: 下载并解压
     User->>Start: 启动 Pictide
-    Start->>Start: 检查资源，首次初始化 data
+    Start->>Data: 检查资源，首次初始化数据
     Start->>Host: 启动应用
-    Start->>Host: GET /api/bootstrap
-    Host-->>Start: 服务就绪与后端状态
-    Start->>UI: 打开设置或漫游
-    User->>UI: 首次连接生图后端，开始漫游
-    UI->>Host: 现有配置、检查与漫游请求
-    Host->>Task: 提交生成任务
-    Task->>Generation: 提交与查询生图
-    Generation->>Comfy: 现有生成 API
-    Comfy-->>Generation: 图片结果
-    Generation-->>Task: 结果信息
-    Task-->>Host: 经存储与现有事件提供图片状态
-    Host-->>UI: 展示首图
-    User->>UI: 评价、收藏、切换下一张
-    UI->>Host: 现有反馈与补图请求
-    Host-->>UI: 继续漫游
+    Start->>Host: GET /api/bootstrap，检查服务状态
+    Host-->>Start: 服务就绪与后端配置状态
+    Start->>UI: 打开可用页面
+    opt 首次配置生图后端
+        User->>UI: 填写后端并保存
+        UI->>Host: 现有配置与只读连接检查
+        Host-->>UI: 后端可用状态
+    end
+    Note over User,UI: 依赖与启动准备完成，具备完整漫游条件
 ```
 
 ## 重点关注
 
-- 验收以用户完成首次完整漫游为准：打开软件、连接后端、看到首图、喜欢或不喜欢、继续下一张，并在喜欢页查看收藏。
-- 首次体验使用可靠的默认候选与漫游设置，专业参数留给后续调整；用户主要操作集中在启动、连接和浏览。
-- 以仅具备受支持操作系统、浏览器及已就绪 ComfyUI 的干净机器验证发行包；确认运行所需的 Python、原生库、前端、词库和推荐模型均由产物提供。
-- 对 Pictide 自身资源做离线启动冒烟，再使用已就绪 ComfyUI 验证完整漫游；保留版本、平台、产物体积和实际通过范围。
-- 目录式打包优先便于启动、资源定位和排查问题；下载体积、解压占用和首图时间以实际产物测量，围绕整体上手成本优化。
-- 程序依赖、模型、运行数据、缓存和日志遵循项目 `data/` 约定；已有用户数据继续保留，发行种子资源使用干净副本。
-- 当前已实现的是源码启动路径。便携发行包的构建、平台验证与发布结果，在实现完成后同步到各系统用户指南。
+- 验收终点是“能够开始完整漫游”的就绪状态：应用启动成功、页面可访问、候选词库与默认预设可用、推荐模型可执行，连接已就绪生图后端后具备生成条件。
+- 用户操作集中在获取发行包、解压、启动和首次后端配置；依赖安装、前端构建和模型资源准备由发行流程承担。
+- 使用仅具备受支持操作系统、浏览器及已就绪 ComfyUI 的干净机器验证；确认 Pictide 所需 Python、原生库、前端、词库和推荐模型均由产物提供。
+- 少数冒烟覆盖首次启动、再次启动、既有数据保留与资源异常提示；验证页面、候选生成、MiniLM 编码和后端只读连接。浏览、评价、收藏等交互沿用现有功能验证。
+- 目录式打包便于启动、资源定位和排查问题；记录下载体积、解压占用与应用就绪耗时，围绕依赖准备和启动成本优化。
+- 程序依赖、模型、运行数据、缓存和日志遵循项目 `data/` 约定；已有用户数据继续保留。
+- 当前已实现源码启动路径；便携发行包完成构建与平台验证后，同步各系统的用户启动说明。
 
 参考：[PyInstaller 打包方式](https://pyinstaller.org/en/stable/operating-mode.html)、[平台构建要求](https://pyinstaller.org/en/stable/index.html)。

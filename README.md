@@ -34,7 +34,7 @@ ComfyUI 是独立的生成后端；Pictide 不作为其插件加载。当前为�
 
 ## 开发者文档
 
-- [便携发行包设计](docs/issues/automatic-startup.md)：运行环境、前端、词库与推荐模型随包交付，首次启动聚焦数据初始化和后端接入。
+- [便携发行包设计](docs/issues/automatic-startup.md)：依赖随包交付，简化项目启动，达到漫游就绪状态。
 - [开发流程](docs/development.md)：从源码安装、构建、验证及发布；首次检出从[准备环境](docs/development.md#首次准备检出目录)开始。
 - [架构与模块边界](docs/architecture.md)：模块职责、依赖和调用流程。
 - [HTTP API 参考](docs/api.md)：接口索引、请求参数和响应。
