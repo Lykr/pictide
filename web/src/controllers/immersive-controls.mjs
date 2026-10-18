@@ -10,13 +10,14 @@ export function createAutoHideControls({ visible, held, delay = 2000, schedule =
   return {
     start() { active = true; wake(); },
     wake,
+    hide() { if (active) { clear(); visible(false); } },
     stop() { active = false; clear(); visible(true); },
   };
 }
 
 /** Reuse the mounted image and buttons in native fullscreen, with a viewport fallback. */
 export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entry, exit = /** @type {HTMLElement | null} */ (null), eligible, changed = () => {}, document: doc = document, window: win = window }) {
-  let active = false, mode = null, revision = 0, hovered = false, keyboard = false;
+  let active = false, mode = null, revision = 0, hovered = false, keyboard = false, shortcutInput = false;
   let restoreInert = [];
   const toolbars = [...new Set([toolbar, exit?.parentElement].filter(Boolean))];
   const inControls = node => toolbars.some(bar => bar.contains(node));
@@ -31,19 +32,25 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
       }
     },
   });
-  const pointerMove = () => controls.wake();
+  const pointerMove = () => { keyboard = false; shortcutInput = false; controls.wake(); };
   const pointerDown = event => {
-    keyboard = false;
+    keyboard = false; shortcutInput = false;
     if (event.pointerType === 'touch') hovered = false;
     if (!inControls(event.target)) card.focus({ preventScroll: true });
     controls.wake();
   };
-  const enterToolbar = event => { if (event.pointerType !== 'touch') { hovered = true; controls.wake(); } };
-  const leaveToolbar = () => { hovered = false; controls.wake(); };
-  const focus = () => controls.wake();
+  const enterToolbar = event => { if (!shortcutInput && event.pointerType !== 'touch') { hovered = true; controls.wake(); } };
+  const leaveToolbar = () => { hovered = false; if (!shortcutInput) controls.wake(); };
+  const focus = () => { if (!shortcutInput) controls.wake(); };
   const key = event => {
-    keyboard = true; controls.wake();
+    keyboard = true;
     if (event.key === 'Escape') { event.preventDefault(); leave(); }
+    else if (event.key === 'Tab') {
+      // Keep explicit focus navigation accessible without waking for shortcuts.
+      shortcutInput = false; controls.wake();
+    } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'Spacebar'].includes(event.key)) {
+      shortcutInput = true; hovered = false; controls.hide();
+    }
   };
   const fullscreen = () => {
     if (doc.fullscreenElement === card && active) mode = 'native';
@@ -69,7 +76,7 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
   function leave(requestExit = true) {
     if (!active) return;
     active = false; mode = null; revision++;
-    controls.stop(); hovered = false; keyboard = false;
+    controls.stop(); hovered = false; keyboard = false; shortcutInput = false;
     card.classList.remove('immersive'); doc.body.classList.remove('pictide-immersive');
     if (exit) exit.hidden = true;
     entry.setAttribute('aria-pressed', 'false');

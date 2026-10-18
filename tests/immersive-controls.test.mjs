@@ -148,3 +148,39 @@ test('leaving native fullscreen can finish before a follow-up dialog takes focus
     assert.equal(f.document.fullscreenElement, null);
   } finally { f.viewer.leave(); }
 });
+
+
+test('immediate hiding cancels the idle timer even while controls are held', () => {
+  const timer = clock(), visible = [];
+  let held = false;
+  const controls = createAutoHideControls({ visible: value => visible.push(value), held: () => held, ...timer });
+  controls.start(); held = true;
+  controls.hide();
+  assert.equal(visible.at(-1), false); assert.equal(timer.pending.size, 0);
+  controls.wake(); assert.equal(visible.at(-1), true);
+  controls.stop();
+});
+
+test('image shortcuts hide panels without focus or pointer-leave waking them; pointer and Tab still work', () => {
+  const f = fixture();
+  const press = key => { const event = new Event('keydown', { cancelable: true }); event.key = key; f.document.dispatchEvent(event); };
+  try {
+    f.entry.dispatchEvent(new Event('click'));
+    f.exit.focus();
+    press('ArrowRight');
+    assert.equal(f.card.classList.contains('immersive-controls-hidden'), true);
+    assert.equal(f.toolbar.inert, true);
+    assert.equal(f.document.activeElement, f.card);
+    f.card.dispatchEvent(new Event('focusin'));
+    f.toolbar.dispatchEvent(new Event('pointerleave'));
+    press(' ');
+    assert.equal(f.card.classList.contains('immersive-controls-hidden'), true);
+    f.card.dispatchEvent(new Event('pointermove'));
+    assert.equal(f.card.classList.contains('immersive-controls-hidden'), false);
+    press('ArrowUp');
+    assert.equal(f.card.classList.contains('immersive-controls-hidden'), true);
+    press('Tab');
+    assert.equal(f.card.classList.contains('immersive-controls-hidden'), false);
+    assert.equal(f.toolbar.inert, false);
+  } finally { f.viewer.leave(); }
+});
