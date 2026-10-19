@@ -49,15 +49,22 @@ def unpack(archive, directory):
                     raise RuntimeError('Archive symlink points outside the package')
                 links.append((path, target))
                 continue
-            bundle.extract(item, directory)
-            if os.name != 'nt' and not item.is_dir():
-                path.chmod(stat.S_IMODE(mode))
+            if sys.platform != 'darwin':
+                bundle.extract(item, directory)
+                if os.name != 'nt' and not item.is_dir():
+                    path.chmod(stat.S_IMODE(mode))
+    if sys.platform == 'darwin':
+        # Exercise the system extractor; never repair links before the startup smoke.
+        subprocess.run(['/usr/bin/ditto', '-x', '-k', str(archive), str(directory)], check=True)
+    else:
+        for path, target in links:
+            if not path.resolve().is_relative_to(directory.resolve()):
+                raise RuntimeError('Archive symlink path points outside the package')
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.symlink_to(target)
     for path, target in links:
-        if not path.resolve().is_relative_to(directory.resolve()):
-            raise RuntimeError('Archive symlink path points outside the package')
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.symlink_to(target)
-    for path, _ in links:
+        if not path.is_symlink() or os.readlink(path) != target:
+            raise RuntimeError('Archive lost a symbolic link: ' + str(path))
         if not path.resolve().is_relative_to(directory.resolve()) or not path.exists():
             raise RuntimeError('Archive contains a broken or external symlink')
     root = directory / 'Pictide'
@@ -68,6 +75,8 @@ def unpack(archive, directory):
             raise RuntimeError('Missing portable entry: ' + str(path))
         if os.name != 'nt' and not os.access(path, os.X_OK):
             raise RuntimeError('Archive lost executable permissions: ' + str(path))
+    if sys.platform == 'darwin' and not (executable.parent / '_internal/Python').is_file():
+        raise RuntimeError('Archive is missing the Python shared library')
     return executable
 
 
@@ -96,7 +105,8 @@ def stop(process):
 def smoke(archive, report_path, timeout=900, model_dir=None):
     archive = Path(archive).resolve()
     report_path = Path(report_path).resolve()
-    report = dict(passed=False, archive=archive.name, platform=sys.platform, checks=[])
+    report = dict(passed=False, archive=archive.name, platform=sys.platform,
+                  extractor='macOS ditto' if sys.platform == 'darwin' else 'Python zipfile with POSIX links', checks=[])
     started = time.monotonic()
     failure = None
     with tempfile.TemporaryDirectory(prefix='pictide-smoke-') as temporary:
@@ -106,6 +116,8 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
         try:
             executable = unpack(archive, directory / 'unpacked')
             report['checks'].append('archive entries and native executable permissions')
+            if sys.platform == 'darwin':
+                report['checks'].append('system ditto extraction, unchanged framework links and resolved Python library path')
             internal = executable.parent / '_internal'
             manifest = json.loads((internal / 'resources/manifest.json').read_text(encoding='utf-8'))
             catalog = json.loads((internal / 'backend/recommand/model.json').read_text(encoding='utf-8'))

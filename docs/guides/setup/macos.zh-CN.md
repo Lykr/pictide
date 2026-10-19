@@ -10,6 +10,8 @@
 
 保持启动终端打开，按 Ctrl+C 停止。个人数据保存在包内 `data/`，下次启动会继续使用。
 
+首次启动时，macOS 可能分别要求允许 `start.command` 和内部的 `Pictide` 程序。便携版目前尚未使用 Developer ID 签名和 Apple 公证。确认下载来自本仓库后，可按 Apple 的[“仍要打开”说明](https://support.apple.com/zh-cn/102445)分别允许被拦截的入口。
+
 ## 局域网访问
 
 在便携包目录打开终端，运行：

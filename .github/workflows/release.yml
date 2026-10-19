@@ -118,6 +118,9 @@ jobs:
           pnpm --dir web run build
       - name: Install packaging dependencies
         run: python -m pip install --no-cache-dir -r backend/requirements-release.txt
+      - name: Check native macOS archive roundtrip
+        if: runner.os == 'macOS'
+        run: python -m unittest tests.test_portable_archive
       - name: Build the native portable package
         run: python scripts/build_portable.py --prebuilt-library dev/cache/prebuilt --output-dir releases/build
       - name: Smoke test the extracted package

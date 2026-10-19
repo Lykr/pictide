@@ -112,6 +112,23 @@ def windows_launcher():
             'exit /b %errorlevel%\r\n')
 
 
+def write_archive(package, archive):
+    """Use the native macOS ZIP writer for framework links and metadata."""
+    if sys.platform == 'darwin':
+        subprocess.run(['/usr/bin/ditto', '-c', '-k', '--keepParent', str(package), str(archive)], check=True)
+        return
+    with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zip:
+        for path in sorted(package.rglob('*')):
+            name = path.relative_to(archive.parent).as_posix()
+            if path.is_symlink():
+                link = zipfile.ZipInfo(name)
+                link.create_system = 3
+                link.external_attr = (stat.S_IFLNK | 0o777) << 16
+                zip.writestr(link, os.readlink(path))
+            else:
+                zip.write(path, name)
+
+
 def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
           cache_dir=ROOT / 'dev/cache/portable',
           profile=ROOT / 'corpus/profiles/compact.json', prebuilt_library=None):
@@ -165,6 +182,10 @@ def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
                     'Use the tray menu to reopen Pictide, view logs or exit. Closing the browser keeps Pictide running.\n'
                     'Run start.cmd --cli to keep the service in the calling terminal; press Ctrl+C to stop.\n'
                     if sys.platform == 'win32' else 'Close the launcher window or press Ctrl+C to stop.\n')
+    if sys.platform == 'darwin':
+        desktop_help += ('This portable edition is not Developer ID-signed or notarized.\n'
+                         'macOS may ask you to allow start.command and the internal Pictide executable separately.\n'
+                         'For a trusted download, follow https://support.apple.com/en-us/102445\n')
     (package / 'README.txt').write_text('Pictide\n\nRun ' + launcher.name + ' to open Pictide.\nThe first launch downloads and verifies MiniLM before opening the app.\nAn internet connection is required until this download completes.\nLater launches reuse the verified model in data/models/minilm/.\nConfigure an image API in Settings.\n' + desktop_help + 'Data stays in data/.\nUse --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
     for name in ('LICENSE', 'NOTICE'):
         shutil.copyfile(ROOT / name, package / name)
@@ -174,18 +195,9 @@ def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
     shutil.copyfile(ROOT / 'web/src/THIRD_PARTY_NOTICES.md', notices / 'frontend.md')
     (notices / 'MiniLM.txt').write_text('Model: sentence-transformers/all-MiniLM-L6-v2\nONNX export: Qdrant/all-MiniLM-L6-v2-onnx\nLicense: Apache-2.0\nONNX SHA-256: ' + manifest['model_sha256'] + '\nhttps://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx\n', encoding='utf-8')
     archive = output / f'pictide-{__version__}-{sys.platform}-{platform.machine().lower()}.zip'
-    with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zip:
-        for path in sorted(package.rglob('*')):
-            name = path.relative_to(output).as_posix()
-            if path.is_symlink():
-                # POSIX PyInstaller bundles use relative library/framework links.
-                link = zipfile.ZipInfo(name)
-                link.create_system = 3
-                link.external_attr = (stat.S_IFLNK | 0o777) << 16
-                zip.writestr(link, os.readlink(path))
-            else:
-                zip.write(path, name)
+    write_archive(package, archive)
     result = {'directory': str(package), 'archive': str(archive), 'archive_bytes': archive.stat().st_size,
+              'archive_tool': 'macOS ditto' if sys.platform == 'darwin' else 'Python zipfile',
               'unpacked_bytes': sum(p.stat().st_size for p in package.rglob('*') if p.is_file()),
               'build_seconds': round(time.perf_counter() - started, 2),
               'resources': manifest['provenance']}

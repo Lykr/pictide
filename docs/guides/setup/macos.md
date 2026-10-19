@@ -10,6 +10,8 @@ Extract the portable package matching your Mac's chip and double-click `start.co
 
 Keep the launcher terminal open and press Ctrl+C to stop. Personal data stays in the package's `data/` directory for your next session.
 
+On first launch, macOS may ask you to allow both `start.command` and the internal `Pictide` executable. The portable edition is not Developer ID-signed or notarized yet. If you trust your download from this repository, follow Apple's [Open Anyway instructions](https://support.apple.com/en-us/102445) for each blocked entry.
+
 ## LAN access
 
 Open a terminal in the portable package directory and run:
