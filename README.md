@@ -14,7 +14,7 @@ Pictide is a local generative image exploration app that gradually adapts to you
 
 1. Prepare a ComfyUI instance with a text-to-image model, or an OpenAI Images / Gemini API key and image-capable model.
 2. Extract the portable package for your system and run its launcher: [Windows](docs/guides/setup/windows.md#portable-edition) · [Linux](docs/guides/setup/linux.md#portable-edition) · [macOS](docs/guides/setup/macos.md#portable-edition). Your browser opens automatically when the application is ready.
-3. Connect your generation service in **Settings → Backend** using the [backend setup guide](docs/guides/getting-started.md), then open **Roam** to start browsing. Cloud Roam starts with automatic prefetch disabled; use a preset with an empty negative prompt.
+3. Connect your generation service in **Settings → Image API** using the [backend setup guide](docs/guides/getting-started.md), then open **Roam** to start browsing. Cloud Roam starts with automatic prefetch disabled; use a preset with an empty negative prompt.
 
 The package includes the runtime, frontend, compact statistical library, and MiniLM. Personal data stays in the package's `data/` directory. The Windows package has been validated; see the platform guides for the status of native Linux and macOS builds and verification.
 
@@ -22,7 +22,7 @@ The package includes the runtime, frontend, compact statistical library, and Min
 
 1. Prepare a ComfyUI instance with a text-to-image model, or an OpenAI Images / Gemini API key and image-capable model.
 2. Follow the installation and startup guide for [Windows](docs/guides/setup/windows.md), [Linux](docs/guides/setup/linux.md), or [macOS](docs/guides/setup/macos.md). Open http://127.0.0.1:8189.
-3. Configure your generation service in **Settings → Backend**, test the connection, and save. Once the library and recommendation model are ready, open **Roam**, select **Start roaming**, and browse, rate, and advance through images.
+3. Configure your generation service in **Settings → Image API**, test the connection, and save. Once the library and recommendation model are ready, open **Roam**, select **Start roaming**, and browse, rate, and advance through images.
 
 Co-occurrence generation requires a statistical library; preference learning requires a local MiniLM model. See [setup and connections](docs/guides/getting-started.md) for preparation. Close the launcher window or press Ctrl+C to stop the application.
 

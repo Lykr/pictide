@@ -165,7 +165,7 @@ function clearRoamError() {
 function showBackendAvailability(available, pending = false) {
   const element = $('backend-status');
   element.textContent = pending ? t("检查中") : available ? t("可用") : state.backends.length ? t("不可用") : t("未配置");
-  element.dataset.tooltip = pending ? t("正在检查后端连接") : available ? t("至少一个后端已通过连接检查") : state.backends.length ? t("后端未通过连接检查，可在设置中测试连接") : t("在设置中添加生图后端");
+  element.dataset.tooltip = pending ? t("正在检查生图 API 连接") : available ? t("至少一个生图 API 已通过连接检查") : state.backends.length ? t("生图 API 未通过连接检查，可在设置中测试连接") : t("在设置中添加生图 API");
   element.classList.toggle('connected', available);
   element.dataset.availability = pending ? 'pending' : available ? 'available' : 'unavailable';
 }
@@ -277,12 +277,12 @@ function setSettingsSection(section, updateUrl = true) {
 }
 function renderBackends() {
   const selected = $('generate-backend').value;
-  $('generate-backend').replaceChildren(...(state.backends.length ? state.backends.map((backend) => option(backend.id, backend.name)) : [translatedOption('', "请先配置生图后端")]));
+  $('generate-backend').replaceChildren(...(state.backends.length ? state.backends.map((backend) => option(backend.id, backend.name)) : [translatedOption('', "请先配置生图 API")]));
   if (state.backends.some((backend) => backend.id === selected)) $('generate-backend').value = selected;
   $('generate').disabled = !state.backends.length;
   checkBackendAvailability();
   const edited = $('edit-backend').value;
-  $('edit-backend').replaceChildren(...state.backends.map((backend) => option(backend.id, backend.name)), translatedOption('__new__', "＋ 添加后端"));
+  $('edit-backend').replaceChildren(...state.backends.map((backend) => option(backend.id, backend.name)), translatedOption('__new__', "＋ 添加 API"));
   if (state.backends.some((backend) => backend.id === edited)) $('edit-backend').value = edited;
   updateGenerationHints();
   renderRoamBackends();
@@ -297,7 +297,7 @@ function updateGenerationHints() {
   $('negative-field').hidden = capabilities.cloud && noNegative;
   $('negative').disabled = capabilities.cloud && noNegative;
   $('generation-cloud-note').hidden = !capabilities.cloud;
-  inlineStatus('generation-capability-note', () => t('此后端不支持负向提示词和图像种子；本次仅发送正向提示词，原输入保留。候选预设中的负向词仍需移除。'), capabilities.cloud);
+  inlineStatus('generation-capability-note', () => t('此生图 API 不支持负向提示词和图像种子；本次仅发送正向提示词，原输入保留。候选预设中的负向词仍需移除。'), capabilities.cloud);
   describeAction($('seed-note'), noSeed ? t("未绑定种子输入，将使用工作流自身的种子设置。") : t("-1 每个任务随机；非负值按任务递增，跨轮延续。实际种子随图片保存。"));
   $('negative-binding-note').hidden = !backend || !noNegative || capabilities.cloud;
 }
@@ -409,11 +409,11 @@ function renderArtifacts() {
   const artifact = items[index];
   $('empty-state').hidden = !!artifact; $('image-card').hidden = !artifact;
   $('empty-title').hidden = false;
-  $('empty-description').textContent = state.view === 'liked' ? t("喜欢的图片会保存在这里。") : waiting ? t("正在准备漫游图片…") : state.backends.length ? t("开始漫游，发现下一张图片。") : t("连接生图后端，开始生成。");
+  $('empty-description').textContent = state.view === 'liked' ? t("喜欢的图片会保存在这里。") : waiting ? t("正在准备漫游图片…") : state.backends.length ? t("开始漫游，发现下一张图片。") : t("连接生图 API，开始生成。");
   $('empty-settings').hidden = state.view === 'liked' || state.backends.length > 0;
   $('empty-generate').hidden = !roam || !state.backends.length || waiting;
   $('empty-generate').textContent = t("开始漫游");
-  $('empty-settings').textContent = t("配置后端");
+  $('empty-settings').textContent = t("配置生图 API");
   $('roam-loading').hidden = !waiting;
   $('roam-loading-label').textContent = artifact ? t("正在加载下一张漫游图片") : t("正在生成漫游图片");
   $('image-card').setAttribute('aria-busy', String(waiting));
@@ -445,7 +445,7 @@ function advanceWaitingImage() {
 }
 function requestNextRoamImage() {
   if (!galleryCursors.ready || roamSwitch || nextImageWait.current || state.view !== 'feed') return;
-  if (!state.backends.length) { roamPlayback.pause(); showNotice(t("请先在设置中配置生图后端。"), true); return; }
+  if (!state.backends.length) { roamPlayback.pause(); showNotice(t("请先在设置中配置生图 API。"), true); return; }
   clearRoamError();
   nextImageWait.begin(state.activeId); renderArtifacts(); refillRoam();
 }
@@ -566,7 +566,7 @@ function createJobCard(job) {
   summary.append(status, identifier, clock);
   const body = document.createElement('div'); body.className = 'job-body';
   const meta = document.createElement('dl'); meta.className = 'job-meta';
-  for (const [name, value] of [[t("状态"), label], [t("时间"), new Date(job.created_at).toLocaleString(locale())], [t("后端"), job.backend_name || job.backend_id], [t("种子"), seedLabel(job)], [t("任务 ID"), job.id]]) {
+  for (const [name, value] of [[t("状态"), label], [t("时间"), new Date(job.created_at).toLocaleString(locale())], [t("生图 API"), job.backend_name || job.backend_id], [t("种子"), seedLabel(job)], [t("任务 ID"), job.id]]) {
     const term = document.createElement('dt'), detail = document.createElement('dd'); term.textContent = name; detail.textContent = value; meta.append(term, detail);
   }
   body.append(meta);
@@ -921,7 +921,7 @@ async function currentDefaultTemplate() {
   const draft = { ...connectionDraft(), default_checkpoint:checkpoint };
   const id = editedId === '__new__' ? 'new' : editedId;
   const result = await api(`/api/backends/${encodeURIComponent(id)}/template`, { method:'POST', body:JSON.stringify(draft) });
-  if (workflowLoadRevision !== version || $('edit-backend').value !== editedId || $('backend-url').value !== url || $('default-checkpoint').value !== checkpoint) throw new Error(t("后端、工作流或模型选择已变化，请重新读取默认节点参数。"));
+  if (workflowLoadRevision !== version || $('edit-backend').value !== editedId || $('backend-url').value !== url || $('default-checkpoint').value !== checkpoint) throw new Error(t("生图 API、工作流或模型选择已变化，请重新读取默认节点参数。"));
   return result;
 }
 
@@ -965,7 +965,7 @@ async function selectWorkflow() {
 }
 function connectionDraft() {
   const draft = { name: $('backend-name').value.trim(), kind: $('backend-kind').value, base_url: $('backend-url').value.trim() };
-  if (!draft.name || !draft.base_url) throw new Error(t("请填写后端名称和 API 地址。"));
+  if (!draft.name || !draft.base_url) throw new Error(t("请填写 API 名称和 API 地址。"));
   Object.assign(draft, apiKeyFields($('backend-key').value, hasSavedApiKey));
   return draft;
 }
@@ -990,8 +990,8 @@ function openSettings() {
 }
 function renderRoamBackends() {
   const selected = $('roam-backend').value;
-  $('roam-backend').replaceChildren(translatedOption('', "自动选择后端"), ...state.backends.map(item => option(item.id, item.name)));
-  if (selected && !state.backends.some(item => item.id === selected)) $('roam-backend').append(translatedOption(selected, "已移除的后端，请重新选择"));
+  $('roam-backend').replaceChildren(translatedOption('', "自动选择 API"), ...state.backends.map(item => option(item.id, item.name)));
+  if (selected && !state.backends.some(item => item.id === selected)) $('roam-backend').append(translatedOption(selected, "已移除的生图 API，请重新选择"));
   $('roam-backend').value = selected;
   updateRoamBackendNote();
 }
@@ -1215,7 +1215,7 @@ $('delete-workflow').addEventListener('click', async () => {
   const id = state.workflowId, revision = state.workflowRevision;
   const workflow = state.workflows.find(item => item.id === id);
   if (state.saving || !workflow || !revision) return;
-  if (!await confirmAction(tr`删除工作流「${workflow.name}」？已配置后端保留当前工作流参数，历史任务和图片保留。`)) return;
+  if (!await confirmAction(tr`删除工作流「${workflow.name}」？已配置生图 API 保留当前工作流参数，历史任务和图片保留。`)) return;
   state.saving = true; $('settings-form').inert = true;
   try {
     await api(`/api/workflows/${encodeURIComponent(id)}`, { method: 'DELETE', body: JSON.stringify({ revision }) });
@@ -1233,13 +1233,13 @@ $('delete-workflow').addEventListener('click', async () => {
 $('delete-backend').addEventListener('click', async () => {
   const id = $('edit-backend').value, backend = state.backends.find(item => item.id === id);
   if (state.saving || !backend) return;
-  if (!await confirmAction(tr`删除后端配置「${backend.name}」？${settingsDirty ? t("当前未保存的后端修改将放弃。") : ''}历史任务和图片保留，已有任务继续使用提交时的配置。`)) return;
+  if (!await confirmAction(tr`删除 API 配置「${backend.name}」？${settingsDirty ? t("当前未保存的生图 API 修改将放弃。") : ''}历史任务和图片保留，已有任务继续使用提交时的配置。`)) return;
   state.saving = true; $('settings-form').inert = true;
   try {
     await api(`/api/backends/${encodeURIComponent(id)}`, { method: 'DELETE', body: '{}' });
     state.backends = state.backends.filter(item => item.id !== id);
     renderBackends(); loadBackend($('edit-backend').value); renderArtifacts();
-    settingsNotice(() => t("后端配置已删除。"));
+    settingsNotice(() => t("API 配置已删除。"));
   } catch (error) { settingsNotice(error.message, true); }
   finally { state.saving = false; $('settings-form').inert = false; }
 });
@@ -1271,7 +1271,7 @@ $('load-models').addEventListener('click', async () => {
     const models = (result.models || []).filter((model) => typeof model === 'string');
     $('default-checkpoint').replaceChildren(translatedOption('', "自动选择第一个可用模型"), ...models.map((model) => option(model, model)));
     if (models.includes(selected)) $('default-checkpoint').value = selected;
-    inlineStatus('model-note', () => t("后端没有可用模型，请在 ComfyUI 中配置。"), !models.length);
+    inlineStatus('model-note', () => t("生图 API 没有可用模型，请在 ComfyUI 中配置。"), !models.length);
     button.dataset.tooltip = tr`刷新模型，当前 ${models.length} 个可用`;
   } catch (error) { inlineStatus('model-note', () => tr`读取失败：${error.message}`); }
   finally { button.disabled = false; }
@@ -1300,7 +1300,7 @@ $('settings-form').addEventListener('submit', async (event) => {
     await loadWorkflowLibrary(backend.workflow_id ? `saved:${backend.workflow_id}` : 'default');
     loadBackend(backend.id); renderArtifacts();
     await loadRoamSettings({ preserveDraft: true });
-    settingsNotice(() => backend.workflow_name ? tr`后端与工作流「${backend.workflow_name}」已保存。` : t("后端已保存。"));
+    settingsNotice(() => backend.workflow_name ? tr`生图 API 与工作流「${backend.workflow_name}」已保存。` : t("生图 API 已保存。"));
   } catch (error) { settingsNotice(error.message, true); }
   finally { state.saving = false; $('save-backend').disabled = false; $('settings-form').inert = false; }
 });
@@ -1320,12 +1320,12 @@ $('generate-form').addEventListener('submit', async (event) => {
     const rule = automatic ? readRuleGeneration() : null;
     const fromRules = $('prompt-source').value === 'rules';
     const negative = capabilities.cloud && !capabilities.negative_prompt && !fromRules ? '' : $('negative').value;
-    if (!automatic && capabilities.cloud && negative.trim()) throw new Error(t('此后端不支持负向提示词，请在候选预设中移除负向词，或改用手动正向提示词。'));
+    if (!automatic && capabilities.cloud && negative.trim()) throw new Error(t('此生图 API 不支持负向提示词，请在候选预设中移除负向词，或改用手动正向提示词。'));
     const payload = { backend_id: $('generate-backend').value, positive: $('positive').value, negative, seed, count, repetitions,
       ...(rule ? { candidate: { ...rule.payload, seed_control: rule.current.seedControl, step_control: rule.current.stepControl } } : {}) };
     if (!payload.positive.trim() && !automatic) throw new Error(t("请输入正向提示词，或使用共现候选生成提示词。"));
     const decision = submissionDecision(payload, uncertainRequests, automatic);
-    if (!automatic && payload.negative.trim() && !capabilities.negative_prompt) throw new Error(t("当前后端未绑定负向输入。请清空负向提示词，或在后端设置中指定负向绑定。"));
+    if (!automatic && payload.negative.trim() && !capabilities.negative_prompt) throw new Error(t("当前生图 API 未绑定负向输入。请清空负向提示词，或在生图 API 设置中指定负向绑定。"));
     operation = decision.retry || requestIdentity(payload, uncertainRequests, () => crypto.randomUUID());
     const hasOtherUncertain = uncertainRequests.size && !uncertainRequests.has(operation.key);
     uncertainRequests.set(operation.key, operation);

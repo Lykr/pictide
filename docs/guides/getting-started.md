@@ -26,7 +26,7 @@ After startup, choose a generation backend below. When using ComfyUI, the two ap
 
 ## Connect OpenAI Images or Gemini
 
-1. Open Settings → Backend, create a backend, and choose **OpenAI Images** or **Gemini**.
+1. Open Settings → Image API, add an API, and choose **OpenAI Images** or **Gemini**.
 2. Enter a name, API Base URL including its version path, API key, and image-capable model ID. For the official services, use `https://api.openai.com/v1` or `https://generativelanguage.googleapis.com/v1beta`. Keep the model ID explicit; Pictide does not select or download a cloud model for you.
 3. Optionally set OpenAI size and quality, or Gemini aspect ratio and image size, using values supported by your model. Empty options use the service defaults.
 4. Test the connection and save. The check only looks up the selected model; it sends no generation request and does not verify that your account can generate images. Submit a small manual request on Generate when you are ready to verify generation.
@@ -43,7 +43,7 @@ Protocol mocks cover integration behavior; generation against paid official serv
 
 ## Connect ComfyUI
 
-1. Start ComfyUI, open Settings → Backend in Pictide, and enter a backend name and its actual address, such as `http://127.0.0.1:8188`. The Desktop edition may use another port.
+1. Start ComfyUI, open Settings → Image API in Pictide, and enter an API name and its actual address, such as `http://127.0.0.1:8188`. The Desktop edition may use another port.
 2. Keep “Default text-to-image,” load and select an installed checkpoint. Leave it empty to use the first model in the list automatically. No workflow import or input binding is required.
 3. Test the connection and save. After preparing the tag library and recommendation model, open Roam and click “Start roaming” to view the first image, express a preference, and move to the next image. You can also submit a prompt on Generate to verify manual text-to-image generation.
 

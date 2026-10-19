@@ -23,7 +23,7 @@ When moving to another operating system, use its portable package or prepare a s
 
 ## Restore an individual workflow
 
-Versions saved before a workflow was updated or deleted are in `workflows/.backups/` under the data directory. Copy the required version back to the corresponding workflow file, then select it again and save under Settings → Backends.
+Versions saved before a workflow was updated or deleted are in `workflows/.backups/` under the data directory. Copy the required version back to the corresponding workflow file, then select it again and save under Settings → Image API.
 
 ## Further reading
 

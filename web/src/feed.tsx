@@ -69,8 +69,8 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 {"\n        "}<div id="empty-state" className="empty">
 <div className="empty-mark"><Image aria-hidden="true" /></div>
 <h2 id="empty-title">{t("从第一张图片开始")}</h2>
-<p id="empty-description">{t("连接生图后端，开始生成。")}</p>
-<Button id="empty-settings" className="primary" variant="default" type="button">{t("配置后端")}</Button>
+<p id="empty-description">{t("连接生图 API，开始生成。")}</p>
+<Button id="empty-settings" className="primary" variant="default" type="button">{t("配置生图 API")}</Button>
 <Button id="empty-generate" variant="default" type="button" hidden>{t("开始生成")}</Button>
 </div>
 {"\n        "}<RoamAnchors>{(anchorTrigger, anchorPanel) => <Card id="image-card" className="image-card roam-image-card gap-0 py-0" tabIndex={-1} aria-label={t("图片浏览")} hidden>
@@ -125,7 +125,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <h2>{t("图像生成")}</h2>
 </div>
 {"\n      "}<form id="generate-form">
-{"\n        "}<Label>{t("后端")}<NativeSelect id="generate-backend" required size="sm">
+{"\n        "}<Label>{t("生图 API")}<NativeSelect id="generate-backend" required size="sm">
 </NativeSelect>
 </Label>
 {"\n        "}<Label>{t("提示词来源")}<NativeSelect id="prompt-source" size="sm">
@@ -189,7 +189,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </Label>
 {"\n        "}<Label id="negative-field">{t("负向提示词")}<Textarea id="negative" rows={4} placeholder={t("不希望出现的内容（可选）")}>
 </Textarea>
-<small id="negative-binding-note" hidden>{t("当前后端未绑定负向输入，请保持为空，或在后端设置中绑定。")}</small>
+<small id="negative-binding-note" hidden>{t("当前生图 API 未绑定负向输入，请保持为空，或在生图 API 设置中绑定。")}</small>
 </Label>
 <p id="generation-capability-note" className="hint" hidden />
 <p id="generation-cloud-note" className="hint" hidden>{t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")}</p>
@@ -211,7 +211,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <nav className="settings-navigation" aria-label={t("设置分类")}>
 <Button data-settings-section="general" variant="ghost" type="button"><Settings2 aria-hidden="true" />{t("通用")}</Button>
 <Button data-settings-section="roam" variant="ghost" type="button"><Compass aria-hidden="true" />{t("漫游")}</Button>
-<Button data-settings-section="backend" variant="ghost" type="button"><SlidersHorizontal aria-hidden="true" />{t("后端")}</Button>
+<Button data-settings-section="backend" variant="ghost" type="button"><SlidersHorizontal aria-hidden="true" />{t("生图 API")}</Button>
 <Button data-settings-section="history" variant="ghost" type="button"><History aria-hidden="true" />{t("历史")}</Button>
 </nav>
 <div className="settings-content">
@@ -222,11 +222,11 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <section id="settings-backend" className="settings-category"><form id="settings-form">
 <div className="form-grid">
 <div className="settings-field">
-<div className="settings-field-heading"><Label htmlFor="edit-backend">{t("已有后端")}</Label><IconButton id="delete-backend" icon={Trash2} label={t("删除后端配置")} size="icon-xs" disabled /></div>
+<div className="settings-field-heading"><Label htmlFor="edit-backend">{t("已有 API")}</Label><IconButton id="delete-backend" icon={Trash2} label={t("删除 API 配置")} size="icon-xs" disabled /></div>
 <NativeSelect id="edit-backend" />
 </div>
-<div className="settings-field"><Label htmlFor="backend-name">{t("后端名称")}</Label><Input id="backend-name" required placeholder={t("本机 ComfyUI")} /></div>
-<div className="settings-field"><Label htmlFor="backend-kind">{t("后端类型")}</Label><NativeSelect id="backend-kind"><option value="comfyui">ComfyUI</option><option value="openai">OpenAI Images</option><option value="gemini">Gemini</option></NativeSelect></div>
+<div className="settings-field"><Label htmlFor="backend-name">{t("API 名称")}</Label><Input id="backend-name" required placeholder={t("本机 ComfyUI")} /></div>
+<div className="settings-field"><Label htmlFor="backend-kind">{t("API 类型")}</Label><NativeSelect id="backend-kind"><option value="comfyui">ComfyUI</option><option value="openai">OpenAI Images</option><option value="gemini">Gemini</option></NativeSelect></div>
 <div className="settings-field"><Label htmlFor="backend-url">{t("API 地址")}</Label><Input id="backend-url" type="url" required defaultValue="http://127.0.0.1:8188" /></div>
 </div>
 <div className="settings-field">
@@ -258,7 +258,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 <section id="default-workflow">
 <div className="settings-field">
-<div className="settings-field-heading"><Label htmlFor="default-checkpoint"><span className="field-caption">{t("模型")}<HelpTip text={t("从配置的 ComfyUI 读取模型，留空时自动选择第一个可用模型。")} /></span></Label><IconButton id="load-models" icon={RefreshCw} label={t("读取后端模型")} size="icon-xs" /></div>
+<div className="settings-field-heading"><Label htmlFor="default-checkpoint"><span className="field-caption">{t("模型")}<HelpTip text={t("从配置的 ComfyUI 读取模型，留空时自动选择第一个可用模型。")} /></span></Label><IconButton id="load-models" icon={RefreshCw} label={t("读取 API 模型")} size="icon-xs" /></div>
 <NativeSelect id="default-checkpoint"><option value="">{t("自动选择第一个可用模型")}</option></NativeSelect>
 </div>
 <p id="model-note" className="hint" role="status" hidden />
@@ -283,19 +283,19 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="settings-field"><Label htmlFor="binding-negative">{t("负向提示词输入")}</Label><NativeSelect id="binding-negative"><option value="">{t("选择负向 text 输入")}</option></NativeSelect></div>
 <div className="settings-field"><Label htmlFor="binding-seed">{t("图像种子输入（可选）")}</Label><NativeSelect id="binding-seed"><option value="">{t("不绑定")}</option></NativeSelect></div>
 </div>
-<div className="settings-field"><Label htmlFor="output-nodes"><span className="field-caption">{t("输出节点")}<HelpTip text={t("可多选；留空时使用后端返回的图像输出。")} /></span></Label><select id="output-nodes" data-slot="native-select" className={nativeSelectClassName} multiple size={3} /></div>
+<div className="settings-field"><Label htmlFor="output-nodes"><span className="field-caption">{t("输出节点")}<HelpTip text={t("可多选；留空时使用生图 API 返回的图像输出。")} /></span></Label><select id="output-nodes" data-slot="native-select" className={nativeSelectClassName} multiple size={3} /></div>
 </div>
 </fieldset>
 <div id="settings-result" className="notice" role="status" hidden />
-<div className="dialog-footer"><Button id="test-backend" type="button" className="quiet" variant="outline">{t("测试连接")}</Button><Button id="save-backend" type="submit" className="primary" variant="default">{t("保存后端")}</Button></div>
+<div className="dialog-footer"><Button id="test-backend" type="button" className="quiet" variant="outline">{t("测试连接")}</Button><Button id="save-backend" type="submit" className="primary" variant="default">{t("保存 API")}</Button></div>
 </form></section>
 <section id="settings-roam" className="settings-category" hidden><form id="roam-form" className="settings-stack">
 <fieldset id="roam-fields" className="settings-stack">
 <div className="form-grid">
-<div className="settings-field"><Label htmlFor="roam-backend">{t("生图后端")}</Label><NativeSelect id="roam-backend"><option value="">{t("自动选择后端")}</option></NativeSelect></div>
+<div className="settings-field"><Label htmlFor="roam-backend">{t("生图 API")}</Label><NativeSelect id="roam-backend"><option value="">{t("自动选择 API")}</option></NativeSelect></div>
 <div className="settings-field"><Label htmlFor="roam-config"><span className="field-caption">{t("候选预设")}<HelpTip text={t("使用该预设的固定词、共现规则和顺流变化预算。")} /></span></Label><NativeSelect id="roam-config"><option value="">{t("自动选择预设")}</option></NativeSelect></div>
 </div>
-<p id="roam-cloud-note" className="hint" hidden>{t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")}{' '}{t("首次选择云端后端会关闭自动预取；再次保存非零预取数量可开启连续生成。")}</p>
+<p id="roam-cloud-note" className="hint" hidden>{t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")}{' '}{t("首次选择云端 API 会关闭自动预取；再次保存非零预取数量可开启连续生成。")}</p>
 <RoamSettingsChoices />
 <div className="form-grid">
 <div className="settings-field"><Label htmlFor="roam-prefetch-count"><span className="field-caption">{t("预取数量")}<HelpTip text={t("在当前图片后预备的张数；漫游页打开时按需补足，0 关闭自动预取。")} /></span></Label><Input id="roam-prefetch-count" type="number" min="0" max="20" step="1" defaultValue="2" required /></div>

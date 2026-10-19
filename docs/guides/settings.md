@@ -4,7 +4,7 @@
 
 [Documentation](../README.md) · [Settings API](../dev/reference/api/settings.md)
 
-Settings has General, Roam, Backend, and History sections. General shows the data location; History contains task records and image cleanup.
+Settings has General, Roam, Image API, and History sections. General shows the data location; History contains task records and image cleanup.
 
 ## General settings
 

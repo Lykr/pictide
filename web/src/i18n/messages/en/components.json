@@ -18,7 +18,7 @@
   "没有同时包含所选标签的喜欢图片。": "No liked images contain all selected tags.",
   "正在生成，完成后会显示在这里。": "Generating. Results will appear here.",
   "生成图片后，在这里查看结果。": "Generated images appear here.",
-  "先配置生图后端。": "Configure a generation backend first.",
+  "先配置生图 API。": "Configure an image API first.",
   "查看{0} · {1}": "View {0} · {1}",
   "沉浸模式": "Immersive mode",
   "关闭图片": "Close image",
