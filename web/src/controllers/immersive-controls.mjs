@@ -21,9 +21,10 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
   let restoreInert = [], touchGesture = null, installed = false;
   const toolbars = [...new Set([toolbar, exit?.parentElement].filter(Boolean))];
   const anchorsOpen = () => !!card.matches?.('.roam-image-card[data-state=open]');
-  const inControls = node => toolbars.some(bar => bar.contains(node)) || !!card.querySelector?.('.roam-anchors')?.contains(node);
+  const imageInfoOpen = () => !!card.querySelector?.('.image-info-popover[data-state=open]');
+  const inControls = node => toolbars.some(bar => bar.contains(node)) || ['.roam-anchors', '.roam-anchor-divider', '.image-info-popover'].some(selector => card.querySelector?.(selector)?.contains(node));
   const controls = createAutoHideControls({
-    held: () => hovered || anchorsOpen() || (keyboard && inControls(doc.activeElement)),
+    held: () => hovered || anchorsOpen() || imageInfoOpen() || (keyboard && inControls(doc.activeElement)),
     visible: show => {
       if (!show && inControls(doc.activeElement)) card.focus({ preventScroll: true });
       card.classList.toggle('immersive-controls-hidden', !show);
@@ -74,6 +75,7 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
   const focus = () => { if (!shortcutInput) controls.wake(); };
   const key = event => {
     keyboard = true;
+    if (imageInfoOpen()) return;
     if (event.key !== 'Escape' && event.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])')) return;
     if (event.key === 'Escape') { event.preventDefault(); leave(); }
     else if (event.key === 'Tab') {

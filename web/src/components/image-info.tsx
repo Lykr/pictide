@@ -11,6 +11,7 @@ type ImageDetails = { id: string; seed: string; positive: string; negative: stri
 export function ImageInfo() {
   const [image, setImage] = useState<ImageDetails | null>(null);
   const [open, setOpen] = useState(false);
+  const [container, setContainer] = useState<HTMLElement | undefined>();
   useEffect(() => {
     const receive = (event: Event) => {
       const next = (event as CustomEvent<ImageDetails | null>).detail;
@@ -26,9 +27,12 @@ export function ImageInfo() {
     };
   }, []);
   return <>
-    <Popover open={open && !!image} onOpenChange={setOpen}>
+    <Popover open={open && !!image} onOpenChange={next => {
+      setContainer(document.querySelector<HTMLElement>("#image-card.immersive") ?? undefined);
+      setOpen(next);
+    }}>
     <PopoverTrigger asChild><IconButton icon={Info} label={t("图片信息")} disabled={!image} /></PopoverTrigger>
-    <PopoverContent className="image-info-popover image-details-popover" align="end" side="top" aria-label={t("图片信息")}>
+    <PopoverContent container={container} className="image-info-popover image-details-popover" align="end" side="top" aria-label={t("图片信息")}>
       {image && <ImagePromptDetails key={image.id} imageId={image.id} active={open && !!image} seed={image.seed} positive={image.positive} negative={image.negative}
         actions={<Button asChild variant="ghost" size="icon-sm"><a href={`/api/artifacts/${encodeURIComponent(image.id)}/prompts`} aria-label={t("下载提示词 JSON")} data-tooltip={t("下载提示词 JSON")} download><Download aria-hidden="true" /></a></Button>} />}
     </PopoverContent>

@@ -272,3 +272,21 @@ test('image shortcuts keep controls available while the anchor dock is open', ()
     assert.equal(f.card.classList.contains('immersive-controls-hidden'), true);
   } finally { f.viewer.leave(); }
 });
+
+
+test('Escape is left to an open image info popover before exiting immersion', () => {
+  const f = fixture();
+  let info = true;
+  f.card.querySelector = selector => info && selector === '.image-info-popover[data-state=open]' ? {} : null;
+  try {
+    f.entry.dispatchEvent(new Event('click'));
+    const first = new Event('keydown', { cancelable: true }); first.key = 'Escape';
+    f.document.dispatchEvent(first);
+    assert.equal(f.viewer.active, true);
+    assert.equal(first.defaultPrevented, false);
+    info = false;
+    const second = new Event('keydown', { cancelable: true }); second.key = 'Escape';
+    f.document.dispatchEvent(second);
+    assert.equal(f.viewer.active, false);
+  } finally { f.viewer.leave(); }
+});

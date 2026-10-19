@@ -94,7 +94,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 </div>
 <div className="image-toolbar">
-<div className="image-anchor">{anchorTrigger}</div>
 <div className="image-meta">
 <strong id="image-index">
 </strong>
@@ -109,6 +108,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 <div className="image-info">
 <ImageInfo />
+{anchorTrigger}
 </div>
 </div>
 {anchorPanel}
