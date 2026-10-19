@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Guides for setup, roaming, prompts, and settings. Each topic starts with an overview and links to further details.
+Choose what you want to do, then follow the guide to get started.
 
 ## User documentation
 
@@ -14,12 +14,12 @@ Guides for setup, roaming, prompts, and settings. Each topic starts with an over
 | How do I install and start it? | [Windows](guides/setup/windows.md) · [Linux](guides/setup/linux.md) · [macOS](guides/setup/macos.md) |
 | How do I connect a generation backend? | [Connect ComfyUI, OpenAI Images, or Gemini](guides/getting-started.md) |
 | How do I access it from my phone or add it to my Home Screen? | [LAN access and Home Screen app](guides/access.md) |
-| How are prompts generated, and how do fixed terms and co-occurrence settings work? | [Prompts and presets](guides/prompts.md) |
+| How do I keep a favorite style or guide image concepts? | [Prompts and presets](guides/prompts.md) |
 | Which vocabulary is included, and how do I download another edition? | [Vocabulary editions](guides/vocabularies.md) |
-| How do roaming, playback, anchors, and recommendation strength work? | [Roam](guides/roam.md) |
-| How do I generate batches and manage generation results? | [Generate](guides/generate.md) |
-| How do I revisit liked images, filter tags, and sort by score? | [Liked](guides/liked.md) |
-| Where are language, theme, task history, and cleanup settings? | [Settings and cleanup](guides/settings.md) |
+| How do I start exploring and guide what comes next? | [Roam](guides/roam.md) |
+| How do I create images from a specific idea? | [Generate](guides/generate.md) |
+| How do I find and revisit my favorite images? | [Liked](guides/liked.md) |
+| How do I change the appearance or manage history? | [Settings and cleanup](guides/settings.md) |
 
 ### Data and backups
 

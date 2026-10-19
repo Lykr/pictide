@@ -4,8 +4,10 @@
 
 [Documentation](../README.md) · [Generate](generate.md) / [Liked](liked.md)
 
-Generate and Liked share the image browsing controls below. For generation, result cleanup, collection filters, and scoring, follow their separate guides.
+Click an image in Generate or Liked to see it in full, browse nearby images, and like favorites as you go. Open image information at the bottom left to view or download its prompts.
 
 ## Enlarged view controls and privacy
 
-Blur is on by default and can be toggled beside the title. Each page's grid and enlarged image panel share this state, which resets to on after a page refresh. The enlarged view centers Previous, Like, and Next in its action bar. The blur button is at the top right, left of Close; image information is at the bottom left in both Generate and Liked. Image deletion and download buttons are not shown. Navigate images left/right, press ↑ to like, or Space to toggle blur; the down arrow does nothing. Immersive mode automatically hides the action bar. Esc exits immersive mode first, then closes the enlarged view. Roaming images also have no original-image download button; the information panel retains prompt JSON download.
+Blur is on by default, so you choose when to reveal images. Turn it off to browse normally; refreshing the page turns it back on.
+
+In the enlarged view, use the left and right arrow keys to browse, ↑ to like, and Space to toggle blur. For a quieter view, enter immersive mode to hide the controls; press Esc to leave it.

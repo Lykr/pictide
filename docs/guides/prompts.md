@@ -1,59 +1,37 @@
-# Prompts and Co-occurrence Presets
+# Prompts and Presets
 
 [简体中文](prompts.zh-CN.md)
 
-[Documentation](../README.md) · [Candidate API](../dev/reference/api/candidate.md)
+[Documentation](../README.md)
 
-Find tags in Library, save fixed terms and co-occurrence parameters in Arrange, then check the results in Preview.
+Save a subject or style as a preset and let Pictide fill out the prompts for you. You can start with the default preset and adjust it as you go.
 
 ## Libraries and presets
 
-Tag libraries are imported offline and support viewing and selection. Adding, deleting, enabling, or disabling tags, and manually changing categories, are not supported. Fixed positive terms act as generation anchors, while fixed negative terms are output separately. These terms and generation parameters are stored in editable presets. Existing tasks retain their submitted text; editing a preset does not rewrite history.
+A library supplies tags to combine; a preset saves your fixed terms and how those combinations are made.
 
-The initial preset for a new user includes `general` as a fixed positive term and has no fixed negative terms. You can remove or replace it in Arrange. Existing saved presets keep their values.
+In Arrange, select a preset and add positive terms you want to keep. Put things you want to avoid in the negative prompt. Fixed terms can be library tags or your own complete descriptions. The initial preset includes `general` as a positive term; you can remove or replace it. Leave the negative prompt empty when using OpenAI Images or Gemini.
 
-The Preset field combines name editing with a dropdown: use the arrow to select a saved preset, edit its name directly, and save with Save or Enter.
+Use Preview to try combinations before generating images: it produces prompt text only. Save when you are happy with it. The selected preset is shared by Roam and Generate; edits take effect after saving. Text already entered on Generate stays as it is, and the next preset-based prompt request uses the new selection.
 
-Selecting a saved preset in Arrange or Preview also selects it for Roam and Generate. The choice is remembered after refresh. Saving a new or copied preset selects it as well. Preview uses the current editing draft; save your edits to use them for image generation. Generate keeps any prompt text already entered, and its next preset-based prompt request uses the new selection. Existing submitted tasks keep their prompts; future roaming uses the selected preset through the usual settings switch.
+Edit the preset name directly, or copy a preset to keep separate settings for different subjects.
+
+## Adjust combinations
+
+Try the defaults first, then adjust as needed:
+
+- **Minimum and maximum counts**: control prompt length, including fixed positive terms.
+- **PMI threshold and minimum co-occurrence count**: set the statistical association requirements between tags. Higher thresholds usually leave fewer terms available, so a result can be shorter than the target.
+- **Sequence change budget**: control how much Flow and continuous previews can change. `0` keeps the previous combination.
+
+Statistical association helps combine tags; the image model determines the resulting picture.
 
 ## Add and switch libraries
 
-For ready-to-use downloads and the difference between `filtered` and `all-ratings`, see [Vocabulary editions](vocabularies.md). Portable packages include `filtered` by default.
+Portable packages include `filtered`, ready to use. For a broader range of tags, download `all-ratings` from [Vocabulary editions](vocabularies.md).
 
-In Prompts → Library, click Upload and select a processed `.sqlite3` or `.sqlite3.gz` file. A successful upload selects the library automatically.
-
-You can also place a `.sqlite3` file in `libraries/` under the current data directory (default `data/libraries/`), click Refresh, and select it from the dropdown. Multiple versions can coexist. Selection takes effect immediately and is remembered after restart; uploads with duplicate names receive a numeric suffix.
-
-Switching preserves personal presets, fixed terms, and editing drafts. A library carries a minimum co-occurrence count: the Arrange input adopts the selected library's lower limit, raises a draft value that is too low, and preserves higher values. Saving writes the value to the preset. Actual generation also applies the library's lower limit. Fixed terms are recognized again against the new library: matched terms participate in co-occurrence statistics, while custom terms continue to be output. Existing tasks and prefetched images are retained; new candidates use the selected library.
-
-Uploads accept processed Pictide statistics libraries (tags, correlations, dataset), with a 2 GiB maximum both for the uploaded file and after decompression. See [data preparation](#data-preparation) for raw Parquet processing. See the [requirements record (Chinese)](../dev/issues/library-selection.md) for the library selection API and implementation.
-
-## Positive generation and negative prompts
-
-Fixed positive terms and co-occurrence expansion parameters are edited in the same area. Negative prompts have a separate, initially collapsed area and are used directly for image generation only. Both are saved in the same preset. Negative terms do not participate in PMI calculations. Co-occurrence expansion excludes terms that match whole entries in the negative list, ignoring case and treating spaces and underscores as equivalent. Explicit fixed positive terms are retained; keyword blocking separately uses substring matching. If a previous Flow combination contains a drawn term that is newly excluded, a valid combination is regenerated. A combination already held in Anchor mode is not rewritten.
-
-Only positive terms in Preview support pairwise correlation details and highlighting. Negative terms appear separately as plain text with a copy button.
-
-## Co-occurrence expansion
-
-Prompt candidates are generated by expanding Danbooru tag co-occurrences. Users manage named presets and fixed positive/negative prompts, while the library is read-only data imported from a dataset. Older JSON tag libraries and slot rules are no longer used. The source is `Shio-Koube/Danbooru-2026-parquet-metadata`, downloaded in full and processed locally without downloading images. See [co-occurrence candidates (Chinese)](../dev/issues/cooccurrence-candidates-v1.md) for the design, API, and meaning of PMI.
-
-Prompts provides Library / Arrange / Preview. Library displays the selected vocabulary's retained tags. The default compact profile excludes posts containing questionable / explicit before statistics, then keeps ordinary tags appearing in at least 100 retained posts and the observed general / sensitive rating labels. Other imported libraries may use different post filters, thresholds, or rating labels; see [Corpus Processing](../dev/corpus.md#processing-parameters) for configuration. It supports paginated search by original name. Arrange edits fixed terms, minimum and maximum counts, the PMI threshold, minimum co-occurrence count, blocked keywords, and the continuous variation budget. Fixed terms can be selected from matching entries or entered as free text. The list labels them Library / Custom and automatically recognizes them again after edits. Unmatched terms remain in the output but do not participate in statistics. In Preview, hover or focus a term to see PMI and co-occurrence counts with other terms in the current combination, with linked highlighting. Free terms without statistics and known term pairs whose relationship was not retained are marked separately.
-
-A new term t must meet the PMI threshold and minimum co-occurrence count with every existing statistically known tag s. PMI uses a base-2 logarithm: 0 corresponds to the expectation under independence, and positive values indicate positive association. Eligible terms are randomly drawn with weights `2 ** mean(PMI)`. Each attempt first draws an integer target uniformly between the minimum and maximum counts, then tries to generate that many terms. If no eligible new term remains or the search-step limit is exhausted, it returns the prompts generated so far, which may be shorter than the minimum. The count includes fixed positive terms; when their count exceeds the minimum, their count becomes the effective minimum. The PMI and co-occurrence thresholds are not lowered to reach the target length; the actual output determines its length. Statistical association does not guarantee generation quality or freedom from conflicts.
-
-## Random, fixed-seed, and continuous sequences
-
-Random mode uses a new seed each time; a fixed seed is reproducible. Continuous mode links frames through a sequence seed and frame index. Each tag addition and removal counts as one change, replacement counts as two, and a budget of 0 preserves the previous combination. A continuous frame draws its target count uniformly from the intersection of the configured count range and what the budget can reach. The budget is an upper bound; the previous frame may be retained when no change is feasible. The long-term length distribution of continuous frames is therefore not guaranteed to be globally uniform. After-generation seed / frame-index controls and the search limit remain available; slot-level locks, hold-frame counts, and related settings are removed.
-
-## Terms and statistical conventions
-
-Within the dataset, spaces separate tags and underscores join words. Library displays original names without storing a separate display copy. Recommendation and generation output convert underscores to spaces in memory and separate tags with `, `. Fixed free text is stored as a complete entry, without splitting on internal spaces.
-
-The current trial library only retains relationships with co-occurrence counts ≥1,000, while preserving tags and presets. A missing relationship means its statistics were not retained. Preview shows “Statistics not retained” and a count of “—”. See the [aggressive pruning record (Chinese)](../dev/issues/candidate-pair1000.md) for pruning results and the recovery location. Offline processing defaults to a pair-count floor of 10 and supports configurable tag and pair thresholds. Rating tags can participate in statistics as fixed positive anchors. Runtime library original names, frequencies, PMI, co-occurrence counts, and provenance are stored in `data/libraries/*.sqlite3`. Personal presets and the current selection are in `data/db/candidate.sqlite3`, with import source materials in `dev/datasets/`. See [data processing tools](../dev/corpus.md) for import commands and analysis dependencies. Import runs in offline tools, outside startup and page requests.
+Under Prompts → Library → Upload, select the downloaded `.sqlite3` file. It is selected automatically after upload. You can also place a finished library in `libraries/` under your data directory, refresh, and select it. Multiple versions can coexist. Switching preserves your personal presets and fixed terms; newly generated prompts use the selected library.
 
 ## Data preparation
 
-The portable edition includes the `filtered` statistical vocabulary, ready for selection after startup. [Both vocabulary editions](vocabularies.md) are also available as independent downloads. MiniLM is prepared separately [before the application opens](getting-started.md#recommendation-model-startup). Source users and anyone preparing a different vocabulary can use the offline tools below.
-
-Offline download and import are collected in the root [`corpus/`](../dev/corpus.md), including tools, dependencies, and processing steps. Source Parquet, intermediate SQLite, and processed libraries awaiting import belong in dev/datasets; runtime libraries belong in data/libraries. See the [storage reference](../dev/reference/storage.md#candidate-data) for processed-data conventions and file layout, and the [co-occurrence candidate record (Chinese)](../dev/issues/cooccurrence-candidates-v1.md#离线导入) for design and validation. Once processing is complete, upload the finished SQLite in Library, or copy it into the libraries directory and refresh the selection, to use it for co-occurrence previews and roaming.
+To build your own library from raw data, see [Corpus Processing](../dev/corpus.md). For everyday use, download a ready-made edition.

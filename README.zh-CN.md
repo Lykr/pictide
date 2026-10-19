@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-**随你漫游，画面世界徐徐展开。**
+**随你漫游，新的画面徐徐展开。**
 
 ![Pictide roaming demo](docs/assets/roam.gif)
 
@@ -12,31 +12,23 @@
 
 ## 用户指南
 
-### 快速开始（便携版本）
+### 快速开始
 
-1. 准备 ComfyUI 与文生图模型，或 OpenAI Images / Gemini 的 API Key 和图片输出模型。
-2. 解压对应系统的便携包，运行启动入口：[Windows](docs/guides/setup/windows.zh-CN.md#便携版本) · [Linux](docs/guides/setup/linux.zh-CN.md#便携版本) · [macOS](docs/guides/setup/macos.zh-CN.md#便携版本)。程序就绪后自动打开浏览器。
-3. 按[接入指南](docs/guides/getting-started.zh-CN.md)在「设置 → 生图 API」连接生图服务，进入「漫游」开始浏览。云端漫游默认关闭自动预取，请使用负向提示词为空的预设。
+1. 解压便携包，运行启动入口：[Windows](docs/guides/setup/windows.zh-CN.md#便携版本) · [Linux](docs/guides/setup/linux.zh-CN.md#便携版本) · [macOS](docs/guides/setup/macos.zh-CN.md#便携版本)。首次启动会先下载推荐模型，完成后自动打开浏览器。
+2. 在「设置 → 生图 API」连接 ComfyUI，或填写 OpenAI Images / Gemini 的 API Key 和模型，详见[安装与接入](docs/guides/getting-started.zh-CN.md)。
+3. 进入「漫游」，点击「开始漫游」。从浏览开始，用喜欢、不喜欢和锚点引导后续画面。
 
-便携包随带运行环境、前端和 `filtered` 统计词库；下载与切换 `all-ratings` 见[词库版本](docs/guides/vocabularies.zh-CN.md)。首次启动先下载并校验 MiniLM，完成后才打开应用，进度显示在启动窗口。后续复用本地模型。离线准备与下载重试见[推荐模型启动准备](docs/guides/getting-started.zh-CN.md#推荐模型启动准备)。个人数据保存在包内 `data/`。Windows 已验证真实产物，Linux/macOS 的本机构建与原生验证状态见各系统说明。
-
-### 从源码开始
-
-1. 准备 ComfyUI 与文生图模型，或 OpenAI Images / Gemini 的 API Key 和图片输出模型。
-2. 按系统完成安装与启动：[Windows](docs/guides/setup/windows.zh-CN.md) · [Linux](docs/guides/setup/linux.zh-CN.md) · [macOS](docs/guides/setup/macos.zh-CN.md)。打开 http://127.0.0.1:8189 。
-3. 在「设置 → 生图 API」配置生图服务、测试并保存；词库与推荐模型准备完成后，进入「漫游」点击「开始漫游」，浏览、评价并切换下一张。
-
-共现生成需要词库，推荐学习需要本地 MiniLM；准备与接入步骤见[安装与接入](docs/guides/getting-started.zh-CN.md)。关闭启动窗口或按 Ctrl+C 停止应用。
+便携包随带默认词库，个人数据保存在包内 `data/`。从源码运行、离线准备或更换词库，见[用户文档](docs/README.zh-CN.md)。
 
 ### 功能概览
 
 | 栏目 | 用途 | 说明 |
 | --- | --- | --- |
-| 漫游 | 浏览推荐图片、评价、锚定画面元素 | [漫游指南](docs/guides/roam.zh-CN.md) |
-| 生成 | 手动或按预设批量生图 | [生成](docs/guides/generate.zh-CN.md) |
-| 喜欢 | 图片网格、标签筛选、偏好评分排序 | [喜欢](docs/guides/liked.zh-CN.md) |
-| 提示词 | 查看只读词库、编辑预设、预览共现扩展 | [提示词指南](docs/guides/prompts.zh-CN.md) |
-| 设置 | 通用、漫游、生图 API和任务历史 | [设置与清理](docs/guides/settings.zh-CN.md) |
+| 漫游 | 边看边发现喜欢的画面，引导后续方向 | [漫游指南](docs/guides/roam.zh-CN.md) |
+| 生成 | 把明确的想法变成图片 | [生成](docs/guides/generate.zh-CN.md) |
+| 喜欢 | 回看收藏，找到想看的画面 | [喜欢](docs/guides/liked.zh-CN.md) |
+| 提示词 | 保存常用风格，调整画面组合 | [提示词指南](docs/guides/prompts.zh-CN.md) |
+| 设置 | 连接生图服务，管理使用偏好与数据 | [设置与清理](docs/guides/settings.zh-CN.md) |
 
 ### 更多帮助
 
@@ -44,7 +36,7 @@
 - [数据备份与恢复](docs/guides/backup.zh-CN.md)：数据保存位置、备份和恢复。
 - [用户文档导航](docs/README.zh-CN.md#用户文档)：按使用问题查找说明。
 
-Pictide 作为独立应用连接 ComfyUI、OpenAI Images 与 Gemini 原生生图。云端接入已用协议模拟服务验证，收费服务的真实出图尚未验证。本功能已包含在当前源码中，已有便携包需要更新版本。当前为概念验证版本，尚无多用户账号、图像特征学习或离线网页缓存。
+Pictide 目前处于概念验证阶段，接入与平台支持情况见[安装指南](docs/guides/getting-started.zh-CN.md)。
 
 ## 开发者文档
 

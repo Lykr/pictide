@@ -2,54 +2,36 @@
 
 [简体中文](roam.zh-CN.md)
 
-[Documentation](../README.md) · [Roam API](../dev/reference/api/roam.md)
+[Documentation](../README.md)
 
-Select the active preset on [Prompts](prompts.md#libraries-and-presets), then choose an image API and set the prefetch count under Settings → Roam before browsing. Selecting a new OpenAI Images or Gemini backend disables automatic prefetch (`0`); increase it explicitly to allow background generation. Cloud presets must have an empty negative prompt. Each generated image may incur provider charges; see [backend setup](getting-started.md#connect-openai-images-or-gemini).
+Start roaming even when you are not sure what you want to see. Pictide prepares images without asking you to write prompts. Leave feedback on what catches your eye and gradually find your direction.
 
-## Preference scope and roaming modes
+## Start browsing
 
-Settings → Roam saves the buffer count, image API, autoplay interval, preference scope, and roaming mode. Preset selection is managed on Prompts. The top-right menu in Roam offers display time, preference scope, roaming mode, and recommendation strength; changes synchronize while preserving other drafts. Preference scope is All / Liked. Roaming modes are Drift / Flow / Anchor, with Drift as the default. Flow continues from the combination actually selected, using the candidate preset's variation budget. Anchor preserves the entire prompt combination while image seeds remain random. Changing the scope, mode, backend, or preset keeps the current image, clears older prefetch after it, cancels pending roaming tasks from the old settings, and excludes late results from Roam. Likes, files, and Generate tasks are retained. See [roaming modes (Chinese)](../dev/issues/roam-modes.md). The buffer count is `0`–`20`, defaulting to `2` for new users; `0` disables automatic prefetch. Existing saved personal settings remain in use. `N` is the target number of newer roaming images to the right of the current image. An empty roaming list first generates its initial image, then fills the next `N` images. Batch workflows count actual returned roaming images saved in the database, rather than tasks; Generate images do not count toward the buffer.
+After [connecting an image API](getting-started.md), select it under Settings → Roam, then open Roam to begin. Move to the next image to explore. Like or dislike an image to express your preferences; click again to undo. Feedback influences future recommendations, though images already prepared may still follow the earlier direction.
+
+Automatic prefetch prepares images ahead to reduce waiting. Set it to `0` to generate only when you request the next image. Selecting a new cloud image API turns prefetch off by default; enable it when you want it.
+
+## Choose how to explore
+
+Open Roam options at the top right:
+
+- **Drift**: draw a fresh prompt combination for each image and discover more possibilities.
+- **Flow**: gradually vary the current combination to follow a direction you enjoy.
+- **Anchor**: keep the entire prompt and try other images with different random seeds.
+
+Preference scope offers All, which explores the full vocabulary, or Liked, which draws tags from images you have liked. Standard recommendation strength is the default; try Strong to focus more on your existing preferences.
 
 ## Anchors
 
-Info sits at the bottom left of the image, opposite Anchors at the bottom right. Anchors uses an anchor icon with a count badge. On desktop, the panel opens beside the image; drag the divider or use its arrow keys and Home/End to resize it. The proportion is remembered on this device. On phones, a compact term strip appears below the image; tap Plus to reveal the input, which collapses after a successful addition. Fixed preset terms use a lock icon with their source in the tooltip. The full image fits the remaining space and terms scroll inside the panel. Editing and browsing keep the panel open in both normal and immersive modes; close it with the entry button or the desktop Collapse anchors button. Changing images updates available terms while retaining selected anchors and input drafts. Opening Anchors closes the Info popover; viewing Info keeps the anchor panel open. Select positive terms to retain image elements, or enter a complete prompt and press Enter or Plus. Individual anchors can be removed, and the desktop panel offers Clear anchors. Custom terms are output in full without PMI calculations; entering an existing anchor again retains it. Anchors persist across refreshes and restarts and only affect Roam. Fixed preset terms are marked with a lock and take priority; duplicates are removed from anchors. Adding, removing, or clearing anchors keeps the current image, clears older prefetch, temporarily suspends automatic prefetch on the current page, and pauses autoplay. Moving to the next image generates with the latest anchors and resumes prefetch. Anchors are view-only in Anchor mode. See [anchors (Chinese)](../dev/issues/roam-anchors.md).
+To keep an element from the current image, open Anchors at the bottom right, select a prompt term, or enter your own description. It carries into later roaming prompts while other elements can change. How closely an image follows it depends on the model.
 
-## Recommendation strength and candidate count
-
-Roam options and Settings offer Standard / Strong recommendation strength. Standard retains exploration. Strong scores candidates using the current preference mean and multiplies the number of candidate combinations by the strength multiplier (1–5, default 2, at most 100 combinations). Adjust the multiplier in Settings. Switching keeps the current image, prefetch, and tasks. Both strengths share preferences; an existing combination in Anchor mode is reused directly. See [recommendation strength (Chinese)](../dev/issues/roam-recommendation-strength.md).
-
-Settings → Roam lets you set the candidate combination count (1–20, default 10). Each time, one of these complete combinations is selected by recommendation for generation. Larger counts generally take longer to prepare. Changes only affect newly prepared combinations; existing prefetch and tasks remain. An existing reference combination in Anchor mode is reused directly. See [candidate combination count (Chinese)](../dev/issues/roam-candidate-count.md).
-
-## Roaming history count limit
-
-The History image limit in Settings → Roam sets the maximum total number of roaming history images shown before the current viewing position (`0`–`100000`, default `20` for new users; `0` disables count-based cleanup). For example, with `100`, all visible roaming images before the current position count toward the limit. Excess images are processed from the earliest database insertion time: unliked images and same-named prompt JSON are removed locally, while liked images are only hidden from Roam and remain in Liked. Generate images are unaffected. Saving checks immediately; later checks run on demand during startup, browsing, generation, and rating, with no additional scheduled task. After cleanup, the viewing position is restored using the existing neighboring-image rules. Hidden images do not reappear in Roam when unliked.
-
-The limit counts all visible history before the current image. It excludes the current image and later prefetched images and does not change the prefetch count. After the viewing position is saved, the new position is checked; count cleanup does not run without a saved position. Liked images over the limit are only hidden from Roam, preserving their original files and prompts. Time-based and count-based cleanup apply independently. When many images exceed the limit, at most 100 are marked per trigger, with later operations continuing reclamation.
-
-## Viewing position and waiting for the next image
-
-The roaming viewing position is saved in SQLite. Refreshing, visiting Liked and returning, or restarting the application resumes at that image. Selecting an image in Liked or Generate does not overwrite the roaming position. If an older image is outside the recent list, nearby images are loaded so that you can continue browsing in either direction. If the original image was cleaned up, the position is restored to a nearby available roaming image.
-
-Immersive mode shares the same image, viewing position, blur state, and on-demand loading flow. Image navigation, liking, and arrow keys work as in normal Roam. Exiting immersive mode or leaving Roam restores the normal page layout without changing the image.
-
-Moving right when no image is available requests generation. A loading animation appears while waiting, and the view automatically advances once when the image is ready, without a “Latest image” notice. This explicit request also works with `N=0` without enabling subsequent automatic prefetch. An empty Roam view offers a start button to request the first image. Moving left without an older image keeps the current image and does not generate past images. Leaving Roam ends the current UI wait, while submitted tasks continue. Failure or a pause stops the animation and displays the reason.
-
-## Prefetch and failure recovery
-
-An empty backend or candidate preset uses the first item in the current list. With buffering enabled, explicit selections are checked for existence when saving. Setting the count to `0` skips existence checks, allowing prefetch to be disabled even if the selected backend or preset has been deleted. Roam generates candidates using saved co-occurrence presets, outside the unsubmitted text or drafts on Generate.
-
-When entering Roam, changing images, or receiving status updates, the browser calls the buffer refill API. The backend checks image and task state in the database and, under a lock, submits at most one prefetch task per call. At most two unfinished roaming tasks are kept, allowing generation to overlap with preparation of the next prompt. Once the buffer target or queue capacity is reached, it waits for later events. Prefetch has no separate timer, generation loop, or automatic feeding after startup; the autoplay timer only triggers the existing next-image action. Submitted tasks can finish after leaving Roam or closing the page.
-
-Temporary request errors such as network disconnection or HTTP 408/429/5xx do not permanently lock browser prefetch. Existing events such as a later successful refresh, SSE reconnection, or returning to Roam can check again. A successful check clears the temporary error message, without adding a retry timer. An explicitly reported backend prefetch failure, cancellation of roaming tasks under the current settings, or an uncertain submission result still pauses refill for that settings revision. Saving roaming settings clears the pause. Cancellation of manual tasks and failure of roaming tasks from an older settings revision do not pause a newer revision. Settings are stored in the main SQLite database's `roam_settings` table. Task ownership, historical candidate tag snapshots, and pause state are stored in SQLite. The prompt JSON beside images still contains only the positive and negative text actually submitted.
+After editing, move to the next image to continue in the new direction. Anchors are remembered between visits; deselect one to remove it. Locked terms come from your [preset](prompts.md#libraries-and-presets) and can be edited on Prompts. Anchor mode keeps the entire prompt; switch modes to edit individual anchors.
 
 ## Browsing and autoplay
 
-- Arrow keys: Left moves to an older image, Right to a newer one. In Roam, Up raises the rating by one level and Down lowers it (Disliked ↔ Unrated ↔ Liked), staying at the endpoints. Holding a key does not repeat the action. In enlarged Generate / Liked views, Up likes the image. Arrow keys are not intercepted in inputs or settings dialogs. Buttons select a rating directly, and clicking again can undo it.
+Turn on autoplay for relaxed browsing and adjust each image's display time in Roam options. Playback waits if generation is unfinished. Liking an image pauses on it; moving to the next resumes playback. Leaving Roam pauses playback.
 
-- Roam supports immersive mode with a fullscreen image. The top-right floating menu contains Play/Pause, Blur, and Exit immersive mode; the bottom action bar provides Info on the left and Anchors on the right and Previous, Like, Dislike, and Next in the center. Blur stays synchronized with the page switch. With Anchors collapsed, controls hide after about 2 seconds of inactivity and reappear on mouse movement or a touch tap. In the standalone app, only releasing a tap wakes controls; vertical and horizontal swipes keep them hidden. Arrow keys and Space hide the panels without waking them. Tab reveals and focuses controls. The action bar stays visible while hovered or holding keyboard focus; Esc exits. When native fullscreen is unsupported, the view fills the page viewport.
+Use ← / → to browse and ↑ / ↓ to move between Disliked, Unrated, and Liked. Immersive mode fills the screen with the image. Blur changes only the display; the original stays clear.
 
-- Blur is on by default in Roam. The top-right blur button toggles blur in the image area. Its state is retained while changing images and sections within the page and resets to on after a refresh. It only changes presentation, leaving original images and prompts unchanged.
-
-- Roam provides Play/Pause at the top right. Both Roam options and Settings → Roam set each image's display duration (1–600 seconds, default 8), sharing the same SQLite configuration. The top-right controls are ordered Play/Pause, Blur, Immersive mode, and Roam options. Roam options contains display time, preference scope, roaming mode, and recommendation strength, without a play button in the display-time row. These settings are also available in Settings; the bottom bar provides Anchors, navigation, and rating controls. Timing begins after the image loads. If the next image is still being generated, playback waits and then continues when it arrives. Leaving Roam, moving the page to the background, or refreshing pauses playback without canceling dispatched tasks. During autoplay, clicking Like or raising the rating to Liked pauses on the current image. Explicitly moving to the next image resumes playback and restarts timing after loading; repeated ↑ presses no longer reset the timer. Normal and immersive modes share playback state.
-
-- Roam retains the last viewing position. A refresh or a return from Liked still displays that image. Moving right with no available image generates on demand, shows a loading icon beside the Roam title, and advances automatically on completion. Moving left without an older image stays in place.
+Roam remembers where you left off. Like images you want to keep; older unliked images are handled according to your [cleanup settings](settings.md).

@@ -2,54 +2,40 @@
 
 [English](linux.md)
 
-[安装与接入](../getting-started.zh-CN.md) · [文档导航](../../README.zh-CN.md)
-
-先查看[启动前准备](../getting-started.zh-CN.md#启动前准备)，以下命令均在项目根目录的终端中执行。
+[安装与接入](../getting-started.zh-CN.md) · [用户文档](../../README.zh-CN.md)
 
 ## 便携版本
 
-解压对应系统与 CPU 架构的发行包，在发行目录执行 `./start.sh`。首次启动先在启动窗口等待 [MiniLM 下载与校验](../getting-started.zh-CN.md#推荐模型启动准备)，完成后才启动服务并自动打开系统默认浏览器，关闭启动窗口或按 Ctrl+C 停止。个人数据保存在包内 data，下一次启动继续使用。
-
-已提供本机构建与启动路径；原生运行尚待该系统验证。首次使用到[后端设置](../getting-started.zh-CN.md)连接 ComfyUI、OpenAI Images 或 Gemini。启动参数支持 `--port`、`--data-dir`、`--lan` 和 `--no-browser`；桌面环境可自动打开浏览器，服务器环境通过终端显示的地址访问。
-
-## 源码启动
-
-源码启动同样先完成[模型准备](../getting-started.zh-CN.md#推荐模型启动准备)，完成后才能进入应用。
-
-已准备好前端的目录，执行：
+解压 Linux 便携包，在解压目录打开终端并运行：
 
 ```bash
-bash start.sh
+./start.sh
 ```
 
-打开 http://127.0.0.1:8189 ，按 Ctrl+C 停止应用。接下来[连接生图后端](../getting-started.zh-CN.md)。
+首次启动等待[推荐模型下载](../getting-started.zh-CN.md#推荐模型启动准备)，完成后自动打开浏览器；也可访问 `http://127.0.0.1:8189`。接下来[连接生图服务](../getting-started.zh-CN.md)，开始漫游。
 
-启动器默认查找 `python3`，创建 `data/runtime/venv` 并安装后端依赖。Debian / Ubuntu 缺少 venv 时，安装与所用 Python 版本匹配的 `python3-venv` 包。需要指定 Python 时：
+保持终端打开，按 Ctrl+C 停止。个人数据保存在包内 `data/`，下次启动会继续使用。
+
+## 局域网访问
+
+在便携包目录运行：
 
 ```bash
-PICTIDE_PYTHON=/path/to/python3 bash start.sh
+./start.sh --lan
+```
+
+手机连接同一个局域网，打开电脑的局域网地址，例如 `http://192.168.50.50:8189`。如已启用防火墙，允许可信局域网访问对应端口。手机主屏幕安装见[局域网与主屏幕应用](../access.zh-CN.md)。
+
+## 端口与数据目录
+
+需要换端口或把数据放到其他位置时：
+
+```bash
+./start.sh --port 8191 --data-dir "$HOME/PictideData"
 ```
 
 ## 从源码准备
 
-详见[Linux 开发与构建](../../dev/setup/linux.md#从源码准备)。
+先按[Linux 源码准备](../../dev/setup/linux.md#从源码准备)安装环境并构建前端，再在项目目录运行 `bash start.sh`；局域网、端口和数据目录参数同上。
 
-## 端口与数据目录
-
-```bash
-bash start.sh --port 8191 --data-dir "$HOME/PictideData"
-```
-
-开发验证使用独立端口与数据：`bash start.sh --port 8191 --data-dir ./dev/verification/example/data`。`bash start.sh --help` 查看参数；数据目录选择规则见[数据位置](../backup.zh-CN.md#数据位置)。
-
-## 局域网访问
-
-```bash
-bash start.sh --lan
-```
-
-使用本机的局域网 IP 访问。如启用防火墙，按当前发行版的防火墙工具允许可信局域网访问所选端口；脚本不会修改防火墙。手机访问与共享范围见[局域网与主屏幕应用](../access.zh-CN.md)。
-
-## 构建便携包
-
-详见[Linux 开发与构建](../../dev/setup/linux.md#构建便携包)。
+启动器需要 Python 3.10+。Debian / Ubuntu 若提示缺少 venv，安装与 Python 版本匹配的 `python3-venv`。构建发行包见[开发文档](../../dev/setup/linux.md#构建便携包)。

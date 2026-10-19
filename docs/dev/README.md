@@ -31,6 +31,8 @@ The [issue index (Chinese)](issues/README.md) groups design decisions and verifi
 
 ## Documentation maintenance
 
+User guides start with the need they serve and the shortest path to trying it. Explain only the core workflow and consequences users need to understand; let the interface support exploration of secondary controls. Keep algorithms, exhaustive option lists, edge cases, and implementation history in developer documentation rather than repeating a feature specification in the guides.
+
 The project README puts user guidance first and developer entry points last, with links to technical details. Entry pages contain a summary and next steps. User procedures belong in `docs/guides/`; developer documentation belongs in `docs/dev/`, with API and data details in `reference/`, architecture details in `architecture/`, and requirements and delivery records in `issues/`. Maintain each current rule in one place and link to it elsewhere. Topic pages explain their purpose before details. Update the relevant documentation when behavior changes, and keep past decisions in issue records with their historical context.
 
 User-facing documentation and descriptions of the current architecture, data layout, and HTTP API use English at the original path. Keep a Simplified Chinese counterpart beside each translated page as `name.zh-CN.md`, with reciprocal language links immediately below the title. Keep Chinese navigation within the translated Chinese pages where a counterpart exists. Update both language versions when the documented behavior changes.

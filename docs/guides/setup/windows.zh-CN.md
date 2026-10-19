@@ -2,55 +2,40 @@
 
 [English](windows.md)
 
-[安装与接入](../getting-started.zh-CN.md) · [文档导航](../../README.zh-CN.md)
-
-先查看[启动前准备](../getting-started.zh-CN.md#启动前准备)，以下命令均在项目根目录的 PowerShell 中执行。
+[安装与接入](../getting-started.zh-CN.md) · [用户文档](../../README.zh-CN.md)
 
 ## 便携版本
 
-解压对应系统与 CPU 架构的发行包，双击 `start.cmd`。首次启动先在启动窗口等待 [MiniLM 下载与校验](../getting-started.zh-CN.md#推荐模型启动准备)，完成后才启动服务并自动打开系统默认浏览器，关闭启动窗口或按 Ctrl+C 停止。个人数据保存在包内 data，下一次启动继续使用。
+解压 Windows 便携包，双击 `start.cmd`。首次启动等待[推荐模型下载](../getting-started.zh-CN.md#推荐模型启动准备)，完成后自动打开浏览器。接下来[连接生图服务](../getting-started.zh-CN.md)，开始漫游。
 
-Windows 真实便携产物已验证。首次使用到[后端设置](../getting-started.zh-CN.md)连接 ComfyUI、OpenAI Images 或 Gemini。启动参数支持 `--port`、`--data-dir`、`--lan` 和 `--no-browser`；桌面环境可自动打开浏览器，服务器环境通过终端显示的地址访问。
-
-## 源码启动
-
-源码启动同样先完成[模型准备](../getting-started.zh-CN.md#推荐模型启动准备)，完成后才能进入应用。
-
-已准备好前端的目录，双击 `start.cmd`。打开 http://127.0.0.1:8189 ，按 Ctrl+C 或关闭启动窗口停止应用。接下来[连接生图后端](../getting-started.zh-CN.md)。
-
-启动器会创建 `data/runtime/venv` 并安装后端依赖，也会尝试寻找本机已有的 Codex Python 运行时。需要指定 Python 时：
-
-```powershell
-$env:PICTIDE_PYTHON = 'C:\Path\To\python.exe'
-.\start.cmd
-```
-
-## 从源码准备
-
-详见[Windows 开发与构建](../../dev/setup/windows.md#从源码准备)。
-
-## 端口与数据目录
-
-```powershell
-.\start.cmd -Port 8191 -DataDir 'E:\PictideData'
-```
-
-开发验证使用独立端口与数据：`.\start.cmd -Port 8191 -DataDir .\dev\verification\example\data`。数据目录选择规则见[数据位置](../backup.zh-CN.md#数据位置)。
+使用时保持启动窗口打开，按 Ctrl+C 或关闭窗口停止。个人数据保存在包内 `data/`，下次启动会继续使用。
 
 ## 局域网访问
 
+在便携包目录打开 PowerShell，运行：
+
 ```powershell
-.\start.cmd -Lan
+.\start.cmd --lan
 ```
 
-启动窗口会列出本机局域网地址。Windows 网络需为可信的“专用网络”；如需放行防火墙，在管理员 PowerShell 执行：
+手机连接同一个局域网，打开启动窗口显示的局域网地址。Windows 网络需设为可信的「专用网络」。连接被防火墙拦截时，在管理员 PowerShell 放行：
 
 ```powershell
 New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8189 -Profile Private -RemoteAddress LocalSubnet
 ```
 
-使用其他端口时同步修改规则。手机访问与共享范围见[局域网与主屏幕应用](../access.zh-CN.md)。
+使用其他端口时同步修改规则。手机主屏幕安装见[局域网与主屏幕应用](../access.zh-CN.md)。
 
-## 构建便携包
+## 端口与数据目录
 
-详见[Windows 开发与构建](../../dev/setup/windows.md#构建便携包)。
+需要换端口或把数据放到其他磁盘时，在便携包目录运行：
+
+```powershell
+.\start.cmd --port 8191 --data-dir 'E:\PictideData'
+```
+
+## 从源码准备
+
+先按[Windows 源码准备](../../dev/setup/windows.md#从源码准备)安装环境并构建前端，再在项目目录运行 `.\start.cmd`。
+
+源码启动器的参数使用 `-Lan`、`-Port` 和 `-DataDir`，例如 `.\start.cmd -Lan -Port 8191 -DataDir 'E:\PictideData'`。构建发行包见[开发文档](../../dev/setup/windows.md#构建便携包)。
