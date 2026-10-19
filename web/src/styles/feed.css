@@ -191,15 +191,28 @@
 .feed-page .settings-content .settings-field > [role=group] { justify-self: start; }
 .feed-page .settings-content .settings-field > [data-slot=input-group] { justify-self: stretch; }
 .feed-page .settings-preferences { padding-block: 4px; }
-.feed-page .settings-data-section h2 { margin-bottom: 16px; }
+.feed-page #settings-general { display: grid; align-content: start; gap: 24px; max-width: 760px; }
+.general-settings { display: grid; gap: 4px; }
+.general-setting-row { display: grid; grid-template-columns: 144px minmax(0, 1fr); align-items: center; gap: 16px; min-height: 52px; }
+.feed-page .general-setting-row label { display: flex; align-items: center; min-height: 24px; margin: 0; }
+.general-setting-caption { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.general-setting-control { justify-self: start; min-width: 0; max-width: 100%; }
+.general-setting-checkbox { display: flex; align-items: center; min-height: 40px; padding-inline: 12px; }
+.general-setting-tour { margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--border); }
+.feed-page .settings-data-section h2 { margin-bottom: 12px; }
 .feed-page #history-fields { max-width: 382px; }
 .feed-page #history-form .retention-warning { margin: 0; }
 
 .feed-page #workflow-mode:not(:where(.editor-page, .editor-page *)), .feed-page [data-slot=native-select-wrapper]:has(>#workflow-mode):not(:where(.editor-page, .editor-page *)) { margin-bottom: 20px; }
 .feed-page .data-locations:not(:where(.editor-page, .editor-page *)) { display: grid; gap: 16px; }
-.feed-page .data-locations > div { display: grid; min-width: 0; gap: 8px; }
+.feed-page .data-locations > div { display: grid; grid-template-columns: 144px minmax(0, 1fr); align-items: baseline; min-width: 0; gap: 16px; }
 .feed-page .data-locations dt:not(:where(.editor-page, .editor-page *)) { font-size: 12px; color: var(--muted-foreground); }
 .feed-page .data-locations dd:not(:where(.editor-page, .editor-page *)) { margin: 0; overflow-wrap: anywhere; font: 12px/1.7 var(--font-mono); }
+@media (max-width: 640px) {
+  .general-setting-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .general-setting-options { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-block: 8px; }
+  .feed-page .data-locations > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
 .feed-page #generate-form:not(:where(.editor-page, .editor-page *)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
 .feed-page #generate-form > label:has(textarea):not(:where(.editor-page, .editor-page *)), .feed-page #rule-section:not(:where(.editor-page, .editor-page *)), .feed-page .generation-plan-fields:not(:where(.editor-page, .editor-page *)) { grid-column: 1 / -1; }
 /* One mounted image stage serves native fullscreen and the browser viewport fallback. */
