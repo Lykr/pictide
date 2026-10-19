@@ -22,6 +22,9 @@ class FrontendAssetsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(page.status, 200)
         self.assertIn("script-src 'self'", page.headers['Content-Security-Policy'])
         html = await page.text()
+        self.assertEqual(page.headers['Cache-Control'], 'no-cache')
+        self.assertRegex(html, r'src="/static/ui/app-[\w-]+\.js"')
+        self.assertRegex(html, r'href="/static/ui/style-[\w-]+\.css"')
         assets = re.findall(r'(?:src|href)="(/static/ui/[^" ]+)"', html)
         self.assertGreaterEqual(len(assets), 2)
         visited = set()
@@ -32,9 +35,10 @@ class FrontendAssetsTests(unittest.IsolatedAsyncioTestCase):
             visited.add(path)
             response = await self.client.get(path)
             self.assertEqual(response.status, 200, path)
-            body = await response.text()
-            self.assertTrue(body.strip(), path)
+            content = await response.read()
+            self.assertTrue(content, path)
             if path.endswith('.js'):
+                body = content.decode('utf-8')
                 self.assertIn('javascript', response.headers['Content-Type'])
                 for relative in re.findall(r'["\'](\.?\.?/[^"\']+\.js)["\']', body):
                     from urllib.parse import urljoin
@@ -42,6 +46,8 @@ class FrontendAssetsTests(unittest.IsolatedAsyncioTestCase):
                 assets.extend(re.findall(r'["\'](/static/ui/[^"\']+\.js)["\']', body))
             elif path.endswith('.css'):
                 self.assertIn('text/css', response.headers['Content-Type'])
+                body = content.decode('utf-8')
+                assets.extend(re.findall(r'url\(["\']?(/static/ui/[^)"\']+)', body))
         self.assertGreater(len(visited), 3)
 
     async def test_feed_compiled_assets_resolve(self):

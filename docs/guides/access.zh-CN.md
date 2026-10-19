@@ -25,3 +25,5 @@
 用 Safari 打开电脑的局域网地址 → 分享 → 添加到主屏幕 → 添加。若系统显示“作为 Web App 打开”，保持开启。从主屏幕的 Pictide 图标进入后使用独立窗口，不占用 Safari 地址栏，并复用现有底部导航与安全区布局。曾添加旧快捷方式时，需要移除旧快捷方式后重新添加，才能更新安装时的图标和窗口模式。
 
 当前支持主屏幕启动、应用图标、独立窗口与主题颜色；没有 Service Worker 或离线缓存。电脑上的 Pictide 必须运行，手机需能访问该局域网地址；电脑 IP 改变后须使用新地址重新添加。无需 Apple 开发者账号。现代 iOS 可直接从主屏幕以 Web App 打开网页，具体安装入口与行为见 [Apple 使用说明](https://support.apple.com/guide/iphone/open-as-web-app-iphea86e5236/ios) 和 [WebKit 主屏幕应用说明](https://webkit.org/blog/17333/webkit-features-in-safari-26-0/#every-site-can-be-a-web-app-on-ios-and-ipados)。
+
+电脑部署界面更新后，在 iOS 多任务切换器中彻底关闭 Pictide，再从主屏幕重新打开。从后台恢复可能继续运行先前页面。JavaScript 与 CSS 使用内容版本文件名，新加载的页面会请求对应构建；普通界面更新无需重新安装主屏幕应用。

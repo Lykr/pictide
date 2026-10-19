@@ -20,9 +20,9 @@ export default defineConfig({
         warn(warning);
       },
       output: {
-        entryFileNames: 'app.js',
+        entryFileNames: 'app-[hash].js',
         chunkFileNames: 'chunks/[name]-[hash].js',
-        assetFileNames: '[name][extname]'
+        assetFileNames: '[name]-[hash][extname]'
       }
     }
   }

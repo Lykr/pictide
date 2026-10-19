@@ -32,6 +32,8 @@ Run `pnpm install --frozen-lockfile`, `pnpm run typecheck`, and `pnpm run build`
 
 Builds use dependencies under the project root's `dev/runtime/frontend/` and caches under `dev/cache/`. `web/node_modules` points to the actual dependencies, and `web/dist` contains distribution assets. Node.js is used only for builds; the Python host serves `/static/ui/` at runtime.
 
+Compiled JavaScript and CSS filenames include content hashes, and the HTML entry is revalidated with `Cache-Control: no-cache`. Publish new assets before the HTML entry and retain previous assets for pages still using the old build. Already-open pages keep their current code until reloaded; Home Screen apps may need to be fully closed and reopened after deployment.
+
 ## Further Reading
 
 - [Shared Components, Theme, and Page Guidelines (Chinese)](design-system.md)

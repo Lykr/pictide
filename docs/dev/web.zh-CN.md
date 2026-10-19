@@ -33,6 +33,8 @@ React 页面壳层与控制器共同维护草稿。图片窗口按 source 区分
 
 构建使用项目根 `dev/runtime/frontend/` 下的依赖与 `dev/cache/` 下的缓存；`web/node_modules` 指向依赖实体，`web/dist` 为发布资源。Node.js 仅用于构建，运行由 Python 宿主提供 `/static/ui/`。
 
+编译后的 JavaScript 与 CSS 文件名带内容哈希，HTML 入口通过 `Cache-Control: no-cache` 重新验证。发布时先复制新资源、最后更新 HTML，并保留旧资源供仍使用旧构建的页面继续读取。已经打开的页面在重新加载前继续运行现有代码；部署后主屏幕应用可能需要彻底关闭再打开。
+
 ## 进一步查阅
 
 - [共享组件、主题及页面规范](design-system.md)
