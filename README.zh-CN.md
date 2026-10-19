@@ -12,11 +12,14 @@
 
 ## 用户指南
 
+> [!IMPORTANT]
+> Pictide 目前的体验依赖于生图模型对 Danbooru 标签提示词的支持程度。自然语言提示词支持正在计划中。
+
 ### 快速开始
 
-1. 解压便携包，运行启动入口：[Windows](docs/guides/setup/windows.zh-CN.md#便携版本) · [Linux](docs/guides/setup/linux.zh-CN.md#便携版本) · [macOS](docs/guides/setup/macos.zh-CN.md#便携版本)。首次启动会先下载推荐模型，完成后自动打开浏览器。
-2. 在「设置 → 生图 API」连接 ComfyUI，或填写 OpenAI Images / Gemini 的 API Key 和模型，详见[安装与接入](docs/guides/getting-started.zh-CN.md)。
-3. 进入「漫游」，点击「开始漫游」。从浏览开始，用喜欢、不喜欢和锚点引导后续画面。
+1. 准备好 ComfyUI 或其他生图 API，接入方式见[安装与接入](docs/guides/getting-started.zh-CN.md)。
+2. 从 [GitHub Releases](https://github.com/Lykr/pictide/releases) 下载并解压适合系统的便携包。
+3. 按系统选择启动方式：[Windows](docs/guides/setup/windows.zh-CN.md#便携版本) · [Linux](docs/guides/setup/linux.zh-CN.md#便携版本) · [macOS](docs/guides/setup/macos.zh-CN.md#便携版本)，然后跟随应用内引导快速上手。
 
 便携包随带默认词库，个人数据保存在包内 `data/`。从源码运行、离线准备或更换词库，见[用户文档](docs/README.zh-CN.md)。
 

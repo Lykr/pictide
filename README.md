@@ -12,11 +12,14 @@ Pictide is a local generative image exploration app that gradually adapts to you
 
 ## User guide
 
+> [!IMPORTANT]
+> Pictide's current experience depends on how well your image generation model supports Danbooru tag prompts. Support for natural-language prompts is planned.
+
 ### Quick start
 
-1. Extract the portable package and run its launcher: [Windows](docs/guides/setup/windows.md#portable-edition) · [Linux](docs/guides/setup/linux.md#portable-edition) · [macOS](docs/guides/setup/macos.md#portable-edition). The first launch downloads the recommendation model, then opens your browser when ready.
-2. In **Settings → Image API**, connect ComfyUI or enter an OpenAI Images / Gemini API key and model. See [Installation and connections](docs/guides/getting-started.md).
-3. Open **Roam** and select **Start roaming**. Browse, express preferences, and use anchors to guide what comes next.
+1. Have ComfyUI or another image generation API ready. See [Installation and connections](docs/guides/getting-started.md).
+2. Download and extract the portable package for your system from [GitHub Releases](https://github.com/Lykr/pictide/releases).
+3. Follow the startup steps for [Windows](docs/guides/setup/windows.md#portable-edition), [Linux](docs/guides/setup/linux.md#portable-edition), or [macOS](docs/guides/setup/macos.md#portable-edition), then follow the in-app tour to get started.
 
 The package includes a default vocabulary and stores personal data in its `data/` directory. For running from source, offline preparation, or another vocabulary, choose a guide in the [user documentation](docs/README.md).
 
