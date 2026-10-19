@@ -20,9 +20,10 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
   let active = false, mode = null, revision = 0, hovered = false, keyboard = false, shortcutInput = false;
   let restoreInert = [], touchGesture = null, installed = false;
   const toolbars = [...new Set([toolbar, exit?.parentElement].filter(Boolean))];
-  const inControls = node => toolbars.some(bar => bar.contains(node));
+  const anchorsOpen = () => !!card.matches?.('.roam-image-card[data-state=open]');
+  const inControls = node => toolbars.some(bar => bar.contains(node)) || !!card.querySelector?.('.roam-anchors')?.contains(node);
   const controls = createAutoHideControls({
-    held: () => hovered || (keyboard && inControls(doc.activeElement)),
+    held: () => hovered || anchorsOpen() || (keyboard && inControls(doc.activeElement)),
     visible: show => {
       if (!show && inControls(doc.activeElement)) card.focus({ preventScroll: true });
       card.classList.toggle('immersive-controls-hidden', !show);
@@ -73,11 +74,13 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
   const focus = () => { if (!shortcutInput) controls.wake(); };
   const key = event => {
     keyboard = true;
+    if (event.key !== 'Escape' && event.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])')) return;
     if (event.key === 'Escape') { event.preventDefault(); leave(); }
     else if (event.key === 'Tab') {
       // Keep explicit focus navigation accessible without waking for shortcuts.
       shortcutInput = false; controls.wake();
     } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'Spacebar'].includes(event.key)) {
+      if (anchorsOpen()) { shortcutInput = false; controls.wake(); return; }
       shortcutInput = true; hovered = false; controls.hide();
     }
   };

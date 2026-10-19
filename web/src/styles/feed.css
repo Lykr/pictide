@@ -334,14 +334,41 @@ body.pictide-immersive { overflow: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .image-card.immersive > .immersive-actions { transition: none; } }
 
-/* Keep anchors below the image, outside immersive controls. */
-.roam-anchors { flex: 0 0 auto; min-width: 0; margin-top: 8px; }
-#gallery-view:has(#image-card[hidden]) > .roam-anchors,
-#gallery-view:has(#image-card.immersive) > .roam-anchors { display: none; }
-.roam-anchor-terms { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; padding: 8px; max-height: 30dvh; overflow-y: auto; }
+/* Anchors share the image card's layout, including native fullscreen. */
+.feed-page .image-anchor { grid-column: 1; grid-row: 1; justify-self: start; min-width: 0; }
+.feed-page .roam-anchor-trigger { gap: 4px; padding-inline: 8px; }
+.roam-anchor-count { font-size: 12px; font-variant-numeric: tabular-nums; }
+.roam-anchors { min-width: 0; min-height: 0; background: var(--card); color: var(--card-foreground); }
+.roam-anchors[data-state=open] { display: flex; flex-direction: column; }
+.roam-anchor-heading { display: flex; align-items: center; gap: 4px; padding: 8px 8px 0; flex-shrink: 0; }
+.roam-anchors > :not(.roam-anchor-terms) { flex-shrink: 0; }
+.roam-anchor-terms { display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; gap: 6px; padding: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .feed-page .roam-anchor-term { height: auto; min-height: 32px; max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; }
 .feed-page .roam-anchor-term:disabled { opacity: 0.65; }
-@media (pointer: coarse) { .feed-page .roam-anchor-term { min-height: 44px; } }
+.feed-page .roam-image-card[data-state=open] { --anchor-panel-width: min(34%, 320px); display: grid; grid-template-columns: minmax(0, 1fr) var(--anchor-panel-width); grid-template-rows: minmax(0, 1fr) auto; height: min(calc(100dvh - 208px), 912px); min-height: 0; }
+.feed-page .roam-image-card[data-state=open] .image-stage { grid-column: 1; grid-row: 1; position: relative; inset: auto; width: 100%; height: 100%; min-height: 0; max-height: none; aspect-ratio: auto; }
+.feed-page .roam-image-card[data-state=open] > .roam-anchors { grid-column: 2; grid-row: 1 / 3; border-left: 1px solid var(--border); }
+.feed-page .roam-image-card[data-state=open] > .image-toolbar { grid-column: 1; grid-row: 2; min-width: 0; }
+.feed-page .roam-image-card.immersive .image-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); width: calc(100% - 32px); }
+.feed-page .roam-image-card.immersive[data-state=open] { height: 100dvh; cursor: auto; }
+.feed-page #image-card.immersive[data-state=open] > .image-toolbar { position: relative; left: auto; bottom: auto; transform: none; width: 100%; max-width: none; border: 0; border-radius: 0; background: var(--card); box-shadow: none; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+.feed-page .roam-image-card.immersive[data-state=open] > .immersive-actions { right: calc(var(--anchor-panel-width) + max(12px, env(safe-area-inset-right))); }
+.feed-page .roam-image-card.immersive[data-state=open] > .roam-anchors { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+@media (max-width: 640px) {
+  .feed-page .roam-active #gallery-view > #image-card[data-state=open]:not(.immersive),
+  .feed-page #image-card.immersive[data-state=open] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto minmax(0, min(38%, 260px)); }
+  .feed-page .roam-active #gallery-view #image-card[data-state=open]:not(.immersive) .image-stage { height: 100%; min-height: 0; aspect-ratio: auto; }
+  .feed-page #image-card[data-state=open] > .roam-anchors { grid-column: 1; grid-row: 3; border-left: 0; border-top: 1px solid var(--border); }
+  .feed-page .roam-image-card.immersive[data-state=open] > .immersive-actions { right: max(12px, env(safe-area-inset-right)); }
+  .feed-page .roam-image-card.immersive[data-state=open] > .roam-anchors { padding-top: 0; }
+  /* Safari's document-scroll layout needs a bounded card while editing. */
+  @supports (-webkit-touch-callout: none) {
+    @media (display-mode: browser) {
+      .feed-page .roam-active #gallery-view > #image-card[data-state=open]:not(.immersive) { height: calc(100svh - 112px - var(--mobile-safe-top) - var(--mobile-nav-height)); }
+    }
+  }
+}
+@media (pointer: coarse) { .feed-page .roam-anchor-term, .feed-page .roam-anchor-trigger { min-height: 44px; } }
 
 /* Installed apps use the column title as their header; retain the system safe area. */
 @media (display-mode: standalone) {

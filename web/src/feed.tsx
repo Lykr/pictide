@@ -73,7 +73,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <Button id="empty-settings" className="primary" variant="default" type="button">{t("配置后端")}</Button>
 <Button id="empty-generate" variant="default" type="button" hidden>{t("开始生成")}</Button>
 </div>
-{"\n        "}<Card id="image-card" className="image-card gap-0 py-0" tabIndex={-1} aria-label={t("图片浏览")} hidden>
+{"\n        "}<RoamAnchors>{(anchorTrigger, anchorPanel) => <Card id="image-card" className="image-card roam-image-card gap-0 py-0" tabIndex={-1} aria-label={t("图片浏览")} hidden>
 <div className="immersive-actions" role="toolbar" aria-label={t("沉浸模式设置")}>
 <RoamPlaybackButton immersive />
 <Toggle id="roam-immersive-privacy" size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={tr`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={tr`${privacyLabel} · 空格`}>
@@ -94,6 +94,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 </div>
 <div className="image-toolbar">
+<div className="image-anchor">{anchorTrigger}</div>
 <div className="image-meta">
 <strong id="image-index">
 </strong>
@@ -110,8 +111,8 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <ImageInfo />
 </div>
 </div>
-</Card>
-<RoamAnchors />
+{anchorPanel}
+</Card>}</RoamAnchors>
 {"\n        "}<div className="load-more-row">
 <Button id="load-more" className="quiet" hidden variant="outline" type="button">{t("加载更早图片")}</Button>
 </div>

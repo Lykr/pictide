@@ -232,3 +232,43 @@ test('ordinary browser touch keeps existing immediate wake behavior', () => {
     assert.equal(f.card.classList.contains('immersive-controls-hidden'), false);
   } finally { f.viewer.leave(); }
 });
+
+
+test('editing an immersive anchor keeps focus and controls while Escape still exits', () => {
+  const f = fixture();
+  try {
+    f.entry.dispatchEvent(new Event('click'));
+    const input = { closest: () => input };
+    f.document.activeElement = input;
+    for (const key of [' ', 'ArrowLeft', 'ArrowDown']) {
+      const event = new Event('keydown', { cancelable: true });
+      event.key = key;
+      Object.defineProperty(event, 'target', { value: input });
+      f.document.dispatchEvent(event);
+      assert.equal(f.card.classList.contains('immersive-controls-hidden'), false);
+      assert.equal(f.document.activeElement, input);
+      assert.equal(event.defaultPrevented, false);
+    }
+    const escape = new Event('keydown', { cancelable: true }); escape.key = 'Escape';
+    Object.defineProperty(escape, 'target', { value: input });
+    f.document.dispatchEvent(escape);
+    assert.equal(f.viewer.active, false);
+    assert.equal(f.document.activeElement, f.entry);
+  } finally { f.viewer.leave(); }
+});
+
+test('image shortcuts keep controls available while the anchor dock is open', () => {
+  const f = fixture();
+  let open = true;
+  f.card.matches = () => open;
+  try {
+    f.entry.dispatchEvent(new Event('click'));
+    const key = new Event('keydown'); key.key = 'ArrowRight';
+    f.document.dispatchEvent(key);
+    assert.equal(f.card.classList.contains('immersive-controls-hidden'), false);
+    open = false;
+    const next = new Event('keydown'); next.key = 'ArrowRight';
+    f.document.dispatchEvent(next);
+    assert.equal(f.card.classList.contains('immersive-controls-hidden'), true);
+  } finally { f.viewer.leave(); }
+});
