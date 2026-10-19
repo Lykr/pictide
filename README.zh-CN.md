@@ -17,7 +17,7 @@
 
 ### 快速开始
 
-1. 准备好 ComfyUI 或其他生图 API，接入方式见[安装与接入](docs/guides/getting-started.zh-CN.md)。
+1. 提前准备好 ComfyUI 或其他生图 API。
 2. 从 [GitHub Releases](https://github.com/Lykr/pictide/releases) 下载并解压适合系统的便携包。
 3. 按系统选择启动方式：[Windows](docs/guides/setup/windows.zh-CN.md#便携版本) · [Linux](docs/guides/setup/linux.zh-CN.md#便携版本) · [macOS](docs/guides/setup/macos.zh-CN.md#便携版本)，然后跟随应用内引导快速上手。
 
