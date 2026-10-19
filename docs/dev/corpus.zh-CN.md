@@ -36,13 +36,13 @@ python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2
 
 将 `REVISION` 替换为下载时记录的源数据版本。默认保留至少出现在 100 个 post 中的普通标签，以及至少共现 10 次的标签关系。
 
-例如，普通标签至少出现 500 次，排除 `watermark`，关系至少共现 1,000 次：
+精简配置保留至少出现 100 次的普通标签，排除 `questionable` 和 `explicit` 评级标签，关系至少共现 1,000 次：
 
 ```shell
-python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact.sqlite3 --revision REVISION --exclude-tags watermark --min-tag-occurrences 500 --min-cooccurrences 1000 --report dev/datasets/danbooru-2026/compact-report.json
+python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact.sqlite3 --revision REVISION --exclude-tags questionable explicit --min-tag-occurrences 100 --min-cooccurrences 1000 --report dev/datasets/danbooru-2026/compact-report.json
 ```
 
-也可以从示例配置读取相同设置：
+也可以从精简配置读取相同设置：
 
 ```shell
 python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact-profile.sqlite3 --revision REVISION --config corpus/profiles/compact.json
@@ -69,13 +69,13 @@ python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2
 
 ```json
 {
-  "exclude_tags": ["watermark"],
-  "min_tag_occurrences": 500,
+  "exclude_tags": ["questionable", "explicit"],
+  "min_tag_occurrences": 100,
   "min_cooccurrences": 1000
 }
 ```
 
-显式 CLI 参数覆盖配置文件中的对应值。多次 `--exclude-tags` 合并 CLI 提供的名称，并用该列表替换配置中的 `exclude_tags`。名称精确匹配，保留下划线。排除规则同时作用于普通标签与评级标签。词频门槛只作用于普通标签：观察到的评级始终保留，除非显式排除。
+显式 CLI 参数覆盖配置文件中的对应值。多次 `--exclude-tags` 合并 CLI 提供的名称，并用该列表替换配置中的 `exclude_tags`。名称精确匹配，保留下划线。排除规则同时作用于普通标签与评级标签。词频门槛只作用于普通标签：观察到的评级始终保留，除非显式排除。排除评级只移除对应标签及关系，该评级的 post 仍参与统计。配置调整后，需要重新构建词库和便携包才能应用。
 
 例如，`--config corpus/profiles/compact.json --min-cooccurrences 2000` 沿用配置的标签筛选，只导出共现至少 2,000 次的关系。提高门槛通常减少体积与关系连通性，生成质量需结合实际效果判断。
 

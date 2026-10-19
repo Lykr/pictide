@@ -36,13 +36,13 @@ python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2
 
 Replace `REVISION` with the source revision recorded during download. Defaults are 100 posts per ordinary tag and 10 co-occurrences per pair.
 
-For example, retain ordinary tags occurring in at least 500 posts, exclude `watermark`, and retain pairs occurring in at least 1,000 posts:
+The compact profile retains ordinary tags occurring in at least 100 posts, excludes the `questionable` and `explicit` rating labels, and retains pairs occurring in at least 1,000 posts:
 
 ```shell
-python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact.sqlite3 --revision REVISION --exclude-tags watermark --min-tag-occurrences 500 --min-cooccurrences 1000 --report dev/datasets/danbooru-2026/compact-report.json
+python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact.sqlite3 --revision REVISION --exclude-tags questionable explicit --min-tag-occurrences 100 --min-cooccurrences 1000 --report dev/datasets/danbooru-2026/compact-report.json
 ```
 
-The same settings can be loaded from the example profile:
+Load these settings from the compact profile:
 
 ```shell
 python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact-profile.sqlite3 --revision REVISION --config corpus/profiles/compact.json
@@ -69,13 +69,13 @@ Both frequency thresholds accept integers from `1` through `9007199254740991` (2
 
 ```json
 {
-  "exclude_tags": ["watermark"],
-  "min_tag_occurrences": 500,
+  "exclude_tags": ["questionable", "explicit"],
+  "min_tag_occurrences": 100,
   "min_cooccurrences": 1000
 }
 ```
 
-Explicit CLI options override corresponding configuration values. Repeated `--exclude-tags` options combine CLI names; that list replaces the configuration's `exclude_tags`. Names match exactly, including underscores. Exclusions apply to ordinary tags and rating labels. The frequency threshold applies only to ordinary tags: every observed rating is retained unless explicitly excluded.
+Explicit CLI options override corresponding configuration values. Repeated `--exclude-tags` options combine CLI names; that list replaces the configuration's `exclude_tags`. Names match exactly, including underscores. Exclusions apply to ordinary tags and rating labels. The frequency threshold applies only to ordinary tags: every observed rating is retained unless explicitly excluded. Excluding a rating removes its label and relationships, while posts with that rating still contribute to the statistics. Existing libraries and portable packages need to be rebuilt to use a changed profile.
 
 For example, `--config corpus/profiles/compact.json --min-cooccurrences 2000` keeps the profile's tag selection while exporting pairs with at least 2,000 co-occurrences. Larger thresholds usually reduce size and connectivity; generation quality needs separate evaluation.
 
