@@ -43,14 +43,15 @@
 | `dev/runtime/frontend/`、`dev/runtime/importer/`、`dev/runtime/builder/` | 前端依赖、离线导入环境与独立便携构建环境 |
 | `dev/models/` | 历史构建模型资源；当前构建不使用该目录，已有文件保留 |
 | `dev/cache/portable/` | 可重建的便携统计状态、成品词库、报告与 `exports/<fingerprint>/` 下的预构建导出 |
-| `dev/cache/`、`dev/tmp/`、`dev/build/` | 其他开发缓存、临时文件与便携构建工作区 |
-| `dev/verification/` | 独立验证实例、截图和报告 |
+| `dev/cache/`、`dev/tmp/` | 其他开发缓存与临时文件 |
+| `dev/build/` | 临时前端产物、PyInstaller 工作区与便携包展开目录；构建成功或失败后自动回收 |
+| `dev/verification/` | 独立验证实例、截图和报告；便携构建报告保存在 `portable/版本-平台-架构/build-report.json`，失败时也保留 |
 | `dev/maintenance/` | 本机维护脚本和执行记录 |
 | `dev/designs/`、`dev/previews/` | 设计素材及历史截图 |
 | `dev/legacy/` | 退役的词库目录、模型下载缓存与历史临时材料 |
-| `releases/` | 便携发行目录、ZIP、构建报告与 `vocabularies-<contentfingerprint12>/` 下的独立词库版本导出 |
+| `releases/` | 最终 `pictide-版本-平台-架构.zip` 便携包与 `vocabularies-<contentfingerprint12>/` 下完成的独立词库发行资源；构建展开目录与验证报告归入 `dev/` |
 
-便携构建独立于运行数据准备资源。[预构建发行词库](corpus.zh-CN.md#预构建词库)作为固定资源 Release 附件保存，由 Git 跟踪的 `corpus/prebuilt.json` 引用；SQLite 文件保留在 Git 之外。GitHub Actions 校验并打包这些文件，省去原始元数据处理。词库指纹、校验与原始数据保留规则见[构建资源记录](issues/portable-build-cache.md)。模型文件改为应用启动时准备到运行数据目录，由唯一固定清单 `backend/recommand/model.json` 定义；`corpus/resources.json` 仅记录原始数据集。详见[模型启动准备变更](issues/minilm-startup-download.md)。
+便携构建独立于运行数据准备资源。构建环境一次准备后，`scripts/build_portable.py` 自动安装锁定的前端依赖、检查类型并构建临时前端产物，再准备资源与打包，保留源码运行目录 `web/dist/`。最终包收集目录默认为 `releases/`，`--output-dir DIR` 可指定已有目录。本地重复构建在归档检查完成后原子替换同名 ZIP，保留其他版本，失败时保留已有最终包。[预构建发行词库](corpus.zh-CN.md#预构建词库)作为固定资源 Release 附件保存，由 Git 跟踪的 `corpus/prebuilt.json` 引用；SQLite 文件保留在 Git 之外。GitHub Actions 校验并打包这些文件，省去原始元数据处理。词库指纹、校验与原始数据保留规则见[构建资源记录](issues/portable-build-cache.md)。模型文件改为应用启动时准备到运行数据目录，由唯一固定清单 `backend/recommand/model.json` 定义；`corpus/resources.json` 仅记录原始数据集。详见[模型启动准备变更](issues/minilm-startup-download.md)。
 
 源码版和便携版使用相同的运行数据职责与相对路径；源码版的启动环境是 data/runtime/venv，便携版的程序与依赖是 data/runtime/pictide。历史报告中的路径反映当时位置，当前映射见 dev/maintenance。ComfyUI 的模型、环境与输出由 ComfyUI 管理。
 
