@@ -33,6 +33,7 @@ class PortableCacheSmoke(unittest.TestCase):
         self.profile = self.root / 'profile.json'
         self.profile.write_text(json.dumps({
             'exclude_tags': ['questionable', 'explicit'],
+            'exclude_posts_with_tags': [],
             'min_tag_occurrences': 1, 'min_cooccurrences': 1,
         }), encoding='utf-8')
         parquet = self.root / 'tiny.parquet'
@@ -82,7 +83,8 @@ class PortableCacheSmoke(unittest.TestCase):
             self.assertEqual(db.execute('SELECT post_count FROM dataset').fetchone()[0], 3)
         self.profile.write_text('''{
   "min_cooccurrences": 1, "min_tag_occurrences": 1,
-  "exclude_tags": ["explicit", "questionable", "explicit"]
+  "exclude_tags": ["explicit", "questionable", "explicit"],
+  "exclude_posts_with_tags": []
 }\n''', encoding='utf-8')
         shutil.rmtree(self.dataset)
         with patch('corpus.download.response', side_effect=AssertionError('warm cache used network')):
@@ -137,6 +139,26 @@ class PortableCacheSmoke(unittest.TestCase):
         self.assertEqual(manifest.read_bytes(), manifest_before)
         self.assertEqual((raw.read_bytes(), raw.stat().st_mtime_ns), identity)
 
+    def test_post_filters_change_fingerprint_and_normalized_filters_hit_cache(self):
+        with patch('corpus.download.response', side_effect=self.response):
+            original = self.prepare()
+        options = json.loads(self.profile.read_text())
+        options['exclude_posts_with_tags'] = ['questionable', 'explicit', 'questionable']
+        self.profile.write_text(json.dumps(options), encoding='utf-8')
+        with patch('corpus.download.response', side_effect=AssertionError('source downloaded again')):
+            changed = self.prepare()
+        self.assertNotEqual(changed.library, original.library)
+        with closing(sqlite3.connect(changed.library)) as db:
+            self.assertEqual(db.execute('SELECT post_count FROM dataset').fetchone()[0], 1)
+            self.assertEqual({row[0] for row in db.execute('SELECT name FROM tags')}, {'garden', 'flower', 'general'})
+        options['exclude_posts_with_tags'] = ['explicit', 'questionable']
+        self.profile.write_text(json.dumps(options, indent=2), encoding='utf-8')
+        with (patch('corpus.download.response', side_effect=AssertionError('cache hit used network')),
+              patch('corpus.importer.import_parquet', side_effect=AssertionError('normalized filter rebuilt cache'))):
+            cached = self.prepare()
+        self.assertEqual(cached.library, changed.library)
+        self.assertEqual(cached.provenance, changed.provenance)
+
     def test_prebuilt_consumption_without_processing_dependencies_or_raw_data(self):
         output = self.root / 'export'
         resource_lock = self.root / 'prebuilt.json'
@@ -167,12 +189,12 @@ class PortableCacheSmoke(unittest.TestCase):
                                      lock_path=self.lock, prebuilt_library=output,
                                      prebuilt_lock_path=resource_lock, progress=lambda _: None)
         original = self.profile.read_text()
-        options = json.loads(original)
-        options['min_tag_occurrences'] = 2
-        self.profile.write_text(json.dumps(options))
         with patch('corpus.portable.prepare_vocabulary', side_effect=AssertionError('fallback rebuild')):
-            with self.assertRaisesRegex(ValueError, 'stale'):
-                consume()
+            for changed in ({'min_tag_occurrences': 2}, {'exclude_posts_with_tags': ['explicit']}):
+                with self.subTest(changed=changed):
+                    self.profile.write_text(json.dumps({**json.loads(original), **changed}))
+                    with self.assertRaisesRegex(ValueError, 'stale'):
+                        consume()
             self.profile.write_text(original)
             (output / 'vocabulary.sqlite3').write_bytes(b'corrupt')
             with self.assertRaisesRegex(ValueError, 'failed verification'):

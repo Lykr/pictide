@@ -4,7 +4,7 @@
 
 [开发文档](README.zh-CN.md) · [源码与依赖](../../corpus/README.zh-CN.md) · [运行存储](reference/storage.zh-CN.md#候选数据)
 
-通过一条导入命令，将原始 Parquet 元数据处理为 Pictide 可直接使用的统计词库。通过排除标签、最低标签出现次数和最低标签共现次数，从同一份原始数据生成不同规模的词库。
+通过一条导入命令，将原始 Parquet 元数据处理为 Pictide 可直接使用的统计词库。通过整条图片数据过滤、标签排除、最低标签出现次数和最低标签共现次数，从同一份原始数据生成不同规模与统计总体的词库。
 
 ## 文件与准备
 
@@ -59,12 +59,12 @@ GitHub Actions 下载锁定的文件，将所在目录传给 `--prebuilt-library
 python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/candidate.sqlite3 --revision REVISION
 ```
 
-将 `REVISION` 替换为下载时记录的源数据版本。默认保留至少出现在 100 个 post 中的普通标签，以及至少共现 10 次的标签关系。
+将 `REVISION` 替换为下载时记录的源数据版本。默认整条排除包含 `questionable` 或 `explicit` 的图片数据，保留至少出现在 100 个保留 post 中的普通标签，以及至少共现 10 次的标签关系。
 
-精简配置保留至少出现 100 次的普通标签，排除 `questionable` 和 `explicit` 评级标签，关系至少共现 1,000 次：
+精简配置整条排除包含 `questionable` 或 `explicit` 的图片数据，不额外移除保留图片中的标签；普通标签至少出现在 100 个保留 post 中，关系至少共现 1,000 次：
 
 ```shell
-python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact.sqlite3 --revision REVISION --exclude-tags questionable explicit --min-tag-occurrences 100 --min-cooccurrences 1000 --report dev/datasets/danbooru-2026/compact-report.json
+python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact.sqlite3 --revision REVISION --exclude-posts-with-tags questionable explicit --min-tag-occurrences 100 --min-cooccurrences 1000 --report dev/datasets/danbooru-2026/compact-report.json
 ```
 
 也可以从精简配置读取相同设置：
@@ -81,10 +81,11 @@ python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2
 | `database` | 必填 | 新的成品 SQLite 路径；已有文件会被拒绝 |
 | `--revision` | 必填 | 写入成品与状态的固定源数据版本 |
 | `--source` | `Shio-Koube/Danbooru-2026-parquet-metadata` | 数据来源标识 |
+| `--exclude-posts-with-tags [TAG ...]` | `questionable explicit` | 原始标签集合命中任一指定名称时，整条排除该图片数据；只传选项、不传名称可关闭该过滤 |
 | `--exclude-tags TAG [TAG ...]` | 空 | 要移除的精确原名；可重复传入该选项以增加名称 |
 | `--min-tag-occurrences` | `100` | 普通标签的最低唯一 post 次数 |
 | `--min-cooccurrences` | `10` | 成品关系的全局累计共现次数下限 |
-| `--config` | 无 | JSON 对象，支持 `exclude_tags`、`min_tag_occurrences` 和 `min_cooccurrences` 中的任意项 |
+| `--config` | 无 | JSON 对象，支持 `exclude_posts_with_tags`、`exclude_tags`、`min_tag_occurrences` 和 `min_cooccurrences` 中的任意项 |
 | `--state` | 成品旁的 `<database-stem>-state.sqlite3` | 中间统计与断点进度 |
 | `--block-size` | `256` | 每个共现计算块的标签列数；正整数 |
 | `--batch-size` | `16384` | 每批读取的 Parquet 行数；正整数 |
@@ -94,19 +95,30 @@ python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2
 
 ```json
 {
-  "exclude_tags": ["questionable", "explicit"],
+  "exclude_posts_with_tags": ["questionable", "explicit"],
+  "exclude_tags": [],
   "min_tag_occurrences": 100,
   "min_cooccurrences": 1000
 }
 ```
 
-显式 CLI 参数覆盖配置文件中的对应值。多次 `--exclude-tags` 合并 CLI 提供的名称，并用该列表替换配置中的 `exclude_tags`。名称精确匹配，保留下划线。排除规则同时作用于普通标签与评级标签。词频门槛只作用于普通标签：观察到的评级始终保留，除非显式排除。排除评级只移除对应标签及关系，该评级的 post 仍参与统计。配置调整后，需要重新构建词库和便携包才能应用。
+显式 CLI 参数覆盖配置文件中的对应值。两个排除选项均可重复传入，各自合并 CLI 提供的名称，再替换配置中的对应值或默认值。名称精确匹配，保留下划线。整条图片过滤匹配原始 `tag_string`、所有可用 `tag_string_*` 列和映射后的评级，发生在移除标签之前；单个标签排除只作用于参与统计的普通标签和评级。
+
+`exclude_posts_with_tags` 将命中图片整条排除，该 post 不参与词频、共现与 PMI 总体。例如三张图片的标签分别是 `a b c`、`a c d`、`a e f`，传入 `--exclude-posts-with-tags b d` 后只统计第三张。`exclude_tags` 只移除指定标签及关系，图片仍计入总体。词频门槛只作用于普通标签：保留图片中观察到的评级始终保留，除非通过 `exclude_tags` 显式移除。
+
+省略 `exclude_posts_with_tags` 时使用 `["questionable", "explicit"]`；显式空列表可关闭整条图片过滤。JSON 中使用 `"exclude_posts_with_tags": []`，Python 中使用 `exclude_posts_with_tags=[]`，CLI 则只传选项、不传名称。例如下列命令保留全部评级的图片数据，只移除两个评级标签：
+
+```shell
+python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/all-posts.sqlite3 --revision REVISION --exclude-posts-with-tags --exclude-tags questionable explicit
+```
+
+配置调整后，需要重新构建词库和便携包才能应用。规范化后的整条图片过滤条件与其他处理参数、导入器摘要一起参与便携构建缓存指纹；改变该条件会使用新的缓存目录。
 
 例如，`--config corpus/profiles/compact.json --min-cooccurrences 2000` 沿用配置的标签筛选，只导出共现至少 2,000 次的关系。提高门槛通常减少体积与关系连通性，生成质量需结合实际效果判断。
 
 ## 原始输入结构
 
-每个 Parquet 文件需提供以下列，其他列会被忽略：
+每个 Parquet 文件需提供以下列：
 
 | 列 | 值 | 含义 |
 | --- | --- | --- |
@@ -114,9 +126,9 @@ python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2
 | `tag_string_general` | `string`，空白分隔的标签原名，或 null | 普通标签；null 视为空集合 |
 | `rating` | `string`：`g`、`s`、`q` 或 `e` | 依次映射为 `general`、`sensitive`、`questionable`、`explicit` |
 
-例如，`{"id": 123, "tag_string_general": "blue_hair outdoors blue_hair", "rating": "g"}` 对 `blue_hair`、`outdoors`、`general` 分别计数一次。不读取 artist、character、copyright、meta 标签列。未见过的或缺失的评级会使该唯一 post 的处理失败。
+例如，`{"id": 123, "tag_string_general": "blue_hair outdoors blue_hair", "rating": "g"}` 对 `blue_hair`、`outdoors`、`general` 分别计数一次。可选的 `tag_string` 和 `tag_string_*` 列，包括 artist、character、copyright、meta 标签，仅参与整条图片过滤，不增加统计与成品词库的标签类别；缺少这些可选列仍可正常处理。其他列会被忽略。未见过的或缺失的评级会使该唯一 post 的处理失败。
 
-文件按路径排序，再按 row group 和行顺序读取。同一 `id` 保留首次记录，即使后续重复内容不同。全部唯一 post 都计入总体：排除标签、过滤低频词或使某个 post 没有保留标签，均不会删除该 post，也不会改变总体数量 `N`。
+文件按路径排序，再按 row group 和行顺序读取。同一 `id` 保留首次记录，即使后续重复内容不同。整条图片过滤以首次记录为准；被排除的 ID 仍标记为已见，后续重复记录不能重新进入统计。过滤匹配全部可用原始标签列及映射后的评级，统计仍只使用普通标签与评级。移除单个标签、过滤低频词或使某个保留 post 没有保留标签，均不会删除该 post，也不会改变总体数量 `N`。
 
 ### 可选下载
 
@@ -136,7 +148,7 @@ python -m corpus.download dev/datasets/danbooru-2026
 
 ## 统计与成品结构
 
-处理分两遍：先统计去重 post 的标签词频，再统计保留标签的两两共现。每个标签在同一 post 中最多计数一次。关系门槛在全部 row group 的次数累计完成后应用。
+处理分两遍：先统计保留的去重 post 的标签词频，再统计同一批 post 中保留标签的两两共现。每个标签在同一 post 中最多计数一次。关系门槛在全部 row group 的次数累计完成后应用。
 
 对于不同的保留标签 `a`、`b`：
 
@@ -144,7 +156,7 @@ python -m corpus.download dev/datasets/danbooru-2026
 PMI(a, b) = log2(pair_count(a, b) × N / (post_count(a) × post_count(b)))
 ```
 
-`N` 是源数据去重 post 总数。提高共现门槛只移除关系，标签、词频和保留关系的 PMI 含义保持一致。缺少关系表示该统计未保留，应用不知道其精确次数。
+`N` 是整条图片过滤后保留的唯一 post 数。被排除图片对词频和共现均无贡献。提高共现门槛只移除关系，标签、词频和保留关系的 PMI 含义保持一致。缺少关系表示该统计未保留，应用不知道其精确次数。
 
 成品数据库包含三张应用表，另有 SQLite 生成的索引统计：
 
@@ -164,7 +176,7 @@ PMI(a, b) = log2(pair_count(a, b) × N / (post_count(a) × post_count(b)))
 
 个人预设与当前词库选择保存在应用的独立个人数据库。原始记录、中间计数与进度留在成品之外。
 
-CLI 在进度信息后打印 JSON 概览；加上 `--report` 后还会写入新文件，字段为 `source`、`revision`、`post_count`、`status`、`min_cooccurrence`、`tag_count`、`pair_count`、`min_tag_occurrences`、`exclude_tags`、`database`、`bytes`、`state`、`inputs`、`elapsed_seconds`。比较不同规格时可与词库一同保留报告；已有报告文件会被拒绝。
+CLI 在进度信息后打印 JSON 概览；加上 `--report` 后还会写入新文件，字段为 `source`、`revision`、`source_post_count`、`excluded_post_count`、`post_count`、`status`、`min_cooccurrence`、`tag_count`、`pair_count`、`min_tag_occurrences`、`exclude_posts_with_tags`、`exclude_tags`、`database`、`bytes`、`state`、`inputs`、`elapsed_seconds`。`source_post_count` 为整条过滤前的唯一源 ID 数，`excluded_post_count` 为排除的唯一 post 数，`post_count` 为保留总体 `N`，满足 `source_post_count = excluded_post_count + post_count`。比较不同规格时可与词库一同保留报告；已有报告文件会被拒绝。
 
 ### 中间状态与复用
 
@@ -174,14 +186,14 @@ CLI 在进度信息后打印 JSON 概览；加上 `--report` 后还会写入新�
 | --- | --- | --- |
 | `source` | `source`、`revision` | 数据集身份 |
 | `inputs` | `path` 主键、`bytes` | 复用时核对的绝对输入路径和字节数 |
-| `processing` | `id`、`min_tag_occurrences`、`excluded_tags` | 单行保存影响标签集合与 ID 的配置；排除列表使用 JSON |
-| `posts` | `id` 主键 | 词频阶段已提交的唯一 post |
+| `processing` | `id`、`min_tag_occurrences`、`excluded_tags`、`excluded_post_tags` | 单行保存影响总体、标签集合与 ID 的配置；两类排除列表使用 JSON |
+| `posts` | `id` 主键、`included` | 词频阶段已提交的全部首次出现 ID；`included=1` 参与统计，`0` 被排除但仍标记已见 |
 | `frequencies` | `name` 主键、`count` | 每个标签的唯一 post 次数 |
 | `groups` | `path`、`group_no`、`phase` 复合主键；`next_block`、`complete` | row group 进度；阶段 `1` 统计词频，阶段 `2` 统计共现 |
-| `pair_posts` | `id` 主键 | 已完成共现 row group 中提交的唯一 post |
+| `pair_posts` | `id` 主键 | 已完成共现 row group 中扫描的全部首次出现 ID，包含被排除图片；仅保留图片进入共现矩阵 |
 | `pair_counts` | `tag_a`、`tag_b` 复合主键；`count` | 应用导出门槛之前，保留标签间观察到的全部共现计数 |
 
-统计中断后，用相同状态路径、原始文件、来源、版本、最低词频与排除集合继续处理；这些内容决定中间标签 ID 的含义。输入复用会核对路径和字节数，应保持已校验的原始文件不变。未记录处理参数的旧状态会被拒绝，请使用新的状态路径。
+统计中断后，用相同状态路径、原始文件、来源、版本、最低词频与两类排除集合继续处理；这些内容决定统计总体与中间标签 ID 的含义。输入复用会核对路径和字节数，应保持已校验的原始文件不变。缺少整条图片过滤配置或保留标记字段的旧状态会被拒绝，请使用新的状态路径；不迁移旧状态。
 
 复用兼容状态时，可改变关系导出门槛、块大小和读取批大小。完整状态可直接导出不同共现门槛的成品，无需重新计算共现：
 
@@ -189,11 +201,11 @@ CLI 在进度信息后打印 JSON 概览；加上 `--report` 后还会写入新�
 python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact-pair2000.sqlite3 --revision REVISION --config corpus/profiles/compact.json --min-cooccurrences 2000 --state dev/datasets/danbooru-2026/compact-state.sqlite3
 ```
 
-此处复用前面显式生成 `compact.sqlite3` 示例的状态。改变词频门槛或排除集合需使用新状态。每次导出都使用新成品文件。导入器保留运行中的应用词库，处理完成后通过应用上传或选择。
+此处复用前面显式生成 `compact.sqlite3` 示例的状态。改变词频门槛、标签排除或整条图片排除集合需使用新状态。每次导出都使用新成品文件。导入器保留运行中的应用词库，处理完成后通过应用上传或选择。
 
 ## 验证与历史记录
 
-导入冒烟使用临时 Parquet 与 SQLite，覆盖去重、评级、门槛、PMI、配置和恢复：
+导入冒烟使用临时 Parquet 与 SQLite，覆盖去重、整条图片过滤、评级、门槛、PMI、配置和恢复：
 
 ```shell
 python -m unittest discover -s tests/corpus -p test_importer.py -v

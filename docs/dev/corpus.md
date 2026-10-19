@@ -4,7 +4,7 @@
 
 [Developer documentation](README.md) · [Source and dependencies](../../corpus/README.md) · [Runtime storage](reference/storage.md#candidate-data)
 
-Produce a ready-to-use Pictide statistical library from raw Parquet metadata with one importer command. Parameters control excluded tags, minimum tag frequency, and minimum pair frequency, so the same source can produce libraries of different sizes.
+Produce a ready-to-use Pictide statistical library from raw Parquet metadata with one importer command. Parameters control whole-post filtering, excluded tags, minimum tag frequency, and minimum pair frequency, so the same source can produce libraries of different sizes and statistical populations.
 
 ## Files and preparation
 
@@ -59,12 +59,12 @@ With raw files already available, this command runs both statistical passes and 
 python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/candidate.sqlite3 --revision REVISION
 ```
 
-Replace `REVISION` with the source revision recorded during download. Defaults are 100 posts per ordinary tag and 10 co-occurrences per pair.
+Replace `REVISION` with the source revision recorded during download. By default, posts containing `questionable` or `explicit` are excluded entirely. Defaults are 100 retained posts per ordinary tag and 10 co-occurrences per pair.
 
-The compact profile retains ordinary tags occurring in at least 100 posts, excludes the `questionable` and `explicit` rating labels, and retains pairs occurring in at least 1,000 posts:
+The compact profile excludes posts containing `questionable` or `explicit`, removes no tags from the remaining posts, retains ordinary tags occurring in at least 100 retained posts, and retains pairs occurring in at least 1,000 retained posts:
 
 ```shell
-python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact.sqlite3 --revision REVISION --exclude-tags questionable explicit --min-tag-occurrences 100 --min-cooccurrences 1000 --report dev/datasets/danbooru-2026/compact-report.json
+python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact.sqlite3 --revision REVISION --exclude-posts-with-tags questionable explicit --min-tag-occurrences 100 --min-cooccurrences 1000 --report dev/datasets/danbooru-2026/compact-report.json
 ```
 
 Load these settings from the compact profile:
@@ -81,10 +81,11 @@ python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2
 | `database` | Required | New finished SQLite path; an existing file is rejected |
 | `--revision` | Required | Pinned source revision recorded in the result and state |
 | `--source` | `Shio-Koube/Danbooru-2026-parquet-metadata` | Source identifier |
+| `--exclude-posts-with-tags [TAG ...]` | `questionable explicit` | Exclude an entire post when its original tag set contains any listed name; pass the option without names to disable this filter |
 | `--exclude-tags TAG [TAG ...]` | Empty | Exact original tag names to remove; repeat the option for more names |
 | `--min-tag-occurrences` | `100` | Minimum unique-post count for an ordinary tag |
 | `--min-cooccurrences` | `10` | Minimum globally accumulated pair count in the finished library |
-| `--config` | None | JSON object with any of `exclude_tags`, `min_tag_occurrences`, and `min_cooccurrences` |
+| `--config` | None | JSON object with any of `exclude_posts_with_tags`, `exclude_tags`, `min_tag_occurrences`, and `min_cooccurrences` |
 | `--state` | `<database-stem>-state.sqlite3` beside the output | Intermediate statistics and resumable progress |
 | `--block-size` | `256` | Tag columns per pair-computation block; positive integer |
 | `--batch-size` | `16384` | Parquet rows read per batch; positive integer |
@@ -94,19 +95,30 @@ Both frequency thresholds accept integers from `1` through `9007199254740991` (2
 
 ```json
 {
-  "exclude_tags": ["questionable", "explicit"],
+  "exclude_posts_with_tags": ["questionable", "explicit"],
+  "exclude_tags": [],
   "min_tag_occurrences": 100,
   "min_cooccurrences": 1000
 }
 ```
 
-Explicit CLI options override corresponding configuration values. Repeated `--exclude-tags` options combine CLI names; that list replaces the configuration's `exclude_tags`. Names match exactly, including underscores. Exclusions apply to ordinary tags and rating labels. The frequency threshold applies only to ordinary tags: every observed rating is retained unless explicitly excluded. Excluding a rating removes its label and relationships, while posts with that rating still contribute to the statistics. Existing libraries and portable packages need to be rebuilt to use a changed profile.
+Explicit CLI options override corresponding configuration values. Repeated occurrences of either exclusion option combine its CLI names; that list replaces the corresponding configuration value or default. Names match exactly, including underscores. Whole-post filtering matches the original `tag_string` and all available `tag_string_*` columns plus the mapped rating, before any tags are removed. Individual tag removal applies to the ordinary tags and rating labels used for statistics.
+
+`exclude_posts_with_tags` removes matching posts from tag counts, pair counts, and the PMI population. For posts with tags `a b c`, `a c d`, and `a e f`, `--exclude-posts-with-tags b d` retains only the third post. `exclude_tags` only removes matching labels and relationships; those posts still contribute to the population. The frequency threshold applies only to ordinary tags: every rating observed among retained posts is retained unless explicitly removed with `exclude_tags`.
+
+An omitted `exclude_posts_with_tags` uses `["questionable", "explicit"]`; an explicit empty list disables whole-post filtering. Use `"exclude_posts_with_tags": []` in JSON, `exclude_posts_with_tags=[]` in Python, or the CLI option without names. For example, this keeps all ratings while removing two rating labels:
+
+```shell
+python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/all-posts.sqlite3 --revision REVISION --exclude-posts-with-tags --exclude-tags questionable explicit
+```
+
+Existing libraries and portable packages need to be rebuilt to use a changed profile. The normalized whole-post filter is part of the portable cache fingerprint, together with the other processing options and importer hash; changing it selects a new cache directory.
 
 For example, `--config corpus/profiles/compact.json --min-cooccurrences 2000` keeps the profile's tag selection while exporting pairs with at least 2,000 co-occurrences. Larger thresholds usually reduce size and connectivity; generation quality needs separate evaluation.
 
 ## Raw input structure
 
-Each Parquet file must provide these columns; other columns are ignored:
+Each Parquet file must provide these columns:
 
 | Column | Value | Interpretation |
 | --- | --- | --- |
@@ -114,9 +126,9 @@ Each Parquet file must provide these columns; other columns are ignored:
 | `tag_string_general` | `string`, whitespace-separated original names, or null | Ordinary tags; null is an empty set |
 | `rating` | `string`: `g`, `s`, `q`, or `e` | Maps to `general`, `sensitive`, `questionable`, or `explicit` |
 
-For example, `{"id": 123, "tag_string_general": "blue_hair outdoors blue_hair", "rating": "g"}` contributes once each to `blue_hair`, `outdoors`, and `general`. Artist, character, copyright, and meta tag columns are not read. Unknown or missing ratings fail processing for a unique post.
+For example, `{"id": 123, "tag_string_general": "blue_hair outdoors blue_hair", "rating": "g"}` contributes once each to `blue_hair`, `outdoors`, and `general`. Optional `tag_string` and `tag_string_*` columns, including artist, character, copyright, and meta tags, are read only for whole-post filtering; they do not introduce additional tag categories into the statistics or finished library. Files without these optional columns remain valid. Other columns are ignored. Unknown or missing ratings fail processing for a unique post.
 
-Files are sorted by path, then read in row-group and row order. The first record for each `id` wins, including when duplicates disagree. All unique posts remain in the population: excluding a tag, removing a rare tag, or leaving a post with no retained tags does not remove that post or change population size `N`.
+Files are sorted by path, then read in row-group and row order. The first record for each `id` wins, including when duplicates disagree. Whole-post filtering applies to that first record; an excluded ID remains seen, so a later duplicate cannot re-enter the population. Matching uses all available original tag columns and the mapped rating shown above; statistics use only ordinary tags and rating. Removing individual tags, removing rare tags, or leaving a retained post with no retained tags does not remove that post or change population size `N`.
 
 ### Optional download
 
@@ -136,7 +148,7 @@ The revision is printed at download start. To fetch the same revision later, add
 
 ## Statistics and output structure
 
-Processing has two passes: count tags across unique posts, then count pairs among retained tags. A tag contributes at most once per post. Pair thresholds apply after counts from all row groups have accumulated.
+Processing has two passes: count tags across retained unique posts, then count pairs among retained tags from those same posts. A tag contributes at most once per post. Pair thresholds apply after counts from all row groups have accumulated.
 
 For distinct retained tags `a` and `b`:
 
@@ -144,7 +156,7 @@ For distinct retained tags `a` and `b`:
 PMI(a, b) = log2(pair_count(a, b) × N / (post_count(a) × post_count(b)))
 ```
 
-`N` is the total unique source posts. Raising the pair threshold only drops relationships: retained tags, their frequencies, and surviving PMI values keep the same meaning. A missing relationship means its statistic was not retained; its exact count is unknown to the application.
+`N` is the number of unique posts remaining after whole-post filtering. Excluded posts contribute neither tag counts nor pair counts. Raising the pair threshold only drops relationships: retained tags, their frequencies, and surviving PMI values keep the same meaning. A missing relationship means its statistic was not retained; its exact count is unknown to the application.
 
 The finished database contains three application tables, plus SQLite-generated index statistics:
 
@@ -164,7 +176,7 @@ The finished database contains three application tables, plus SQLite-generated i
 
 Personal presets and library selection stay in the application's separate personal database. Raw records, temporary counts, and progress stay outside the finished library.
 
-The CLI prints a JSON summary after progress messages. With `--report`, it also writes that summary to a new file: `source`, `revision`, `post_count`, `status`, `min_cooccurrence`, `tag_count`, `pair_count`, `min_tag_occurrences`, `exclude_tags`, `database`, `bytes`, `state`, `inputs`, and `elapsed_seconds`. Keep reports beside libraries when comparing profiles; an existing report file is rejected.
+The CLI prints a JSON summary after progress messages. With `--report`, it also writes that summary to a new file: `source`, `revision`, `source_post_count`, `excluded_post_count`, `post_count`, `status`, `min_cooccurrence`, `tag_count`, `pair_count`, `min_tag_occurrences`, `exclude_posts_with_tags`, `exclude_tags`, `database`, `bytes`, `state`, `inputs`, and `elapsed_seconds`. `source_post_count` counts unique source IDs before whole-post filtering; `excluded_post_count` counts excluded unique posts; `post_count` is the retained population `N`, so `source_post_count = excluded_post_count + post_count`. Keep reports beside libraries when comparing profiles; an existing report file is rejected.
 
 ### Intermediate state and reuse
 
@@ -174,14 +186,14 @@ The separate state database contains:
 | --- | --- | --- |
 | `source` | `source`, `revision` | Dataset identity |
 | `inputs` | `path` primary key, `bytes` | Absolute input paths and file sizes checked on reuse |
-| `processing` | `id`, `min_tag_occurrences`, `excluded_tags` | Singleton configuration affecting retained tags and IDs; exclusions stored as JSON |
-| `posts` | `id` primary key | Unique posts committed in the frequency pass |
+| `processing` | `id`, `min_tag_occurrences`, `excluded_tags`, `excluded_post_tags` | Singleton configuration affecting the population, retained tags, and IDs; both exclusion lists stored as JSON |
+| `posts` | `id` primary key, `included` | Every unique first-seen ID committed in the frequency pass; `included=1` contributes to statistics, `0` is excluded but remains seen |
 | `frequencies` | `name` primary key, `count` | Per-tag unique-post counts |
 | `groups` | `path`, `group_no`, `phase` composite primary key; `next_block`, `complete` | Row-group progress; phase `1` counts tags, phase `2` counts pairs |
-| `pair_posts` | `id` primary key | Unique posts committed in completed pair row groups |
+| `pair_posts` | `id` primary key | Every unique first-seen ID scanned in completed pair row groups, including excluded posts; only retained posts contribute to pair matrices |
 | `pair_counts` | `tag_a`, `tag_b` composite primary key; `count` | All observed retained-tag pair counts before the export floor |
 
-Resume an interrupted statistical pass with the same state path, raw files, source, revision, minimum tag frequency, and exclusion set. These determine the meaning of stored tag IDs. Input reuse checks paths and byte sizes; retain verified raw files unchanged. Older states without recorded processing parameters are rejected: use a new state path.
+Resume an interrupted statistical pass with the same state path, raw files, source, revision, minimum tag frequency, and both exclusion sets. These determine the population and the meaning of stored tag IDs. Input reuse checks paths and byte sizes; retain verified raw files unchanged. Older states missing the whole-post filter configuration or inclusion flag are rejected: use a new state path. State is not migrated.
 
 The pair-export threshold, block size, and batch size may change with compatible state. A completed state can export another pair threshold without recomputing pair counts:
 
@@ -189,11 +201,11 @@ The pair-export threshold, block size, and batch size may change with compatible
 python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact-pair2000.sqlite3 --revision REVISION --config corpus/profiles/compact.json --min-cooccurrences 2000 --state dev/datasets/danbooru-2026/compact-state.sqlite3
 ```
 
-This reuses state from the explicit `compact.sqlite3` example above. Changing tag frequency or exclusions requires new state. Every export requires a new output file. The importer leaves the running application's library in place; upload or select the completed library through the application.
+This reuses state from the explicit `compact.sqlite3` example above. Changing tag frequency, tag exclusions, or whole-post exclusions requires new state. Every export requires a new output file. The importer leaves the running application's library in place; upload or select the completed library through the application.
 
 ## Verification and historical records
 
-Importer smoke tests use temporary Parquet and SQLite files for deduplication, ratings, thresholds, PMI, configuration, and resumption:
+Importer smoke tests use temporary Parquet and SQLite files for deduplication, whole-post filtering, ratings, thresholds, PMI, configuration, and resumption:
 
 ```shell
 python -m unittest discover -s tests/corpus -p test_importer.py -v
