@@ -33,8 +33,8 @@ Co-occurrence generation requires a statistical library; preference learning req
 | Section | Purpose | Guide |
 | --- | --- | --- |
 | Roam | Browse recommended images, give feedback, and anchor visual elements | [Roam](docs/guides/roam.md) |
-| Generate | Generate images manually or in batches from presets | [Generate and Liked](docs/guides/images.md) |
-| Liked | Browse the image grid, filter by tags, and sort by preference score | [Generate and Liked](docs/guides/images.md#tag-filters-in-liked) |
+| Generate | Generate images manually or in batches from presets | [Generate](docs/guides/generate.md) |
+| Liked | Browse the image grid, filter by tags, and sort by preference score | [Liked](docs/guides/liked.md) |
 | Prompts | Browse the read-only library, edit presets, and preview co-occurrence expansion | [Prompts](docs/guides/prompts.md) |
 | Settings | Manage general settings, roaming, backends, and task history | [Settings and cleanup](docs/guides/settings.md) |
 

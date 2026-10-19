@@ -75,4 +75,4 @@ Help you easily encounter images you enjoy while continuing to find something fr
 
 When evaluating a feature, ask: **Does it help people encounter images they enjoy more easily, or guide the next part of their exploration more naturally?** Model selection, candidate algorithms, prefetching, and interface controls should be judged by their contribution to this experience. These are design goals, not guarantees about generation time or image quality.
 
-Continue reading: [Roam](roam.md) · [Generation and likes](images.md) · [Prompts and presets](prompts.md)
+Continue reading: [Roam](roam.md) · [Generate](generate.md) · [Liked](liked.md) · [Prompts and presets](prompts.md)

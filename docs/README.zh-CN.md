@@ -17,7 +17,8 @@
 | 提示词怎么产生，固定词和共现参数怎么用？ | [提示词与共现预设](guides/prompts.zh-CN.md) |
 | 默认使用哪版词库，如何下载和切换其他版本？ | [词库版本](guides/vocabularies.zh-CN.md) |
 | 漫游、播放、锚点和推荐力度怎么用？ | [漫游](guides/roam.zh-CN.md) |
-| 如何批量生成、筛选喜欢和浏览评分？ | [生成与喜欢](guides/images.zh-CN.md) |
+| 如何批量生成和管理生成结果？ | [生成](guides/generate.zh-CN.md) |
+| 如何回看喜欢、筛选标签和按评分排序？ | [喜欢](guides/liked.zh-CN.md) |
 | 语言主题、任务记录和清理在哪里？ | [设置与清理](guides/settings.zh-CN.md) |
 
 ### 数据与备份

@@ -33,8 +33,8 @@
 | 栏目 | 用途 | 说明 |
 | --- | --- | --- |
 | 漫游 | 浏览推荐图片、评价、锚定画面元素 | [漫游指南](docs/guides/roam.zh-CN.md) |
-| 生成 | 手动或按预设批量生图 | [生成与喜欢](docs/guides/images.zh-CN.md) |
-| 喜欢 | 图片网格、标签筛选、偏好评分排序 | [生成与喜欢](docs/guides/images.zh-CN.md#喜欢标签筛选) |
+| 生成 | 手动或按预设批量生图 | [生成](docs/guides/generate.zh-CN.md) |
+| 喜欢 | 图片网格、标签筛选、偏好评分排序 | [喜欢](docs/guides/liked.zh-CN.md) |
 | 提示词 | 查看只读词库、编辑预设、预览共现扩展 | [提示词指南](docs/guides/prompts.zh-CN.md) |
 | 设置 | 通用、漫游、生图 API和任务历史 | [设置与清理](docs/guides/settings.zh-CN.md) |
 

@@ -17,7 +17,8 @@ Guides for setup, roaming, prompts, and settings. Each topic starts with an over
 | How are prompts generated, and how do fixed terms and co-occurrence settings work? | [Prompts and presets](guides/prompts.md) |
 | Which vocabulary is included, and how do I download another edition? | [Vocabulary editions](guides/vocabularies.md) |
 | How do roaming, playback, anchors, and recommendation strength work? | [Roam](guides/roam.md) |
-| How do I generate batches, filter liked images, and browse scores? | [Generate and Liked](guides/images.md) |
+| How do I generate batches and manage generation results? | [Generate](guides/generate.md) |
+| How do I revisit liked images, filter tags, and sort by score? | [Liked](guides/liked.md) |
 | Where are language, theme, task history, and cleanup settings? | [Settings and cleanup](guides/settings.md) |
 
 ### Data and backups
