@@ -4,7 +4,9 @@
 
 [User documentation](../README.md#user-documentation) · [Getting started](getting-started.md)
 
-**Discover images you love as you roam.**
+**A world of images unfolds as you roam.**
+
+New images are generated along the way, guided by your feedback and anchors.
 
 Pictide is a local generative image exploration app that gradually adapts to your preferences through feedback. Browse, express what you like, and guide the next image.
 
