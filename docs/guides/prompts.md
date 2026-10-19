@@ -12,6 +12,8 @@ Tag libraries are imported offline and support viewing and selection. Adding, de
 
 The initial preset for a new user includes `general` as a fixed positive term and has no fixed negative terms. You can remove or replace it in Arrange. Existing saved presets keep their values.
 
+Selecting a saved preset in Arrange or Preview also selects it for Roam and Generate. The choice is remembered after refresh. Saving a new or copied preset selects it as well. Preview uses the current editing draft; save your edits to use them for image generation. Generate keeps any prompt text already entered, and its next preset-based prompt request uses the new selection. Existing submitted tasks keep their prompts; future roaming uses the selected preset through the usual settings switch.
+
 ## Add and switch libraries
 
 In Prompts → Library, click Upload and select a processed `.sqlite3` or `.sqlite3.gz` file. A successful upload selects the library automatically.

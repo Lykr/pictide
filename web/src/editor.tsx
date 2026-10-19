@@ -180,6 +180,9 @@ export function EditorWorkspace() {
     const loaded = { ...next, document: { ...next.document, blocked_keywords: next.document.blocked_keywords ?? [] } };
     setPreset(withCooccurrenceFloor(loaded, cooccurrenceFloor.current)); setBlockedText(loaded.document.blocked_keywords.join("\n")); setSaved(JSON.stringify(loaded));
   };
+  const activatePreset = (id: string) => new Promise((resolve, reject) => document.dispatchEvent(new CustomEvent("pictide:roam-settings-save", {
+    detail: { patch: { preset_id: id }, resolve, reject },
+  })));
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { if (dirty && loaded) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn);
@@ -188,11 +191,12 @@ export function EditorWorkspace() {
     let active = true;
     const libraryLoad = ++libraryRequest.current;
     const presetLoad = ++presetRequest.current;
-    Promise.all([api<{ presets: { id: string; name: string }[] }>("/api/candidate/presets"), api<Record<string, unknown>>("/api/candidate/dataset")]).then(async ([listing, info]) => {
+    Promise.all([api<{ presets: { id: string; name: string }[] }>("/api/candidate/presets"), api<Record<string, unknown>>("/api/candidate/dataset"), api<{ preset_id: string }>("/api/settings/roam")]).then(async ([listing, info, settings]) => {
       if (!active) return;
       setPresets(listing.presets);
       if (libraryLoad === libraryRequest.current) updateDataset(info);
-      const initial = listing.presets[0] ? await api<Preset>(`/api/candidate/presets/${encodeURIComponent(listing.presets[0].id)}`) : { id: "", name: t("新预设"), document: { ...defaults } };
+      const selected = listing.presets.find(item => item.id === settings.preset_id) ?? listing.presets[0];
+      const initial = selected ? await api<Preset>(`/api/candidate/presets/${encodeURIComponent(selected.id)}`) : { id: "", name: t("新预设"), document: { ...defaults } };
       if (active && presetLoad === presetRequest.current) { loadPreset(initial); setLoaded(true); }
     }).catch(error => { if (active) setNotice(message(error)); });
     return () => { active = false; };
@@ -247,6 +251,7 @@ export function EditorWorkspace() {
     try {
       const next = await api<Preset>(`/api/candidate/presets/${encodeURIComponent(id)}`);
       if (request !== presetRequest.current) return;
+      await activatePreset(id);
       loadPreset(next); setResult(null); setSuccess(false); setLoaded(true);
     } catch (error) { if (request === presetRequest.current) setNotice(message(error)); }
     finally { if (request === presetRequest.current) setBusy(false); }
@@ -275,9 +280,11 @@ export function EditorWorkspace() {
       const draft = withCooccurrenceFloor(preset, cooccurrenceFloor.current);
       setPreset(draft); validate(draft);
       const next = await api<Preset>("/api/candidate/presets", { method: "POST", body: JSON.stringify({ ...draft, id: draft.id || undefined }) });
-      loadPreset(next); setSuccess(next.document.min_cooccurrence >= cooccurrenceFloor.current); setLoaded(true);
+      loadPreset(next); setLoaded(true);
       const listing = await api<{ presets: { id: string; name: string }[] }>("/api/candidate/presets"); setPresets(listing.presets);
       document.dispatchEvent(new Event("pictide:candidate-presets-changed"));
+      await activatePreset(next.id);
+      setSuccess(next.document.min_cooccurrence >= cooccurrenceFloor.current);
     } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
   };
   const remove = async () => {
@@ -289,6 +296,7 @@ export function EditorWorkspace() {
       const next = listing.presets[0] ? await api<Preset>(`/api/candidate/presets/${encodeURIComponent(listing.presets[0].id)}`) : { id: "", name: t("新预设"), document: { ...defaults } };
       loadPreset(next); setResult(null); setSuccess(false);
       document.dispatchEvent(new Event("pictide:candidate-presets-changed"));
+      await activatePreset(next.id);
     } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
   };
   const preview = async () => {
@@ -337,7 +345,7 @@ export function EditorWorkspace() {
         <div className="cooc-tags" aria-busy={tagLoading}>{tagLoading ? <div className="cooc-empty" role="status"><LoaderCircle className="size-4 animate-spin" />{t("加载中")}</div> : tags.tags.length ? tags.tags.map(tag => <div className="cooc-tag" key={tag.id}><span className="min-w-0 break-words" data-tooltip={["general", "sensitive", "questionable", "explicit"].includes(tag.name) ? t("图片评级标签，可添加为固定正向词以参与共现筛选。") : undefined}>{tag.name}</span><span className="cooc-frequency" data-tooltip={t("数据集中包含此标签的图片数量")}>{tag.post_count.toLocaleString(locale())}</span></div>) : <p className="cooc-empty">{query ? t("没有匹配标签") : t("上传或选择词库，开始浏览标签。")}</p>}</div>
         <PageControls label={t("词库")} page={page} totalPages={pages} loading={tagLoading} onPageChange={setPage} />
       </section> : <>
-        <div className="cooc-preset-toolbar"><Choice label={t("生成预设")} value={preset.id || "__new"} onChange={selectPreset} disabled={busy} options={[...presets.map(item => ({ value: item.id, text: item.name })), ...(!preset.id ? [{ value: "__new", text: t("未保存预设") }] : [])]} /><IconButton icon={Plus} label={t("新建预设")} disabled={busy} onClick={() => create()} /><IconButton icon={Copy} label={t("复制预设")} disabled={busy || !loaded} onClick={() => create(true)} /><IconButton icon={Trash2} label={t("删除预设")} disabled={busy || !preset.id} onClick={remove} /><span className="spacer" /><span className="text-xs text-muted-foreground" role="status">{loaded && dirty ? t("未保存") : ""}</span><Button disabled={busy || !dirty} onClick={save} data-tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")}>{busy ? <LoaderCircle className="animate-spin" /> : success ? <Check /> : <Save />}{success ? t("已保存") : t("保存")}</Button></div>
+        <div className="cooc-preset-toolbar"><Choice label={t("生成预设")} value={preset.id || "__new"} onChange={selectPreset} disabled={busy} options={[...presets.map(item => ({ value: item.id, text: item.name })), ...(!preset.id ? [{ value: "__new", text: t("未保存预设") }] : [])]} /><HelpTip text={t("切换预设后用于漫游和生成；编辑内容保存后生效，预览可使用未保存的草稿。")} /><IconButton icon={Plus} label={t("新建预设")} disabled={busy} onClick={() => create()} /><IconButton icon={Copy} label={t("复制预设")} disabled={busy || !loaded} onClick={() => create(true)} /><IconButton icon={Trash2} label={t("删除预设")} disabled={busy || !preset.id} onClick={remove} /><span className="spacer" /><span className="text-xs text-muted-foreground" role="status">{loaded && dirty ? t("未保存") : ""}</span><Button disabled={busy || !dirty} onClick={save} data-tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")}>{busy ? <LoaderCircle className="animate-spin" /> : success ? <Check /> : <Save />}{success ? t("已保存") : t("保存")}</Button></div>
         {tab === "settings" ? <form className="cooc-settings" onSubmit={event => { event.preventDefault(); save(); }}>
           <Field label={t("预设名称")}><Input aria-label={t("预设名称")} value={preset.name} disabled={busy} required onChange={event => { setPreset(current => ({ ...current, name: event.target.value })); setSuccess(false); }} /></Field>
           <section className="cooc-positive-settings" aria-label={t("正向生成")}>

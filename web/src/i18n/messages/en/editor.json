@@ -1,4 +1,5 @@
 {
+  "切换预设后用于漫游和生成；编辑内容保存后生效，预览可使用未保存的草稿。": "Selecting a preset applies it to Roam and Generate. Save edits to use them for generation; Preview can use an unsaved draft.",
   "PMI 阈值": "PMI threshold",
   "{0} 副本": "{0} copy",
   "{0} 需要有效数值。": "{0} must be a valid number.",

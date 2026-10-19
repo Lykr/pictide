@@ -317,9 +317,9 @@ async function loadRuleConfigs(feedback = false) {
   const button = $('reload-rule-configs'); if (button.disabled) return; button.disabled = true;
   if (feedback) configFeedback.show('pending', t("正在刷新…"));
   try {
-    const selected = $('rule-config').value;
     const listing = await api('/api/candidate/presets');
     const presets = listing.presets;
+    const selected = $('rule-config').value || roamSettings.preset_id;
     $('rule-config').replaceChildren(...(presets.length ? presets.map(item => option(item.id, item.name)) : [translatedOption('', "请先新建生成预设")]));
     $('rule-config').value = presets.some(item => item.id === selected) ? selected : presets[0]?.id || '';
     inlineStatus('rule-config-note', () => t("还没有生成预设，请在提示词页新建。"), !presets.length);
@@ -1036,6 +1036,11 @@ function finishRoamSwitch() {
 }
 async function applyRoamSettings(settings, savedFields = []) {
   const next = { ...settings, recommendation_strength: settings.recommendation_strength ?? 'standard', strong_candidate_multiplier: strongCandidateMultiplier(settings.strong_candidate_multiplier ?? 2), candidate_count: candidateCount(settings.candidate_count ?? 10), prefetch_count: prefetchCount(settings.prefetch_count ?? 2), max_history_images: maxHistoryImages(settings.max_history_images ?? 20), liked_tags_only: !!settings.liked_tags_only, prompt_mode: settings.prompt_mode ?? 'random', playback_interval_seconds: settings.playback_interval_seconds ?? 8 };
+  if (!roamSettingsLoaded || next.preset_id !== roamSettings.preset_id) {
+    const control = $('rule-config');
+    if (next.preset_id && ![...control.options].some(item => item.value === next.preset_id)) control.append(option(next.preset_id, next.preset_id));
+    control.value = next.preset_id || control.options[0]?.value || '';
+  }
   const switched = roamSettingsLoaded && roamGenerationChanged(roamSettings, next);
   if (roamSettingsLoaded && JSON.stringify(roamSettings.pinned_positive ?? []) !== JSON.stringify(next.pinned_positive ?? [])) {
     // Saving anchors still discards the old window, but editing must not launch
@@ -1093,6 +1098,8 @@ async function loadRoamSettings({ preserveDraft = false } = {}) {
 }
 async function saveRoamSettings(patch) {
   if (roamSettingsSaving) throw new Error(t("正在保存漫游设置，请稍候。"));
+  // The existing full-settings API requires a prefetch count when changing presets.
+  if (Object.hasOwn(patch, 'preset_id') && !Object.hasOwn(patch, 'prefetch_count')) patch = { ...patch, prefetch_count: roamSettings.prefetch_count };
   roamSettingsSaving = true;
   const switched = roamGenerationChanged(roamSettings, { ...roamSettings, ...patch });
   if (switched) beginRoamSwitch();
@@ -1100,6 +1107,7 @@ async function saveRoamSettings(patch) {
     if (switched) await roamViewPending; // Store clears the window after the persisted current picture.
     const result = await api('/api/settings/roam', { method: 'PUT', body: JSON.stringify(patch) });
     await applyRoamSettings(result, Object.keys(patch));
+    if (Object.hasOwn(patch, 'preset_id')) $('rule-config').value = result.preset_id || $('rule-config').options[0]?.value || '';
     return result;
   } catch (error) { if (roamSwitch) finishRoamSwitch(); throw error; }
   finally { roamSettingsSaving = false; }
