@@ -55,3 +55,7 @@ Pictide connects to ComfyUI, OpenAI Images, and Gemini native image generation a
 - [HTTP API reference](docs/dev/api.md): endpoints, request parameters, and responses.
 - [UI design system (Chinese)](docs/dev/design-system.md): components, visuals, and interactions.
 - [Developer documentation index](docs/dev/README.md): code entry points, storage reference, issue records, and design template.
+
+## License
+
+Pictide's original source code and documentation are licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for project attribution. Third-party components, fonts, model weights, datasets, and generated images retain their applicable licenses and rights; the project license does not grant additional rights to those materials.

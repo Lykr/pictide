@@ -136,6 +136,8 @@ def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
         launcher.write_text('#!/bin/sh\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$root/data/runtime/pictide/Pictide" "$@"\n', encoding='utf-8')
         launcher.chmod(0o755)
     (package / 'README.txt').write_text('Pictide\n\nRun ' + launcher.name + ' to open Pictide.\nConfigure an image API in Settings.\nClose the launcher window or press Ctrl+C to stop.\nData stays in data/.\nUse --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
+    for name in ('LICENSE', 'NOTICE'):
+        shutil.copyfile(ROOT / name, package / name)
     notices = package / 'licenses'
     notices.mkdir()
     copy_licenses(notices)

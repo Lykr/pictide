@@ -55,3 +55,7 @@ Pictide 作为独立应用连接 ComfyUI、OpenAI Images 与 Gemini 原生生图
 - [HTTP API 参考](docs/dev/api.zh-CN.md)：接口索引、请求参数和响应。
 - [页面设计规范](docs/dev/design-system.md)：组件、视觉与交互约定。
 - [开发者文档导航](docs/dev/README.zh-CN.md)：代码入口、存储参考、需求记录与设计模板。
+
+## 许可证
+
+Pictide 自有源码和文档采用 [Apache License 2.0](LICENSE)，项目署名见 [NOTICE](NOTICE)。第三方组件、字体、模型权重、数据集和生成图片保留各自适用的许可与权利；项目许可证不为这些材料授予额外权利。
