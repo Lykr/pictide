@@ -15,6 +15,7 @@ Guides for setup, roaming, prompts, and settings. Each topic starts with an over
 | How do I connect a generation backend? | [Connect ComfyUI, OpenAI Images, or Gemini](guides/getting-started.md) |
 | How do I access it from my phone or add it to my Home Screen? | [LAN access and Home Screen app](guides/access.md) |
 | How are prompts generated, and how do fixed terms and co-occurrence settings work? | [Prompts and presets](guides/prompts.md) |
+| Which vocabulary is included, and how do I download another edition? | [Vocabulary editions](guides/vocabularies.md) |
 | How do roaming, playback, anchors, and recommendation strength work? | [Roam](guides/roam.md) |
 | How do I generate batches, filter liked images, and browse scores? | [Generate and Liked](guides/images.md) |
 | Where are language, theme, task history, and cleanup settings? | [Settings and cleanup](guides/settings.md) |

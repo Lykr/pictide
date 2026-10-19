@@ -48,7 +48,7 @@
 | `dev/maintenance/` | 本机维护脚本和执行记录 |
 | `dev/designs/`、`dev/previews/` | 设计素材及历史截图 |
 | `dev/legacy/` | 退役的词库目录、模型下载缓存与历史临时材料 |
-| `releases/` | 便携发行目录、ZIP 和构建报告 |
+| `releases/` | 便携发行目录、ZIP、构建报告与 `vocabularies-<contentfingerprint12>/` 下的独立词库版本导出 |
 
 便携构建独立于运行数据准备资源。[预构建发行词库](corpus.zh-CN.md#预构建词库)作为固定资源 Release 附件保存，由 Git 跟踪的 `corpus/prebuilt.json` 引用；SQLite 文件保留在 Git 之外。GitHub Actions 校验并打包这些文件，省去原始元数据处理。词库指纹、校验与原始数据保留规则见[构建资源记录](issues/portable-build-cache.md)。模型文件改为应用启动时准备到运行数据目录，由唯一固定清单 `backend/recommand/model.json` 定义；`corpus/resources.json` 仅记录原始数据集。详见[模型启动准备变更](issues/minilm-startup-download.md)。
 

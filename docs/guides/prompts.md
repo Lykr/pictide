@@ -18,6 +18,8 @@ Selecting a saved preset in Arrange or Preview also selects it for Roam and Gene
 
 ## Add and switch libraries
 
+For ready-to-use downloads and the difference between `filtered` and `all-ratings`, see [Vocabulary editions](vocabularies.md). Portable packages include `filtered` by default.
+
 In Prompts → Library, click Upload and select a processed `.sqlite3` or `.sqlite3.gz` file. A successful upload selects the library automatically.
 
 You can also place a `.sqlite3` file in `libraries/` under the current data directory (default `data/libraries/`), click Refresh, and select it from the dropdown. Multiple versions can coexist. Selection takes effect immediately and is remembered after restart; uploads with duplicate names receive a numeric suffix.
@@ -52,6 +54,6 @@ The current trial library only retains relationships with co-occurrence counts �
 
 ## Data preparation
 
-The portable edition includes a compact statistical library, ready for selection after startup. MiniLM is prepared separately [before the application opens](getting-started.md#recommendation-model-startup). Source users and anyone preparing a different vocabulary can use the offline tools below.
+The portable edition includes the `filtered` statistical vocabulary, ready for selection after startup. [Both vocabulary editions](vocabularies.md) are also available as independent downloads. MiniLM is prepared separately [before the application opens](getting-started.md#recommendation-model-startup). Source users and anyone preparing a different vocabulary can use the offline tools below.
 
 Offline download and import are collected in the root [`corpus/`](../dev/corpus.md), including tools, dependencies, and processing steps. Source Parquet, intermediate SQLite, and processed libraries awaiting import belong in dev/datasets; runtime libraries belong in data/libraries. See the [storage reference](../dev/reference/storage.md#candidate-data) for processed-data conventions and file layout, and the [co-occurrence candidate record (Chinese)](../dev/issues/cooccurrence-candidates-v1.md#离线导入) for design and validation. Once processing is complete, upload the finished SQLite in Library, or copy it into the libraries directory and refresh the selection, to use it for co-occurrence previews and roaming.

@@ -18,7 +18,7 @@
 2. 解压对应系统的便携包，运行启动入口：[Windows](docs/guides/setup/windows.zh-CN.md#便携版本) · [Linux](docs/guides/setup/linux.zh-CN.md#便携版本) · [macOS](docs/guides/setup/macos.zh-CN.md#便携版本)。程序就绪后自动打开浏览器。
 3. 按[接入指南](docs/guides/getting-started.zh-CN.md)在「设置 → 生图 API」连接生图服务，进入「漫游」开始浏览。云端漫游默认关闭自动预取，请使用负向提示词为空的预设。
 
-便携包随带运行环境、前端和精简词库；首次启动先下载并校验 MiniLM，完成后才打开应用，进度显示在启动窗口。后续复用本地模型。离线准备与下载重试见[推荐模型启动准备](docs/guides/getting-started.zh-CN.md#推荐模型启动准备)。个人数据保存在包内 `data/`。Windows 已验证真实产物，Linux/macOS 的本机构建与原生验证状态见各系统说明。
+便携包随带运行环境、前端和 `filtered` 统计词库；下载与切换 `all-ratings` 见[词库版本](docs/guides/vocabularies.zh-CN.md)。首次启动先下载并校验 MiniLM，完成后才打开应用，进度显示在启动窗口。后续复用本地模型。离线准备与下载重试见[推荐模型启动准备](docs/guides/getting-started.zh-CN.md#推荐模型启动准备)。个人数据保存在包内 `data/`。Windows 已验证真实产物，Linux/macOS 的本机构建与原生验证状态见各系统说明。
 
 ### 从源码开始
 

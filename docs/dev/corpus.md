@@ -14,7 +14,9 @@ Produce a ready-to-use Pictide statistical library from raw Parquet metadata wit
 | `corpus/importer.py` | Deduplication, tag counts, pair counts, PMI, and finished SQLite export |
 | `corpus/portable.py`, `corpus/resources.json` | Portable vocabulary preparation and pinned source file checksums |
 | `scripts/prepare_vocabulary.py`, `corpus/prebuilt.json` | Export a release vocabulary and lock its downloadable files |
-| `corpus/profiles/compact.json` | Default portable-build profile; also usable for manual processing |
+| `scripts/export_vocabularies.py` | Export both downloadable vocabulary editions without changing the portable resource lock |
+| `corpus/profiles/compact.json` | `filtered` edition and default portable-build profile |
+| `corpus/profiles/all-ratings.json` | `all-ratings` edition; includes posts from all source ratings |
 | `corpus/requirements.txt` | Offline dependencies: PyArrow, SciPy, and NumPy |
 | `dev/datasets/danbooru-2026/` | Long-lived raw files and download manifest; manual processing examples also write outputs here |
 | `dev/cache/portable/` | Portable-build intermediate state, completed libraries, and reports |
@@ -31,7 +33,7 @@ The importer processes existing local files. Downloading and environment install
 
 ## Portable build resources
 
-Local `scripts/build_portable.py` builds can prepare the compact library from raw data, or consume an exported library with `--prebuilt-library DIR`. Both use a separate builder environment and stay independent of the development application's `data/`. See the native build instructions for [Windows (Chinese)](setup/windows.md#构建便携包), [Linux (Chinese)](setup/linux.md#构建便携包), or [macOS (Chinese)](setup/macos.md#构建便携包).
+Local `scripts/build_portable.py` builds use the `filtered` edition from `corpus/profiles/compact.json` by default. They can prepare it from raw data, or consume an exported library with `--prebuilt-library DIR`. Both use a separate builder environment and stay independent of the development application's `data/`. See the native build instructions for [Windows (Chinese)](setup/windows.md#构建便携包), [Linux (Chinese)](setup/linux.md#构建便携包), or [macOS (Chinese)](setup/macos.md#构建便携包).
 
 Raw shards and `download.sqlite3` remain in `dev/datasets/danbooru-2026/`. Missing shards are downloaded at the pinned source revision; statistics and completed libraries go to `dev/cache/portable/`. Clearing the build cache preserves raw data for local recomputation. A verified library cache allows resource preparation without network requests. Change `--dataset-dir`, `--cache-dir`, or `--profile` to use other locations or processing settings. Corpus prepares vocabulary only; MiniLM is prepared [before application startup](../guides/getting-started.md#recommendation-model-startup). The [build cache record (Chinese)](issues/portable-build-cache.md) defines fingerprints and file verification. Manual processing below remains available for other library specifications.
 
@@ -50,6 +52,26 @@ The report records the source revision and checksums, normalized processing para
 Upload both files using the `gh release create` command printed by the preparation script. The resource tag is `corpus-<fingerprint>`; it is a prerelease excluded from the latest application release and does not match the application's `v*` workflow trigger. Authenticate GitHub CLI before uploading. Keep published resource assets unchanged; a changed vocabulary gets a new resource release. Commit and push the resulting resource lock after the upload succeeds.
 
 GitHub Actions downloads the exact locked files and passes their directory through `--prebuilt-library`. A missing, outdated, or damaged resource stops the build; CI never falls back to processing the raw dataset. The build carries MiniLM's fixed runtime catalog, without downloading or bundling its model files. Release builders install `backend/requirements-release.txt`; PyArrow and SciPy are needed only on machines preparing raw vocabulary data. For tag/version requirements and release commands, see [GitHub Actions releases (Chinese)](development.md#github-actions-发版).
+
+### Export both vocabulary editions
+
+For independent user downloads, export both editions from their checked-in profiles:
+
+```shell
+python scripts/export_vocabularies.py
+```
+
+The command prepares or reuses a verified cache for `compact.json` (`filtered`) and `all-ratings.json` (`all-ratings`). Both use the same pinned source, processed with the [edition settings](../guides/vocabularies.md#choose-an-edition). It downloads only missing raw shards and preserves them in `dev/datasets/danbooru-2026/`; statistics and reports remain in `dev/cache/portable/`.
+
+The default export directory is `releases/vocabularies-<contentfingerprint12>/`, containing:
+
+- `pictide-vocabulary-filtered.sqlite3` and `pictide-vocabulary-filtered.report.json`;
+- `pictide-vocabulary-all-ratings.sqlite3` and `pictide-vocabulary-all-ratings.report.json`;
+- `manifest.json` and `SHA256SUMS`.
+
+Use `--dataset-dir`, `--cache-dir`, or `--output-dir` to select other locations. The command exports locally and leaves `corpus/prebuilt.json` unchanged, so the portable build keeps its locked `filtered` resource. Each report records that edition's processing options and provenance; the manifest identifies the edition assets and their content.
+
+After checking the output, run the printed `gh release create` command to publish a fixed resource release with `--prerelease --latest=false`. Authenticate GitHub CLI first. Keep published assets unchanged and use a new content-based resource tag for changed exports. This publication is separate from preparing the default CI lock above; application releases continue to use the existing `v*` tag workflow. Link users to the two SQLite assets and the [download and switching guide](../guides/vocabularies.md#download-and-switch).
 
 ## One-command processing
 

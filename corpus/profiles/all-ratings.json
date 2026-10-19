@@ -1,0 +1,6 @@
+{
+  "exclude_posts_with_tags": [],
+  "exclude_tags": [],
+  "min_tag_occurrences": 100,
+  "min_cooccurrences": 1000
+}

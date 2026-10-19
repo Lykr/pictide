@@ -48,7 +48,7 @@ Development materials and release artifacts are organized relative to the projec
 | `dev/maintenance/` | Local maintenance scripts and execution records |
 | `dev/designs/`, `dev/previews/` | Design assets and historical screenshots |
 | `dev/legacy/` | Retired library directories, model download caches, and historical temporary materials |
-| `releases/` | Portable release directories, ZIP files, and build reports |
+| `releases/` | Portable release directories, ZIP files, build reports, and downloadable vocabulary edition exports under `vocabularies-<contentfingerprint12>/` |
 
 Portable builds prepare resources independently of runtime data. [Prebuilt release vocabularies](corpus.md#prebuilt-vocabulary) are published as fixed resource Release assets and referenced by the version-controlled `corpus/prebuilt.json`; SQLite files remain outside Git. GitHub Actions validates and packages those files instead of processing raw metadata. Vocabulary fingerprints, verification, and raw-data retention are described in the [build resource record (Chinese)](issues/portable-build-cache.md). Model files are prepared at application startup under runtime data, using the single fixed catalog `backend/recommand/model.json`; `corpus/resources.json` records only the raw dataset. See [the model startup change (Chinese)](issues/minilm-startup-download.md).
 

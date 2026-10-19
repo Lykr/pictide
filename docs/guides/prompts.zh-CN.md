@@ -18,6 +18,8 @@
 
 ## 添加与切换词库
 
+成品下载与 `filtered`、`all-ratings` 的区别见[词库版本](vocabularies.zh-CN.md)。便携包默认随带 `filtered`。
+
 在「提示词 → 词库」点击上传按钮，选择已处理的 `.sqlite3` 或 `.sqlite3.gz` 文件，成功后自动选用。
 
 也可以把 `.sqlite3` 文件放进当前数据目录的 `libraries/`（默认 `data/libraries/`），点击刷新按钮，再从下拉列表选择。多个版本可以并存，选中立即生效，重启后记住选择；同名上传自动加编号。
@@ -52,6 +54,6 @@
 
 ## 数据准备
 
-便携版随带精简统计词库，启动后即可选用；MiniLM 在[进入应用前单独准备](getting-started.zh-CN.md#推荐模型启动准备)。源码用户或需要其他规格词库时，使用以下离线工具。
+便携版随带 `filtered` 统计词库，启动后即可选用；[两版词库](vocabularies.zh-CN.md)也可独立下载。MiniLM 在[进入应用前单独准备](getting-started.zh-CN.md#推荐模型启动准备)。源码用户或需要其他规格词库时，使用以下离线工具。
 
 离线下载和导入集中在根目录 [`corpus/`](../dev/corpus.zh-CN.md)，包含工具、依赖与处理步骤；源 Parquet、中间 SQLite 和待导入成品库放在 dev/datasets，运行词库放在 data/libraries。成品数据口径与文件布局见[存储参考](../dev/reference/storage.zh-CN.md#候选数据)，设计与验证见[共现候选记录](../dev/issues/cooccurrence-candidates-v1.md#离线导入)。处理完成后，在词库页面上传成品 SQLite，或复制到 libraries 目录后刷新选择，即可用于共现预览和漫游。
