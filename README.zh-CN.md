@@ -1,4 +1,4 @@
-# Pictide
+# <img src="web/public/icons/pictide.svg" alt="" width="36" height="36" align="middle" /> Pictide
 
 [English](README.md)
 

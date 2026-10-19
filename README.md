@@ -1,4 +1,4 @@
-# Pictide
+# <img src="web/public/icons/pictide.svg" alt="" width="36" height="36" align="middle" /> Pictide
 
 [简体中文](README.zh-CN.md)
 
