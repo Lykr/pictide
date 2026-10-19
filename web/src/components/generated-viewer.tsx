@@ -151,20 +151,21 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
     {waitingOlder && loadingMore && <div className="generated-viewer-paging" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("正在加载更早图片")}</span></div>}
     {error && <div className="generated-viewer-error" role="alert">{error}</div>}
     <div ref={toolbarRef} className="generated-viewer-toolbar" aria-label={t("图片操作")}>
-      <div className="generated-viewer-navigation">
-      <IconButton icon={ArrowLeft} label={t("上一张 · ←")} disabled={busy || (!older && !hasMore) || !!waitingOlder} onClick={() => navigate("older")} />
-      <IconButton icon={Heart} label={item.feedback === 1 ? t("撤回喜欢") : t("喜欢图片 · ↑")} className={item.feedback === 1 ? "generated-viewer-liked" : ""} aria-pressed={item.feedback === 1} disabled={busy} onClick={async () => { if (props.confirmUnlike && item.feedback === 1) await viewerRef.current?.leave(); onLike(item); }} />
-      <IconButton icon={ArrowRight} label={t("下一张 · →")} disabled={busy || !newer} onClick={() => navigate("newer")} />
-      </div>
       <div className="generated-viewer-details" hidden={immersive}>
         <Popover open={infoOpen && !immersive} onOpenChange={setInfoOpen}>
           <PopoverTrigger asChild><IconButton icon={Info} label={t("图片信息")} /></PopoverTrigger>
-          <PopoverContent className="generated-viewer-info image-details-popover" align="end" side="top" aria-label={t("图片信息")}>
+          <PopoverContent className="generated-viewer-info image-details-popover" align="start" side="top" aria-label={t("图片信息")}>
             <ImagePromptDetails key={item.id} imageId={item.id} active={infoOpen && !immersive} seed={item.seed_applied === false ? t("使用工作流种子设置") : item.seed ?? "—"} positive={item.positive || ""} negative={item.negative || ""}
               actions={<Button asChild variant="ghost" size="icon-sm"><a href={artifactPath(item, "prompts")} download aria-label={t("下载提示词 JSON")} data-tooltip={t("下载提示词 JSON")}><Download aria-hidden="true" /></a></Button>} />
           </PopoverContent>
         </Popover>
       </div>
+      <div className="generated-viewer-navigation">
+      <IconButton icon={ArrowLeft} label={t("上一张 · ←")} disabled={busy || (!older && !hasMore) || !!waitingOlder} onClick={() => navigate("older")} />
+      <IconButton icon={Heart} label={item.feedback === 1 ? t("撤回喜欢") : t("喜欢图片 · ↑")} className={item.feedback === 1 ? "generated-viewer-liked" : ""} aria-pressed={item.feedback === 1} disabled={busy} onClick={async () => { if (props.confirmUnlike && item.feedback === 1) await viewerRef.current?.leave(); onLike(item); }} />
+      <IconButton icon={ArrowRight} label={t("下一张 · →")} disabled={busy || !newer} onClick={() => navigate("newer")} />
+      </div>
+
     </div>
   </DialogContent>;
 }

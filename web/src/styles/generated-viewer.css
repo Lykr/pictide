@@ -21,8 +21,8 @@
 .generated-viewer-loading svg, .generated-viewer-paging svg { width: 24px; height: 24px; }
 .generated-viewer-navigation, .generated-viewer-details { display: flex; align-items: center; justify-content: center; gap: 0; }
 .generated-viewer-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; flex: 0 0 auto; width: 100%; }
-.generated-viewer-navigation { grid-column: 2; }
-.generated-viewer-details { grid-column: 3; justify-self: end; }
+.generated-viewer-navigation { grid-column: 2; grid-row: 1; }
+.generated-viewer-details { grid-column: 1; grid-row: 1; justify-self: start; }
 .generated-viewer-details[hidden], .generated-viewer-toolbar [hidden] { display: none; }
 .generated-viewer-liked svg { fill: currentColor; }
 .generated-viewer-error { z-index: 4; padding: 8px 12px; color: var(--destructive); background: var(--card); font-size: 13px; overflow-wrap: anywhere; }

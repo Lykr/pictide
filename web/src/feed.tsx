@@ -100,14 +100,14 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <span id="image-date">
 </span>
 </div>
+<div className="image-info"><ImageInfo /></div>
 <div className="image-navigation">
 <IconButton id="previous" icon={ArrowLeft} label={t("上一张较旧图片 · ←")} variant="ghost" type="button" />
 <IconButton id="like" icon={Heart} label={t("喜欢 · ↑")} variant="ghost" type="button" className="feedback" aria-pressed="false" />
 <IconButton id="dislike" icon={ThumbsDown} label={t("不喜欢 · ↓")} variant="ghost" type="button" className="feedback" aria-pressed="false" />
 <IconButton id="next" icon={ArrowRight} label={t("下一张较新图片 · →")} variant="ghost" type="button" />
 </div>
-<div className="image-info">
-<ImageInfo />
+<div className="image-anchor">
 {anchorTrigger}
 </div>
 </div>
