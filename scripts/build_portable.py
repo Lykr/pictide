@@ -8,6 +8,7 @@ from pathlib import Path
 import platform
 import shutil
 import sqlite3
+import stat
 import subprocess
 import sys
 import tempfile
@@ -96,7 +97,7 @@ def copy_licenses(destination):
 
 def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
           cache_dir=ROOT / 'dev/cache/portable', models_dir=ROOT / 'dev/models',
-          profile=ROOT / 'corpus/profiles/compact.json'):
+          profile=ROOT / 'corpus/profiles/compact.json', prebuilt_library=None):
     started = time.perf_counter()
     build_paths = DataPaths(ROOT / 'dev/build').configure_runtime()
     output = Path(output_dir).expanduser().resolve()
@@ -106,6 +107,7 @@ def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
     if not (front / 'index.html').is_file():
         raise RuntimeError('Build the frontend before packaging.')
     resources = prepare_resources(dataset_dir, cache_dir, profile, models_dir=models_dir,
+                                  prebuilt_library=prebuilt_library,
                                   progress=lambda text: print(text, flush=True))
     output.mkdir(parents=True)
     package = output / 'Pictide'
@@ -146,8 +148,15 @@ def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
     archive = output / f'pictide-{__version__}-{sys.platform}-{platform.machine().lower()}.zip'
     with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zip:
         for path in sorted(package.rglob('*')):
-            if path.is_file():
-                zip.write(path, path.relative_to(output))
+            name = path.relative_to(output).as_posix()
+            if path.is_symlink():
+                # POSIX PyInstaller bundles use relative library/framework links.
+                link = zipfile.ZipInfo(name)
+                link.create_system = 3
+                link.external_attr = (stat.S_IFLNK | 0o777) << 16
+                zip.writestr(link, os.readlink(path))
+            else:
+                zip.write(path, name)
     result = {'directory': str(package), 'archive': str(archive), 'archive_bytes': archive.stat().st_size,
               'unpacked_bytes': sum(p.stat().st_size for p in package.rglob('*') if p.is_file()),
               'build_seconds': round(time.perf_counter() - started, 2),
@@ -167,8 +176,10 @@ if __name__ == '__main__':
                         help='Persistent pinned recommendation model directory')
     parser.add_argument('--profile', type=Path, default=ROOT / 'corpus/profiles/compact.json',
                         help='Vocabulary processing profile')
+    parser.add_argument('--prebuilt-library', type=Path,
+                        help='Directory containing the locked vocabulary.sqlite3 and report.json; never rebuilds raw data')
     parser.add_argument('--output-dir', default=ROOT / 'releases' / f'pictide-{__version__}-{sys.platform}-{time.strftime("%Y%m%d-%H%M%S")}',
                         help='New release directory (default: releases/<version-platform-time>).')
     options = parser.parse_args()
     build(options.output_dir, dataset_dir=options.dataset_dir, cache_dir=options.cache_dir,
-          models_dir=options.models_dir, profile=options.profile)
+          models_dir=options.models_dir, profile=options.profile, prebuilt_library=options.prebuilt_library)

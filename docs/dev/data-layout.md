@@ -42,7 +42,7 @@ Development materials and release artifacts are organized relative to the projec
 | `dev/datasets/` | Long-lived raw Parquet and download manifests; manual offline processing outputs |
 | `dev/runtime/frontend/`, `dev/runtime/importer/`, `dev/runtime/builder/` | Frontend dependencies, offline import environment, and independent portable-build environment |
 | `dev/models/` | Long-lived build resources; pinned MiniLM files under `minilm/<model-revision>/` |
-| `dev/cache/portable/` | Rebuildable portable statistics, completed libraries, and reports |
+| `dev/cache/portable/` | Rebuildable portable statistics, completed libraries, reports, and prebuilt exports under `exports/<fingerprint>/` |
 | `dev/cache/`, `dev/tmp/`, `dev/build/` | Other development caches, temporary files, and portable build workspace |
 | `dev/verification/` | Isolated validation instances, screenshots, and reports |
 | `dev/maintenance/` | Local maintenance scripts and execution records |
@@ -50,7 +50,7 @@ Development materials and release artifacts are organized relative to the projec
 | `dev/legacy/` | Retired library directories, model download caches, and historical temporary materials |
 | `releases/` | Portable release directories, ZIP files, and build reports |
 
-Portable builds prepare resources independently of runtime data; cache fingerprints, verification, and retention of raw data and models are described in the [build resource record (Chinese)](issues/portable-build-cache.md).
+Portable builds prepare resources independently of runtime data. [Prebuilt release vocabularies](corpus.md#prebuilt-vocabulary) are published as fixed resource Release assets and referenced by the version-controlled `corpus/prebuilt.json`; SQLite files remain outside Git. GitHub Actions validates and packages those files instead of processing raw metadata. Cache fingerprints, verification, and retention of raw data and models are described in the [build resource record (Chinese)](issues/portable-build-cache.md).
 
 Source and portable deployments use the same runtime data responsibilities and relative paths. The source startup environment is data/runtime/venv; the portable program and dependencies are under data/runtime/pictide. Paths in historical reports reflect their location at the time; see dev/maintenance for the current mapping. ComfyUI manages its own models, environment, and output.
 

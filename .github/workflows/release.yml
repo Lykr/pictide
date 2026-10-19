@@ -1,0 +1,201 @@
+name: Portable release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Validate versions and resource lock
+        shell: python
+        run: |
+          import json, os, re
+          from pathlib import Path
+          namespace = {}
+          exec(Path('backend/__init__.py').read_text(encoding='utf-8'), namespace)
+          version = namespace['__version__']
+          assert version == json.loads(Path('web/package.json').read_text())['version'], 'Backend/frontend versions differ'
+          if os.environ['GITHUB_EVENT_NAME'] == 'push':
+              tag = os.environ['GITHUB_REF_NAME']
+              assert re.fullmatch(r'v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', tag), 'Use a vMAJOR.MINOR.PATCH tag'
+              assert tag == 'v' + version, 'Tag and application versions differ'
+          lock = json.loads(Path('corpus/prebuilt.json').read_text(encoding='utf-8'))
+          assert re.fullmatch(r'corpus-[0-9a-f]{64}', lock['release_tag']), 'Invalid corpus release tag'
+          assert lock['release_tag'] == 'corpus-' + lock['fingerprint']
+          assert {item['path'] for item in lock['files']} == {'vocabulary.sqlite3', 'report.json'}
+      - name: Verify published vocabulary provenance before native builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: python
+        run: |
+          import json, subprocess, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from corpus.download import verified
+          from corpus.portable import fingerprint, vocabulary_inputs
+          lock = json.loads(Path('corpus/prebuilt.json').read_text(encoding='utf-8'))
+          destination = Path('dev/cache/prebuilt')
+          destination.mkdir(parents=True)
+          subprocess.run(['gh', 'release', 'download', lock['release_tag'], '--pattern', 'report.json', '--dir', str(destination)], check=True)
+          report_path = destination / 'report.json'
+          assert verified(report_path, next(item for item in lock['files'] if item['path'] == 'report.json'))
+          report = json.loads(report_path.read_text(encoding='utf-8'))
+          assert all(report['identity'].get(key) == value for key, value in vocabulary_inputs(Path('corpus/profiles/compact.json')).items()), 'Prebuilt vocabulary is stale for this source/profile'
+          assert report['fingerprint'] == lock['fingerprint'] == fingerprint(report['identity'])
+          assert report['file'] == next(item for item in lock['files'] if item['path'] == 'vocabulary.sqlite3')
+
+  build:
+    needs: validate
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {platform: windows-x64, os: windows-2022}
+          - {platform: linux-x64, os: ubuntu-22.04}
+          - {platform: macos-arm64, os: macos-15}
+          - {platform: macos-x64, os: macos-15-intel}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Download and verify the locked vocabulary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: python
+        run: |
+          import json, subprocess, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from corpus.portable import load_prebuilt
+          lock = json.loads(Path('corpus/prebuilt.json').read_text(encoding='utf-8'))
+          destination = Path('dev/cache/prebuilt')
+          destination.mkdir(parents=True)
+          command = ['gh', 'release', 'download', lock['release_tag'], '--dir', str(destination)]
+          for item in lock['files']:
+              command.extend(['--pattern', item['path']])
+          subprocess.run(command, check=True)
+          load_prebuilt(destination, Path('corpus/profiles/compact.json'))
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install the pinned pnpm version
+        shell: python
+        run: |
+          import json, subprocess, shutil
+          from pathlib import Path
+          manager = json.loads(Path('web/package.json').read_text())['packageManager']
+          assert manager.startswith('pnpm@')
+          subprocess.run([shutil.which('npm'), 'install', '--global', manager], check=True)
+      - name: Build the frontend
+        shell: bash
+        run: |
+          pnpm --dir web install --frozen-lockfile
+          pnpm --dir web run typecheck
+          pnpm --dir web run build
+      - name: Install packaging dependencies
+        run: python -m pip install --no-cache-dir -r backend/requirements-release.txt
+      - name: Build the native portable package
+        run: python scripts/build_portable.py --prebuilt-library dev/cache/prebuilt --output-dir releases/build
+      - name: Smoke test the extracted package
+        shell: bash
+        run: python scripts/smoke_portable.py --archive releases/build/*.zip --report releases/build/smoke-report.json
+      - name: Preserve failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diagnostics-${{ matrix.platform }}
+          path: releases/build/*report.json
+          if-no-files-found: ignore
+          retention-days: 1
+      - name: Collect release assets
+        env:
+          BUILD_PLATFORM: ${{ matrix.platform }}
+        shell: python
+        run: |
+          import os, shutil
+          from pathlib import Path
+          source = Path('releases/build')
+          target = Path('releases/assets')
+          target.mkdir()
+          archives = list(source.glob('*.zip'))
+          assert len(archives) == 1
+          shutil.copyfile(archives[0], target / archives[0].name)
+          for name in ('build-report', 'smoke-report'):
+              shutil.copyfile(source / (name + '.json'), target / (name + '-' + os.environ['BUILD_PLATFORM'] + '.json'))
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: portable-${{ matrix.platform }}
+          path: releases/assets/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: portable-*
+          path: releases/assets
+          merge-multiple: true
+      - name: Check assets, write checksums and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: python
+        run: |
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          directory = Path('releases/assets')
+          assert len(list(directory.glob('*.zip'))) == 4, 'Expected four native archives'
+          reports = list(directory.glob('smoke-report-*.json'))
+          assert len(reports) == 4
+          assert all(json.loads(path.read_text())['passed'] for path in reports), 'Smoke checks must pass'
+          assert len(list(directory.glob('build-report-*.json'))) == 4
+          files = sorted(directory.iterdir())
+          checksums = directory / 'SHA256SUMS'
+          with checksums.open('w', encoding='utf-8', newline='\n') as handle:
+              for path in files:
+                  with path.open('rb') as source:
+                      digest = hashlib.file_digest(source, 'sha256').hexdigest()
+                  handle.write(digest + '  ' + path.name + '\n')
+          tag = os.environ['GITHUB_REF_NAME']
+          command = ['gh', 'release', 'create', tag, '--verify-tag', '--generate-notes', '--draft', '--title', tag]
+          if '-' in tag:
+              command.append('--prerelease')
+          command.extend(str(path) for path in files + [checksums])
+          # Creation refuses an existing release; it never replaces another run's assets.
+          subprocess.run(command, check=True)
+          subprocess.run(['gh', 'release', 'edit', tag, '--draft=false'], check=True)

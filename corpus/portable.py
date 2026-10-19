@@ -12,6 +12,7 @@ from . import download, importer
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_LOCK = Path(__file__).with_name('resources.json')
+DEFAULT_PREBUILT_LOCK = Path(__file__).with_name('prebuilt.json')
 
 
 @dataclass(frozen=True)
@@ -47,20 +48,22 @@ def cached_library(library, report_path, identity):
         return None
 
 
-def prepare_resources(dataset_dir, cache_dir, profile, *, models_dir=ROOT / 'dev/models',
-                      lock_path=DEFAULT_LOCK, progress=print):
-    dataset_dir = Path(dataset_dir).expanduser().resolve()
-    cache_dir = Path(cache_dir).expanduser().resolve()
-    models_dir = Path(models_dir).expanduser().resolve()
-    # Raw inputs and reusable models must survive removal of the build cache.
-    if any(path.is_relative_to(cache_dir) or cache_dir.is_relative_to(path)
-           for path in (dataset_dir, models_dir)):
-        raise ValueError('Dataset, models and build cache must use separate directory trees')
+def vocabulary_inputs(profile, lock_path=DEFAULT_LOCK):
     lock = json.loads(Path(lock_path).read_text(encoding='utf-8'))
     options = importer.processing_options(json.loads(Path(profile).read_text(encoding='utf-8-sig')))
-    dataset = lock['dataset']
-    identity = dict(dataset=dataset, options=options,
-                    processor_sha256=download.sha256(Path(importer.__file__)),
+    return dict(dataset=lock['dataset'], options=options,
+                processor_sha256=download.sha256(Path(importer.__file__)))
+
+
+def prepare_vocabulary(dataset_dir, cache_dir, profile, *, lock_path=DEFAULT_LOCK, progress=print):
+    """Build or reuse a release vocabulary without application/model dependencies."""
+    dataset_dir = Path(dataset_dir).expanduser().resolve()
+    cache_dir = Path(cache_dir).expanduser().resolve()
+    if dataset_dir.is_relative_to(cache_dir) or cache_dir.is_relative_to(dataset_dir):
+        raise ValueError('Dataset and build cache must use separate directory trees')
+    inputs = vocabulary_inputs(profile, lock_path)
+    dataset, options = inputs['dataset'], inputs['options']
+    identity = dict(**inputs,
                     dependencies={name: version(name) for name in ('numpy', 'scipy', 'pyarrow')})
     key = fingerprint(identity)
     directory = cache_dir / 'libraries' / key
@@ -86,7 +89,51 @@ def prepare_resources(dataset_dir, cache_dir, profile, *, models_dir=ROOT / 'dev
                       file=dict(path=library.name, bytes=library.stat().st_size,
                                 sha256=download.sha256(library)))
         write_report(report_path, report)
-    model = lock['model']
+    return library, report
+
+
+def load_prebuilt(directory, profile, *, lock_path=DEFAULT_LOCK,
+                  prebuilt_lock_path=DEFAULT_PREBUILT_LOCK):
+    """Verify a locked release artifact; never import processing dependencies."""
+    directory = Path(directory).expanduser().resolve()
+    locked = json.loads(Path(prebuilt_lock_path).read_text(encoding='utf-8'))
+    files = {item['path']: item for item in locked['files']}
+    if len(locked['files']) != 2 or set(files) != {'vocabulary.sqlite3', 'report.json'}:
+        raise ValueError('Prebuilt lock must describe vocabulary.sqlite3 and report.json')
+    for name, item in files.items():
+        if not download.verified(directory / name, item):
+            raise ValueError(f'Prebuilt vocabulary failed verification: {name}; prepare and publish the resource again')
+    report = json.loads((directory / 'report.json').read_text(encoding='utf-8'))
+    identity = report['identity']
+    if any(identity.get(key) != value for key, value in vocabulary_inputs(profile, lock_path).items()):
+        raise ValueError('Prebuilt vocabulary is stale for this source/profile; prepare and publish a new resource')
+    key = fingerprint(identity)
+    if (report['fingerprint'] != key or locked['fingerprint'] != key
+            or locked['release_tag'] != 'corpus-' + key or report['file'] != files['vocabulary.sqlite3']):
+        raise ValueError('Prebuilt vocabulary manifest does not match its resource lock')
+    library = directory / 'vocabulary.sqlite3'
+    if not cached_library(library, directory / 'report.json', identity):
+        raise ValueError('Prebuilt vocabulary database failed integrity/readiness verification')
+    return library, report
+
+
+def prepare_resources(dataset_dir, cache_dir, profile, *, models_dir=ROOT / 'dev/models',
+                      lock_path=DEFAULT_LOCK, prebuilt_library=None,
+                      prebuilt_lock_path=DEFAULT_PREBUILT_LOCK, progress=print):
+    models_dir = Path(models_dir).expanduser().resolve()
+    cache_dir = Path(cache_dir).expanduser().resolve()
+    if models_dir.is_relative_to(cache_dir) or cache_dir.is_relative_to(models_dir):
+        raise ValueError('Models and build cache must use separate directory trees')
+    if os.environ.get('GITHUB_ACTIONS') == 'true' and prebuilt_library is None:
+        raise ValueError('GitHub Actions builds require --prebuilt-library; prepare the resource locally')
+    if prebuilt_library is not None:
+        library, report = load_prebuilt(prebuilt_library, profile, lock_path=lock_path,
+                                        prebuilt_lock_path=prebuilt_lock_path)
+        progress(f'Prebuilt vocabulary verified: {report["fingerprint"]}')
+    else:
+        library, report = prepare_vocabulary(dataset_dir, cache_dir, profile,
+                                             lock_path=lock_path, progress=progress)
+    model = json.loads(Path(lock_path).read_text(encoding='utf-8'))['model']
     snapshot = download.resource_path(models_dir / 'minilm', model['revision'])
     for item in model['files']:
         path = download.resource_path(snapshot, item['path'])
@@ -94,5 +141,5 @@ def prepare_resources(dataset_dir, cache_dir, profile, *, models_dir=ROOT / 'dev
             progress(f'Downloading MiniLM: {item["path"]}')
             url = f'https://huggingface.co/{model["source"]}/resolve/{model["revision"]}/{item["path"]}?download=true'
             download.download_file(url, path, item, replace_invalid=True)
-    progress(f'Resources ready: vocabulary {key}, MiniLM {model["revision"]}')
+    progress(f'Resources ready: vocabulary {report["fingerprint"]}, MiniLM {model["revision"]}')
     return PreparedResources(library, snapshot, dict(library=report, model=model))

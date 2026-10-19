@@ -42,7 +42,7 @@
 | `dev/datasets/` | 长期保留的原始 Parquet 与下载清单；手动离线处理产物 |
 | `dev/runtime/frontend/`、`dev/runtime/importer/`、`dev/runtime/builder/` | 前端依赖、离线导入环境与独立便携构建环境 |
 | `dev/models/` | 长期保留的构建模型资源，固定 MiniLM 放在 `minilm/<model-revision>/` |
-| `dev/cache/portable/` | 可重建的便携统计状态、成品词库与报告 |
+| `dev/cache/portable/` | 可重建的便携统计状态、成品词库、报告与 `exports/<fingerprint>/` 下的预构建导出 |
 | `dev/cache/`、`dev/tmp/`、`dev/build/` | 其他开发缓存、临时文件与便携构建工作区 |
 | `dev/verification/` | 独立验证实例、截图和报告 |
 | `dev/maintenance/` | 本机维护脚本和执行记录 |
@@ -50,7 +50,7 @@
 | `dev/legacy/` | 退役的词库目录、模型下载缓存与历史临时材料 |
 | `releases/` | 便携发行目录、ZIP 和构建报告 |
 
-便携构建独立准备发行资源，指纹、校验与原始数据和模型保留规则见[构建资源记录](issues/portable-build-cache.md)。
+便携构建独立于运行数据准备资源。[预构建发行词库](corpus.zh-CN.md#预构建词库)作为固定资源 Release 附件保存，由 Git 跟踪的 `corpus/prebuilt.json` 引用；SQLite 文件保留在 Git 之外。GitHub Actions 校验并打包这些文件，省去原始元数据处理。指纹、校验与原始数据和模型保留规则见[构建资源记录](issues/portable-build-cache.md)。
 
 源码版和便携版使用相同的运行数据职责与相对路径；源码版的启动环境是 data/runtime/venv，便携版的程序与依赖是 data/runtime/pictide。历史报告中的路径反映当时位置，当前映射见 dev/maintenance。ComfyUI 的模型、环境与输出由 ComfyUI 管理。
 

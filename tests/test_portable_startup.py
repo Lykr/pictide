@@ -34,6 +34,8 @@ class PortableResourcesSmoke(unittest.TestCase):
             notices = repo / 'web/src/THIRD_PARTY_NOTICES.md'
             notices.parent.mkdir(parents=True)
             notices.write_text('frontend licenses', encoding='utf-8')
+            for name in ('LICENSE', 'NOTICE'):
+                (repo / name).write_text('project license fixture', encoding='utf-8')
             library = vocabulary(root / 'neutral.sqlite3')
             snapshot = root / 'model'
             snapshot.mkdir()
@@ -69,7 +71,7 @@ class PortableResourcesSmoke(unittest.TestCase):
                     result = build(output, dataset_dir=dataset, cache_dir=cache,
                                    models_dir=models, profile=profile)
                     prepare.assert_called_once_with(dataset, cache, profile,
-                                                    models_dir=models, progress=ANY)
+                                                    models_dir=models, prebuilt_library=None, progress=ANY)
             finally:
                 for handler in logger.handlers:
                     handler.close()

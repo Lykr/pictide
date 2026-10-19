@@ -27,10 +27,19 @@ chmod +x start.sh start.command
 ```bash
 python3.12 -m venv dev/runtime/builder
 ./dev/runtime/builder/bin/python -m pip install -r backend/requirements-release.txt
+./dev/runtime/builder/bin/python -m pip install -r corpus/requirements.txt
 ./dev/runtime/builder/bin/python scripts/build_portable.py
 ```
 
 原始数据默认长期保存在 `dev/datasets/danbooru-2026/`，固定 MiniLM 长期保存在 `dev/models/minilm/<model-revision>/`，可重建的词库与统计缓存放在 `dev/cache/portable/`。首次缺少资源时自动补充下载并按 `corpus/profiles/compact.json` 处理词库、准备固定版本 MiniLM；有效词库和模型齐备时无需网络。清理构建缓存保留原始数据和模型，可直接本地重新统计。构建独立于应用运行目录 `data/`。
+
+已有[预构建词库](../corpus.zh-CN.md#预构建词库)时，可省略安装 `corpus/requirements.txt`，改用以下命令；`PREBUILT_DIR` 包含 `vocabulary.sqlite3` 与 `report.json`，校验失败即终止：
+
+```bash
+./dev/runtime/builder/bin/python scripts/build_portable.py --prebuilt-library PREBUILT_DIR
+```
+
+GitHub 多平台自动构建、资源上传与版本标签步骤见 [GitHub Actions 发版](../development.md#github-actions-发版)。
 
 需要换磁盘、复用已有原始数据或调整规格时，可指定目录和配置：
 

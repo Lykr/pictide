@@ -15,6 +15,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from corpus.portable import prepare_resources
+from scripts.prepare_vocabulary import export_vocabulary
 
 
 class Response(io.BytesIO):
@@ -146,3 +147,47 @@ class PortableCacheSmoke(unittest.TestCase):
                 self.prepare()
         self.assertEqual(manifest.read_bytes(), manifest_before)
         self.assertEqual((raw.read_bytes(), raw.stat().st_mtime_ns), identity)
+
+    def test_prebuilt_consumption_without_processing_dependencies_or_raw_data(self):
+        output = self.root / 'export'
+        resource_lock = self.root / 'prebuilt.json'
+        with patch('corpus.download.response', side_effect=self.response), patch('builtins.print'):
+            export_vocabulary(self.dataset, self.cache, self.profile, output_dir=output,
+                              resource_lock=resource_lock, lock_path=self.lock)
+        shutil.rmtree(self.dataset)
+        shutil.rmtree(self.cache)
+        self.downloads.clear()
+        with (patch('corpus.portable.version', side_effect=AssertionError('processing dependency inspected')),
+              patch('corpus.importer.import_parquet', side_effect=AssertionError('raw processing started')),
+              patch('corpus.download.response', side_effect=self.response)):
+            prepared = prepare_resources(self.dataset, self.cache, self.profile, models_dir=self.models,
+                                         lock_path=self.lock, prebuilt_library=output,
+                                         prebuilt_lock_path=resource_lock, progress=lambda _: None)
+        self.assertEqual(prepared.library, output / 'vocabulary.sqlite3')
+        self.assertNotIn('tiny.parquet', self.downloads)
+        self.assertFalse(self.dataset.exists())
+        self.assertFalse(self.cache.exists())
+
+    def test_prebuilt_rejects_stale_profile_and_corrupt_files_without_fallback(self):
+        output, resource_lock = self.root / 'export', self.root / 'prebuilt.json'
+        with patch('corpus.download.response', side_effect=self.response), patch('builtins.print'):
+            export_vocabulary(self.dataset, self.cache, self.profile, output_dir=output,
+                              resource_lock=resource_lock, lock_path=self.lock)
+        def consume():
+            return prepare_resources(self.dataset, self.cache, self.profile, models_dir=self.models,
+                                     lock_path=self.lock, prebuilt_library=output,
+                                     prebuilt_lock_path=resource_lock, progress=lambda _: None)
+        original = self.profile.read_text()
+        options = json.loads(original)
+        options['min_tag_occurrences'] = 2
+        self.profile.write_text(json.dumps(options))
+        with patch('corpus.portable.prepare_vocabulary', side_effect=AssertionError('fallback rebuild')):
+            with self.assertRaisesRegex(ValueError, 'stale'):
+                consume()
+            self.profile.write_text(original)
+            (output / 'vocabulary.sqlite3').write_bytes(b'corrupt')
+            with self.assertRaisesRegex(ValueError, 'failed verification'):
+                consume()
+        with patch.dict('os.environ', {'GITHUB_ACTIONS': 'true'}):
+            with self.assertRaisesRegex(ValueError, '--prebuilt-library'):
+                self.prepare()
