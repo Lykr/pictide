@@ -65,7 +65,7 @@ git push origin v0.4.0
 
 工作流从资源锁指定的 Release 下载词库并校验文件大小、SHA-256、报告与数据库；始终显式使用 `--prebuilt-library`，不在 runner 下载原始数据或进行统计。所有平台构建并通过隔离启动冒烟后，统一发布 ZIP、`SHA256SUMS` 和构建报告。带预发布后缀的版本发布为 prerelease；已发布版本和资源不覆盖。
 
-也可从 Actions 页面手动运行 `workflow_dispatch`，只生成短期 Actions artifacts，便于在正式推送标签前检查构建。手动运行不创建应用 Release。资源 Release 保存固定词库，应用 Release 保存用户下载的便携包；Actions cache 只用于加速，资源可用性由资源锁和 Release 保证。
+工作流只在推送 `v*` 版本标签时触发；日常分支与 commit 推送使用本地验证。资源 Release 保存固定词库，应用 Release 保存用户下载的便携包；Actions cache 只用于加速，资源可用性由资源锁和 Release 保证。
 
 ## 验证与提交
 
