@@ -2,9 +2,9 @@
 
 [简体中文](README.zh-CN.md)
 
-Pictide is a generative image exploration tool that learns your visual preferences. Browse, give feedback, and use anchors to discover, guide, and collect images you like.
+**Discover images you love as you roam.**
 
-Roam is the core experience. Generate, Prompts, and Settings give you control, while images and preferences stay on your computer. [About Pictide](docs/guides/about.md).
+Pictide is a local generative image exploration app that gradually adapts to your preferences through feedback. Browse, express what you like, and guide the next image without needing a specific creative goal. Images and preferences stay on your computer. [About Pictide](docs/guides/about.md).
 
 ## User guide
 

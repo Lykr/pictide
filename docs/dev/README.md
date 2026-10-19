@@ -6,6 +6,8 @@
 
 Start with the [product goals](../guides/about.md), then read the technical details relevant to your task. For a fresh checkout, [prepare the development environment (Chinese)](development.md#首次准备检出目录) before consulting architecture, API, or UI documentation.
 
+Prioritize changes that help people discover images they enjoy or guide exploration more naturally. The [product scope and experience goals](../guides/about.md#product-scope) explain how roaming guides feature decisions.
+
 ## Architecture and reference
 
 | Topic | Overview | Further reading |
