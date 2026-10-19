@@ -26,6 +26,8 @@
 .feed-page .empty-mark:not(:where(.editor-page, .editor-page *)) { display: grid; place-items: center; width: 48px; height: 48px; border-radius: var(--radius-xl); border: 1px solid var(--border); background: var(--card); font-size: 24px; }
 .feed-page .empty.small:not(:where(.editor-page, .editor-page *)) { min-height: 32vh; }
 .feed-page .image-card:not(:where(.editor-page, .editor-page *)) { overflow: hidden; }
+/* The viewer receives programmatic focus for shortcuts; its controls keep their own focus rings. */
+.feed-page .image-card:focus { outline: none; }
 .feed-page .image-stage:not(:where(.editor-page, .editor-page *)) { height: calc(100dvh - 260px); min-height: 300px; max-height: 860px; background: var(--secondary); display: flex; align-items: center; justify-content: center; position: relative; }
 .feed-page .image-stage img:not(:where(.editor-page, .editor-page *)) { width: 100%; height: 100%; object-fit: contain; display: block; }
 .feed-page .roam-heading-actions { display: flex; align-items: center; gap: 8px; }
