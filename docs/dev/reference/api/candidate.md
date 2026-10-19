@@ -33,6 +33,8 @@ Preset POST creates a preset when id is omitted and updates one when an existing
 
 ### Preset document
 
+When the personal preset store is empty, startup creates the `default` preset with `base_positive:["general"]` and `base_negative:[]`. Existing presets are preserved. The field defaults below apply when validating a submitted document with omitted fields; explicitly empty arrays remain empty.
+
 | Field | Range | Default |
 | --- | --- | --- |
 | `base_positive` / `base_negative` | Arrays of complete term strings; custom text is allowed | `[]` |

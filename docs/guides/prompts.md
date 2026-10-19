@@ -10,6 +10,8 @@ Find tags in Library, save fixed terms and co-occurrence parameters in Arrange, 
 
 Tag libraries are imported offline and support viewing and selection. Adding, deleting, enabling, or disabling tags, and manually changing categories, are not supported. Fixed positive terms act as generation anchors, while fixed negative terms are output separately. These terms and generation parameters are stored in editable presets. Existing tasks retain their submitted text; editing a preset does not rewrite history.
 
+The initial preset for a new user includes `general` as a fixed positive term and has no fixed negative terms. You can remove or replace it in Arrange. Existing saved presets keep their values.
+
 ## Add and switch libraries
 
 In Prompts → Library, click Upload and select a processed `.sqlite3` or `.sqlite3.gz` file. A successful upload selects the library automatically.

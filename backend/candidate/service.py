@@ -64,7 +64,8 @@ class CandidateService:
         self._sequence_cache = OrderedDict()
         self._sequence_lock = threading.RLock()
         if not self.store.list_presets():
-            self.store.save_preset("default", "默认", self._with_library_floor(DEFAULT_DOCUMENT))
+            self.store.save_preset("default", "默认", self._with_library_floor(
+                {**DEFAULT_DOCUMENT, "base_positive": ["general"]}))
         from .provider import CooccurrenceCandidateProvider
         self.provider = CooccurrenceCandidateProvider(self)
 

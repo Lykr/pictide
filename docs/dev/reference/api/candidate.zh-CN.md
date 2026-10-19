@@ -33,6 +33,8 @@
 
 ### 预设 document
 
+个人预设库为空时，启动创建 `default` 预设，初始值为 `base_positive:["general"]`、`base_negative:[]`；已有预设保持原值。下表默认值用于校验提交文档时补齐省略字段，显式传入的空数组保持为空。
+
 | 字段 | 范围 | 默认 |
 | --- | --- | --- |
 | `base_positive` / `base_negative` | 完整词项字符串数组，允许自定义文本 | `[]` |
