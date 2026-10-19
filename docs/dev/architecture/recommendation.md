@@ -1,26 +1,28 @@
-# 推荐模块
+# Recommendation Module
 
-[架构概览](../architecture.md) · [推荐 HTTP 接口](../reference/api/preferences.md)
+[简体中文](recommendation.zh-CN.md)
 
-推荐接收完整候选组合并返回评分，不生成候选，不调用任务模块。先了解职责，再按需阅读特征流程与模型准备。
+[Architecture Overview](../architecture.md) · [Recommendation HTTP API](../reference/api/preferences.md)
 
-## 推荐模块内部架构
+Recommendation receives complete candidate combinations and returns scores. It does not generate candidates or call Task. Start with responsibilities, then read the feature flow and model preparation as needed.
 
-推荐模块只通过 App 接收完整候选提示词组合及反馈，评分单位是一个组合。词库 ID 与类别不进入推荐内容身份；同一文本与正负方向使用相同内容特征。
+## Internal Recommendation Architecture
 
-架构图只表达逻辑组件及调用依赖，箭头表示调用或依赖，不表示数据先后流动。这些是模块内部职责划分，不要求拆成独立进程或服务。
+Recommendation receives complete candidate prompt combinations and feedback only through App. Its scoring unit is a combination. Library IDs and categories do not form part of recommendation content identity; identical text with the same positive/negative polarity uses the same content features.
+
+The architecture diagram shows logical components and call dependencies only. Arrows indicate calls or dependencies, not the temporal order of data flow. These are internal responsibilities, without a requirement for separate processes or services.
 
 ```mermaid
 flowchart TD
-    App["应用编排"]
-    subgraph Rec["推荐模块"]
-        Service["推荐应用服务：评分入口 / 反馈入口"]
-        Features["特征编码器"]
-        Scorer["评分策略：Thompson Sampling / 后验均值"]
-        Learner["偏好学习器"]
-        Model["文本编码模型适配器"]
-        Cache["语义向量缓存接口"]
-        State["用户偏好状态存储接口"]
+    App["Application orchestration"]
+    subgraph Rec["Recommendation module"]
+        Service["Recommendation application service: scoring entry / feedback entry"]
+        Features["Feature encoder"]
+        Scorer["Scoring policy: Thompson Sampling / posterior mean"]
+        Learner["Preference learner"]
+        Model["Text encoding model adapter"]
+        Cache["Semantic vector cache interface"]
+        State["User preference state storage interface"]
         Service --> Features
         Service --> Scorer
         Service --> Learner
@@ -32,57 +34,57 @@ flowchart TD
     App --> Service
 ```
 
-推荐应用服务协调内部编码、评分与学习：评分时取得组合特征并调用评分策略；反馈时取得实际生成组合的特征，并将特征、反馈及记录标识一起交给偏好学习器。两条用例分别触发，推荐内部不调用候选或任务模块，也不直接读取它们的实现或标签库文件。模型适配器封装固定版本的文本编码模型；缓存和偏好状态存储接口由持久化适配器实现。
+The recommendation application service coordinates encoding, scoring, and learning internally. For scoring, it obtains combination features and calls the scoring policy. For feedback, it obtains features for the actual generated combination and passes them, the feedback, and record identifiers to the preference learner. These use cases are triggered separately. Recommendation does not call Candidate or Task, or directly read their implementations or tag library files. The model adapter encapsulates a fixed version of the text encoding model; persistence adapters implement the cache and preference state storage interfaces.
 
-## 推荐评分的数据处理流程
+## Data Processing for Recommendation Scoring
 
-下图以标准力度为例，表达一次评分请求的数据与处理步骤。标签内容特征、语义向量和组合级特征是数据产物；内容编码、语义编码和特征组合是处理步骤。上图的特征编码器负责这些步骤，实现位于 `backend/recommand/features.py` 与 `policy.py`。
+The diagram below uses Standard strength to illustrate the data and processing steps in a scoring request. Tag content features, semantic vectors, and combination-level features are data products; content encoding, semantic encoding, and feature combination are processing steps. The feature encoder above handles these steps, implemented in `backend/recommand/features.py` and `policy.py`.
 
 ```mermaid
 flowchart TD
-    Request[/"候选组合集合 / 用户 / 上下文"/] --> Prepare["逐组合读取完整正负文本与标签快照"]
-    Prepare --> Identity["规范化文本与正负向，编码标签身份"]
-    Identity --> Sparse[/"具体标签特征"/]
-    Prepare --> Semantic["查询语义缓存，缺失时调用编码模型"]
-    Semantic --> Vector[/"语义向量"/]
-    Sparse --> Combine["构建组合级特征"]
+    Request[/"Candidate combinations / user / context"/] --> Prepare["Read complete positive/negative text and tag snapshot for each combination"]
+    Prepare --> Identity["Normalize text and polarity; encode tag identity"]
+    Identity --> Sparse[/"Specific tag features"/]
+    Prepare --> Semantic["Query semantic cache; call encoding model for misses"]
+    Semantic --> Vector[/"Semantic vectors"/]
+    Sparse --> Combine["Build combination-level features"]
     Vector --> Combine
-    Combine --> FeatureVector[/"每个完整组合的特征表示"/]
-    UserState[/"当前用户的偏好状态"/] --> Sample["采样本次请求共用的偏好参数"]
-    FeatureVector --> Score["计算各组合分数"]
+    Combine --> FeatureVector[/"Feature representation of each complete combination"/]
+    UserState[/"Current user's preference state"/] --> Sample["Sample preference parameters shared by this request"]
+    FeatureVector --> Score["Compute combination scores"]
     Sample --> Score
-    Score --> Response[/"组合标识对应的分数"/]
+    Score --> Response[/"Scores keyed by combination ID"/]
 ```
 
-学习入口走独立流程：读取实际生成组合快照 → 使用同版本特征编码器 → 将组合特征与用户反馈关联 → 更新偏好状态。一次评分请求不执行这条学习流程。[模块调用时序](flows.md#候选评分与生成)说明 App 与候选、推荐、任务模块的调用顺序，不代替静态架构图。
+The learning entry follows a separate flow: read the actual generated combination snapshot → use the same feature encoder version → associate combination features with user feedback → update preference state. A scoring request does not run this learning flow. [Module Call Sequence](flows.md#候选评分与生成) describes the order of App's calls to Candidate, Recommendation, and Task; it complements the static architecture diagram.
 
-- 组合标识用于将分数交回 App；标签内容身份用于在不同组合间学习和共享经验。规范化文本与正负向定义标签内容身份，同文不同 ID 可复用内容特征；近义或反义词仍保留各自的具体标签特征，语义向量不自动合并偏好。
-- 组合级特征由具体标签的稀疏特征与分正负向聚合的语义向量构成，对外只返回完整组合分数；第一版为线性模型，不声明已学习复杂搭配关系，具体约定见 [推荐模块设计](../issues/recommendation-v1.md)。
-- 标准力度下，同一请求的所有组合使用同一组采样偏好参数进行比较；强力使用后验均值，不采样。推荐返回评分后，由 App 选择组合并调用 Task，不再调用 Candidate 按分数抽词。
-- 冻结的 MiniLM 按基础标签编码，向量缓存包含文本、模型文件、运行依赖与预处理版本。用户点赞更新偏好状态，不训练文本编码模型。
-- 学习输入为 App 提供的实际生成组合及反馈，使用当时的文本、正负向与特征版本，不采用最新类目或标签内容替代历史。整张图片的喜欢/不喜欢按组合学习 +1/-1，不直接转换为每个标签独立的反馈；未评价保持未知，撤回应撤销对应贡献或重放有效反馈，不当作负反馈。
-- 用户偏好状态按用户及特征版本隔离。更换编码器时重新编码并基于历史有效反馈重建状态，不混用不同向量空间；缓存与策略状态通过存储接口保存在应用数据目录。当前算法及边界见下文；更换编码模型需要另行设计确认。
+- Combination IDs associate returned scores with App's combinations. Tag content identity supports learning and sharing experience across combinations. Normalized text and polarity define tag content identity; identical text under different IDs can reuse content features. Synonyms and antonyms retain their own specific tag features, and semantic vectors do not automatically merge preferences.
+- Combination-level features comprise sparse features for specific tags and semantic vectors aggregated separately by positive/negative polarity. Only complete-combination scores are returned externally. Version 1 is a linear model and does not claim to have learned complex interactions. See [Recommendation Module Design](../issues/recommendation-v1.md) for details.
+- At Standard strength, all combinations in a request are compared using the same sampled preference parameters. Strong uses the posterior mean without sampling. After Recommendation returns scores, App selects a combination and calls Task, without calling Candidate again to sample tags by score.
+- Frozen MiniLM encodes base tags. The vector cache includes text, model files, runtime dependencies, and preprocessing versions. User likes update preference state without training the text encoding model.
+- Learning input is the actual generated combination and feedback supplied by App, using the text, polarity, and feature version at that time. Current categories or tag content do not replace history. A whole-image like/dislike learns +1/-1 for the combination, without directly turning it into independent feedback for every tag. Unrated remains unknown; withdrawal removes the corresponding contribution or replays valid feedback, rather than counting as negative feedback.
+- User preference state is isolated by user and feature version. Changing encoders requires re-encoding and rebuilding state from valid historical feedback, without mixing vector spaces. The cache and policy state persist through storage interfaces in the application data directory. Current algorithms and boundaries are described below; replacing the encoding model requires separate design approval.
 
-## 当前能力与限制
+## Current Capabilities and Limitations
 
-第一版已实现 MiniLM CPU 离线标签编码、完整组合评分、贝叶斯线性后验采样、显式正负反馈学习、撤回和重启恢复。App 先接收候选组合集合，传给推荐服务 `score`，再选择组合提交任务；旧 `choose` 接口和推荐对候选模块的类型导入已移除，中立契约位于 `backend/contracts/recommendation.py`。
+Version 1 implements offline MiniLM tag encoding on CPU, complete-combination scoring, Bayesian linear posterior sampling, explicit positive/negative feedback learning, withdrawal, and restart recovery. App first receives the candidate set, passes it to the recommendation service's `score`, then selects a combination and submits a task. The old `choose` interface and Recommendation's type imports from Candidate have been removed; neutral contracts live in `backend/contracts/recommendation.py`.
 
-学习使用显式正负反馈的组合关联，未评价保持未知；评分不是点赞概率，也未实现曝光/未转化学习、复杂搭配或图像特征。模型缺失或不可用时报告状态，App 保留既有默认候选处理，不把降级称为学习。bootstrap 的 `recommendation` 返回可用状态与版本，`preference_learning` 根据实际可用状态报告；学习通知未成功应用时保留重试，用户反馈不回滚。偏好查看与重置复用 Web → Host → App → Recommendation → Store 链路；查看只读当前学习状态，重置原子清除全部特征版本偏好并记录反馈事件分界，保留图片和反馈。详见 [第一版推荐设计](../issues/recommendation-v1.md) 、[偏好查看与重置](../issues/recommendation-preferences.md) 与 [不喜欢反馈](../issues/dislike-feedback.md)。
+Learning associates explicit positive/negative feedback with combinations; unrated remains unknown. Scores are not like probabilities. Exposure/non-conversion learning, complex interactions, and image features are not implemented. Missing or unavailable models are reported as status; App retains its existing default candidate handling, and fallback is not called learning. Bootstrap's `recommendation` reports availability and version, while `preference_learning` reflects actual availability. Unapplied learning notifications remain pending for retry without rolling back user feedback. Preference inspection and reset reuse Web → Host → App → Recommendation → Store. Inspection reads current learning state only. Reset atomically clears preferences for all feature versions and records a feedback-event boundary, retaining images and feedback. See [Version 1 Recommendation Design](../issues/recommendation-v1.md), [Preference Inspection and Reset](../issues/recommendation-preferences.md), and [Dislike Feedback](../issues/dislike-feedback.md).
 
-## 评分与反馈的运行方式
+## Scoring and Feedback at Runtime
 
-标准力度使用 Thompson Sampling，强力使用确定性后验均值，两者共享用户偏好。App 选择分数最高的完整组合，不把分数交回 Candidate 重组。具体标签身份与语义特征共同参与线性评分；近义或反义标签不自动合并。
+Standard uses Thompson Sampling; Strong uses deterministic posterior means. Both share user preferences. App selects the highest-scoring complete combination without returning scores to Candidate for reassembly. Specific tag identities and semantic features both participate in linear scoring; synonymous or antonymous tags do not automatically merge.
 
-反馈与待学习记录同事务保存后立即返回。App 的单个后台学习任务处理持久记录；评分只使用已完成的偏好状态，不等待本次反馈学习。模型不可用时保留反馈供后续处理，已有预取不会因为一次新反馈失效。
+Feedback and pending learning records are saved in the same transaction before returning immediately. App's single background learning worker processes persisted records. Scoring uses only completed preference state and does not wait for the current feedback to be learned. When the model is unavailable, feedback remains for later processing; a new feedback event does not invalidate existing prefetch.
 
-图片信息中的偏好评分复用确定性原始分缓存，手动刷新才重算已有缓存；界面的 0–100 是历史范围相对刻度，不是喜欢概率。详见[评分接口](../reference/api/images.md#喜欢筛选与图片偏好评分)和[缓存设计记录](../issues/image-score-cache.md)。
+Preference scores in image information reuse a deterministic raw-score cache; an existing cache is recomputed only by manual refresh. The UI's 0–100 scale is relative to the historical score range, not a probability of liking. See the [Scoring API](../reference/api/images.md#喜欢筛选与图片偏好评分) and [Cache Design Record](../issues/image-score-cache.md).
 
-## 模型准备
+## Model Preparation
 
-推荐模型使用离线 FastEmbed 格式的 [MiniLM ONNX 模型](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx)，模型文件平铺在所选数据目录的 `models/minilm/` 下，包含 model.onnx、tokenizer.json、config.json、tokenizer_config.json 和 special_tokens_map.json。可从固定模型快照中取得这五个文件，便携包会自动准备。应用不自动下载模型；模型或依赖缺失时保持生图可用，并在 bootstrap 的 `recommendation` 与漫游响应报告状态。应用启动脚本会安装版本化 CPU 依赖；此版本在 Python 3.12 上完成验证，较旧 Python 的兼容依赖由安装器选择。
+Recommendation uses an offline FastEmbed-format [MiniLM ONNX model](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx). Place model.onnx, tokenizer.json, config.json, tokenizer_config.json, and special_tokens_map.json directly under `models/minilm/` in the selected data directory. Obtain these five files from a fixed model snapshot; the portable package prepares them automatically. The application does not download the model automatically. If the model or dependencies are missing, image generation remains available, and bootstrap's `recommendation` and roam responses report the status. Application startup scripts install versioned CPU dependencies. This version has been validated on Python 3.12; installers select compatible dependencies for older Python versions.
 
-## 进一步查阅
+## Further Reading
 
-- [第一版算法与内部契约](../issues/recommendation-v1.md)
-- [后台学习的确认设计](../issues/feedback-background-learning.md)
-- [用户偏好查看、导出和重置接口](../reference/api/preferences.md)
+- [Version 1 Algorithm and Internal Contracts](../issues/recommendation-v1.md)
+- [Approved Background Learning Design](../issues/feedback-background-learning.md)
+- [User Preference Inspection, Export, and Reset API](../reference/api/preferences.md)
