@@ -37,6 +37,7 @@
 
 ## 界面与设置
 
+- [轻量桌面启动器（待确认）](desktop-launcher.md)
 - [通用设置](general-settings.md)
 - [跟随系统主题](system-theme.md)
 - [简体中文与英文国际化](i18n.md)
