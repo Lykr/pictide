@@ -76,6 +76,11 @@ if sys.platform == "win32":
             user = ctypes.WinDLL("user32", use_last_error=True)
             kernel = ctypes.WinDLL("kernel32", use_last_error=True)
             shell = ctypes.WinDLL("shell32", use_last_error=True)
+            self.SetThreadDpiAwarenessContext = _bind(user, "SetThreadDpiAwarenessContext", wt.HANDLE, wt.HANDLE)
+            self.GetDpiForWindow = _bind(user, "GetDpiForWindow", wt.UINT, wt.HWND)
+            self.GetSystemMetricsForDpi = _bind(user, "GetSystemMetricsForDpi", ctypes.c_int, ctypes.c_int, wt.UINT)
+            self.SetWindowPos = _bind(user, "SetWindowPos", wt.BOOL, wt.HWND, wt.HWND,
+                                      ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wt.UINT)
             self.FindWindow = _bind(user, "FindWindowW", wt.HWND, wt.LPCWSTR, wt.LPCWSTR)
             self.GetModuleHandle = _bind(kernel, "GetModuleHandleW", wt.HMODULE, wt.LPCWSTR)
             self.RegisterClass = _bind(user, "RegisterClassW", wt.ATOM, ctypes.POINTER(WNDCLASSW))
@@ -186,6 +191,8 @@ class WindowsTray:
             point = wt.POINT()
             if not api.GetCursorPos(ctypes.byref(point)):
                 raise ctypes.WinError(ctypes.get_last_error())
+            # The hidden owner follows the menu's monitor so Windows uses that DPI.
+            api.SetWindowPos(self._hwnd, None, point.x, point.y, 0, 0, 0x0015)
             api.SetForegroundWindow(self._hwnd)
             # TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON: dispatch once,
             # retaining Windows' normal menu dismissal behavior.
@@ -234,7 +241,11 @@ class WindowsTray:
         classname = f"PictideTray_{os.getpid()}_{id(self):x}"
         try:
             self._api = api = _WindowsAPI()
-            if not api.FindWindow("Shell_TrayWnd", None):
+            # PMv2 scales native popup menus instead of bitmap-stretching 96-DPI UI.
+            if not api.SetThreadDpiAwarenessContext(-4):
+                raise ctypes.WinError(ctypes.get_last_error())
+            taskbar = api.FindWindow("Shell_TrayWnd", None)
+            if not taskbar:
                 log.warning("Windows notification area is unavailable; keeping the terminal open")
                 return
             self._taskbar_created = api.RegisterWindowMessage("TaskbarCreated")
@@ -253,7 +264,8 @@ class WindowsTray:
             # IMAGE_ICON, LR_LOADFROMFILE; the private icon is released below.
             icon = api.LoadImage(
                 None, str(self._icon_path.resolve()), 1,
-                api.GetSystemMetrics(49), api.GetSystemMetrics(50), 0x0010,
+                api.GetSystemMetricsForDpi(49, api.GetDpiForWindow(taskbar)),
+                api.GetSystemMetricsForDpi(50, api.GetDpiForWindow(taskbar)), 0x0010,
             )
             if not icon:
                 raise ctypes.WinError(ctypes.get_last_error())

@@ -103,4 +103,14 @@ sequenceDiagram
 
 ## 技术依据
 
+### Windows 高 DPI 与启动终端修复
+
+原实现只调用 `ShowWindow(GetConsoleWindow(), SW_HIDE)`；Windows Terminal/ConPTY 中该句柄并非实际终端窗口，进程继续运行时可能留下终端标签页。现将桌面启动分成临时进度进程和 `CREATE_NO_WINDOW` 服务进程；托盘注册成功后进度进程退出，失败保留提示，托盘不可用时服务先正常退出，再由原进度进程回退到终端运行。CLI 与无浏览器模式沿用原入口。
+
+托盘专用线程在创建窗口前启用 Per-Monitor V2，根据任务栏 DPI 请求图标尺寸，弹出菜单前让隐藏所有者窗口跟随菜单所在显示器。所有设置仅在 Pictide 自己的线程与进程中生效，未修改注册表、系统缩放或默认终端。
+
+本机实际 192 DPI（200%）环境下，源码与新便携 EXE 均验证了启动进程返回 0、服务控制台窗口句柄为 0、托盘窗口 PMv2、重复启动复用、正常退出与端口占用失败；ZIP 的原 CLI/资源/词库冒烟通过。报告位于 `dev/verification/windows-tray-fixes-20261019/`。未触发 GitHub Actions；4K 菜单的最终视觉效果需在新程序运行后观察。
+
+[GetConsoleWindow](https://learn.microsoft.com/en-us/windows/console/getconsolewindow) 与 [SetThreadDpiAwarenessContext](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setthreaddpiawarenesscontext) 为相关系统 API 依据。
+
 [Windows 通知区域](https://learn.microsoft.com/en-us/windows/win32/shell/notification-area)提供原生托盘能力；Python 侧只做薄适配，业务界面仍由现有浏览器承担。
