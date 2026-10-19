@@ -1,0 +1,5 @@
+{
+  "exclude_tags": ["watermark"],
+  "min_tag_occurrences": 500,
+  "min_cooccurrences": 1000
+}

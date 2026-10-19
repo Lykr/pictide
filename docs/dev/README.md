@@ -18,7 +18,7 @@ Prioritize changes that help people discover images they enjoy or guide explorat
 
 ## Development and maintenance
 
-- [Corpus tools (Chinese)](corpus.md): downloads, statistical imports, pruning records, and verification entry points.
+- [Corpus tools](corpus.md): configurable processing, input/output structures, downloads, and verification entry points.
 - [Development workflow (Chinese)](development.md): start a task → prepare the environment → verify → integrate and deploy.
 - [UI design system (Chinese)](design-system.md): terminology, visuals, components, layout, and interactions.
 - [Web code entry points](web.md): pages, controllers, and shared components.

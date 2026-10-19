@@ -37,7 +37,7 @@ Development materials and release artifacts are organized relative to the projec
 
 | Path | Contents |
 | --- | --- |
-| [`corpus/` (Chinese)](corpus.md) | Version-controlled offline download and statistics import tools, with dependency manifests |
+| [`corpus/`](corpus.md) | Version-controlled offline download and configurable statistics processing tools, with dependency manifests |
 | [`docs/dev/`](README.md) | Version-controlled development guides, architecture, APIs, design guidelines, and issue records |
 | `dev/datasets/` | Raw Parquet, download verification, and intermediate offline statistics |
 | `dev/runtime/frontend/`, `dev/runtime/importer/` | Frontend development dependencies and offline import environment |

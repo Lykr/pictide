@@ -1,63 +1,185 @@
-# 数据处理
+# Corpus Processing
 
-集中维护 Pictide 统计词库的离线下载、预处理和导入工具。处理流程为：下载 Parquet → 去重与词频统计 → 两两共现与 PMI → 成品 SQLite → 在应用中选择词库。
+[简体中文](corpus.zh-CN.md)
 
-## 工具与数据位置
+[Developer documentation](README.md) · [Source and dependencies](../../corpus/README.md) · [Runtime storage](reference/storage.md#candidate-data)
 
-| 位置 | 用途 |
+Produce a ready-to-use Pictide statistical library from raw Parquet metadata with one importer command. Parameters control excluded tags, minimum tag frequency, and minimum pair frequency, so the same source can produce libraries of different sizes.
+
+## Files and preparation
+
+| Location | Purpose |
 | --- | --- |
-| `download.py` | 下载指定版本的完整 Parquet，保存 SQLite 清单并校验 SHA-256 |
-| `importer.py` | 按图片 ID 去重，统计词频、评级、共现次数和 PMI，输出成品库 |
-| `requirements.txt` | 离线处理依赖：PyArrow、SciPy、NumPy |
-| `dev/datasets/danbooru-2026/` | 原始数据、下载清单、中间状态与待导入成品 |
-| `dev/runtime/importer/` | 本机离线处理环境 |
-| `data/libraries/` | 应用可选择的只读统计词库 |
+| `corpus/download.py` | Optional metadata downloader with a pinned revision and SHA-256 verification |
+| `corpus/importer.py` | Deduplication, tag counts, pair counts, PMI, and finished SQLite export |
+| `corpus/profiles/compact.json` | Example processing profile; adjust it for your dataset |
+| `corpus/requirements.txt` | Offline dependencies: PyArrow, SciPy, and NumPy |
+| `dev/datasets/danbooru-2026/` | Raw files, download manifest, intermediate state, libraries, and reports |
+| `dev/runtime/importer/` | Local offline processing environment |
+| `data/libraries/` | Read-only libraries selected by the application |
 
-工具从项目根目录以 Python 模块运行，独立于应用启动流程。源码安装步骤按系统阅读：[Windows](setup/windows.md#从源码准备) · [Linux](setup/linux.md#从源码准备) · [macOS](setup/macos.md#从源码准备)。下列命令中的 python 使用离线处理环境的解释器。
-
-## 下载与导入
-
-安装离线依赖：
+Run commands from the project root using the Python interpreter of the offline processing environment. Prepare that environment using the instructions for [Windows (Chinese)](setup/windows.md#从源码准备), [Linux (Chinese)](setup/linux.md#从源码准备), or [macOS (Chinese)](setup/macos.md#从源码准备), then install dependencies:
 
 ```shell
 python -m pip install -r corpus/requirements.txt
 ```
 
-下载元数据，下载完成后输出固定的数据版本号；将该值填入导入命令的 REVISION：
+The importer processes existing local files. Downloading and environment installation are separate steps. Preserve raw data and write each finished library to a new path under `dev/datasets/`; use the application to [upload or select the result](../guides/prompts.md#add-and-switch-libraries).
+
+## One-command processing
+
+With raw files already available, this command runs both statistical passes and exports the standard runtime library:
 
 ```shell
-python -m corpus.download dev/datasets/danbooru-2026
 python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/candidate.sqlite3 --revision REVISION
 ```
 
-重新获取同一版本时，下载命令可加 `--revision REVISION`。导入成品使用新文件名；中间状态默认保存为成品文件名加 `-state.sqlite3`，也可用 `--state` 指定。中断后复用相同中间状态继续导入；各参数见两个模块的 `--help`。
+Replace `REVISION` with the source revision recorded during download. Defaults are 100 posts per ordinary tag and 10 co-occurrences per pair.
 
-## 统计口径
+For example, retain ordinary tags occurring in at least 500 posts, exclude `watermark`, and retain pairs occurring in at least 1,000 posts:
 
-- 来源：Shio-Koube/Danbooru-2026-parquet-metadata，仅读取图片元数据。
-- 普通标签取 tag_string_general，总出现次数至少 100；图片评级映射为 general / sensitive / questionable / explicit，并保留观察到的评级标签。
-- 同一图片的同一标签计一次；所有图片累计后，基础成品保留共现至少 10 次的关系。
-- PMI(a,b) = log2(共现次数 × 去重图片总数 / (a 的出现次数 × b 的出现次数))。
-- 成品保存原始名称、词频、两两 PMI/次数和数据来源，dataset.min_cooccurrence 记录关系保留下限。
+```shell
+python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact.sqlite3 --revision REVISION --exclude-tags watermark --min-tag-occurrences 500 --min-cooccurrences 1000 --report dev/datasets/danbooru-2026/compact-report.json
+```
 
-成品表结构见[存储参考](reference/storage.md#candidate-data)。处理完成后，可通过[词库页面上传或选择](../guides/prompts.md#add-and-switch-libraries)使用成品。
+The same settings can be loaded from the example profile:
 
-## 裁剪与历史处理记录
+```shell
+python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact-profile.sqlite3 --revision REVISION --config corpus/profiles/compact.json
+```
 
-| 工作 | 说明与结果 |
-| --- | --- |
-| 词频筛选、评级、PMI 和关系门槛 | [PMI 处理记录](issues/candidate-pmi.md) |
-| 共现至少 1,000 次的精简词库 | [裁剪口径、体积和生成验证](issues/candidate-pair1000.md) |
-| 词库门槛随所选文件变化 | [词库最低共现次数](issues/library-cooccurrence-floor.md) |
+### Processing parameters
 
-裁剪从完整统计库的备份生成新文件，保留标签词频与原始 PMI，仅过滤关系并重建索引，更新 dataset.min_cooccurrence。历史一次性脚本和报告保存在 `dev/verification/candidate-pair1000-20261019/`；脚本中的路径与表结构反映当时环境。完整原始数据与中间统计保存在 `dev/datasets/`，供重新处理使用。
+| Argument | Default | Meaning |
+| --- | --- | --- |
+| `raw` | Required | Directory searched recursively for `*.parquet`, processed in sorted path order |
+| `database` | Required | New finished SQLite path; an existing file is rejected |
+| `--revision` | Required | Pinned source revision recorded in the result and state |
+| `--source` | `Shio-Koube/Danbooru-2026-parquet-metadata` | Source identifier |
+| `--exclude-tags TAG [TAG ...]` | Empty | Exact original tag names to remove; repeat the option for more names |
+| `--min-tag-occurrences` | `100` | Minimum unique-post count for an ordinary tag |
+| `--min-cooccurrences` | `10` | Minimum globally accumulated pair count in the finished library |
+| `--config` | None | JSON object with any of `exclude_tags`, `min_tag_occurrences`, and `min_cooccurrences` |
+| `--state` | `<database-stem>-state.sqlite3` beside the output | Intermediate statistics and resumable progress |
+| `--block-size` | `256` | Tag columns per pair-computation block; positive integer |
+| `--batch-size` | `16384` | Parquet rows read per batch; positive integer |
+| `--report` | None | New JSON report path, separate from inputs, state, and runtime library |
 
-## 验证
+Both frequency thresholds accept integers from `1` through `9007199254740991` (2^53−1). A JSON configuration has this form:
 
-导入冒烟使用临时 Parquet 与 SQLite，覆盖去重、评级、词频与关系门槛、PMI 和中断恢复：
+```json
+{
+  "exclude_tags": ["watermark"],
+  "min_tag_occurrences": 500,
+  "min_cooccurrences": 1000
+}
+```
+
+Explicit CLI options override corresponding configuration values. Repeated `--exclude-tags` options combine CLI names; that list replaces the configuration's `exclude_tags`. Names match exactly, including underscores. Exclusions apply to ordinary tags and rating labels. The frequency threshold applies only to ordinary tags: every observed rating is retained unless explicitly excluded.
+
+For example, `--config corpus/profiles/compact.json --min-cooccurrences 2000` keeps the profile's tag selection while exporting pairs with at least 2,000 co-occurrences. Larger thresholds usually reduce size and connectivity; generation quality needs separate evaluation.
+
+## Raw input structure
+
+Each Parquet file must provide these columns; other columns are ignored:
+
+| Column | Value | Interpretation |
+| --- | --- | --- |
+| `id` | `int64`, non-null post ID | Deduplication identity across all files and row groups |
+| `tag_string_general` | `string`, whitespace-separated original names, or null | Ordinary tags; null is an empty set |
+| `rating` | `string`: `g`, `s`, `q`, or `e` | Maps to `general`, `sensitive`, `questionable`, or `explicit` |
+
+For example, `{"id": 123, "tag_string_general": "blue_hair outdoors blue_hair", "rating": "g"}` contributes once each to `blue_hair`, `outdoors`, and `general`. Artist, character, copyright, and meta tag columns are not read. Unknown or missing ratings fail processing for a unique post.
+
+Files are sorted by path, then read in row-group and row order. The first record for each `id` wins, including when duplicates disagree. All unique posts remain in the population: excluding a tag, removing a rare tag, or leaving a post with no retained tags does not remove that post or change population size `N`.
+
+### Optional download
+
+The downloader fetches metadata, pins a revision, and verifies each file's byte size and SHA-256:
+
+```shell
+python -m corpus.download dev/datasets/danbooru-2026
+```
+
+The revision is printed at download start. To fetch the same revision later, add `--revision REVISION`. Raw shards remain below `raw/`, preserving source subdirectories. Partial downloads use `.part` files and support continuation.
+
+`download.sqlite3` stores one manifest table:
+
+| Table | Fields | Meaning |
+| --- | --- | --- |
+| `files` | `name` primary key, `revision`, `size`, `sha256`, `completed` | Source-relative path, pinned revision, expected bytes and digest; `completed=1` after verification |
+
+## Statistics and output structure
+
+Processing has two passes: count tags across unique posts, then count pairs among retained tags. A tag contributes at most once per post. Pair thresholds apply after counts from all row groups have accumulated.
+
+For distinct retained tags `a` and `b`:
+
+```text
+PMI(a, b) = log2(pair_count(a, b) × N / (post_count(a) × post_count(b)))
+```
+
+`N` is the total unique source posts. Raising the pair threshold only drops relationships: retained tags, their frequencies, and surviving PMI values keep the same meaning. A missing relationship means its statistic was not retained; its exact count is unknown to the application.
+
+The finished database contains three application tables, plus SQLite-generated index statistics:
+
+| Table | Field | Meaning |
+| --- | --- | --- |
+| `tags` | `id` | Integer primary key, assigned from original names in sorted order |
+| | `name` | Unique original tag name, including underscores |
+| | `post_count` | Unique posts containing this tag |
+| `correlations` | `tag_a`, `tag_b` | Composite primary key referencing `tags.id`; each unordered pair stored once with `tag_a < tag_b` |
+| | `pmi` | Base-2 PMI |
+| | `count` | Unique posts containing both tags |
+| `dataset` | `id` | Single row, always `1` |
+| | `source`, `revision` | Source identifier and pinned revision |
+| | `post_count` | Population size `N` |
+| | `status` | `ready` after successful export |
+| | `min_cooccurrence` | Export pair-count floor; the application uses it as its minimum selectable floor |
+
+Personal presets and library selection stay in the application's separate personal database. Raw records, temporary counts, and progress stay outside the finished library.
+
+The CLI prints a JSON summary after progress messages. With `--report`, it also writes that summary to a new file: `source`, `revision`, `post_count`, `status`, `min_cooccurrence`, `tag_count`, `pair_count`, `min_tag_occurrences`, `exclude_tags`, `database`, `bytes`, `state`, `inputs`, and `elapsed_seconds`. Keep reports beside libraries when comparing profiles; an existing report file is rejected.
+
+### Intermediate state and reuse
+
+The separate state database contains:
+
+| Table | Fields | Meaning |
+| --- | --- | --- |
+| `source` | `source`, `revision` | Dataset identity |
+| `inputs` | `path` primary key, `bytes` | Absolute input paths and file sizes checked on reuse |
+| `processing` | `id`, `min_tag_occurrences`, `excluded_tags` | Singleton configuration affecting retained tags and IDs; exclusions stored as JSON |
+| `posts` | `id` primary key | Unique posts committed in the frequency pass |
+| `frequencies` | `name` primary key, `count` | Per-tag unique-post counts |
+| `groups` | `path`, `group_no`, `phase` composite primary key; `next_block`, `complete` | Row-group progress; phase `1` counts tags, phase `2` counts pairs |
+| `pair_posts` | `id` primary key | Unique posts committed in completed pair row groups |
+| `pair_counts` | `tag_a`, `tag_b` composite primary key; `count` | All observed retained-tag pair counts before the export floor |
+
+Resume an interrupted statistical pass with the same state path, raw files, source, revision, minimum tag frequency, and exclusion set. These determine the meaning of stored tag IDs. Input reuse checks paths and byte sizes; retain verified raw files unchanged. Older states without recorded processing parameters are rejected: use a new state path.
+
+The pair-export threshold, block size, and batch size may change with compatible state. A completed state can export another pair threshold without recomputing pair counts:
+
+```shell
+python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2026/compact-pair2000.sqlite3 --revision REVISION --config corpus/profiles/compact.json --min-cooccurrences 2000 --state dev/datasets/danbooru-2026/compact-state.sqlite3
+```
+
+This reuses state from the explicit `compact.sqlite3` example above. Changing tag frequency or exclusions requires new state. Every export requires a new output file. The importer leaves the running application's library in place; upload or select the completed library through the application.
+
+## Verification and historical records
+
+Importer smoke tests use temporary Parquet and SQLite files for deduplication, ratings, thresholds, PMI, configuration, and resumption:
 
 ```shell
 python -m unittest discover -s tests/corpus -p test_importer.py -v
 ```
 
-应用候选生成的验证入口见[候选冒烟](../../tests/candidate/README.md)。
+See [candidate smoke tests (Chinese)](../../tests/candidate/README.md) for application-side checks.
+
+| Record | Scope |
+| --- | --- |
+| [PMI processing (Chinese)](issues/candidate-pmi.md) | Original frequency, rating, PMI, and pair-floor decisions |
+| [Reduced library (Chinese)](issues/candidate-pair1000.md) | Historical 1,000-pair floor, sizes, and generation verification |
+| [Library floor (Chinese)](issues/library-cooccurrence-floor.md) | Application behavior based on the selected library's floor |
+
+Historical one-off pruning scripts and reports remain under `dev/verification/candidate-pair1000-20261019/`. Their paths and structures describe that run; use the importer above for current repeatable processing.
