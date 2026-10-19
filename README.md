@@ -8,7 +8,7 @@
 
 New images are generated along the way, guided by your feedback and anchors.
 
-Pictide is a local generative image exploration app that gradually adapts to your preferences through feedback. No need to write prompts by hand or start with a specific creative goal—begin by browsing images, express what you like, and guide what comes next. Images and preferences are saved on your computer. [About Pictide](docs/guides/about.md).
+Pictide is a local generative image exploration app that gradually adapts to your preferences through feedback. Easily generate images whose elements fit naturally together, without writing prompts by hand. You don't need a specific creative goal to get started—browse, express what you like, and guide what comes next. Images and preferences are both saved locally. [About Pictide](docs/guides/about.md).
 
 ## User guide
 
