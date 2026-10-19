@@ -11,7 +11,7 @@
 | 版本 | 内容范围 |
 | --- | --- |
 | `filtered`（默认） | 使用 `general` 和 `sensitive` 评级的数据，不含 `questionable`、`explicit` 来源 |
-| `all-ratings` | 使用全部四种评级的数据，包含成人内容相关标签 |
+| `all-ratings` | 使用全部四种评级的数据 |
 
 词库决定可组合的提示词，最终画面也取决于模型和生图服务。
 

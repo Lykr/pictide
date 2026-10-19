@@ -11,7 +11,7 @@ Vocabularies help Pictide compose prompts. The portable package includes a defau
 | Edition | Content range |
 | --- | --- |
 | `filtered` (default) | Uses sources rated `general` and `sensitive`, excluding `questionable` and `explicit` sources |
-| `all-ratings` | Uses all four source ratings, including tags related to adult content |
+| `all-ratings` | Uses all four source ratings |
 
 The vocabulary shapes prompt combinations; the model and image service also shape the final image.
 
