@@ -52,6 +52,7 @@ pictide/
   backend/
     host.py                    HTTP API、SSE、静态资源、启动与关闭
     desktop.py                 Windows 桌面会话、单实例锁与托盘生命周期
+    desktop_launcher.py        临时进度进程与无控制台窗口的服务启动
     windows_tray.py            Windows 原生托盘与自有启动终端管理
     desktop_text.py            跟随系统语言的启动与托盘文案
     application.py             生成、候选、评价、清理等应用编排
@@ -99,7 +100,7 @@ pictide/
 
 源码与便携启动共用 `backend/application.py` 的 `PictideApplication.prepare_startup()`。该入口先初始化存在的随包词库，再通过 `backend/recommand/resources.py` 校验或下载固定 MiniLM 文件到所选运行数据目录。准备成功后，Host 才启动 HTTP/SSE 并打开浏览器；失败终止启动，保留未完成下载供下次重试。编码器只读取准备好的本地文件，离线 corpus 工具继续独立于启动链路。详见[模型准备](architecture/recommendation.zh-CN.md#模型准备)。
 
-Windows 启动入口选择 `--desktop`：`backend/desktop.py` 在准备资源前取得数据目录锁并预留 HTTP 端口；HTTP 就绪后注册原生托盘，收起自己的启动终端并打开浏览器。托盘只负责打开网页、日志目录和请求 Host 正常退出，不承载业务状态。启动进度和托盘文案按系统显示语言使用简体中文或英文。`--cli` 与 `--no-browser` 保留终端模式；Linux/macOS 沿用既有入口。详见[桌面生命周期设计](issues/desktop-launcher.md)。
+Windows 启动入口选择 `--desktop`：临时进度进程以 `CREATE_NO_WINDOW` 启动服务、转发启动输出，托盘注册成功后退出，兼容由 Windows Terminal 承载的启动终端。`backend/desktop.py` 在准备资源前取得数据目录锁并预留 HTTP 端口，HTTP 就绪后注册原生托盘并打开浏览器。启动失败时保留错误信息，托盘不可用时回退到原终端。托盘线程使用 Per-Monitor V2 DPI 感知，按任务栏 DPI 加载图标，不修改系统设置。托盘只负责打开网页、日志目录和请求 Host 正常退出，不承载业务状态。启动进度和托盘文案按系统显示语言使用简体中文或英文。`--cli` 与 `--no-browser` 保留终端模式；Linux/macOS 沿用既有入口。详见[桌面生命周期设计](issues/desktop-launcher.md)。
 
 ## 继续阅读
 

@@ -7,6 +7,7 @@ import ipaddress
 import json
 import math
 import logging
+import os
 import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -379,8 +380,8 @@ async def open_browser_when_ready(url, on_ready=None):
             except (OSError, asyncio.TimeoutError):
                 pass
             if ready:
-                if on_ready is not None:
-                    await on_ready()
+                if on_ready is not None and await on_ready() is False:
+                    return
                 try:
                     await asyncio.to_thread(webbrowser.open, url)
                 except webbrowser.Error:
@@ -398,14 +399,25 @@ def main(argv=None):
     parser.add_argument("--no-browser", action="store_true", help="Keep the browser closed")
     parser.add_argument("--desktop", action="store_true", help="Use the Windows desktop tray")
     parser.add_argument("--cli", action="store_true", help="Keep the terminal and disable desktop integration")
+    parser.add_argument("--desktop-worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     frozen = getattr(sys, "frozen", False)
     paths = DataPaths(args.data_dir).configure_runtime()
+    desktop_requested = args.desktop and sys.platform == 'win32' and not (args.cli or args.no_browser)
+    if args.desktop_worker:
+        # Frozen console programs ignore PYTHONIOENCODING; use UTF-8 for the startup log.
+        for stream in (sys.stdout, sys.stderr):
+            if stream is not None:
+                stream.reconfigure(encoding='utf-8', errors='replace')
+    if desktop_requested and not args.desktop_worker:
+        from .desktop_launcher import launch_desktop
+        if launch_desktop(sys.argv[1:] if argv is None else argv, paths):
+            return
     host = "0.0.0.0" if args.lan else args.host
     url_host = "[::1]" if host == "::1" else "127.0.0.1" if host == "0.0.0.0" else host
     url = f"http://{url_host}:{args.port}"
     desktop = None
-    if args.desktop and sys.platform == 'win32' and not (args.cli or args.no_browser):
+    if desktop_requested:
         from .desktop import DesktopSession, announce
         desktop = DesktopSession(paths, url)
     try:
@@ -436,7 +448,7 @@ def main(argv=None):
         from .desktop_text import translate
         logging.getLogger('backend').exception('Pictide startup failed')
         print(translate('startup_failed', error=error), file=sys.stderr, flush=True)
-        if desktop is not None and sys.stdin is not None and sys.stdin.isatty():
+        if desktop is not None and not os.environ.get('PICTIDE_DESKTOP_STATUS') and sys.stdin is not None and sys.stdin.isatty():
             try:
                 input(translate('close_prompt'))
             except EOFError:

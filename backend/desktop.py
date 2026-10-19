@@ -94,6 +94,7 @@ class DesktopSession:
         """Called only after our HTTP listener answers bootstrap successfully."""
         from aiohttp import web
         from .windows_tray import WindowsTray, hide_owned_console
+        from .desktop_launcher import notify_launcher
         loop = asyncio.get_running_loop()
 
         def background(action):
@@ -125,9 +126,14 @@ class DesktopSession:
             log.exception('Cannot start the desktop tray')
             available = False
         if available:
+            notify_launcher('ready')
             hide_owned_console()
         else:
             announce('tray_unavailable')
+            if notify_launcher('console'):
+                # Let the progress process restart this service in its visible terminal.
+                loop.call_soon(stop)
+                return False
 
     def close(self):
         if self._tray is not None:
