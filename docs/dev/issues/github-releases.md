@@ -49,3 +49,22 @@ sequenceDiagram
 - 资源锁保存完整文件校验信息，CI 不依赖跨标签 Actions cache 保证资源可用。
 - Windows x64、Linux x64、macOS ARM64/Intel 使用原生 runner；实际平台结果以对应 Actions 运行记录为准。
 - 不覆盖已有 Release 资源或已发布版本；上传失败保留本地产物以便恢复。
+
+## 2026-10-19 多平台验证
+
+[Actions 运行 39251933209](https://github.com/Lykr/pictide/actions/runs/39251933209) 的第二次执行完成；源码提交为 `7658e41`。
+
+| 平台 | 原生 runner | 构建与启动冒烟 |
+| --- | --- | --- |
+| Windows x64 | windows-2022 | 通过 |
+| Linux x64 | ubuntu-22.04 | 通过 |
+| macOS ARM64 | macos-15 | 通过 |
+| macOS Intel | macos-15-intel | 通过 |
+
+四个平台均校验锁定的 filtered 词库，完成前端类型检查与构建、原生 ZIP 打包，再从新数据目录首次下载并校验 MiniLM，检查 HTTP 就绪、词库初始化、SQLite 完整性及前端静态资源。包内未携带模型权重，未提交生图任务；本次未验证云端真实出图、GPU 生图或桌面安装交互。
+
+本次由 `workflow_dispatch` 触发，四份便携包和报告已上传到 Actions artifacts，保留 1 天；`publish` 按预期跳过，尚未通过应用版本标签发布新 Release。
+
+首次执行在词库下载处报 `release not found`：源码资源锁引用的构建资源及 tag 已缺失。恢复本地保留的原 tag 与两个原始文件后，远端大小、SHA-256 和锁文件一致，重跑通过。工作流相对初始实现没有改动；启动下载、整条图片过滤及双版导出与现有构建接口兼容，无需代码修复。
+
+资源 Release 与面向用户的双版词库下载分别管理。只要需重建的源码仍由 `corpus/prebuilt.json` 引用某资源，就保留对应 tag、Release 和文件，供构建下载。

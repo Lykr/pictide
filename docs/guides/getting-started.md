@@ -12,7 +12,7 @@ Download and extract a portable package, then follow the startup steps for [Wind
 
 Connect your local ComfyUI installation, or choose OpenAI Images or Gemini for cloud generation. Pictide does not include an image generation model. When using ComfyUI, start both applications separately.
 
-Windows portable startup has been verified. Native Linux/macOS startup and live cloud image generation remain unverified.
+Portable builds and startup checks have passed on Windows, Linux, and macOS. Live cloud image generation remains unverified.
 
 ## Connect ComfyUI
 

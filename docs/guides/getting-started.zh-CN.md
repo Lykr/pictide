@@ -12,7 +12,7 @@
 
 已有本地 ComfyUI 就连接它；希望使用云端模型，可以选择 OpenAI Images 或 Gemini。Pictide 不自带生图模型。使用 ComfyUI 时，需要分别启动两个应用。
 
-目前已验证 Windows 便携包；Linux/macOS 原生运行及云端服务真实出图尚待验证。
+Windows、Linux 和 macOS 便携包已通过构建与启动检查；云端服务真实出图尚待验证。
 
 ## 接入 ComfyUI
 

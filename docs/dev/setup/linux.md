@@ -48,4 +48,4 @@ GitHub 多平台自动构建、资源上传与版本标签步骤见 [GitHub Acti
 
 `DATASET_PATH` 使用含 `raw/` 与 `download.sqlite3` 的数据集根目录。输出目录使用新目录；省略 `--output-dir` 时自动在 `releases/` 下创建带版本、平台和时间的新目录。构建完成后使用其中的 Pictide 目录或 ZIP。缓存校验与恢复规则见[发行资源准备](../issues/portable-build-cache.md)，各平台历史验证范围见[发行记录](../issues/automatic-startup.md)。
 
-Linux/macOS 原生 CI 构建与启动验证待实际运行。
+Linux x64 已通过原生 CI 构建和启动冒烟，包含首次模型下载、词库初始化及 HTTP 资源检查，见[多平台验证记录](../issues/github-releases.md#2026-10-19-多平台验证)。

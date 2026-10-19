@@ -24,7 +24,7 @@ cd ../pictide-example
 
 ## 首次准备检出目录
 
-源码环境由开发者按本节准备。便携发行流程交付运行环境、前端成品和词库，MiniLM 按[启动前模型准备设计](issues/minilm-startup-download.md)在用户启动时下载并校验完成后再启动服务。Windows 目录式产物已验证；Linux/macOS 原生 CI 构建与启动验证待实际运行。
+源码环境由开发者按本节准备。便携发行流程交付运行环境、前端成品和词库，MiniLM 按[启动前模型准备设计](issues/minilm-startup-download.md)在用户启动时下载并校验完成后再启动服务。Windows x64、Linux x64、macOS ARM64/Intel 已通过原生 CI 构建及隔离启动冒烟，见[多平台验证记录](issues/github-releases.md#2026-10-19-多平台验证)。
 
 需要 Git、Python 3.10+、Node.js 20.19+（或 22.12+）和 `web/package.json` 指定的 pnpm。Python 运行依赖放在 `backend/requirements.txt`，离线数据处理工具与依赖集中在 [`corpus/`](corpus.zh-CN.md)；前端依赖由 `web/package.json` 管理。依赖安装遵循锁文件，不复制或提交 `node_modules`。
 
