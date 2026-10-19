@@ -1,53 +1,55 @@
-# 漫游
+# Roam
 
-[文档导航](../README.md) · [漫游接口](../dev/reference/api/roam.md)
+[简体中文](roam.zh-CN.md)
 
-先在「设置 → 漫游」选择后端与候选预设，设置预取数量，再进入漫游浏览。
+[Documentation](../README.md) · [Roam API](../dev/reference/api/roam.md)
 
-## 偏好范围与漫游方式
+First select a backend and candidate preset and set the prefetch count under Settings → Roam, then open Roam to browse.
 
-「设置 → 漫游」保存缓冲数量、后端、候选预设、自动播放间隔、偏好范围与漫游方式；漫游右上菜单提供展示时间、偏好范围、漫游方式与推荐力度，修改同步且保留其他草稿。偏好范围为「全部 / 喜欢」；漫游方式为「漂流 / 顺流 / 停泊」，默认漂流。顺流按候选预设变化预算从实际选中组合继续，停泊保留整组提示词，图像种子仍随机。切换范围、方式、后端或预设时保留当前图，清空其后旧预取、取消旧待执行漫游任务，迟到结果不再进入漫游；喜欢、文件及生成页任务保留。详见 [漫游方式](../dev/issues/roam-modes.md)。缓冲数量为 `0`–`20`，新用户默认 `2`，设为 `0` 关闭自动预取；已保存的个人设置继续使用；`N` 表示当前图片右侧较新漫游图片的目标张数，空漫游列表需要先生成首张，再补足 `N` 张。批量工作流按实际返回并入库的漫游图片计数，不按任务数计算；生成页图片不计入缓冲。
+## Preference scope and roaming modes
 
-## 锚点
+Settings → Roam saves the buffer count, backend, candidate preset, autoplay interval, preference scope, and roaming mode. The top-right menu in Roam offers display time, preference scope, roaming mode, and recommendation strength; changes synchronize while preserving other drafts. Preference scope is All / Liked. Roaming modes are Drift / Flow / Anchor, with Drift as the default. Flow continues from the combination actually selected, using the candidate preset's variation budget. Anchor preserves the entire prompt combination while image seeds remain random. Changing the scope, mode, backend, or preset keeps the current image, clears older prefetch after it, cancels pending roaming tasks from the old settings, and excludes late results from Roam. Likes, files, and Generate tasks are retained. See [roaming modes](../dev/issues/roam-modes.md). The buffer count is `0`–`20`, defaulting to `2` for new users; `0` disables automatic prefetch. Existing saved personal settings remain in use. `N` is the target number of newer roaming images to the right of the current image. An empty roaming list first generates its initial image, then fills the next `N` images. Batch workflows count actual returned roaming images saved in the database, rather than tasks; Generate images do not count toward the buffer.
 
-漫游图片下方提供可折叠的「锚点」，点选正向词保留画面元素，也可输入完整提示词，回车或点击加号添加，支持取消和清空；自定义词完整输出、不参与 PMI 计算。重复输入不会取消已有锚点；锚点跨刷新、重启保存，仅影响漫游。预设固定词标注「来自预设」且优先，重复项从锚点移除。增减或清空锚点后保留当前图、清空旧预取，暂缓当前页面的自动预取并暂停自动播放；操作下一张时再按最新锚点生成并恢复预取。停泊时仅查看。详见 [锚点](../dev/issues/roam-anchors.md)。
+## Anchors
 
-## 推荐力度与候选数量
+A collapsible Anchors panel below the roaming image lets you select positive terms to preserve image elements, or enter a complete prompt and press Enter or click Plus to add it. Anchors can be removed or cleared. Custom terms are output in full without participating in PMI calculations. Entering an existing anchor again does not deselect it. Anchors persist across refreshes and restarts and only affect Roam. Fixed preset terms are labeled “From preset” and take priority; duplicates are removed from anchors. Adding, removing, or clearing anchors keeps the current image, clears older prefetch, temporarily suspends automatic prefetch on the current page, and pauses autoplay. Moving to the next image generates with the latest anchors and resumes prefetch. Anchors are view-only in Anchor mode. See [anchors](../dev/issues/roam-anchors.md).
 
-漫游选项与设置页提供「推荐力度：标准 / 强力」。标准保留探索；强力按当前偏好均值评分，并把候选组合数量乘以强力倍数（1–5，默认 2，最多 100 组）。设置页调整倍数；切换保留当前图、预取和任务。两种力度共用偏好，停泊已有组合时直接复用。详见 [推荐力度](../dev/issues/roam-recommendation-strength.md)。
+## Recommendation strength and candidate count
 
-「设置 → 漫游」可设置候选组合数量（1–20，默认 10），每次从这些完整组合中推荐择一生图；数量越大，准备耗时通常越长。修改只影响新准备的组合，已有预取和任务保留。停泊已有参考组合时直接复用。详见 [候选组合数量](../dev/issues/roam-candidate-count.md)。
+Roam options and Settings offer Standard / Strong recommendation strength. Standard retains exploration. Strong scores candidates using the current preference mean and multiplies the number of candidate combinations by the strength multiplier (1–5, default 2, at most 100 combinations). Adjust the multiplier in Settings. Switching keeps the current image, prefetch, and tasks. Both strengths share preferences; an existing combination in Anchor mode is reused directly. See [recommendation strength](../dev/issues/roam-recommendation-strength.md).
 
-## 漫游历史数量上限
+Settings → Roam lets you set the candidate combination count (1–20, default 10). Each time, one of these complete combinations is selected by recommendation for generation. Larger counts generally take longer to prepare. Changes only affect newly prepared combinations; existing prefetch and tasks remain. An existing reference combination in Anchor mode is reused directly. See [candidate combination count](../dev/issues/roam-candidate-count.md).
 
-「设置 → 漫游」的「历史图片数量上限」设置当前观看位置之前最多展示的漫游历史图片总数（`0`–`100000`，新用户默认 `20`，设为 `0` 关闭数量清理）。例如设置为 `100`，当前位置之前的所有可见漫游图片都计入上限，超额按入库时间从最早的图片开始处理：未喜欢的清除本地图片及同名提示词 JSON，喜欢的只从漫游隐藏，继续保留在喜欢页。生成页图片不受影响。保存立即检查，之后在启动、浏览、生成和评价等操作时按需检查，不增加定时任务。清理后观看位置按既有邻图规则恢复；已经隐藏的图片不会因撤回喜欢重新出现在漫游。
+## Roaming history count limit
 
-数量上限只计算当前图片之前的全部可见历史，当前图片和后面的预取图片不计入，不调整预取数量。保存观看位置后按新位置检查，未保存位置时不进行数量清理；已喜欢图片超限时仅从漫游隐藏，原文件及提示词保留。时间清理设置与数量清理分别生效，大量超限时每次最多标记 100 张，后续操作继续回收。
+The History image count limit in Settings → Roam sets the maximum total number of roaming history images shown before the current viewing position (`0`–`100000`, default `20` for new users; `0` disables count-based cleanup). For example, with `100`, all visible roaming images before the current position count toward the limit. Excess images are processed from the earliest database insertion time: unliked images and same-named prompt JSON are removed locally, while liked images are only hidden from Roam and remain in Liked. Generate images are unaffected. Saving checks immediately; later checks run on demand during startup, browsing, generation, and rating, with no additional scheduled task. After cleanup, the viewing position is restored using the existing neighboring-image rules. Hidden images do not reappear in Roam when unliked.
 
-## 观看位置与等待下一张
+The limit counts all visible history before the current image. It excludes the current image and later prefetched images and does not change the prefetch count. After the viewing position is saved, the new position is checked; count cleanup does not run without a saved position. Liked images over the limit are only hidden from Roam, preserving their original files and prompts. Time-based and count-based cleanup apply independently. When many images exceed the limit, at most 100 are marked per trigger, with later operations continuing reclamation.
 
-漫游观看位置保存在 SQLite，刷新页面、切换到喜欢再返回或重启应用后继续观看该图；喜欢和生成页的选图不会覆盖漫游位置。旧图不在最近列表中时读取其附近图片，仍可连续向前、向后浏览；原图被清理后恢复到邻近的可用漫游图片。
+## Viewing position and waiting for the next image
 
-沉浸模式沿用同一张图片、观看位置、毛玻璃状态和按需加载流程；切图、喜欢和方向键操作与普通漫游一致。退出沉浸或离开漫游后恢复正常页面布局，不改变原图。
+The roaming viewing position is saved in SQLite. Refreshing, visiting Liked and returning, or restarting the application resumes at that image. Selecting an image in Liked or Generate does not overwrite the roaming position. If an older image is outside the recent list, nearby images are loaded so that you can continue browsing in either direction. If the original image was cleaned up, the position is restored to a nearby available roaming image.
 
-向右没有图片时请求生成，等待期间显示加载动画，图片就绪后自动前进一次，不显示「最新一张」提示；`N=0` 也支持这次主动请求，但不会因此开启后续自动预取。空漫游可点击开始按钮请求首图。向左没有更旧图片时保持原图，不生成过去的图片。离开漫游会结束本次界面等待，已提交的任务继续执行；失败或暂停时停止动画并显示原因。
+Immersive mode shares the same image, viewing position, blur state, and on-demand loading flow. Image navigation, liking, and arrow keys work as in normal Roam. Exiting immersive mode or leaving Roam restores the normal page layout without changing the image.
 
-## 预取与故障恢复
+Moving right when no image is available requests generation. A loading animation appears while waiting, and the view automatically advances once when the image is ready, without a “Latest image” notice. This explicit request also works with `N=0` without enabling subsequent automatic prefetch. An empty Roam view offers a start button to request the first image. Moving left without an older image keeps the current image and does not generate past images. Leaving Roam ends the current UI wait, while submitted tasks continue. Failure or a pause stops the animation and displays the reason.
 
-后端或候选预设留空时使用当前列表的首项；开启缓冲时，显式选择会在保存时检查是否存在。设置为 `0` 时跳过存在性检查，即使选中的后端或预设已删除，也可以关闭补图。漫游使用已保存的共现预设生成候选，不使用「生成」页尚未提交的文本或草稿。
+## Prefetch and failure recovery
 
-进入漫游、切换图片和收到状态更新时，浏览器调用补图接口。后端依据数据库中的图片和任务状态检查缓冲，并在锁保护下每次至多提交一个预取任务，最多保留两个未完成漫游任务，让出图与下一张提示词准备重叠；达到缓冲目标或队列容量时等待后续事件。预取没有独立定时器、生图循环或启动后自行投喂；自动播放的计时仅触发既有下一张操作。离开漫游或关闭页面后，已经提交的任务仍可完成。
+An empty backend or candidate preset uses the first item in the current list. With buffering enabled, explicit selections are checked for existence when saving. Setting the count to `0` skips existence checks, allowing prefetch to be disabled even if the selected backend or preset has been deleted. Roam generates candidates using saved co-occurrence presets, outside the unsubmitted text or drafts on Generate.
 
-网络断连、HTTP 408/429/5xx 等暂时请求错误不会永久锁住浏览器预取；后续成功刷新、SSE 重连或回到漫游等既有事件可再次检查，成功后清除临时错误提示，不增加重试定时器。后端明确报告的预取失败、取消本次设置下的漫游任务或提交结果不确定时仍暂停当前设置版本的补图，保存漫游设置可解除暂停；手动任务取消和旧设置版本的漫游任务失败不会暂停新版本。设置保存于 主 SQLite 的 `roam_settings` 表，任务归属、候选标签历史快照与暂停状态保存于 SQLite。图片旁提示词 JSON 仍只含实际提交的正负文本。
+When entering Roam, changing images, or receiving status updates, the browser calls the buffer refill API. The backend checks image and task state in the database and, under a lock, submits at most one prefetch task per call. At most two unfinished roaming tasks are kept, allowing generation to overlap with preparation of the next prompt. Once the buffer target or queue capacity is reached, it waits for later events. Prefetch has no separate timer, generation loop, or automatic feeding after startup; the autoplay timer only triggers the existing next-image action. Submitted tasks can finish after leaving Roam or closing the page.
 
-## 浏览与自动播放
+Temporary request errors such as network disconnection or HTTP 408/429/5xx do not permanently lock browser prefetch. Existing events such as a later successful refresh, SSE reconnection, or returning to Roam can check again. A successful check clears the temporary error message, without adding a retry timer. An explicitly reported backend prefetch failure, cancellation of roaming tasks under the current settings, or an uncertain submission result still pauses refill for that settings revision. Saving roaming settings clears the pause. Cancellation of manual tasks and failure of roaming tasks from an older settings revision do not pause a newer revision. Settings are stored in the main SQLite database's `roam_settings` table. Task ownership, historical candidate tag snapshots, and pause state are stored in SQLite. The prompt JSON beside images still contains only the positive and negative text actually submitted.
 
-- 方向键操作：左键切较旧图片，右键切较新图片，漫游上键提高一级评价、下键降低一级评价（不喜欢 ↔ 未评价 ↔ 喜欢），到两端保持不变，长按不连跳；生成／喜欢大图上键喜欢。输入框与设置窗口中不拦截方向键。按钮直接选择评价，重复点击可撤回。
+## Browsing and autoplay
 
-- 漫游支持沉浸模式：全屏展示图片，右上悬浮菜单按「播放/暂停、毛玻璃、退出沉浸模式」排列，底部操作栏按「上一张、喜欢、不喜欢、下一张」排列，毛玻璃与页面开关同步；静止约 2 秒后隐藏，鼠标移动或触屏点按唤醒；独立应用仅在点按松手后唤醒，上下左右滑动保持隐藏。方向键与空格快捷键隐藏面板且不唤醒；Tab 可显示并聚焦操作按钮，操作栏悬停或持有键盘焦点时保持显示，Esc 退出。浏览器不支持原生全屏时铺满页面视口。
+- Arrow keys: Left moves to an older image, Right to a newer one. In Roam, Up raises the rating by one level and Down lowers it (Disliked ↔ Unrated ↔ Liked), staying at the endpoints. Holding a key does not repeat the action. In enlarged Generate / Liked views, Up likes the image. Arrow keys are not intercepted in inputs or settings dialogs. Buttons select a rating directly, and clicking again can undo it.
 
-- 漫游默认开启毛玻璃，漫游页右上角的毛玻璃按钮切换图片区域的模糊；本次页面内切图、切换栏目保留状态，刷新恢复开启。仅改变画面展示，不修改原图或提示词。
+- Roam supports immersive mode with a fullscreen image. The top-right floating menu contains Play/Pause, Blur, and Exit immersive mode; the bottom action bar contains Previous, Like, Dislike, and Next. Blur stays synchronized with the page switch. Controls hide after about 2 seconds of inactivity and reappear on mouse movement or a touch tap. In the standalone app, only releasing a tap wakes controls; vertical and horizontal swipes keep them hidden. Arrow keys and Space hide the panels without waking them. Tab reveals and focuses controls. The action bar stays visible while hovered or holding keyboard focus; Esc exits. When native fullscreen is unsupported, the view fills the page viewport.
 
-- 漫游页右上提供播放/暂停，右上“漫游选项”与「设置 → 漫游」均可设置每张展示秒数（1–600，默认 8），共用 SQLite 配置。漫游页右上按「播放/暂停、毛玻璃、沉浸模式、漫游选项」排列；漫游选项包含展示时间、偏好范围、漫游方式与推荐力度，展示时间行不放播放按钮；这些设置也可在设置页调整，底部仅保留切图和评价按钮。图片加载完成才计时；下一张未生成则等待，到图后继续。离开漫游、切后台或刷新暂停，暂停不取消已派发任务。自动播放时点击喜欢或提高至喜欢状态时暂停当前图，主动进入下一张后恢复播放并从加载完成重新计时；重复 ↑ 不再重置时间。普通与沉浸模式共用播放状态。
+- Blur is on by default in Roam. The top-right blur button toggles blur in the image area. Its state is retained while changing images and sections within the page and resets to on after a refresh. It only changes presentation, leaving original images and prompts unchanged.
 
-- 漫游保留上次观看位置；刷新页面或从喜欢返回仍展示该图。向右无图时按需生成，在漫游标题右侧显示加载图标，完成后自动前进；向左无图时停留。
+- Roam provides Play/Pause at the top right. Both Roam options and Settings → Roam set each image's display duration (1–600 seconds, default 8), sharing the same SQLite configuration. The top-right controls are ordered Play/Pause, Blur, Immersive mode, and Roam options. Roam options contains display time, preference scope, roaming mode, and recommendation strength, without a play button in the display-time row. These settings are also available in Settings; the bottom bar only contains navigation and rating buttons. Timing begins after the image loads. If the next image is still being generated, playback waits and then continues when it arrives. Leaving Roam, moving the page to the background, or refreshing pauses playback without canceling dispatched tasks. During autoplay, clicking Like or raising the rating to Liked pauses on the current image. Explicitly moving to the next image resumes playback and restarts timing after loading; repeated ↑ presses no longer reset the timer. Normal and immersive modes share playback state.
+
+- Roam retains the last viewing position. A refresh or a return from Liked still displays that image. Moving right with no available image generates on demand, shows a loading icon beside the Roam title, and advances automatically on completion. Moving left without an older image stays in place.

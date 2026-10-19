@@ -1,33 +1,35 @@
-# 设置与清理
+# Settings and Cleanup
 
-[文档导航](../README.md) · [设置接口](../dev/reference/api/settings.md)
+[简体中文](settings.zh-CN.md)
 
-设置分为「通用、漫游、后端、历史」；数据位置在通用，任务记录和图片清理在历史。
+[Documentation](../README.md) · [Settings API](../dev/reference/api/settings.md)
 
-## 通用设置
+Settings has General, Roam, Backend, and History sections. General shows the data location; History contains task records and image cleanup.
 
-「设置 → 通用」提供“跟随系统 / 简体中文 / English”语言选择，默认跟随浏览器首选语言，未支持的语言使用英文；切换立即生效并保存于 SQLite，同一应用的其他页面实时同步。界面语言不改变提示词、标签原名或用户命名。添加新语言的维护入口见 [国际化](../dev/issues/i18n.md)。
+## General settings
 
-「设置 → 通用」提供“跟随系统 / 黑色 / 白色”主题选择，立即生效并保存于 `data/db/pictide.sqlite3`，刷新和重启后保留；同一应用的其他已打开页面通过实时事件同步。默认跟随系统，已有明确选择保留；系统外观变化实时生效，所有栏目及浮层共用主题。接口说明见 [通用设置](../dev/issues/general-settings.md)。
+Settings → General offers System / 简体中文 / English for the interface language. The default follows the browser's preferred language, falling back to English for unsupported languages. Changes apply immediately, are saved in SQLite, and synchronize live to other pages of the same application. Interface language does not change prompts, original tag names, or user-defined names. See [internationalization](../dev/issues/i18n.md) for the maintenance entry point for new languages.
 
-「设置 → 通用」提供默认开启的「图片切换动效」开关，控制漫游及生成／喜欢大图的淡入效果，刷新后保留；系统开启减少动态效果时不播放。详见 [通用设置](../dev/issues/general-settings.md)。
+Settings → General offers System / Dark / Light themes. Changes apply immediately, are saved in `data/db/pictide.sqlite3`, and persist across refreshes and restarts. Other open pages of the same application synchronize through live events. The default follows the system; existing explicit choices are retained. Changes in system appearance apply live, and all sections and overlays share the theme. See [general settings](../dev/issues/general-settings.md) for API details.
 
-## 任务记录
+Settings → General includes an Image transition animation switch, enabled by default, controlling fade-ins in Roam and the enlarged Generate / Liked views. The choice survives refreshes; animations do not play when the system requests reduced motion. See [general settings](../dev/issues/general-settings.md).
 
-任务历史保存在 SQLite，默认每页 15 条，可翻页、输入页码跳转、展开详情或逐条取消；实时更新保持当前页。生成页的「取消待执行任务」仅取消未执行的生成页任务，保留漫游预取及已在后端执行的任务。
+## Task records
 
-## 历史图片清理
+Task history is stored in SQLite, with 15 entries per page by default. You can page through results, enter a page number, expand details, or cancel individual tasks. Live updates preserve the current page. “Cancel pending tasks” on Generate only cancels its tasks that have not started; roaming prefetch and tasks already executing on the backend are retained.
 
-「设置 → 历史 → 图片清理」设置未标记喜欢的图片保留天数，默认 **1 天（24 小时）**，`0` 关闭新的过期清理。期限从图片完成并进入 Feed 起计算；任意用户已标记喜欢的图片受到保护，其余过期图片按需清理。取消喜欢后仍按原入库时间判断，已经过期的图片可能在下一次触发时移除。
+## Historical image cleanup
 
-应用启动、读取图片列表或图片、提交生图和评价时按需检查；保存设置立即执行一次检查。没有定时任务、清理轮询或独立后台服务。时间过期检查至少间隔 60 秒，开启的漫游数量上限在这些操作中继续检查，避免新图片在间隔内持续超限；两种清理合计每次最多标记 100 张并回收 100 组待删除文件，避免大图库阻塞操作。未打开应用或没有触发操作时不执行清理。
+Settings → History → Image cleanup sets the retention period for images that are not liked. The default is **1 day (24 hours)**; `0` disables new expiration cleanup. The period starts when an image completes and enters Feed. An image liked by any user is protected; other expired images are cleaned up on demand. After unliking, age is still measured from the original insertion time, so an already-expired image may be removed at the next trigger.
 
-清理移除 Pictide `data/images` 中的图片及同名提示词 JSON，Feed 同步隐藏；生成记录、评价历史和防重复提交记录保留。ComfyUI 远端文件、配置、标签库及备份目录不受影响。已清理的图片不能通过旧链接或重试任务恢复。
+Checks run on demand at application startup, when reading image lists or images, submitting generation, or rating images. Saving settings runs an immediate check. There is no scheduled task, cleanup polling, or separate background service. Time-based expiration checks are at least 60 seconds apart. An enabled roaming history count limit continues to be checked during these operations so that new images do not keep exceeding it between expiration checks. Together, both cleanup methods mark at most 100 images and reclaim at most 100 sets of pending files per trigger to avoid blocking operations on large collections. Cleanup does not run while the application is closed or without a triggering operation.
 
-文件被占用或暂时无法删除时，待删除记录持久保存在数据库，下次触发继续回收；即使关闭新的过期清理，先前已确定删除的文件仍会重试。路径越界、符号链接及 Windows Junction 均拒绝删除，活跃图片共享的文件及 JSON 也受保护。设置保存在 `data/history-cleanup.json`；设置文件损坏时暂停新的过期清理，可以在窗口重新保存修复。
+Cleanup removes images and their same-named prompt JSON from Pictide's `data/images`, and hides them from Feed. Generation records, rating history, and duplicate-submission protection records are retained. Remote ComfyUI files, configuration, tag libraries, and backup directories are unaffected. Cleaned-up images cannot be recovered through old links or task retries.
 
-## 继续阅读
+When files are in use or temporarily cannot be deleted, pending deletions persist in the database and are retried at the next trigger. Files already marked for deletion are still retried even after new expiration cleanup is disabled. Deletion is refused for paths outside the allowed directory, symbolic links, and Windows Junctions. Files and JSON shared by active images are also protected. Settings are stored in `data/history-cleanup.json`; if the settings file is corrupted, new expiration cleanup pauses and can be repaired by saving again in the settings dialog.
 
-- [漫游范围、方式和预取](roam.md)
-- [后端与工作流编辑](getting-started.md#接入-comfyui)
-- [数据备份与恢复](backup.md#备份与恢复)
+## Continue reading
+
+- [Roaming scope, modes, and prefetch](roam.md)
+- [Editing backends and workflows](getting-started.md#接入-comfyui)
+- [Data backup and recovery](backup.md#备份与恢复)

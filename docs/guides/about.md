@@ -1,41 +1,43 @@
-# 认识 Pictide
+# About Pictide
 
-[用户文档](../README.md#用户文档) · [开始使用](getting-started.md)
+[简体中文](about.zh-CN.md)
 
-Pictide 是一个会学习个人审美的生成式图片漫游工具，帮助用户轻松发现、引导并收藏喜欢的画面。
+[User documentation](../README.md#用户文档) · [Getting started](getting-started.md)
 
-## 满足什么需求
+Pictide is a generative image exploration tool that learns your personal aesthetic, helping you discover, guide, and collect images you enjoy.
 
-“我想看一些喜欢的画面，但不一定知道该怎么描述。”
+## What it helps with
 
-用户可以直接开始漫游，通过喜欢、不喜欢和锚点，逐渐引导后续画面的方向。它适合边浏览边发现偏好、寻找视觉灵感，也允许用户随时输入明确的提示词进行生成。
+“I want to see images I like, even when I do not know how to describe them.”
 
-## 发现、引导、收藏
+You can start roaming right away and gradually guide future images through likes, dislikes, and anchors. It supports discovering your preferences and finding visual inspiration as you browse, while also letting you enter specific prompts whenever you have a clear idea.
 
-| 体验 | Pictide 如何支持 |
+## Discover, guide, collect
+
+| Experience | How Pictide supports it |
 | --- | --- |
-| 发现 | 共现生成提供画面组合，推荐系统结合个人偏好挑选候选，让浏览持续带来新的画面。 |
-| 引导 | 用喜欢和不喜欢表达偏好，用锚点保留画面元素，用漂流、顺流、停泊控制变化。 |
-| 收藏 | 留下偶然遇到的好画面，通过标签筛选和偏好评分排序浏览喜欢的图片。 |
+| Discover | Co-occurrence generation supplies image concepts, and the recommendation system selects candidates using your preferences to keep browsing fresh. |
+| Guide | Express preferences through likes and dislikes, preserve image elements with anchors, and control variation through Drift, Flow, and Anchor modes. |
+| Collect | Keep images you happen to love, then browse your likes using tag filters and preference-score sorting. |
 
-## 漫游是体验核心
+## Roaming is the core experience
 
-漫游连接生成、浏览和反馈，让用户把注意力放在画面上。生成、提示词和设置提供对这段体验的控制：
+Roaming connects generation, browsing, and feedback so you can focus on images. Generation, prompts, and settings give you control over this experience:
 
-| 栏目 | 在产品中的作用 |
+| Section | Role in the product |
 | --- | --- |
-| 漫游 | 发现画面、表达偏好并调整探索方向。 |
-| 生成 | 按明确想法或预设主动生成图片。 |
-| 喜欢 | 保存和整理值得留下的画面。 |
-| 提示词 | 管理固定词与共现预设，预览可能的画面组合。 |
-| 设置 | 配置生图后端、漫游方式和数据管理。 |
+| Roam | Discover images, express preferences, and guide exploration. |
+| Generate | Generate images from a specific idea or preset. |
+| Liked | Save and organize images worth keeping. |
+| Prompts | Manage fixed terms and co-occurrence presets, and preview possible combinations. |
+| Settings | Configure generation backends, roaming behavior, and data management. |
 
-## 本地与个人
+## Local and personal
 
-图片、词库和偏好保存在本地，用户掌握自己的生成资源与数据。ComfyUI 提供生图能力，Pictide 组织候选、推荐和浏览体验。当前同一实例共用图库和偏好；局域网访问仍使用这套数据，没有多用户账号隔离。
+Images, tag libraries, and preferences are stored locally, giving you control over your generation resources and data. ComfyUI provides image generation; Pictide organizes candidates, recommendations, and browsing. Currently, one instance shares a single image collection and set of preferences. LAN access uses the same data, with no separate user accounts.
 
-## 体验目标
+## Experience goals
 
-用户能轻松遇到喜欢的画面，同时持续获得新鲜感。推荐应帮助探索贴近个人审美，锚点和漫游方式则让用户保留对方向与变化的控制。
+Help you easily encounter images you enjoy while continuing to find something fresh. Recommendations should bring exploration closer to your aesthetic, while anchors and roaming modes keep direction and variation under your control.
 
-继续阅读：[漫游](roam.md) · [生成与喜欢](images.md) · [提示词与预设](prompts.md)
+Continue reading: [Roam](roam.md) · [Generation and likes](images.md) · [Prompts and presets](prompts.md)

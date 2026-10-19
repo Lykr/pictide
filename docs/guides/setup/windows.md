@@ -1,52 +1,54 @@
-# Windows 安装与启动
+# Windows Installation and Startup
 
-[安装与接入](../getting-started.md) · [文档导航](../../README.md)
+[简体中文](windows.zh-CN.md)
 
-先查看[启动前准备](../getting-started.md#启动前准备)，以下命令均在项目根目录的 PowerShell 中执行。
+[Installation and backend setup](../getting-started.md) · [Documentation](../../README.md)
 
-## 便携版本
+Read [Before you start](../getting-started.md#启动前准备) first. Run the commands below in PowerShell at the project root.
 
-解压对应系统与 CPU 架构的发行包，双击 `start.cmd`。就绪后自动打开系统默认浏览器，关闭启动窗口或按 Ctrl+C 停止。个人数据保存在包内 data，下一次启动继续使用。
+## Portable edition
 
-Windows 真实便携产物已验证。首次使用到[后端设置](../getting-started.md#接入-comfyui)连接 ComfyUI。启动参数支持 `--port`、`--data-dir`、`--lan` 和 `--no-browser`；桌面环境可自动打开浏览器，服务器环境通过终端显示的地址访问。
+Extract the release package for your operating system and CPU architecture, then double-click `start.cmd`. Once ready, it opens the system's default browser automatically. Close the launcher window or press Ctrl+C to stop. Personal data is stored in the package's data directory and reused on the next startup.
 
-## 源码启动
+An actual Windows portable build has been verified. On first use, connect ComfyUI in [Backend settings](../getting-started.md#接入-comfyui). Supported startup parameters are `--port`, `--data-dir`, `--lan`, and `--no-browser`. Desktop environments can open a browser automatically; on a server, use the address shown in the terminal.
 
-已准备好前端的目录，双击 `start.cmd`。打开 http://127.0.0.1:8189 ，按 Ctrl+C 或关闭启动窗口停止应用。接下来[连接 ComfyUI](../getting-started.md#接入-comfyui)。
+## Run from source
 
-启动器会创建 `data/runtime/venv` 并安装后端依赖，也会尝试寻找本机已有的 Codex Python 运行时。需要指定 Python 时：
+In a directory with the frontend already built, double-click `start.cmd`. Open http://127.0.0.1:8189 and press Ctrl+C or close the launcher window to stop the application. Next, [connect ComfyUI](../getting-started.md#接入-comfyui).
+
+The launcher creates `data/runtime/venv`, installs backend dependencies, and also attempts to find an existing local Codex Python runtime. To specify Python:
 
 ```powershell
 $env:PICTIDE_PYTHON = 'C:\Path\To\python.exe'
 .\start.cmd
 ```
 
-## 从源码准备
+## Prepare from source
 
-详见[Windows 开发与构建](../../dev/setup/windows.md#从源码准备)。
+See [Windows development and builds](../../dev/setup/windows.md#从源码准备).
 
-## 端口与数据目录
+## Port and data directory
 
 ```powershell
 .\start.cmd -Port 8191 -DataDir 'E:\PictideData'
 ```
 
-开发验证使用独立端口与数据：`.\start.cmd -Port 8191 -DataDir .\dev\verification\example\data`。数据目录选择规则见[数据位置](../backup.md#数据位置)。
+Use a separate port and data directory for development verification: `.\start.cmd -Port 8191 -DataDir .\dev\verification\example\data`. See [data location](../backup.md#数据位置) for directory selection rules.
 
-## 局域网访问
+## LAN access
 
 ```powershell
 .\start.cmd -Lan
 ```
 
-启动窗口会列出本机局域网地址。Windows 网络需为可信的“专用网络”；如需放行防火墙，在管理员 PowerShell 执行：
+The launcher window lists the host's LAN addresses. The Windows network must be a trusted Private network. If a firewall rule is needed, run this in an administrator PowerShell:
 
 ```powershell
 New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8189 -Profile Private -RemoteAddress LocalSubnet
 ```
 
-使用其他端口时同步修改规则。手机访问与共享范围见[局域网与主屏幕应用](../access.md)。
+Update the rule if you use another port. See [LAN access and Home Screen app](../access.md) for phone access and data sharing.
 
-## 构建便携包
+## Build a portable package
 
-详见[Windows 开发与构建](../../dev/setup/windows.md#构建便携包)。
+See [Windows development and builds](../../dev/setup/windows.md#构建便携包).

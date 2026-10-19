@@ -1,51 +1,53 @@
-# macOS 安装与启动
+# macOS Installation and Startup
 
-[安装与接入](../getting-started.md) · [文档导航](../../README.md)
+[简体中文](macos.zh-CN.md)
 
-先查看[启动前准备](../getting-started.md#启动前准备)，以下命令均在项目根目录的终端中执行。
+[Installation and backend setup](../getting-started.md) · [Documentation](../../README.md)
 
-## 便携版本
+Read [Before you start](../getting-started.md#启动前准备) first. Run the commands below in a terminal at the project root.
 
-解压对应系统与 CPU 架构的发行包，双击 `start.command`。就绪后自动打开系统默认浏览器，关闭启动窗口或按 Ctrl+C 停止。个人数据保存在包内 data，下一次启动继续使用。
+## Portable edition
 
-已提供本机构建与启动路径；原生运行尚待该系统验证。首次使用到[后端设置](../getting-started.md#接入-comfyui)连接 ComfyUI。启动参数支持 `--port`、`--data-dir`、`--lan` 和 `--no-browser`；桌面环境可自动打开浏览器，服务器环境通过终端显示的地址访问。
+Extract the release package for your operating system and CPU architecture, then double-click `start.command`. Once ready, it opens the system's default browser automatically. Close the launcher window or press Ctrl+C to stop. Personal data is stored in the package's data directory and reused on the next startup.
 
-## 源码启动
+Native build and startup paths are provided; native execution still needs verification on this operating system. On first use, connect ComfyUI in [Backend settings](../getting-started.md#接入-comfyui). Supported startup parameters are `--port`, `--data-dir`, `--lan`, and `--no-browser`. Desktop environments can open a browser automatically; on a server, use the address shown in the terminal.
 
-已准备好前端的目录，双击 `start.command`。打开 http://127.0.0.1:8189 ，按 Ctrl+C 或关闭启动窗口停止应用。接下来[连接 ComfyUI](../getting-started.md#接入-comfyui)。
+## Run from source
 
-如果归档文件丢失了执行权限，先执行：
+In a directory with the frontend already built, double-click `start.command`. Open http://127.0.0.1:8189 and press Ctrl+C or close the launcher window to stop the application. Next, [connect ComfyUI](../getting-started.md#接入-comfyui).
+
+If the archive lost executable permissions, first run:
 
 ```bash
 chmod +x start.sh start.command
 ```
 
-启动器查找 `python3`，创建 `data/runtime/venv` 并安装后端依赖；没有合适 Python 时需先安装。需要指定 Python 时：
+The launcher looks for `python3`, creates `data/runtime/venv`, and installs backend dependencies. Install a suitable Python first if none is available. To specify Python:
 
 ```bash
 PICTIDE_PYTHON=/path/to/python3 ./start.command
 ```
 
-## 从源码准备
+## Prepare from source
 
-详见[macOS 开发与构建](../../dev/setup/macos.md#从源码准备)。
+See [macOS development and builds](../../dev/setup/macos.md#从源码准备).
 
-## 端口与数据目录
+## Port and data directory
 
 ```bash
 ./start.command --port 8191 --data-dir "$HOME/PictideData"
 ```
 
-开发验证使用独立端口与数据：`./start.command --port 8191 --data-dir ./dev/verification/example/data`。`./start.command --help` 查看参数；数据目录选择规则见[数据位置](../backup.md#数据位置)。
+Use a separate port and data directory for development verification: `./start.command --port 8191 --data-dir ./dev/verification/example/data`. Run `./start.command --help` to view parameters. See [data location](../backup.md#数据位置) for directory selection rules.
 
-## 局域网访问
+## LAN access
 
 ```bash
 ./start.command --lan
 ```
 
-使用本机的局域网 IP 访问。若系统防火墙询问是否允许 Python 接受传入连接，按可信局域网使用场景允许；脚本不会修改防火墙。手机访问与共享范围见[局域网与主屏幕应用](../access.md)。
+Access the application using the host's LAN IP. If the system firewall asks whether Python may accept incoming connections, allow it for your trusted LAN use. The script does not modify the firewall. See [LAN access and Home Screen app](../access.md) for phone access and data sharing.
 
-## 构建便携包
+## Build a portable package
 
-详见[macOS 开发与构建](../../dev/setup/macos.md#构建便携包)。
+See [macOS development and builds](../../dev/setup/macos.md#构建便携包).
