@@ -12,9 +12,12 @@ Produce a ready-to-use Pictide statistical library from raw Parquet metadata wit
 | --- | --- |
 | `corpus/download.py` | Optional metadata downloader with a pinned revision and SHA-256 verification |
 | `corpus/importer.py` | Deduplication, tag counts, pair counts, PMI, and finished SQLite export |
-| `corpus/profiles/compact.json` | Example processing profile; adjust it for your dataset |
+| `corpus/portable.py`, `corpus/resources.json` | Portable resource preparation and pinned source/model file checksums |
+| `corpus/profiles/compact.json` | Default portable-build profile; also usable for manual processing |
 | `corpus/requirements.txt` | Offline dependencies: PyArrow, SciPy, and NumPy |
-| `dev/datasets/danbooru-2026/` | Raw files, download manifest, intermediate state, libraries, and reports |
+| `dev/datasets/danbooru-2026/` | Long-lived raw files and download manifest; manual processing examples also write outputs here |
+| `dev/cache/portable/` | Portable-build intermediate state, completed libraries, and reports |
+| `dev/models/minilm/<model-revision>/` | Long-lived pinned recommendation model and tokenizer files |
 | `dev/runtime/importer/` | Local offline processing environment |
 | `data/libraries/` | Read-only libraries selected by the application |
 
@@ -25,6 +28,12 @@ python -m pip install -r corpus/requirements.txt
 ```
 
 The importer processes existing local files. Downloading and environment installation are separate steps. Preserve raw data and write each finished library to a new path under `dev/datasets/`; use the application to [upload or select the result](../guides/prompts.md#add-and-switch-libraries).
+
+## Portable build resources
+
+`scripts/build_portable.py` orchestrates downloading and importing with the compact profile; it uses a separate builder environment and does not read or write the development application's `data/`. See the native build instructions for [Windows (Chinese)](setup/windows.md#构建便携包), [Linux (Chinese)](setup/linux.md#构建便携包), or [macOS (Chinese)](setup/macos.md#构建便携包).
+
+Raw shards and `download.sqlite3` remain in `dev/datasets/danbooru-2026/`. Missing shards are downloaded at the pinned source revision; statistics and completed libraries go to `dev/cache/portable/`, while pinned MiniLM files remain in `dev/models/minilm/<model-revision>/`. Clearing the build cache preserves raw data and model files for local recomputation. Valid library and model files allow a build without network requests. Change `--dataset-dir`, `--cache-dir`, `--models-dir` (default: `dev/models/`), or `--profile` to use other locations or processing settings. The [build cache record (Chinese)](issues/portable-build-cache.md) defines fingerprints and file verification. Manual processing below remains available for other library specifications.
 
 ## One-command processing
 

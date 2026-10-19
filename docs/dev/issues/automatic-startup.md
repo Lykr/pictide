@@ -4,7 +4,7 @@
 
 将程序、运行依赖、前端、精简词库和 MiniLM 一起交付，让用户解压后双击启动，达到能够完整漫游的就绪状态。
 
-目录式便携发行方案已确认，按下述接口实施。词库上传与选择已完成，详见[词库管理](library-selection.md)。
+目录式便携发行方案已实施。发行资源准备现采用[独立发行资源与构建缓存](portable-build-cache.md)，由固定源版本和处理配置生成词库、准备 MiniLM；下文的运行时初始化约定继续适用。词库上传与选择详见[词库管理](library-selection.md)。
 
 ## 架构
 
@@ -25,7 +25,7 @@ flowchart TD
 
 | 组成 | 接口及职责 |
 | --- | --- |
-| 发行构建 `scripts/build_portable.py` | `python scripts/build_portable.py --source-data-dir PATH --output-dir PATH`：读取源数据目录中当前选中的词库与 MiniLM，导出干净资源，打包当前已构建前端和后端，生成便携目录及 ZIP；输出目录使用新目录。 |
+| 发行构建 `scripts/build_portable.py` | `python scripts/build_portable.py`：从独立 datasets、长期 models 与构建缓存准备干净词库和固定 MiniLM，打包已构建前端与后端，生成便携目录及 ZIP。支持 `--dataset-dir`、`--cache-dir`、`--models-dir`、`--profile` 与 `--output-dir`；目录与缓存规则见[发行资源准备](portable-build-cache.md)。 |
 | 平台启动入口 | Windows 双击 `start.cmd`；Linux 执行 `start.sh`；macOS 双击 `start.command`。入口仅运行随包程序并传递参数。 |
 | Host 启动 | 沿用 `--port`、`--data-dir`、`--host`；增加 `--lan` 作为局域网入口、`--no-browser` 用于验证。便携启动默认就绪后打开浏览器，源码入口保留现有默认行为。 |
 | 应用编排初始化 | 新增 `PictideApplication.prepare_startup(paths, seed_dir)`：在服务组装前补齐所选数据目录中缺失的默认词库和模型；预设复用候选模块现有默认值。已有个人预设、所选词库、模型和业务数据保留。 |
@@ -49,10 +49,10 @@ Pictide/
     db/pictide.sqlite3             首次启动生成，业务数据
 ```
 
-- 随包词库仅含 `tags/correlations/dataset` 和索引，默认使用当前精简版；推荐模型只导出当前编码器实际需要的 ONNX、tokenizer 配套文件。
+- 随包词库仅含 `tags/correlations/dataset` 和索引，默认按 `corpus/profiles/compact.json` 构建；推荐模型只导出当前编码器实际需要的 ONNX、tokenizer 配套文件。
 - 发行资源与个人数据分开，包内种子用于首次初始化和指定新数据目录；后续启动沿用用户已有资源。压缩包包含种子，个人运行副本在首次启动时生成。
 - 前端依赖安装、构建和 PyInstaller 安装属于开发构建流程；所需打包依赖统一列在 `backend/requirements-release.txt`。
-- 发行导出读取统计与模型，个人后端配置、密钥、图片、评价和偏好留在本地数据目录。
+- 构建仅使用独立发行资源，不读写开发运行目录；随包个人预设在首次启动时初始化。
 - HTTP 接口保持现有契约；候选、推荐与任务继续由应用编排协调。ComfyUI 和生图模型由用户配置。
 
 ## 调用和数据流
@@ -60,7 +60,7 @@ Pictide/
 ```mermaid
 sequenceDiagram
     participant Dev as 发行构建
-    participant Source as 源词库 / 模型 / 前端成品
+    participant Source as 独立词库缓存 / 长期模型 / 前端成品
     participant Package as 便携目录与 ZIP
     actor User as 用户
     participant Host as Host

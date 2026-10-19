@@ -1,0 +1,89 @@
+{
+  "dataset": {
+    "source": "Shio-Koube/Danbooru-2026-parquet-metadata",
+    "revision": "203df76a018bd5d463c37666c394b88b5acaa202",
+    "files": [
+      {
+        "path": "output_part_00.parquet",
+        "bytes": 496771435,
+        "sha256": "ec035d76f7ebd4c13f4b6bb33c21ef033e37d104a6eaeadf8def66eac6a54c4a"
+      },
+      {
+        "path": "output_part_01.parquet",
+        "bytes": 534679045,
+        "sha256": "5b2bb30db0eccdf848f68443f0d1c4fc039be48257453a8b5d0dd4b3a390250b"
+      },
+      {
+        "path": "output_part_02.parquet",
+        "bytes": 591608892,
+        "sha256": "10d78e6c14a3863400ac2a73a44111a5caae3df576301e987fc629f9832d591d"
+      },
+      {
+        "path": "output_part_03.parquet",
+        "bytes": 636837865,
+        "sha256": "f56152383f93e6991d959352c0ef1229d04909ff7aaa52dad03bbb110173c390"
+      },
+      {
+        "path": "output_part_04.parquet",
+        "bytes": 648045634,
+        "sha256": "1ea8b308cd34093f4c0b84297cc83df8c2ddd39f47a86a2ca7468eaaa81688cd"
+      },
+      {
+        "path": "output_part_05.parquet",
+        "bytes": 652247167,
+        "sha256": "6bd217f3d1bfb1b6359a8e6510834a14e33aa733cdad2ac489468889201b055c"
+      },
+      {
+        "path": "output_part_06.parquet",
+        "bytes": 673454665,
+        "sha256": "dd7f313eaf62f64959845c3246fdf24fecfea1b521cf9f765793d52ad2847e0c"
+      },
+      {
+        "path": "output_part_07.parquet",
+        "bytes": 678362123,
+        "sha256": "ddf62defce129b12d967ac26e4eea540630bea713fa3721f2e461b9138b8fac3"
+      },
+      {
+        "path": "output_part_08.parquet",
+        "bytes": 676711652,
+        "sha256": "c160c8088cee380a7f7af86a9d7bebc6f44311b3ad0bb6707c51a722a9362ad8"
+      },
+      {
+        "path": "output_part_09.parquet",
+        "bytes": 656964866,
+        "sha256": "165c55634266be99a4429091fef48ab3e6db33acfeaad7107035ddfe5ce65f2b"
+      }
+    ]
+  },
+  "model": {
+    "source": "Qdrant/all-MiniLM-L6-v2-onnx",
+    "revision": "d13954661f83248295ba75c1ed411eef3b7b936e",
+    "files": [
+      {
+        "path": "model.onnx",
+        "bytes": 90387630,
+        "sha256": "bbd7b466f6d58e646fdc2bd5fd67b2f5e93c0b687011bd4548c420f7bd46f0c5"
+      },
+      {
+        "path": "tokenizer.json",
+        "bytes": 711649,
+        "sha256": "851ca67100d372ca3ae031a6abd168f53489eebfd7d89523f35c5c9b4d372c3c"
+      },
+      {
+        "path": "config.json",
+        "bytes": 650,
+        "sha256": "1b4d8e2a3988377ed8b519a31d8d31025a25f1c5f8606998e8014111438efcd7"
+      },
+      {
+        "path": "tokenizer_config.json",
+        "bytes": 1412,
+        "sha256": "abda01c8c14c5151ae498aceb30db406d6b91242c394fd88d3b6fd5a63a101e6"
+      },
+      {
+        "path": "special_tokens_map.json",
+        "bytes": 695,
+        "sha256": "5d5b662e421ea9fac075174bb0688ee0d9431699900b90662acd44b2a350503a"
+      }
+    ]
+  }
+}

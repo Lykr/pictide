@@ -1,7 +1,6 @@
 """Build a native directory-style Pictide portable package."""
 import argparse
 from contextlib import closing
-import hashlib
 import importlib.metadata as metadata
 import json
 import os
@@ -20,24 +19,15 @@ sys.path.insert(0, str(ROOT))
 from backend import __version__
 from backend.paths import DataPaths
 from backend.recommand.encoder import MiniLMEncoder
+from corpus.download import sha256 as digest
+from corpus.portable import prepare_resources
 
 
-def digest(path):
-    with path.open('rb') as handle:
-        return hashlib.file_digest(handle, 'sha256').hexdigest()
-
-
-def export_resources(source_data, seed):
-    """Export public statistics and only the active encoder snapshot."""
-    with closing(sqlite3.connect(source_data.candidate_database.as_uri() + '?mode=ro', uri=True)) as db:
-        row = db.execute('SELECT filename FROM library_selection WHERE id=1').fetchone()
-    if not row:
-        raise RuntimeError('Select a ready vocabulary before building.')
-    filename = row[0]
-    library = source_data.libraries / filename
-    if Path(filename).name != filename or not library.is_file():
-        raise RuntimeError('The selected vocabulary is unavailable.')
-    target = seed / 'libraries' / filename
+def export_resources(resources, seed):
+    """Export only the prepared public library and fixed encoder snapshot."""
+    seed = Path(seed)
+    library = resources.library
+    target = seed / 'libraries' / library.name
     target.parent.mkdir(parents=True)
     with closing(sqlite3.connect(library.as_uri() + '?mode=ro', uri=True)) as source, closing(sqlite3.connect(target)) as db:
         source.backup(db)
@@ -48,13 +38,14 @@ def export_resources(source_data, seed):
         db.execute('VACUUM')
         if db.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
             raise RuntimeError('Vocabulary integrity check failed.')
-    encoder = MiniLMEncoder(source_data.models / 'minilm')
+    encoder = MiniLMEncoder(resources.model_dir)
     directory, files = encoder._files()
     model_target = seed / 'models/minilm'
     model_target.mkdir(parents=True)
     for source in files:
         shutil.copyfile(source, model_target / source.name)
-    manifest = {'version': __version__, 'model_sha256': digest(directory / 'model.onnx'), 'files': []}
+    manifest = {'version': __version__, 'provenance': resources.provenance,
+                'model_sha256': digest(directory / 'model.onnx'), 'files': []}
     for path in sorted(seed.rglob('*')):
         if path.is_file():
             manifest['files'].append({'path': path.relative_to(seed).as_posix(), 'bytes': path.stat().st_size, 'sha256': digest(path)})
@@ -103,9 +94,10 @@ def copy_licenses(destination):
             shutil.copyfile(installer.locate_file(file), target)
 
 
-def build(source_data_dir, output_dir):
+def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
+          cache_dir=ROOT / 'dev/cache/portable', models_dir=ROOT / 'dev/models',
+          profile=ROOT / 'corpus/profiles/compact.json'):
     started = time.perf_counter()
-    source_data = DataPaths(source_data_dir)
     build_paths = DataPaths(ROOT / 'dev/build').configure_runtime()
     output = Path(output_dir).expanduser().resolve()
     if output.exists():
@@ -113,6 +105,8 @@ def build(source_data_dir, output_dir):
     front = ROOT / 'web/dist'
     if not (front / 'index.html').is_file():
         raise RuntimeError('Build the frontend before packaging.')
+    resources = prepare_resources(dataset_dir, cache_dir, profile, models_dir=models_dir,
+                                  progress=lambda text: print(text, flush=True))
     output.mkdir(parents=True)
     package = output / 'Pictide'
     runtime = package / 'data/runtime'
@@ -120,7 +114,7 @@ def build(source_data_dir, output_dir):
     with tempfile.TemporaryDirectory(prefix='portable-build-', dir=build_paths.tmp) as working:
         working = Path(working)
         seed = working / 'resources'
-        manifest = export_resources(source_data, seed)
+        manifest = export_resources(resources, seed)
         print('Resources exported; packaging the native runtime.', flush=True)
         command = [sys.executable, '-m', 'PyInstaller', '--onedir', '--noconfirm', '--name', 'Pictide',
                    '--distpath', str(runtime), '--workpath', str(working / 'work'), '--specpath', str(working),
@@ -141,7 +135,7 @@ def build(source_data_dir, output_dir):
         launcher = package / ('start.command' if sys.platform == 'darwin' else 'start.sh')
         launcher.write_text('#!/bin/sh\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$root/data/runtime/pictide/Pictide" "$@"\n', encoding='utf-8')
         launcher.chmod(0o755)
-    (package / 'README.txt').write_text('Pictide\n\nRun ' + launcher.name + ' to open Pictide.\nConfigure your ComfyUI backend in Settings.\nClose the launcher window or press Ctrl+C to stop.\nData stays in data/.\nUse --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
+    (package / 'README.txt').write_text('Pictide\n\nRun ' + launcher.name + ' to open Pictide.\nConfigure an image API in Settings.\nClose the launcher window or press Ctrl+C to stop.\nData stays in data/.\nUse --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
     notices = package / 'licenses'
     notices.mkdir()
     copy_licenses(notices)
@@ -154,7 +148,8 @@ def build(source_data_dir, output_dir):
                 zip.write(path, path.relative_to(output))
     result = {'directory': str(package), 'archive': str(archive), 'archive_bytes': archive.stat().st_size,
               'unpacked_bytes': sum(p.stat().st_size for p in package.rglob('*') if p.is_file()),
-              'build_seconds': round(time.perf_counter() - started, 2)}
+              'build_seconds': round(time.perf_counter() - started, 2),
+              'resources': manifest['provenance']}
     (output / 'build-report.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
     print(json.dumps(result), flush=True)
     return result
@@ -162,8 +157,16 @@ def build(source_data_dir, output_dir):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--source-data-dir', required=True)
+    parser.add_argument('--dataset-dir', type=Path, default=ROOT / 'dev/datasets/danbooru-2026',
+                        help='Persistent raw dataset and download manifest directory')
+    parser.add_argument('--cache-dir', type=Path, default=ROOT / 'dev/cache/portable',
+                        help='Rebuildable vocabulary cache directory')
+    parser.add_argument('--models-dir', type=Path, default=ROOT / 'dev/models',
+                        help='Persistent pinned recommendation model directory')
+    parser.add_argument('--profile', type=Path, default=ROOT / 'corpus/profiles/compact.json',
+                        help='Vocabulary processing profile')
     parser.add_argument('--output-dir', default=ROOT / 'releases' / f'pictide-{__version__}-{sys.platform}-{time.strftime("%Y%m%d-%H%M%S")}',
                         help='New release directory (default: releases/<version-platform-time>).')
     options = parser.parse_args()
-    build(options.source_data_dir, options.output_dir)
+    build(options.output_dir, dataset_dir=options.dataset_dir, cache_dir=options.cache_dir,
+          models_dir=options.models_dir, profile=options.profile)

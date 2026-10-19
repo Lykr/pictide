@@ -12,9 +12,12 @@
 | --- | --- |
 | `corpus/download.py` | 可选的元数据下载器，固定版本并校验 SHA-256 |
 | `corpus/importer.py` | 去重、词频、共现次数、PMI 与成品 SQLite 导出 |
-| `corpus/profiles/compact.json` | 处理配置示例，可按数据集调整 |
+| `corpus/portable.py`、`corpus/resources.json` | 便携资源准备与固定源数据/模型文件校验清单 |
+| `corpus/profiles/compact.json` | 便携构建默认配置，也可用于手动处理 |
 | `corpus/requirements.txt` | 离线依赖：PyArrow、SciPy、NumPy |
-| `dev/datasets/danbooru-2026/` | 原始文件、下载清单、中间状态、成品词库和报告 |
+| `dev/datasets/danbooru-2026/` | 长期保留的原始文件和下载清单；手动处理示例也在此保存成品 |
+| `dev/cache/portable/` | 便携构建统计中间状态、成品词库与报告 |
+| `dev/models/minilm/<model-revision>/` | 长期保留的固定推荐模型与 tokenizer 文件 |
 | `dev/runtime/importer/` | 本机离线处理环境 |
 | `data/libraries/` | 应用中选择的只读统计词库 |
 
@@ -25,6 +28,12 @@ python -m pip install -r corpus/requirements.txt
 ```
 
 导入器处理已有的本地文件；下载和安装环境分别执行。保留原始数据，每份成品使用 `dev/datasets/` 下的新路径，通过应用[上传或选择成品](../guides/prompts.zh-CN.md#添加与切换词库)。
+
+## 便携构建资源
+
+`scripts/build_portable.py` 按精简配置编排下载与导入，使用独立构建环境，不读写开发应用的 `data/`。本机步骤见 [Windows](setup/windows.md#构建便携包)、[Linux](setup/linux.md#构建便携包) 或 [macOS](setup/macos.md#构建便携包)。
+
+原始分片与 `download.sqlite3` 长期保存在 `dev/datasets/danbooru-2026/`；仅按固定源版本补齐缺失分片。统计中间结果与成品词库放在 `dev/cache/portable/`，固定 MiniLM 长期保存在 `dev/models/minilm/<model-revision>/`。清理构建缓存保留原始数据和模型，可直接本地重新统计；词库和模型有效时构建不请求网络。通过 `--dataset-dir`、`--cache-dir`、`--models-dir`（默认 `dev/models/`）或 `--profile` 调整目录和处理配置。指纹与文件校验规则见[构建缓存记录](issues/portable-build-cache.md)。下文保留其他词库规格的手动处理入口。
 
 ## 一键处理
 

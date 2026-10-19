@@ -29,51 +29,89 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def download(destination, *, source=SOURCE, revision=None, progress=print):
-    destination = Path(destination)
+def resource_path(root, name):
+    root = Path(root).resolve()
+    path = (root / name).resolve()
+    if not path.is_relative_to(root) or path == root:
+        raise ValueError("Resource path must stay inside its destination")
+    return path
+
+
+def verified(path, item):
+    return path.is_file() and path.stat().st_size == item['bytes'] and sha256(path) == item['sha256']
+
+
+def download_file(url, path, item, *, replace_invalid=False):
+    """Verify an existing file, or resume a download and publish it atomically."""
+    path = Path(path)
+    if verified(path, item):
+        return
+    if path.exists() and not replace_invalid:
+        raise ValueError(f'Existing file failed verification: {path}')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    partial = path.with_suffix(path.suffix + '.part')
+    for attempt in range(4):
+        try:
+            if partial.exists() and partial.stat().st_size >= item['bytes']:
+                if verified(partial, item):
+                    os.replace(partial, path)
+                    return
+                partial.unlink()
+            offset = partial.stat().st_size if partial.exists() else 0
+            with response(url, {'Range': f'bytes={offset}-'} if offset else {}) as stream:
+                append = bool(offset and stream.status == 206)
+                if append and not stream.headers.get('Content-Range', '').startswith(f'bytes {offset}-'):
+                    raise ValueError('Unexpected download range')
+                with partial.open('ab' if append else 'wb') as output:
+                    while chunk := stream.read(2 * 1024 * 1024):
+                        output.write(chunk)
+            if not verified(partial, item):
+                raise ValueError(f'Download failed verification: {item["path"]}')
+            os.replace(partial, path)
+            return
+        except Exception:
+            if attempt == 3:
+                raise
+            time.sleep(2)
+
+
+def download(destination, *, source=SOURCE, revision=None, files=None, progress=print):
+    """A pinned file catalog permits offline reuse without querying the Hub."""
+    destination = Path(destination).resolve()
     raw = destination / 'raw'
     raw.mkdir(parents=True, exist_ok=True)
     if revision is None:
         with response('https://huggingface.co/api/datasets/' + source) as stream:
             revision = json.load(stream)['sha']
-    with response(f'https://huggingface.co/api/datasets/{source}/tree/{revision}?recursive=true&expand=false') as stream:
-        files = [item for item in json.load(stream) if item['path'].endswith('.parquet')]
+    if files is None:
+        with response(f'https://huggingface.co/api/datasets/{source}/tree/{revision}?recursive=true&expand=false') as stream:
+            files = [dict(path=item['path'], bytes=item['size'], sha256=item['lfs']['oid'])
+                     for item in json.load(stream) if item['path'].endswith('.parquet')]
+    if not files:
+        raise ValueError('No Parquet files in the dataset catalog')
+    for item in files:
+        resource_path(raw, item['path'])
+    # Reject unlisted shards: the importer must consume exactly the pinned snapshot.
+    listed = {resource_path(raw, item['path']) for item in files}
+    if set(raw.rglob('*.parquet')) - listed:
+        raise ValueError('Dataset contains unlisted Parquet files; use a separate dataset directory')
     db = sqlite3.connect(destination / 'download.sqlite3')
-    db.execute('CREATE TABLE IF NOT EXISTS files (name TEXT PRIMARY KEY, revision TEXT, size INTEGER, sha256 TEXT, completed INTEGER NOT NULL DEFAULT 0)')
     try:
-        for item in files:
-            db.execute('INSERT INTO files(name,revision,size,sha256) VALUES(?,?,?,?) ON CONFLICT(name) DO UPDATE SET revision=excluded.revision,size=excluded.size,sha256=excluded.sha256',
-                       (item['path'], revision, item['size'], item['lfs']['oid']))
+        db.execute('CREATE TABLE IF NOT EXISTS files (name TEXT PRIMARY KEY, revision TEXT, size INTEGER, sha256 TEXT, completed INTEGER NOT NULL DEFAULT 0)')
+        recorded = db.execute('SELECT name,revision,size,sha256 FROM files').fetchall()
+        expected = {(item['path'], revision, item['bytes'], item['sha256']) for item in files}
+        if recorded and not set(recorded) <= expected:
+            raise ValueError('Dataset manifest belongs to another revision or catalog; choose another dataset directory')
+        db.executemany('INSERT OR IGNORE INTO files(name,revision,size,sha256) VALUES(?,?,?,?)', sorted(expected))
         db.commit()
-        progress(f'{source}@{revision}: {len(files)} shards, {sum(item["size"] for item in files):,} bytes')
+        progress(f'{source}@{revision}: {len(files)} shards, {sum(item["bytes"] for item in files):,} bytes')
 
         def one(item):
-            path = raw / item['path']
-            path.parent.mkdir(parents=True, exist_ok=True)
-            partial = path.with_suffix(path.suffix + '.part')
-            if path.exists():
-                if path.stat().st_size != item['size'] or sha256(path) != item['lfs']['oid']:
-                    raise ValueError(f'Existing file failed verification: {path}')
-                return item['path']
+            path = resource_path(raw, item['path'])
             url = f'https://huggingface.co/datasets/{source}/resolve/{revision}/{item["path"]}?download=true'
-            for attempt in range(4):
-                try:
-                    offset = partial.stat().st_size if partial.exists() else 0
-                    with response(url, {'Range': f'bytes={offset}-'} if offset else {}) as stream:
-                        append = bool(offset and stream.status == 206)
-                        if append and not stream.headers.get('Content-Range', '').startswith(f'bytes {offset}-'):
-                            raise ValueError('Unexpected download range')
-                        with partial.open('ab' if append else 'wb') as output:
-                            while chunk := stream.read(2 * 1024 * 1024):
-                                output.write(chunk)
-                    if partial.stat().st_size != item['size'] or sha256(partial) != item['lfs']['oid']:
-                        raise ValueError(f'Download failed verification: {item["path"]}')
-                    os.replace(partial, path)
-                    return item['path']
-                except Exception:
-                    if attempt == 3:
-                        raise
-                    time.sleep(2)
+            download_file(url, path, item)
+            return item['path']
+
         with ThreadPoolExecutor(max_workers=2) as pool:
             for future in as_completed([pool.submit(one, item) for item in files]):
                 name = future.result()
