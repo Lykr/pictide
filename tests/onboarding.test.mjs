@@ -126,7 +126,8 @@ test('refresh offers resume, handles already-cleared anchors, and stores no secr
   const h = harness({ backendCount: 1, imageId: 'a', imageReady: true, roamPrivacy: false, privateKey: 'secret' });
   h.guide.act('start');
   h.guide.act('learn-anchors');
-  h.update({ anchorOpen: true, anchorCount: 1, anchorRevision: 1 });
+  h.update({ anchorOpen: true });
+  h.update({ anchorCount: 1, anchorRevision: 1 });
   h.update({ imageId: 'b' });
   assert.equal(h.step(), 'anchors-clear');
   const raw = h.sharedStorage.get(GUIDE_STORAGE_KEY);
@@ -141,6 +142,61 @@ test('refresh offers resume, handles already-cleared anchors, and stores no secr
   refreshed.guide.act('resume');
   assert.equal(refreshed.step(), 'cleared-next');
   assert.deepEqual(refreshed.navigations, ['feed']);
+});
+
+test('existing anchors still require a successful edit in this guide before the next image', () => {
+  const h = harness({ backendCount: 1, imageId: 'a', imageReady: true, roamPrivacy: false, anchorCount: 2, anchorRevision: 4 });
+  h.guide.act('start');
+  h.guide.act('learn-anchors');
+  h.update({ anchorOpen: true });
+  assert.equal(h.step(), 'anchors-pick', 'opening existing pins must show the editing instruction');
+  h.update({ unrelated: 'rerender' });
+  assert.equal(h.step(), 'anchors-pick');
+  h.update({ anchorsEditable: false });
+  h.update({ anchorsEditable: true });
+  assert.equal(h.step(), 'anchors-pick', 'a failed request does not change the confirmed revision');
+  h.update({ anchorCount: 3, anchorRevision: 5, anchorsEditable: false });
+  assert.equal(h.step(), 'anchors-pick', 'wait for editing to finish');
+  h.update({ anchorsEditable: true });
+  assert.equal(h.step(), 'anchors-next');
+  h.update({ imageId: 'b' });
+  assert.equal(h.step(), 'anchors-clear');
+});
+
+test('clearing anchors during selection requires a later successful selection and remains skippable', () => {
+  const h = harness({ backendCount: 1, imageId: 'a', imageReady: true, roamPrivacy: false, anchorCount: 1, anchorRevision: 2 });
+  h.guide.act('start');
+  h.guide.act('learn-anchors');
+  h.update({ anchorOpen: true });
+  h.update({ anchorCount: 0, anchorRevision: 3 });
+  assert.equal(h.step(), 'anchors-pick', 'clearing is not selecting an element to preserve');
+  h.update({ anchorCount: 1 });
+  assert.equal(h.step(), 'anchors-pick', 'count alone cannot stand for a confirmed edit');
+  h.update({ anchorRevision: 4 });
+  assert.equal(h.step(), 'anchors-next');
+  h.update({ anchorCount: 0, anchorRevision: 5 });
+  assert.equal(h.step(), 'anchors-pick');
+  h.guide.act('skip-anchors');
+  assert.equal(h.step(), 'liked-open');
+});
+
+test('resuming anchor selection uses a fresh live revision baseline without storing local counters', () => {
+  const h = harness({ backendCount: 1, imageId: 'a', imageReady: true, roamPrivacy: false, anchorCount: 1, anchorRevision: 8 });
+  h.guide.act('start');
+  h.guide.act('learn-anchors');
+  h.update({ anchorOpen: true });
+  assert.equal(h.step(), 'anchors-pick');
+  const record = JSON.parse(h.sharedStorage.get(GUIDE_STORAGE_KEY));
+  assert(!('anchorPickRevision' in record.context));
+  assert(!('anchorRevision' in record.context));
+  // Inject an old local counter to ensure restoration does not trust it.
+  record.context.anchorPickRevision = 8;
+  h.sharedStorage.set(GUIDE_STORAGE_KEY, JSON.stringify(record));
+  const refreshed = harness({ backendCount: 1, imageId: 'a', imageReady: true, roamPrivacy: false, anchorOpen: true, anchorCount: 1, anchorRevision: 0 }, h.sharedStorage);
+  refreshed.guide.act('resume');
+  assert.equal(refreshed.step(), 'anchors-pick', 'a page-local counter reset is not an edit');
+  refreshed.update({ anchorCount: 2, anchorRevision: 1 });
+  assert.equal(refreshed.step(), 'anchors-next');
 });
 
 test('dismiss persists and cached snapshots remain stable until visible content changes', () => {

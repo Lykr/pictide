@@ -97,7 +97,7 @@ pictide/
 
 ## Frontend guide
 
-The first-run guide lives in `web/src/onboarding/`: a generic observable state machine, pure Pictide flow rules, and a state adapter. Business controllers and components publish confirmed facts through `shared/ui-state.mjs` and register semantic element refs through `shared/ui-targets.ts`; they do not import guide steps. The React presentation in `components/onboarding/` measures these elements as layout changes and keeps the guide clear of controls.
+The first-run guide lives in `web/src/onboarding/`: a generic observable state machine, pure Pictide flow rules, and a state adapter. Business controllers and components publish confirmed facts through `shared/ui-state.mjs` and register semantic element refs through `shared/ui-targets.ts`; they do not import guide steps. The React presentation in `components/onboarding/` measures these elements as layout changes and places hints beside their targets, with arrows and a spotlight. Its geometry helper keeps the hints clear of controls.
 
 The guide observes successful tests, saves, feedback, anchor changes, and actual image loading. Navigation uses the existing UI intent path; generation and mutations remain user actions on normal controls. Only guide progress and necessary image IDs are stored in browser local storage. No backend API, database schema, or runtime dependency is added. See the [guide design and validation](issues/first-run-guide.md).
 

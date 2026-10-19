@@ -1,5 +1,7 @@
 {
   "新手引导": "Getting started",
+  "跳过": "Skip",
+  "编辑锚点": "Edit anchors",
   "欢迎来到 Pictide，一起试试漫游？": "Welcome to Pictide. Let's try roaming!",
   "带我看看": "Show me around",
   "自己探索": "Explore on my own",
@@ -21,7 +23,7 @@
   "跳过锚点": "Skip anchors",
   "找到喜欢的了！打开锚点，留住感兴趣的元素。": "Found one you like! Open anchors to keep what caught your eye.",
   "打开锚点，留住感兴趣的元素。": "Open anchors to keep what catches your eye.",
-  "选一个想保留的元素。": "Pick an element you'd like to keep.",
+  "点选标签，调整想保留的元素。": "Tap tags to choose what stays in your next images.",
   "当前无法编辑锚点，可以先继续探索。": "Anchors are unavailable here. Feel free to keep exploring.",
   "再看一张，沿着这个方向继续。": "Try the next image to follow this direction.",
   "想换个方向时，点这里清空锚点。": "Ready for a change? Clear your anchors here.",

@@ -1,17 +1,36 @@
-/* Guide geometry follows registered components; it never changes their layout. */
+/* Guide geometry follows component refs; the spotlight remains click-through. */
 .guide-layer { position: fixed; inset: 0; z-index: 900; pointer-events: none; }
-.guide-focus { position: fixed; border: 2px solid var(--primary); border-radius: var(--radius-lg); box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent); pointer-events: none; }
-.guide-card { position: fixed; left: 50%; transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--card); color: var(--card-foreground); box-shadow: 0 8px 32px #0003; pointer-events: auto; }
-.guide-mark { flex-shrink: 0; width: 20px; height: 20px; margin-top: 2px; color: var(--muted-foreground); }
-.guide-content { min-width: 0; flex: 1; }
+.guide-spotlight { position: fixed; inset: 0; width: 100%; height: 100%; opacity: 0.24; pointer-events: none; }
+.guide-focus { position: fixed; border: 3px solid var(--primary); border-radius: var(--radius-lg); box-shadow: 0 0 0 3px var(--background), 0 0 0 6px color-mix(in oklch, var(--primary) 60%, transparent); pointer-events: none; }
+.guide-card { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); width: min(360px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--popover); color: var(--popover-foreground); box-shadow: 0 8px 32px #0003; pointer-events: auto; }
+.guide-card[data-guide-status=invite], .guide-card[data-guide-status=resume] { width: min(440px, calc(100vw - 24px)); }
+.guide-heading { display: flex; align-items: center; gap: 8px; min-height: 20px; margin-bottom: 8px; color: var(--muted-foreground); font-size: 12px; font-weight: 500; }
+.guide-heading > span { flex: 1; }
+.guide-mark { flex-shrink: 0; width: 16px; height: 16px; }
+.guide-content { min-width: 0; }
 .guide-message { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .guide-message p { margin: 0; }
 .guide-message p + p { margin-top: 4px; }
-.guide-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 12px; }
+.guide-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .guide-actions:empty { display: none; }
-.guide-dismiss { flex-shrink: 0; margin: -4px -4px 0 0; }
+.guide-dismiss { margin: -8px -8px -8px auto; }
+.guide-skip { margin-block: -8px; font-size: 12px; }
+.guide-arrow { position: fixed; width: 12px; height: 12px; transform: translate(-50%, -50%) rotate(45deg); background: var(--popover); border: 1px solid var(--border); pointer-events: none; }
+.guide-arrow[data-guide-arrow=top] { border-right: 0; border-bottom: 0; }
+.guide-arrow[data-guide-arrow=bottom] { border-left: 0; border-top: 0; }
+.guide-arrow[data-guide-arrow=left] { border-right: 0; border-top: 0; }
+.guide-arrow[data-guide-arrow=right] { border-left: 0; border-bottom: 0; }
+.guide-card, .guide-arrow, .guide-focus { transition: left 220ms ease-out, top 220ms ease-out, width 220ms ease-out, height 220ms ease-out; }
+.guide-cutout { transition: x 220ms ease-out, y 220ms ease-out, width 220ms ease-out, height 220ms ease-out; }
+.guide-card, .guide-copy { animation: guide-appear 160ms ease-out; }
+@keyframes guide-appear { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .guide-card, .guide-arrow, .guide-focus, .guide-cutout { transition: none; }
+  .guide-card, .guide-copy { animation: none; }
+}
 @media (max-width: 640px) {
-  .guide-card { width: calc(100vw - 24px); padding: 12px; gap: 8px; }
-  .guide-actions button, .guide-dismiss { min-height: 44px; }
-  .guide-dismiss { min-width: 44px; }
+  .guide-card { width: min(300px, calc(100vw - 96px)); padding: 12px; }
+  .guide-actions button, .guide-dismiss, .guide-skip { min-height: 44px; }
+  .guide-skip { margin-block: -10px; }
+  .guide-dismiss { min-width: 44px; margin-block: -10px; }
 }

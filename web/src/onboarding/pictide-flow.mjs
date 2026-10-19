@@ -39,6 +39,9 @@ export function resumeProgress(progress, facts) {
   if (progress.stepId === 'anchors-next' && !facts.anchorCount) resumed = at(resumed, 'anchors-open');
   if (progress.stepId === 'anchors-clear' && facts.anchorCount === 0) resumed = at(resumed, 'cleared-next', { clearImageId: facts.imageId });
   if (progress.stepId === 'anchors-next') resumed = at(resumed, resumed.stepId, { anchorRevision: facts.anchorRevision });
+  // Revision counters belong to the current page. A resumed edit starts from
+  // the live anchors, even if a previous page had already observed a change.
+  if (progress.stepId === 'anchors-pick') resumed = at(resumed, 'anchors-pick', { anchorPickRevision: facts.anchorRevision });
   return advanceProgress(resumed, facts, facts);
 }
 
@@ -80,15 +83,18 @@ export function advanceProgress(progress, facts, previous = facts) {
       if (facts.imageId !== c.imageId) return at(progress, 'roam-feedback', { imageId: facts.imageId, firstImage: false });
       return progress;
     case 'anchors-open':
-      if (feed(facts) && facts.anchorOpen) return at(progress, 'anchors-pick');
+      if (feed(facts) && facts.anchorOpen) return at(progress, 'anchors-pick', { anchorPickRevision: facts.anchorRevision });
       return progress;
     case 'anchors-pick':
-      if (feed(facts) && facts.anchorsEditable && facts.anchorCount > 0) {
+      if (!facts.anchorCount && facts.anchorRevision !== c.anchorPickRevision) {
+        return at(progress, 'anchors-pick', { anchorPickRevision: facts.anchorRevision });
+      }
+      if (feed(facts) && facts.anchorOpen && facts.anchorsEditable && facts.anchorCount > 0 && facts.anchorRevision !== c.anchorPickRevision) {
         return at(progress, 'anchors-next', { anchorImageId: facts.imageId, anchorRevision: facts.anchorRevision });
       }
       return progress;
     case 'anchors-next':
-      if (!facts.anchorCount) return at(progress, 'anchors-pick');
+      if (!facts.anchorCount) return at(progress, 'anchors-pick', { anchorPickRevision: facts.anchorRevision });
       // Changing anchors rebases the image boundary; an older pending image cannot finish this step.
       if (facts.anchorRevision !== c.anchorRevision) return at(progress, 'anchors-next', { anchorImageId: facts.imageId, anchorRevision: facts.anchorRevision });
       if (feed(facts) && readyImage(facts) && facts.imageId !== c.anchorImageId) {
@@ -138,11 +144,13 @@ export function actProgress(progress, action, facts) {
 
 const button = (label, name) => ({ label, name });
 export function presentProgress(progress, facts) {
-  const result = { status: progress.status, stepId: progress.stepId, messages: [], targets: [] };
+  const result = { status: progress.status, stepId: progress.stepId, title: '新手引导', messages: [], targets: [] };
   if (progress.status === 'idle') return result;
   if (progress.status === 'invite') return { ...result, messages: ['欢迎来到 Pictide，一起试试漫游？'], primary: button('带我看看', 'start'), secondary: button('自己探索', 'dismiss') };
   if (progress.status === 'resume') return { ...result, messages: ['继续上次的漫游引导？'], primary: button('继续引导', 'resume'), secondary: button('自己探索', 'dismiss') };
   const c = progress.context;
+  result.title = progress.stepId.startsWith('api-') ? '生图 API' : progress.stepId === 'anchors-pick' ? '编辑锚点'
+    : progress.stepId.startsWith('anchors-') ? '锚点' : progress.stepId.startsWith('liked-') || progress.stepId === 'finish' ? '喜欢' : '漫游';
   result.secondary = button('结束引导', 'dismiss');
   const show = (messages, targets, expectedRoute) => Object.assign(result, { messages, targets, expectedRoute });
   switch (progress.stepId) {
@@ -163,7 +171,7 @@ export function presentProgress(progress, facts) {
       return show([c.liked ? '找到喜欢的了！打开锚点，留住感兴趣的元素。' : '打开锚点，留住感兴趣的元素。'], ['anchors.trigger'], 'feed');
     case 'anchors-pick':
       result.secondary = button('跳过锚点', 'skip-anchors');
-      return show([facts.anchorsEditable ? '选一个想保留的元素。' : '当前无法编辑锚点，可以先继续探索。'], [facts.anchorOpen ? 'anchors.terms' : 'anchors.trigger'], 'feed');
+      return show([facts.anchorsEditable ? '点选标签，调整想保留的元素。' : '当前无法编辑锚点，可以先继续探索。'], [facts.anchorOpen ? 'anchors.terms' : 'anchors.trigger'], 'feed');
     case 'anchors-next':
       result.secondary = button('跳过锚点', 'skip-anchors');
       return show(['再看一张，沿着这个方向继续。'], ['roam.next'], 'feed');

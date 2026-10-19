@@ -98,7 +98,7 @@ pictide/
 
 ## 前端引导
 
-首次使用引导位于 `web/src/onboarding/`，分为通用可观察状态机、纯 Pictide 步骤规则和状态适配器。业务控制器与组件通过 `shared/ui-state.mjs` 发布已确认事实，通过 `shared/ui-targets.ts` 注册语义化元素引用，不导入引导步骤。`components/onboarding/` 的 React 展示层随布局变化测量这些组件，并避开操作控件。
+首次使用引导位于 `web/src/onboarding/`，分为通用可观察状态机、纯 Pictide 步骤规则和状态适配器。业务控制器与组件通过 `shared/ui-state.mjs` 发布已确认事实，通过 `shared/ui-targets.ts` 注册语义化元素引用，不导入引导步骤。`components/onboarding/` 的 React 展示层随布局变化测量组件，在目标附近展示带箭头和聚焦的提示卡，通过纯几何函数避开操作控件。
 
 引导观察测试、保存、反馈、锚点变更的成功结果和图片实际载入状态。导航沿用既有 UI 意图入口，生成与数据修改由用户操作原有控件触发。浏览器本地只保存引导进度和必要图片标识，不新增后端 API、数据库表或运行依赖。详见[引导设计与验证](issues/first-run-guide.md)。
 
