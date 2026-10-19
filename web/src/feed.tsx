@@ -69,7 +69,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 {"\n        "}<div id="empty-state" className="empty">
 <div className="empty-mark"><Image aria-hidden="true" /></div>
 <h2 id="empty-title">{t("从第一张图片开始")}</h2>
-<p id="empty-description">{t("连接 ComfyUI，开始生成。")}</p>
+<p id="empty-description">{t("连接生图后端，开始生成。")}</p>
 <Button id="empty-settings" className="primary" variant="default" type="button">{t("配置后端")}</Button>
 <Button id="empty-generate" variant="default" type="button" hidden>{t("开始生成")}</Button>
 </div>
@@ -187,16 +187,18 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 {"\n        "}<Label>{t("正向提示词")}<Textarea id="positive" rows={8} placeholder={t("描述你想看到的画面…")} required>
 </Textarea>
 </Label>
-{"\n        "}<Label>{t("负向提示词")}<Textarea id="negative" rows={4} placeholder={t("不希望出现的内容（可选）")}>
+{"\n        "}<Label id="negative-field">{t("负向提示词")}<Textarea id="negative" rows={4} placeholder={t("不希望出现的内容（可选）")}>
 </Textarea>
 <small id="negative-binding-note" hidden>{t("当前后端未绑定负向输入，请保持为空，或在后端设置中绑定。")}</small>
 </Label>
-{"\n        "}<div className="generation-plan-fields"><Label><span className="field-caption">{t("图像种子")}<HelpTip id="seed-note" text={t("-1 每个任务随机；非负值按任务递增，跨轮延续。实际种子随图片保存。")} /></span><Input id="seed" type="number" min="-1" max="9007199254740991" step="1" defaultValue="-1" />
+<p id="generation-capability-note" className="hint" hidden />
+<p id="generation-cloud-note" className="hint" hidden>{t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")}</p>
+{"\n        "}<div className="generation-plan-fields"><Label id="seed-field"><span className="field-caption">{t("图像种子")}<HelpTip id="seed-note" text={t("-1 每个任务随机；非负值按任务递增，跨轮延续。实际种子随图片保存。")} /></span><Input id="seed" type="number" min="-1" max="9007199254740991" step="1" defaultValue="-1" />
 
 </Label>
 <div className="form-grid">
-<Label htmlFor="generation-count"><span className="field-caption">{t("每次数量")}<HelpTip text={t("每轮执行的工作流次数，同轮共用提示词；单次工作流可能输出多张图片。")} /></span><Input id="generation-count" type="number" min="1" max="10" step="1" defaultValue="1" required /></Label>
-<Label htmlFor="generation-repetitions"><span className="field-caption">{t("生成次数")}<HelpTip text={t("整批生成的轮数；每轮包含左侧设置的工作流次数。")} /></span><Input id="generation-repetitions" type="number" min="1" max="10" step="1" defaultValue="1" required /></Label>
+<Label htmlFor="generation-count"><span className="field-caption">{t("每次数量")}<HelpTip text={t("每轮提交的生成任务数，同轮共用提示词；单个任务可能输出多张图片。")} /></span><Input id="generation-count" type="number" min="1" max="10" step="1" defaultValue="1" required /></Label>
+<Label htmlFor="generation-repetitions"><span className="field-caption">{t("生成次数")}<HelpTip text={t("整批生成的轮数；每轮包含左侧设置的生成任务数。")} /></span><Input id="generation-repetitions" type="number" min="1" max="10" step="1" defaultValue="1" required /></Label>
 </div></div>
 {"\n        "}<div className="generation-actions"><Button id="generate" className="primary" type="submit" variant="default" data-tooltip={t("提交整批任务；关闭网页不会取消已提交任务。")}><Sparkles aria-hidden="true" />{t("生成图片")}</Button>
 <Button id="cancel-pending" type="button" variant="outline" data-tooltip={t("取消生成页全部待执行任务；保留已开始的任务和漫游预取。")}><CircleSlash aria-hidden="true" />{t("取消待执行任务")}</Button></div>
@@ -224,14 +226,27 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <NativeSelect id="edit-backend" />
 </div>
 <div className="settings-field"><Label htmlFor="backend-name">{t("后端名称")}</Label><Input id="backend-name" required placeholder={t("本机 ComfyUI")} /></div>
-<div className="settings-field"><Label htmlFor="backend-kind">{t("后端类型")}</Label><NativeSelect id="backend-kind"><option value="comfyui">ComfyUI</option></NativeSelect></div>
+<div className="settings-field"><Label htmlFor="backend-kind">{t("后端类型")}</Label><NativeSelect id="backend-kind"><option value="comfyui">ComfyUI</option><option value="openai">OpenAI Images</option><option value="gemini">Gemini</option></NativeSelect></div>
 <div className="settings-field"><Label htmlFor="backend-url">{t("API 地址")}</Label><Input id="backend-url" type="url" required defaultValue="http://127.0.0.1:8188" /></div>
 </div>
 <div className="settings-field">
 <Label htmlFor="backend-key"><span className="field-caption">API Key<HelpTip id="key-state" text={t("可选。保留遮罩不修改密钥，清空并保存可移除。")} /></span></Label>
 <Input id="backend-key" type="password" autoComplete="new-password" />
 </div>
-<div className="settings-field">
+<fieldset id="cloud-backend" className="settings-stack" hidden disabled>
+<div className="settings-field"><Label htmlFor="backend-model">{t("模型")}</Label><Input id="backend-model" required placeholder={t("填写服务支持的生图模型 ID")} /><p className="hint">{t("请填写服务支持的生图模型 ID；可选参数留空时使用服务默认值。")}</p></div>
+<fieldset id="openai-options" className="form-grid" hidden disabled>
+<div className="settings-field"><Label htmlFor="backend-size">{t("图片尺寸（可选）")}</Label><Input id="backend-size" placeholder="1024x1024" /></div>
+<div className="settings-field"><Label htmlFor="backend-quality">{t("图片质量（可选）")}</Label><Input id="backend-quality" placeholder="auto" /></div>
+</fieldset>
+<fieldset id="gemini-options" className="form-grid" hidden disabled>
+<div className="settings-field"><Label htmlFor="backend-aspect-ratio">{t("宽高比（可选）")}</Label><Input id="backend-aspect-ratio" placeholder="1:1" /></div>
+<div className="settings-field"><Label htmlFor="backend-image-size">{t("图片分辨率（可选）")}</Label><Input id="backend-image-size" placeholder="1K" /></div>
+</fieldset>
+<p className="hint">{t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")}</p>
+<p className="hint">{t("测试连接只读取服务信息，不会生成图片。")}</p>
+</fieldset>
+<div id="workflow-picker-field" className="settings-field">
 <div className="settings-field-heading"><Label htmlFor="workflow-name--control">{t("工作流")}</Label><div className="workflow-actions">
 <IconButton id="delete-workflow" icon={Trash2} label={t("删除工作流")} size="icon-xs" disabled />
 <IconButton id="reload-workflows" icon={RefreshCw} label={t("刷新工作流列表")} size="icon-xs" />
@@ -280,6 +295,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="settings-field"><Label htmlFor="roam-backend">{t("生图后端")}</Label><NativeSelect id="roam-backend"><option value="">{t("自动选择后端")}</option></NativeSelect></div>
 <div className="settings-field"><Label htmlFor="roam-config"><span className="field-caption">{t("候选预设")}<HelpTip text={t("使用该预设的固定词、共现规则和顺流变化预算。")} /></span></Label><NativeSelect id="roam-config"><option value="">{t("自动选择预设")}</option></NativeSelect></div>
 </div>
+<p id="roam-cloud-note" className="hint" hidden>{t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")}{' '}{t("首次选择云端后端会关闭自动预取；再次保存非零预取数量可开启连续生成。")}</p>
 <RoamSettingsChoices />
 <div className="form-grid">
 <div className="settings-field"><Label htmlFor="roam-prefetch-count"><span className="field-caption">{t("预取数量")}<HelpTip text={t("在当前图片后预备的张数；漫游页打开时按需补足，0 关闭自动预取。")} /></span></Label><Input id="roam-prefetch-count" type="number" min="0" max="20" step="1" defaultValue="2" required /></div>

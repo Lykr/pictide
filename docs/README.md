@@ -12,7 +12,7 @@ Guides for setup, roaming, prompts, and settings. Each topic starts with an over
 | --- | --- |
 | What is Pictide, and how can I use it? | [About Pictide](guides/about.md) |
 | How do I install and start it? | [Windows](guides/setup/windows.md) · [Linux](guides/setup/linux.md) · [macOS](guides/setup/macos.md) |
-| How do I connect a generation backend? | [Connect to ComfyUI](guides/getting-started.md#connect-comfyui) |
+| How do I connect a generation backend? | [Connect ComfyUI, OpenAI Images, or Gemini](guides/getting-started.md) |
 | How do I access it from my phone or add it to my Home Screen? | [LAN access and Home Screen app](guides/access.md) |
 | How are prompts generated, and how do fixed terms and co-occurrence settings work? | [Prompts and presets](guides/prompts.md) |
 | How do roaming, playback, anchors, and recommendation strength work? | [Roam](guides/roam.md) |

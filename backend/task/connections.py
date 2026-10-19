@@ -29,6 +29,8 @@ class BackendConnections:
         return {"models": names, "selected": selected}
 
     async def template(self, config):
+        if config.get("kind", "comfyui") != "comfyui":
+            raise BackendError("云端生图后端使用模型参数，无需 ComfyUI 工作流模板。")
         draft = dict(config, workflow_mode="default")
         resolved = await self.resolve_connection(draft)
         backend = self.backend_factory(resolved, self.session)

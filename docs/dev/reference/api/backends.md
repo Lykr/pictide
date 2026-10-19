@@ -19,9 +19,12 @@ The backend list is provided by Bootstrap's `backends`; there is no separate GET
 | Draft field | Description |
 | --- | --- |
 | `name` | Backend name |
-| `kind` | Currently supports `comfyui`; the same value is used when omitted |
-| `base_url` | HTTP(S) URL of the generation service |
-| `api_key` | Optional; omitting it for an existing configuration preserves the key, and an empty string clears it; never returned in plaintext |
+| `kind` | `comfyui / openai / gemini`; omitted means `comfyui` |
+| `base_url` | HTTP(S) service root; cloud URLs include the version path, such as `https://api.openai.com/v1` or `https://generativelanguage.googleapis.com/v1beta` |
+| `api_key` | Optional; omission preserves a saved key only for the same kind. Switching kinds clears it; an empty string also clears it. Never returned in plaintext. |
+| `model` | Required model ID for `openai` and `gemini`; entered manually |
+| `size` / `quality` | Optional OpenAI image parameters; empty means service default |
+| `aspect_ratio` / `image_size` | Optional Gemini image parameters; empty means service default |
 | `workflow_mode` | `default / custom`; uses the default text-to-image workflow when no workflow is provided |
 | `default_checkpoint` | Model name for default mode; an empty string selects the first available model |
 | `workflow` | Custom ComfyUI API node object, rather than the UI's `nodes` array |
@@ -32,6 +35,14 @@ The backend list is provided by Bootstrap's `backends`; there is no separate GET
 | `extra` | Optional adapter extension object |
 
 Example bindings: `{"positive":{"node_id":"2","input":"text"},"negative":{"node_id":"3","input":"text"},"seed":{"node_id":"5","input":"seed"}}`. Custom configuration currently requires positive and negative text bindings, which must not point to the same input; the seed binding may be omitted. Edit node parameters directly in `workflow`.
+
+Workflow fields, checkpoint discovery, and the template route belong to ComfyUI. Cloud `/models` returns the configured model rather than discovering a catalog. Cloud `/check` performs a read-only lookup of the selected model and never submits generation; it does not prove image-output entitlement or validate generation quality.
+
+Public configurations include `capabilities` with `negative_prompt`, `seed`, `models`, `events`, `cancel`, `recovery`, and `cloud`. OpenAI Images and Gemini do not support negative prompts, explicit image seeds, remote events, cancellation, or recovery in this integration. Nonempty negative prompts, including candidate preset output, and explicit image seeds are rejected rather than silently discarded. A candidate seed controls local prompt selection only. The UI uses capabilities to show available controls.
+
+OpenAI appends `/images/generations` to its Base URL and Gemini appends `/interactions`. Gemini sends `model`, `input`, `response_format` with image output options, and `store:false`, authenticating with `x-goog-api-key`. These are single-turn text-to-image adapters; `generateContent`, Imagen, image editing, and third-party service presets are outside this release. Successful responses may contain Base64 or image URLs; outputs are saved locally before being exposed as Pictide artifacts. API keys are used by the backend, never by the browser to contact the provider directly.
+
+Cloud submission waits for the completed response. Timeout or interruption without a recorded result leaves the task uncertain, with no automatic resubmission. Local cancellation cannot guarantee remote cancellation or avoid charges. Jobs and artifacts expose `backend_kind` so history can distinguish provider semantics; snapshots retain the model and actual request parameters without claiming an unsupported seed was applied. Cloud integration is verified with protocol mocks; paid provider generation remains unverified.
 
 Public configuration includes `has_api_key` and excludes `api_key`. Default mode resolves installed models before creating the workflow; new jobs save a backend snapshot. Deleting a backend preserves historical jobs and images. Saving the current Roam backend can resume prefetching paused by an earlier error; it does not automatically retry previously failed jobs or resume playback.
 

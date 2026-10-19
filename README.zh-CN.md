@@ -6,23 +6,23 @@
 
 新的画面沿途生成，由你的反馈与锚点引导方向。
 
-画流 Pictide 是一款在本地运行、通过反馈逐渐贴近个人喜好的生成式图片漫游应用。浏览、表达喜好，随时引导下一张图片的方向，无需先有明确的创作目标。图片和偏好保存在本地。[了解 Pictide](docs/guides/about.zh-CN.md)。
+画流 Pictide 是一款在本地运行、通过反馈逐渐贴近个人喜好的生成式图片漫游应用。浏览、表达喜好，随时引导下一张图片的方向，无需先有明确的创作目标。图片和偏好保存在本地，云端后端会接收生成提示词。[了解 Pictide](docs/guides/about.zh-CN.md)。
 
 ## 用户指南
 
 ### 快速开始（便携版本）
 
-1. 启动 ComfyUI，准备可用的文生图模型。
+1. 准备 ComfyUI 与文生图模型，或 OpenAI Images / Gemini 的 API Key 和图片输出模型。
 2. 解压对应系统的便携包，运行启动入口：[Windows](docs/guides/setup/windows.zh-CN.md#便携版本) · [Linux](docs/guides/setup/linux.zh-CN.md#便携版本) · [macOS](docs/guides/setup/macos.zh-CN.md#便携版本)。程序就绪后自动打开浏览器。
-3. 在「设置 → 后端」连接 ComfyUI，进入「漫游」开始浏览。
+3. 按[接入指南](docs/guides/getting-started.zh-CN.md)在「设置 → 后端」连接生图服务，进入「漫游」开始浏览。云端漫游默认关闭自动预取，请使用负向提示词为空的预设。
 
 便携包随带运行环境、前端、精简词库和 MiniLM；个人数据保存在包内 `data/`。Windows 已验证真实产物，Linux/macOS 的本机构建与原生验证状态见各系统说明。
 
 ### 从源码开始
 
-1. 启动 ComfyUI，准备可用的文生图模型。
+1. 准备 ComfyUI 与文生图模型，或 OpenAI Images / Gemini 的 API Key 和图片输出模型。
 2. 按系统完成安装与启动：[Windows](docs/guides/setup/windows.zh-CN.md) · [Linux](docs/guides/setup/linux.zh-CN.md) · [macOS](docs/guides/setup/macos.zh-CN.md)。打开 http://127.0.0.1:8189 。
-3. 在「设置 → 后端」填写 ComfyUI 地址、测试并保存；词库与推荐模型准备完成后，进入「漫游」点击「开始漫游」，浏览、评价并切换下一张。
+3. 在「设置 → 后端」配置生图服务、测试并保存；词库与推荐模型准备完成后，进入「漫游」点击「开始漫游」，浏览、评价并切换下一张。
 
 共现生成需要词库，推荐学习需要本地 MiniLM；准备与接入步骤见[安装与接入](docs/guides/getting-started.zh-CN.md)。关闭启动窗口或按 Ctrl+C 停止应用。
 
@@ -42,7 +42,7 @@
 - [数据备份与恢复](docs/guides/backup.zh-CN.md)：数据保存位置、备份和恢复。
 - [用户文档导航](docs/README.zh-CN.md#用户文档)：按使用问题查找说明。
 
-ComfyUI 是独立的生成后端；Pictide 不作为其插件加载。当前为概念验证版本，尚无多用户账号、图像特征学习或离线网页缓存。
+Pictide 作为独立应用连接 ComfyUI、OpenAI Images 与 Gemini 原生生图。云端接入已用协议模拟服务验证，收费服务的真实出图尚未验证。本功能已包含在当前源码中，已有便携包需要更新版本。当前为概念验证版本，尚无多用户账号、图像特征学习或离线网页缓存。
 
 ## 开发者文档
 

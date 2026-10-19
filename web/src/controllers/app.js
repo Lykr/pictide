@@ -11,6 +11,7 @@ import { applyArtifactPage, observeArtifactRevision, retentionDays } from './his
 import { API_KEY_MASK, apiKeyFields, customWorkflowName } from './settings-controls.mjs';
 import { candidateCount, strongCandidateMultiplier, prefetchCount, maxHistoryImages, createRefillCoordinator, isTemporaryRefillError, mergeRoamDraft, likedTagsWait, roamGenerationChanged } from './roam-controls.mjs';
 import { generationCount, generationRepetitions, artifactPath, matchesLikedTags } from './generation-controls.mjs';
+import { backendDefaults, backendCapabilities, cloudConfigFields, imageSeedLabel } from './backend-controls.mjs';
 import { createGalleryCursors, createNextImageWait, roamArtifactPath, roamBoundaryAction, resolveGalleryCursor } from './roam-navigation.mjs';
 import { playbackInterval, createRoamPlayback } from './roam-playback.mjs';
 import { createImmersiveViewer } from './immersive-controls.mjs';
@@ -209,7 +210,7 @@ function inlineStatus(id, message, visible = true) { const element = $(id); setS
 function translatedOption(value, key) { const item = option(value, t(key)); item.dataset.i18nKey = key; return item; }
 function option(value, label) { const item = document.createElement('option'); item.value = value; item.textContent = label; return item; }
 function dateLabel(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : date.toLocaleString(locale(), { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); }
-function seedLabel(item) { return item.seed_applied === false ? t("使用工作流种子设置") : `seed ${item.seed ?? '—'}`; }
+const seedLabel = imageSeedLabel;
 function artifactsForView() { return state.view === 'liked' ? state.likedArtifacts : state.artifacts; }
 function pageView() { return ['liked', 'generate'].includes(state.view) ? state.view : 'feed'; }
 function applyPage(view, result, append = false) {
@@ -288,10 +289,17 @@ function renderBackends() {
 }
 function updateGenerationHints() {
   const backend = state.backends.find((item) => item.id === $('generate-backend').value);
-  const noSeed = !!backend && !backend.bindings?.seed;
+  const capabilities = backendCapabilities(backend);
+  const noSeed = !!backend && !capabilities.seed;
+  const noNegative = !!backend && !capabilities.negative_prompt;
   $('seed').disabled = noSeed;
+  $('seed-field').hidden = capabilities.cloud && noSeed;
+  $('negative-field').hidden = capabilities.cloud && noNegative;
+  $('negative').disabled = capabilities.cloud && noNegative;
+  $('generation-cloud-note').hidden = !capabilities.cloud;
+  inlineStatus('generation-capability-note', () => t('此后端不支持负向提示词和图像种子；本次仅发送正向提示词，原输入保留。候选预设中的负向词仍需移除。'), capabilities.cloud);
   describeAction($('seed-note'), noSeed ? t("未绑定种子输入，将使用工作流自身的种子设置。") : t("-1 每个任务随机；非负值按任务递增，跨轮延续。实际种子随图片保存。"));
-  $('negative-binding-note').hidden = !backend || !!backend.bindings?.negative;
+  $('negative-binding-note').hidden = !backend || !noNegative || capabilities.cloud;
 }
 
 function updateRuleControls() {
@@ -401,7 +409,7 @@ function renderArtifacts() {
   const artifact = items[index];
   $('empty-state').hidden = !!artifact; $('image-card').hidden = !artifact;
   $('empty-title').hidden = false;
-  $('empty-description').textContent = state.view === 'liked' ? t("喜欢的图片会保存在这里。") : waiting ? t("正在准备漫游图片…") : state.backends.length ? t("开始漫游，发现下一张图片。") : t("连接 ComfyUI，开始生成。");
+  $('empty-description').textContent = state.view === 'liked' ? t("喜欢的图片会保存在这里。") : waiting ? t("正在准备漫游图片…") : state.backends.length ? t("开始漫游，发现下一张图片。") : t("连接生图后端，开始生成。");
   $('empty-settings').hidden = state.view === 'liked' || state.backends.length > 0;
   $('empty-generate').hidden = !roam || !state.backends.length || waiting;
   $('empty-generate').textContent = t("开始漫游");
@@ -411,7 +419,7 @@ function renderArtifacts() {
   $('image-card').setAttribute('aria-busy', String(waiting));
   $('roam-immersive').disabled = !roam || !artifact;
   if (!artifact) { cancelImageTransition($('main-image')); roamImageSwitchPending = false; syncRoamPlayback(); immersive.leave(); state.currentImage = null; document.dispatchEvent(new CustomEvent('pictide:image-info', { detail: null })); return; }
-  document.dispatchEvent(new CustomEvent('pictide:image-info', { detail: { id: artifact.id, seed: artifact.seed_applied === false ? t("使用工作流种子设置") : String(artifact.seed ?? '—'), positive: artifact.positive || '', negative: artifact.negative || '' } }));
+  document.dispatchEvent(new CustomEvent('pictide:image-info', { detail: { id: artifact.id, seed: artifact.seed_applied === false ? imageSeedLabel(artifact) : String(artifact.seed ?? '—'), positive: artifact.positive || '', negative: artifact.negative || '' } }));
   if (state.currentImage !== artifact.id) {
     clearFeedbackMotion();
     cancelImageTransition($('main-image'));
@@ -719,14 +727,42 @@ async function loadMore() {
   catch (error) { if (view === 'liked' && filterVersion !== likedFilterVersion) return; if (view === 'generate') state.generatedError = tr`加载失败：${error.message}`; if (view === 'liked') state.likedError = tr`加载失败：${error.message}`; showNotice(tr`加载失败：${error.message}`, true); }
   finally { state.loadingMore = false; renderArtifacts(); }
 }
+const backendTypeDrafts = new Map();
+let settingsBackendKind = 'comfyui';
+const cloudInputIds = { model:'backend-model', size:'backend-size', quality:'backend-quality', aspect_ratio:'backend-aspect-ratio', image_size:'backend-image-size' };
+function updateBackendTypeControls() {
+  const kind = $('backend-kind').value, cloud = kind !== 'comfyui';
+  $('cloud-backend').hidden = !cloud; $('cloud-backend').disabled = !cloud;
+  $('workflow-picker-field').hidden = cloud;
+  $('openai-options').hidden = kind !== 'openai'; $('openai-options').disabled = kind !== 'openai';
+  $('gemini-options').hidden = kind !== 'gemini'; $('gemini-options').disabled = kind !== 'gemini';
+  describeAction($('key-state'), hasSavedApiKey ? t("已保存密钥。保留遮罩不修改，清空并保存可移除。") : cloud ? t('填写所选生图服务的 API Key。') : t("可选。本机 ComfyUI 通常无需密钥。"));
+  updateWorkflowControls();
+}
+function switchBackendType() {
+  backendTypeDrafts.set(settingsBackendKind, { name:$('backend-name').value, url:$('backend-url').value, key:$('backend-key').value, hasKey:hasSavedApiKey, fields:Object.fromEntries(Object.entries(cloudInputIds).map(([key,id]) => [key,$(id).value])) });
+  const kind = $('backend-kind').value;
+  const previous = backendTypeDrafts.get(kind), defaults = backendDefaults[kind];
+  $('backend-name').value = previous?.name ?? defaults.name;
+  $('backend-url').value = previous?.url ?? defaults.base_url;
+  $('backend-key').value = previous?.key ?? ''; hasSavedApiKey = previous?.hasKey ?? false;
+  $('backend-key').setCustomValidity('');
+  for (const [key,id] of Object.entries(cloudInputIds)) $(id).value = previous?.fields[key] ?? '';
+  settingsBackendKind = kind; workflowLoadRevision++; settingsDirty = true;
+  $('settings-result').hidden = true;
+  updateBackendTypeControls();
+}
 function loadBackend(id) {
   // Discard stale template responses when a different backend is selected.
   workflowLoadRevision++;
   $('workflow-mode').disabled = false;
   const backend = state.backends.find((item) => item.id === id);
+  backendTypeDrafts.clear();
   workflowInputOptions = {};
   $('backend-name').value = backend?.name || t("本机 ComfyUI"); $('backend-kind').value = backend?.kind || 'comfyui';
   $('backend-url').value = backend?.base_url || 'http://127.0.0.1:8188';
+  settingsBackendKind = backend?.kind || 'comfyui';
+  for (const [key, inputId] of Object.entries(cloudInputIds)) $(inputId).value = backend?.[key] || '';
   hasSavedApiKey = !!backend?.has_api_key;
   $('backend-key').value = hasSavedApiKey ? API_KEY_MASK : '';
   $('backend-key').setCustomValidity('');
@@ -746,15 +782,17 @@ function loadBackend(id) {
   settingsInitialized = true;
   $('delete-backend').disabled = !backend;
   updateBindings(backend?.bindings || {}, backend?.output_nodes || []);
-  updateWorkflowControls();
+  updateBackendTypeControls();
 }
 function updateWorkflowControls() {
+  const cloud = $('backend-kind').value !== 'comfyui';
   const custom = $('workflow-mode').value !== 'default';
-  $('custom-workflow').hidden = !custom; $('custom-workflow').disabled = !custom;
-  $('default-workflow').hidden = custom;
-  const needsBindings = effectiveWorkflowMode($('workflow-mode').value === 'default' ? 'default' : 'custom', $('workflow-json').value) === 'custom';
+  $('custom-workflow').hidden = cloud || !custom; $('custom-workflow').disabled = cloud || !custom;
+  $('default-workflow').hidden = cloud || custom;
+  $('workflow-mode').disabled = cloud;
+  const needsBindings = !cloud && effectiveWorkflowMode($('workflow-mode').value === 'default' ? 'default' : 'custom', $('workflow-json').value) === 'custom';
   $('binding-positive').required = needsBindings; $('binding-negative').required = needsBindings;
-  $('workflow-name').required = custom;
+  $('workflow-name').required = !cloud && custom;
   $('delete-workflow').disabled = !state.workflowId || !state.workflows.some(item => item.id === state.workflowId);
   if (custom && !needsBindings) { setStatusText('workflow-error', () => t("请导入 API 工作流，或从默认文生图读取节点参数。")); $('workflow-error').classList.remove('valid'); }
 }
@@ -933,6 +971,7 @@ function connectionDraft() {
 }
 function draftBackend({ saveWorkflow = false } = {}) {
   const draft = connectionDraft();
+  if (draft.kind !== 'comfyui') return { ...draft, ...cloudConfigFields(draft.kind, Object.fromEntries(Object.entries(cloudInputIds).map(([key,id]) => [key,$(id).value]))) };
   draft.workflow_mode = $('workflow-mode').value === 'default' ? 'default' : 'custom';
   if (draft.workflow_mode === 'default') { draft.default_checkpoint = $('default-checkpoint').value; return draft; }
   const invalidParameter = $('node-parameters').querySelector(':invalid');
@@ -954,7 +993,14 @@ function renderRoamBackends() {
   $('roam-backend').replaceChildren(translatedOption('', "自动选择后端"), ...state.backends.map(item => option(item.id, item.name)));
   if (selected && !state.backends.some(item => item.id === selected)) $('roam-backend').append(translatedOption(selected, "已移除的后端，请重新选择"));
   $('roam-backend').value = selected;
+  updateRoamBackendNote();
 }
+function updateRoamBackendNote() {
+  const selected = $('roam-backend').value;
+  const backend = selected ? state.backends.find(item => item.id === selected) : state.backends[0];
+  $('roam-cloud-note').hidden = !backendCapabilities(backend).cloud;
+}
+$('roam-backend').addEventListener('change', updateRoamBackendNote);
 async function loadRoamConfigs() {
   try {
     const selected = $('roam-config').value;
@@ -1009,6 +1055,7 @@ async function applyRoamSettings(settings, savedFields = []) {
   }
   document.dispatchEvent(new CustomEvent('pictide:roam-settings-draft', { detail: merged }));
   roamSettings = next; roamSettingsLoaded = true; roamVersion++;
+  updateRoamBackendNote();
   publishPlaybackInterval(next);
   if (settings.paused) { roamBlocked = true; roamPlayback.pause(); } else clearRoamError();
   roamAnchorRetried = false;
@@ -1122,6 +1169,7 @@ $('history-form').addEventListener('submit', async (event) => {
   finally { $('history-save').disabled = false; $('history-fields').disabled = false; }
 });
 $('edit-backend').addEventListener('change', () => loadBackend($('edit-backend').value));
+$('backend-kind').addEventListener('change', switchBackendType);
 $('backend-key').addEventListener('focus', () => { if (hasSavedApiKey && $('backend-key').value === API_KEY_MASK) $('backend-key').select(); });
 $('backend-key').addEventListener('input', () => {
   try { apiKeyFields($('backend-key').value, hasSavedApiKey); $('backend-key').setCustomValidity(''); }
@@ -1243,6 +1291,7 @@ $('settings-form').addEventListener('submit', async (event) => {
     updateGenerationHints();
     await loadWorkflowLibrary(backend.workflow_id ? `saved:${backend.workflow_id}` : 'default');
     loadBackend(backend.id); renderArtifacts();
+    await loadRoamSettings({ preserveDraft: true });
     settingsNotice(() => backend.workflow_name ? tr`后端与工作流「${backend.workflow_name}」已保存。` : t("后端已保存。"));
   } catch (error) { settingsNotice(error.message, true); }
   finally { state.saving = false; $('save-backend').disabled = false; $('settings-form').inert = false; }
@@ -1253,17 +1302,22 @@ $('generate-form').addEventListener('submit', async (event) => {
   generateFeedback.show('pending', t("正在提交…"));
   let operation;
   try {
-    const seed = Number($('seed').value); if (!$('seed').value.trim() || !Number.isSafeInteger(seed) || seed < -1) throw new Error(t("种子须为 -1 或非负安全整数。"));
+    const backend = state.backends.find((item) => item.id === $('generate-backend').value);
+    const capabilities = backendCapabilities(backend);
+    const seed = capabilities.cloud && !capabilities.seed ? -1 : Number($('seed').value);
+    if (!(capabilities.cloud && !capabilities.seed) && (!$('seed').value.trim() || !Number.isSafeInteger(seed) || seed < -1)) throw new Error(t("种子须为 -1 或非负安全整数。"));
     const count = generationCount($('generation-count').value);
     const repetitions = generationRepetitions($('generation-repetitions').value);
     const automatic = $('prompt-source').value === 'rules' && $('auto-prompts').checked;
     const rule = automatic ? readRuleGeneration() : null;
-    const payload = { backend_id: $('generate-backend').value, positive: $('positive').value, negative: $('negative').value, seed, count, repetitions,
+    const fromRules = $('prompt-source').value === 'rules';
+    const negative = capabilities.cloud && !capabilities.negative_prompt && !fromRules ? '' : $('negative').value;
+    if (!automatic && capabilities.cloud && negative.trim()) throw new Error(t('此后端不支持负向提示词，请在候选预设中移除负向词，或改用手动正向提示词。'));
+    const payload = { backend_id: $('generate-backend').value, positive: $('positive').value, negative, seed, count, repetitions,
       ...(rule ? { candidate: { ...rule.payload, seed_control: rule.current.seedControl, step_control: rule.current.stepControl } } : {}) };
     if (!payload.positive.trim() && !automatic) throw new Error(t("请输入正向提示词，或使用共现候选生成提示词。"));
     const decision = submissionDecision(payload, uncertainRequests, automatic);
-    const backend = state.backends.find((item) => item.id === $('generate-backend').value);
-    if (!automatic && payload.negative.trim() && !backend?.bindings?.negative) throw new Error(t("当前后端未绑定负向输入。请清空负向提示词，或在后端设置中指定负向绑定。"));
+    if (!automatic && payload.negative.trim() && !capabilities.negative_prompt) throw new Error(t("当前后端未绑定负向输入。请清空负向提示词，或在后端设置中指定负向绑定。"));
     operation = decision.retry || requestIdentity(payload, uncertainRequests, () => crypto.randomUUID());
     const hasOtherUncertain = uncertainRequests.size && !uncertainRequests.has(operation.key);
     uncertainRequests.set(operation.key, operation);
@@ -1273,7 +1327,7 @@ $('generate-form').addEventListener('submit', async (event) => {
       presentRulePrompts(result.candidate_result, { seed: result.next_candidate.seed, step: result.next_candidate.sequence_step },
         { mode: operation.payload.candidate.mode, seed: operation.payload.candidate.seed, step: operation.payload.candidate.sequence_step });
     }
-    if (Number.isSafeInteger(result.next_seed)) $('seed').value = String(result.next_seed);
+    if (capabilities.seed && Number.isSafeInteger(result.next_seed)) $('seed').value = String(result.next_seed);
     composeDirty = false;
     const submitted = result.jobs || [result.job];
     const submittedIds = new Set(submitted.map(job => job.id));

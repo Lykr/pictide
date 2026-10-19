@@ -32,7 +32,7 @@
 
 响应还包含 `artifact_revision,paused,preference_learning`，暂停时可附 `error`。`epoch` 为内部状态，不作为 HTTP 字段提交。
 
-PUT 可单独更新以下任意一项或组合：`playback_interval_seconds,liked_tags_only,prompt_mode,candidate_count,recommendation_strength,strong_candidate_multiplier,pinned_positive`。更新预取数量、历史数量、后端或预设时须携带 `prefetch_count`，其他未传项保留。
+PUT 可单独更新以下任意一项或组合：`playback_interval_seconds,liked_tags_only,prompt_mode,candidate_count,recommendation_strength,strong_candidate_multiplier,pinned_positive`。更新预取数量、历史数量、后端或预设时须携带 `prefetch_count`，其他未传项保留。切换到另一云端后端时，本次保存强制 `prefetch_count=0`；同一后端之后再次明确保存可开启。创建首个云端后端或将当前后端改为云端时也关闭自动预取。云端生成要求预设负向提示词为空。
 
 切换范围、方式、后端、预设或锚点会保留当前图并使后续旧预取失效；执行中的旧结果完成后隐藏。只改播放间隔、候选数量、推荐力度保留已有预取。预设固定词优先，与之重复的锚点会被移除；停泊时不能修改锚点。数量清理仅统计当前图之前的漫游图片，超限未喜欢图清理，喜欢图仅从漫游隐藏。
 

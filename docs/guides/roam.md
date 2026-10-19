@@ -4,7 +4,7 @@
 
 [Documentation](../README.md) · [Roam API](../dev/reference/api/roam.md)
 
-First select a backend and candidate preset and set the prefetch count under Settings → Roam, then open Roam to browse.
+First select a backend and candidate preset and set the prefetch count under Settings → Roam, then open Roam to browse. Selecting a new OpenAI Images or Gemini backend disables automatic prefetch (`0`); increase it explicitly to allow background generation. Cloud presets must have an empty negative prompt. Each generated image may incur provider charges; see [backend setup](getting-started.md#connect-openai-images-or-gemini).
 
 ## Preference scope and roaming modes
 

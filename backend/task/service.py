@@ -4,8 +4,8 @@ import logging
 from pathlib import Path
 from dataclasses import dataclass
 
-from ..generation import create_backend
-from ..generation.base import BackendError, GenerationBackend
+from ..generation import create_backend, backend_capabilities
+from ..generation.base import BackendError, GenerationBackend, CompletedGeneration
 from ..store.assets import local_image
 from ..store.contracts import Storage
 from .assets import cache_output
@@ -32,6 +32,7 @@ class JobService:
         self.wake = asyncio.Event()
         self.task = None
         self._dispatches = {}
+        self._submissions = {}
         self._pending_results = {}
         self._inspection_failed = False
         self._has_unknown = False
@@ -99,6 +100,10 @@ class JobService:
                 except asyncio.CancelledError:
                     pass
         finally:
+            submissions = list(self._submissions.values())
+            for submission in submissions:
+                submission.cancel()
+            await asyncio.gather(*submissions, return_exceptions=True)
             for iid in list(self._dispatches):
                 await self._release_backend(iid)
 
@@ -118,10 +123,11 @@ class JobService:
         return dispatch.backend
 
     def _wait_timeout(self):
-        if not self._dispatches:
+        dispatches = [dispatch for iid, dispatch in self._dispatches.items() if iid not in self._submissions]
+        if not dispatches:
             return None
         if self._inspection_failed or any(not d.event_owned or not d.backend.events_connected or d.inspection_failed
-                                          for d in self._dispatches.values()):
+                                          for d in dispatches):
             return 2
         return 30
 
@@ -134,7 +140,14 @@ class JobService:
                 unknown[job["id"]] = job
         self._has_unknown = bool(unknown)
         for job in unknown.values():
+            if job["id"] in self._submissions or job["id"] in self._pending_results:
+                continue
             config = await self.database(self.repository.job_backend, job["id"])
+            if not backend_capabilities(config)["recovery"]:
+                # There is no remote handle to recover or retry a completed HTTP call.
+                await self.database(self.repository.finish_dispatch, job["id"])
+                await self._release_backend(job["id"])
+                continue
             backend = self.backend(config)
             try:
                 prompt_id = await backend.reconcile(job["request_id"])
@@ -164,32 +177,58 @@ class JobService:
                 continue
             # Use the pre-claim queued snapshot to identify our new subscription.
             backend = await self._backend_for_job(job)
-            try:
-                prompt_id = await backend.submit(job, job["request_id"])
-            except BackendError as exc:
-                await self.database(self.repository.update_job, job["id"], "unknown" if exc.uncertain else "failed", error=str(exc))
-                if exc.uncertain:
-                    self._has_unknown = True
-                else:
-                    await self.database(self.repository.finish_dispatch, job["id"])
-                    await self._release_backend(job["id"])
-                    changed = True
-                continue
-            except Exception:
-                await self.database(self.repository.update_job, job["id"], "unknown", error="提交过程中发生内部异常，结果待核对；不会自动重新提交。")
-                self._has_unknown = True
-                continue
-            current = await self.database(self.repository.attach_prompt, job["id"], prompt_id)
-            if current["status"] == "cancelled":
-                try:
-                    if await backend.cancel(prompt_id):
-                        await self.database(self.repository.finish_dispatch, job["id"])
-                        changed = True
-                except BackendError:
-                    pass
+            if job.get("backend_kind", "comfyui") != "comfyui":
+                # A cloud POST can take minutes; keep both slots and the worker responsive.
+                submission = asyncio.create_task(self._submit_job(job, backend), name="pictide-cloud-" + job["id"])
+                self._submissions[job["id"]] = submission
+                submission.add_done_callback(lambda task, iid=job["id"]: self._submission_done(iid, task))
             else:
-                await self.database(self.repository.update_job, job["id"], "running", error=None)
+                changed = await self._submit_job(job, backend) or changed
         return changed
+
+    def _submission_done(self, iid, task):
+        self._submissions.pop(iid, None)
+        if not task.cancelled() and task.exception() is not None:
+            log.error("Cloud result processing failed; generation was not resubmitted.")
+        self.wake.set()
+
+    async def _submit_job(self, job, backend):
+        cloud = job.get("backend_kind", "comfyui") != "comfyui"
+        try:
+            submission = await backend.submit(job, job["request_id"])
+        except BackendError as exc:
+            await self.database(self.repository.update_job, job["id"], "unknown" if exc.uncertain else "failed", error=str(exc))
+            if exc.uncertain:
+                self._has_unknown = True
+            if cloud or not exc.uncertain:
+                await self.database(self.repository.finish_dispatch, job["id"])
+                await self._release_backend(job["id"])
+                return True
+            return False
+        except Exception:
+            await self.database(self.repository.update_job, job["id"], "unknown", error="提交过程中发生内部异常，结果待核对；不会自动重新提交。")
+            self._has_unknown = True
+            if cloud:
+                await self.database(self.repository.finish_dispatch, job["id"])
+                await self._release_backend(job["id"])
+            return cloud
+        if isinstance(submission, CompletedGeneration):
+            # Capture bytes/URLs until durable saving succeeds, without inventing a remote ID.
+            self._pending_results[job["id"]] = (job, backend, {"state": "completed", "outputs": submission.outputs})
+            await self.database(self.repository.finish_dispatch, job["id"])
+            await self._release_backend(job["id"])
+            return True
+        current = await self.database(self.repository.attach_prompt, job["id"], submission)
+        if current["status"] == "cancelled":
+            try:
+                if await backend.cancel(submission):
+                    await self.database(self.repository.finish_dispatch, job["id"])
+                    return True
+            except BackendError:
+                pass
+        else:
+            await self.database(self.repository.update_job, job["id"], "running", error=None)
+        return False
 
     async def _inspect_job(self, job):
         backend = await self._backend_for_job(job)

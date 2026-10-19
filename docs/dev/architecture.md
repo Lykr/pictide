@@ -8,7 +8,7 @@ Pictide is a local web application with a separate frontend and backend. `web/` 
 
 ## Architecture Diagram
 
-The diagram shows the current module responsibilities. The application orchestration layer in the web backend is the interaction hub, passing candidate combinations, scores, generation requests, and feedback between modules. Candidate, Recommendation, and Task do not call or depend on one another directly. The HTTP host is a standalone web service; ComfyUI provides only the generation API.
+The diagram shows the current module responsibilities. The application orchestration layer in the web backend is the interaction hub, passing candidate combinations, scores, generation requests, and feedback between modules. Candidate, Recommendation, and Task do not call or depend on one another directly. The HTTP host is a standalone web service; ComfyUI, OpenAI Images, and Gemini provide only image generation; cloud prompts leave the local application.
 
 ```mermaid
 flowchart TD
@@ -20,6 +20,7 @@ flowchart TD
     Jobs["Task module: scheduling / recovery / result association"]
     Backend["Generation backend interface"]
     Comfy["ComfyUI API"]
+    Cloud["OpenAI Images / Gemini Interactions"]
     Store["Storage interface"]
     DB[("SQLite + image files")]
 
@@ -30,6 +31,7 @@ flowchart TD
     App <--> Jobs
     Jobs --> Backend
     Backend --> Comfy
+    Backend --> Cloud
     App --> Store
     Rules --> Store
     Rec --> Store
@@ -54,7 +56,7 @@ pictide/
     candidate/                 Read-only co-occurrence libraries, presets, continuous-change budget, offline import
     recommand/                 Combination features, MiniLM, Bayesian scoring and learning; existing spelling retained
     task/                      Scheduling, recovery, cancellation, and result association
-    generation/                Image generation interface, ComfyUI integration, and workflows
+    generation/                Generation interface, ComfyUI workflows, OpenAI Images, and Gemini
     store/                     SQLite, image/JSON storage, cleanup policies, and reclamation
   data/                        Configurable data root
   docs/                        Documentation entry points
@@ -74,9 +76,9 @@ pictide/
 | Host | `backend/host.py` | Requests and responses, origin checks, error mapping, static assets, events, and lifecycle; calls application orchestration |
 | App | `backend/application.py` | Connects Candidate, Recommendation, Task, and Store; orchestrates the roam buffer, settings versions, and pause conditions |
 | Rules | `backend/candidate/` | Read-only libraries, co-occurrence presets and candidate generation, sequence budgets; does not call generation services |
-| Rec | `backend/recommand/` | Complete-combination scoring, tag feature encoding, and positive/negative preference learning; does not generate candidates or call ComfyUI |
+| Rec | `backend/recommand/` | Complete-combination scoring, tag feature encoding, and positive/negative preference learning; does not generate candidates or call generation services |
 | Jobs | `backend/task/` | Task state, idempotency, recovery, cancellation, and artifact association; depends on generation and storage interfaces |
-| Backend / Comfy | `backend/generation/` | Isolates ComfyUI requests, validation, submission, queries, image retrieval, and workflow differences |
+| Backend / Comfy / Cloud | `backend/generation/` | Registers adapters and capabilities; prepares requests, submits, queries when supported, and reads image outputs |
 | Store / DB | `backend/store/` | SQLite and file storage, atomic feedback, image–prompt associations, and lazy cleanup |
 
 ## Dependency Rules
@@ -85,7 +87,7 @@ pictide/
 - App is the only interaction hub between Candidate, Recommendation, and Task. It obtains the complete candidate pool, requests combination scores, selects a combination, and submits tasks. Scores are not sent back to Candidate for resampling.
 - Candidate, Recommendation, and Task do not call or import one another directly. Shared recommendation requests/results live in `backend/contracts/recommendation.py`; candidate snapshots live in `backend/candidate/contracts.py`.
 - Candidate reads online libraries and presets through storage interfaces injected by Host, without importing SQLite adapters. Offline download/import tools use SQLite independently and stay outside online startup and request paths.
-- Task depends on Generation and Store, handling submission of determined tasks, event verification, recovery, cancellation, and result association. Generation isolates ComfyUI differences.
+- Task depends on Generation and Store, handling submission of determined tasks, event verification, recovery, cancellation, and result association. Generation isolates protocol differences. ComfyUI returns a remote task reference; OpenAI Images and Gemini return completed outputs from one HTTP request. Unknown cloud submissions are not automatically retried.
 - The browser manages presentation, input, and drafts through HTTP/SSE, without reading or writing configuration or databases directly. The prompt page is a view in the same frontend, with no additional site or iframe.
 - Store persists tasks, images, feedback, snapshots, and learning state. Feedback learning uses the actual generation snapshot; the current library does not overwrite historical meaning.
 

@@ -11,7 +11,7 @@ Pictide 当前已实现的 HTTP API 统一入口。先阅读通用约定，再�
 | 初始化页面、订阅状态变化 | [初始化与实时事件](reference/api/events.zh-CN.md) |
 | 修改语言、主题、清理期限 | [通用与历史设置](reference/api/settings.zh-CN.md) |
 | 配置漫游、保存观看位置、补足预取 | [漫游](reference/api/roam.zh-CN.md) |
-| 接入 ComfyUI、检查连接、管理工作流 | [生图后端与工作流](reference/api/backends.zh-CN.md) |
+| 接入生图后端、检查连接、管理工作流 | [生图后端与工作流](reference/api/backends.zh-CN.md) |
 | 创建、分页查看和取消任务 | [生成任务](reference/api/jobs.zh-CN.md) |
 | 查询图片、反馈、清理、偏好评分与排序 | [图片、反馈与评分](reference/api/images.zh-CN.md) |
 | 查看、导出和重置偏好 | [用户偏好](reference/api/preferences.zh-CN.md) |

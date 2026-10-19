@@ -161,5 +161,10 @@
   "请输入有效数值。": "Enter a valid number.",
   "请输入 1–120 字的工作流名称，不含路径或控制字符。": "Enter a workflow name of 1–120 characters, without path or control characters.",
   "请导入 API 格式工作流。": "Import an API-format workflow.",
-  "需要 ComfyUI「API 格式」工作流，而非普通画布 JSON。": "Use a ComfyUI API workflow, not the regular canvas JSON."
+  "需要 ComfyUI「API 格式」工作流，而非普通画布 JSON。": "Use a ComfyUI API workflow, not the regular canvas JSON.",
+  "模型不支持图像种子": "Model does not support image seeds",
+  "请填写生图模型 ID。": "Enter an image model ID.",
+  "填写所选生图服务的 API Key。": "Enter the API key for the selected image generation service.",
+  "此后端不支持负向提示词和图像种子；本次仅发送正向提示词，原输入保留。候选预设中的负向词仍需移除。": "This backend supports positive prompts only. Negative prompts and image seeds are kept in your draft and omitted from manual requests. Remove negative terms from candidate presets before using them.",
+  "此后端不支持负向提示词，请在候选预设中移除负向词，或改用手动正向提示词。": "This backend does not support negative prompts. Remove negative terms from the candidate preset, or use a manual positive prompt."
 }

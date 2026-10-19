@@ -4,4 +4,5 @@ from ..store.assets import persist_output
 
 async def cache_output(paths, backend, output, job):
     content, mime = await backend.image(output)
-    return await persist_output(paths, content, mime, output, job)
+    descriptor = {key: value for key, value in output.items() if not key.startswith("_")}
+    return await persist_output(paths, content, mime, descriptor, job)

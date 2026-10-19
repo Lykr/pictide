@@ -8,12 +8,13 @@ import { Toggle } from "./ui/toggle";
 import { IconButton } from "./actions";
 import { LikedTagFilter } from "./liked-tag-filter";
 import { GeneratedViewer, type GeneratedArtifact } from "./generated-viewer";
+import { imageSeedLabel } from "../controllers/backend-controls.mjs";
 
 type ResultState = { artifacts: GeneratedArtifact[]; total: number; hasMore: boolean; loading: boolean; error: string; pending: boolean; status: string; feedbackPending: boolean; mutationPending: boolean; visible: boolean; configured: boolean; tags: string[]; sort: "latest" | "score"; refreshedAt: string | null; filterVersion: number; revision: number };
 const initial: ResultState = { artifacts: [], total: 0, hasMore: false, loading: true, error: "", pending: false, status: "", feedbackPending: false, mutationPending: false, visible: false, configured: false, tags: [], sort: "latest", refreshedAt: null, filterVersion: 0, revision: 0 };
 const emit = (name: string, detail?: unknown) => document.dispatchEvent(new CustomEvent(`pictide:${name}`, { detail }));
 const imagePath = (item: GeneratedArtifact) => `/api/artifacts/${encodeURIComponent(item.id)}/image`;
-const seedLabel = (item: GeneratedArtifact) => item.seed_applied === false ? t("使用工作流种子设置") : `seed ${item.seed ?? "—"}`;
+const seedLabel = imageSeedLabel;
 
 function ArtifactImage({ item, label }: { item: GeneratedArtifact; label: string }) {
   const [status, setStatus] = useState("loading");

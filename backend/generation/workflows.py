@@ -18,6 +18,8 @@ def default_txt2img(checkpoint):
 
 
 def uses_default(config):
+    if config.get("kind", "comfyui") != "comfyui":
+        return False
     mode = config.get("workflow_mode")
     if mode not in (None,"default","custom"):
         raise BackendError("工作流模式必须为 default 或 custom。")
@@ -25,6 +27,8 @@ def uses_default(config):
 
 
 async def checkpoint_models(config, session, backend_factory=create_backend):
+    if config.get("kind", "comfyui") != "comfyui":
+        return [validate_backend(config)["model"]]
     probe = {**config,**default_txt2img("__model_discovery__")}
     backend = backend_factory(validate_backend(probe),session)
     return await backend.checkpoints()
@@ -32,12 +36,12 @@ async def checkpoint_models(config, session, backend_factory=create_backend):
 
 async def resolve_backend(config, session, backend_factory=create_backend):
     config = copy.deepcopy(config)
+    if config.get("kind", "comfyui") != "comfyui":
+        return validate_backend(config)
     if not uses_default(config):
         cleaned = validate_backend(config)
         cleaned["workflow_mode"] = "custom"
         return cleaned
-    if config.get("kind","comfyui") != "comfyui":
-        raise BackendError("此后端暂不支持内置文生图，请导入自定义工作流。")
     models = await checkpoint_models(config,session,backend_factory)
     if not models:
         raise BackendError("ComfyUI 没有可用的 checkpoint。请先在后端安装兼容 SD/SDXL 的模型。")

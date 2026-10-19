@@ -21,8 +21,8 @@
 | `backend_id` | 必填，已保存后端 ID |
 | `request_id` | 必填，8–100 字符；重试沿用同一值，不同生成操作使用新值 |
 | `positive` | 手动生成时必填非空字符串，最多 20000 字符 |
-| `negative` | 字符串，默认空，最多 20000 字符 |
-| `seed` | 整数 -1 或 0–9007199254740991；默认 -1 随机图像种子 |
+| `negative` | 字符串，默认空，最多 20000 字符；云端适配器要求为空 |
+| `seed` | 整数 -1 或 0–9007199254740991；默认 -1 随机图像种子；云端适配器只接受 -1，不发送图像种子 |
 | `count` | 每次数量，整数 1–10，默认 1 |
 | `repetitions` | 生成次数，整数 1–10，默认 1 |
 | `candidate` | 可选，候选生成参数，见候选章节；提供时每次重新抽取 |
@@ -33,6 +33,6 @@
 
 ### Job
 
-主要字段：`id,request_id,backend_id,revision_id,status,positive,negative,seed,backend_prompt_id,error,created_at,updated_at`。列表还提供 `source`（`roam / generate`）、`backend_name,seed_applied`。不返回含密钥的配置快照。
+主要字段：`id,request_id,backend_id,revision_id,status,positive,negative,seed,backend_prompt_id,error,created_at,updated_at`。列表还提供 `source`（`roam / generate`）、`backend_name,backend_kind,seed_applied`。不返回含密钥的配置快照。
 
-状态为 `queued / submitting / running / completed / failed / unknown / cancelled`。`unknown` 表示提交或执行结果无法确认，不应据此直接重新提交同一生图操作。
+状态为 `queued / submitting / running / completed / failed / unknown / cancelled`。`unknown` 表示提交或执行结果无法确认，不应据此直接重新提交同一生图操作。本次 OpenAI Images 与 Gemini 接入没有远端恢复或取消能力；结果不确定的已发送请求不自动重发，本地取消不能保证服务商停止或免于计费。

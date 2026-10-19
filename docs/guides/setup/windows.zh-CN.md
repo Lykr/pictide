@@ -10,11 +10,11 @@
 
 解压对应系统与 CPU 架构的发行包，双击 `start.cmd`。就绪后自动打开系统默认浏览器，关闭启动窗口或按 Ctrl+C 停止。个人数据保存在包内 data，下一次启动继续使用。
 
-Windows 真实便携产物已验证。首次使用到[后端设置](../getting-started.zh-CN.md#接入-comfyui)连接 ComfyUI。启动参数支持 `--port`、`--data-dir`、`--lan` 和 `--no-browser`；桌面环境可自动打开浏览器，服务器环境通过终端显示的地址访问。
+Windows 真实便携产物已验证。首次使用到[后端设置](../getting-started.zh-CN.md)连接 ComfyUI、OpenAI Images 或 Gemini。启动参数支持 `--port`、`--data-dir`、`--lan` 和 `--no-browser`；桌面环境可自动打开浏览器，服务器环境通过终端显示的地址访问。
 
 ## 源码启动
 
-已准备好前端的目录，双击 `start.cmd`。打开 http://127.0.0.1:8189 ，按 Ctrl+C 或关闭启动窗口停止应用。接下来[连接 ComfyUI](../getting-started.zh-CN.md#接入-comfyui)。
+已准备好前端的目录，双击 `start.cmd`。打开 http://127.0.0.1:8189 ，按 Ctrl+C 或关闭启动窗口停止应用。接下来[连接生图后端](../getting-started.zh-CN.md)。
 
 启动器会创建 `data/runtime/venv` 并安装后端依赖，也会尝试寻找本机已有的 Codex Python 运行时。需要指定 Python 时：
 

@@ -8,7 +8,7 @@ Pictide 是前后端分离的本地 Web 应用。`web/` 是唯一浏览器入口
 
 ## 架构图
 
-当前模块职责如下。Web 后端中的应用编排层是交互核心，统一传递候选、评分、生成请求与反馈；候选、推荐、任务模块之间不直接调用或互相依赖。HTTP 宿主是独立 Web 服务；ComfyUI 只承担生成 API。
+当前模块职责如下。Web 后端中的应用编排层是交互核心，统一传递候选、评分、生成请求与反馈；候选、推荐、任务模块之间不直接调用或互相依赖。HTTP 宿主是独立 Web 服务；ComfyUI、OpenAI Images 与 Gemini 只承担生图能力，云端提示词会离开本地应用。
 
 ```mermaid
 flowchart TD
@@ -20,6 +20,7 @@ flowchart TD
     Jobs["任务模块：调度 / 恢复 / 结果关联"]
     Backend["生成后端接口"]
     Comfy["ComfyUI API"]
+    Cloud["OpenAI Images / Gemini Interactions"]
     Store["存储接口"]
     DB[("SQLite + 图片文件")]
 
@@ -30,6 +31,7 @@ flowchart TD
     App <--> Jobs
     Jobs --> Backend
     Backend --> Comfy
+    Backend --> Cloud
     App --> Store
     Rules --> Store
     Rec --> Store
@@ -55,7 +57,7 @@ pictide/
     candidate/                 只读共现词库、预设、连续变化预算与离线导入
     recommand/                 组合特征、MiniLM、贝叶斯评分与学习；沿用目录拼写
     task/                      调度、恢复、取消与结果关联
-    generation/                生图接口、ComfyUI 接入与工作流
+    generation/                生图接口、ComfyUI 工作流、OpenAI Images 与 Gemini
     store/                     SQLite、图片/JSON、清理策略及回收
   data/                        可替换的数据根目录
   docs/                        文档入口
@@ -75,9 +77,9 @@ pictide/
 | Host | `backend/host.py` | 请求与响应、来源检查、错误映射、静态资源、事件与生命周期；调用应用编排 |
 | App | `backend/application.py` | 连接候选、推荐、任务与存储，编排漫游缓冲、设置版本与暂停条件 |
 | Rules | `backend/candidate/` | 只读词库、共现预设与候选生成、序列预算；不调用生图服务 |
-| Rec | `backend/recommand/` | 完整组合评分、标签特征编码与正负偏好学习；不生成候选或调用 ComfyUI |
+| Rec | `backend/recommand/` | 完整组合评分、标签特征编码与正负偏好学习；不生成候选或调用生图服务 |
 | Jobs | `backend/task/` | 任务状态、幂等、恢复、取消与产物关联；依赖生图及存储接口 |
-| Backend / Comfy | `backend/generation/` | 隔离 ComfyUI 请求、校验、提交、查询、图片读取与工作流差异 |
+| Backend / Comfy / Cloud | `backend/generation/` | 注册适配器与能力，准备请求、提交、按能力查询并读取图片结果 |
 | Store / DB | `backend/store/` | SQLite 与文件存储、原子反馈、图片提示词关联及懒清理 |
 
 ## 依赖规则
@@ -86,7 +88,7 @@ pictide/
 - App 是候选、推荐、任务之间的唯一交互核心。它获取完整候选池、请求组合评分、选择组合并提交任务；评分不会回传候选进行重新抽取。
 - Candidate、Recommendation、Task 不直接相互调用或导入。共享推荐请求/结果位于 `backend/contracts/recommendation.py`，候选快照位于 `backend/candidate/contracts.py`。
 - Candidate 通过 Host 注入的存储接口读取在线词库和预设，不导入 SQLite 适配器；离线下载、导入工具独立使用 SQLite，不放入在线启动或请求链。
-- Task 依赖 Generation 和 Store，负责确定任务的提交、事件核实、恢复、取消与结果关联；Generation 隔离 ComfyUI 差异。
+- Task 依赖 Generation 和 Store，负责确定任务的提交、事件核实、恢复、取消与结果关联；Generation 隔离协议差异；ComfyUI 返回远端任务引用，OpenAI Images 与 Gemini 在一次 HTTP 请求中返回完整结果。云端结果不确定的提交不自动重试。
 - 浏览器通过 HTTP/SSE 管理展示、输入和草稿，不直接读写配置或数据库。提示词页是同一前端中的视图，没有额外站点或 iframe。
 - Store 持久化任务、图片、反馈、快照和学习状态。反馈学习依据实际生成快照，不用当前词库覆盖历史语义。
 

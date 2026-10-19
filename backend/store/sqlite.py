@@ -170,7 +170,7 @@ class Repository:
 
     @classmethod
     def _job_rows(cls, db, limit, offset=0):
-        rows = db.execute("SELECT j.*,CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=j.id) THEN 'roam' ELSE 'generate' END AS source,json_extract(r.config,'$.name') AS backend_name,json_type(r.config,'$.bindings.seed')='object' AS seed_applied FROM jobs j JOIN backend_revisions r ON r.id=j.revision_id ORDER BY j.created_at DESC,j.id DESC LIMIT ? OFFSET ?", (limit, offset))
+        rows = db.execute("SELECT j.*,CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=j.id) THEN 'roam' ELSE 'generate' END AS source,json_extract(r.config,'$.name') AS backend_name,COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied FROM jobs j JOIN backend_revisions r ON r.id=j.revision_id ORDER BY j.created_at DESC,j.id DESC LIMIT ? OFFSET ?", (limit, offset))
         return [cls._job(row) for row in rows]
 
     def job_page(self, page):
@@ -189,7 +189,7 @@ class Repository:
 
     def job(self, iid):
         with self.connection() as db:
-            row = db.execute("SELECT j.*,CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=j.id) THEN 'roam' ELSE 'generate' END AS source,json_extract(r.config,'$.name') AS backend_name,json_type(r.config,'$.bindings.seed')='object' AS seed_applied FROM jobs j JOIN backend_revisions r ON r.id=j.revision_id WHERE j.id=?", (iid,)).fetchone()
+            row = db.execute("SELECT j.*,CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=j.id) THEN 'roam' ELSE 'generate' END AS source,json_extract(r.config,'$.name') AS backend_name,COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied FROM jobs j JOIN backend_revisions r ON r.id=j.revision_id WHERE j.id=?", (iid,)).fetchone()
             return self._job(row) if row else None
 
     def job_backend(self, iid):
@@ -395,7 +395,7 @@ class Repository:
             db.execute("BEGIN")
             query = ("SELECT j.*,CASE WHEN r.job_id IS NULL THEN 'generate' ELSE 'roam' END AS source,"
                      "json_extract(b.config,'$.name') AS backend_name,"
-                     "json_type(b.config,'$.bindings.seed')='object' AS seed_applied "
+                     "COALESCE(json_extract(b.config,'$.kind'),'comfyui') AS backend_kind,json_type(b.config,'$.bindings.seed')='object' AS seed_applied "
                      "FROM jobs j LEFT JOIN roam_jobs r ON r.job_id=j.id "
                      "JOIN backend_revisions b ON b.id=j.revision_id ")
             pending = db.execute(query + "WHERE j.backend_pending=1 ORDER BY j.created_at,j.id").fetchall()
@@ -639,7 +639,7 @@ class Repository:
                     offset = max(0, min(rank - limit // 2, available - limit))
             rows = db.execute(f"""SELECT a.*,j.positive,j.negative,j.seed,f.value AS feedback,
                 CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id) THEN 'roam' ELSE 'generate' END AS source,
-                json_type(r.config,'$.bindings.seed')='object' AS seed_applied
+                COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied
                 FROM artifacts a JOIN jobs j ON j.id=a.job_id
                 JOIN backend_revisions r ON r.id=j.revision_id
                 LEFT JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local'
@@ -700,7 +700,7 @@ class Repository:
             db.create_function("has_prompt_tags", 1, lambda positive: selected <= prompt_tags(positive), deterministic=True)
             rows = db.execute("""SELECT a.*,j.positive,j.negative,j.seed,f.value AS feedback,
                 CASE WHEN rj.job_id IS NULL THEN 'generate' ELSE 'roam' END AS source,
-                json_type(r.config,'$.bindings.seed')='object' AS seed_applied,rj.candidate AS scoring_snapshot
+                COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied,rj.candidate AS scoring_snapshot
                 FROM artifacts a JOIN jobs j ON j.id=a.job_id
                 JOIN backend_revisions r ON r.id=j.revision_id
                 JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local' AND f.value=1
@@ -725,7 +725,7 @@ class Repository:
     def _read_artifact(self, db, iid):
         row = db.execute("""SELECT a.*,j.positive,j.negative,j.seed,f.value AS feedback,
             CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id) THEN 'roam' ELSE 'generate' END AS source,
-            json_type(r.config,'$.bindings.seed')='object' AS seed_applied
+            COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied
             FROM artifacts a JOIN jobs j ON j.id=a.job_id
             JOIN backend_revisions r ON r.id=j.revision_id
             LEFT JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local' WHERE a.id=? AND a.deleted_at IS NULL""", (iid,)).fetchone()

@@ -31,5 +31,5 @@
 ## 继续阅读
 
 - [漫游范围、方式和预取](roam.zh-CN.md)
-- [后端与工作流编辑](getting-started.zh-CN.md#接入-comfyui)
+- [后端与工作流编辑](getting-started.zh-CN.md)
 - [数据备份与恢复](backup.zh-CN.md#备份与恢复)

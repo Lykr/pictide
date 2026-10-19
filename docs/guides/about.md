@@ -40,7 +40,7 @@ Roaming connects generation, browsing, and feedback so you can focus on images. 
 
 ## Local and personal
 
-Images, tag libraries, and preferences are stored locally, giving you control over your generation resources and data. ComfyUI provides image generation; Pictide organizes candidates, recommendations, and browsing. Currently, one instance shares a single image collection and set of preferences. LAN access uses the same data, with no separate user accounts.
+Images, tag libraries, and preferences are stored locally, giving you control over your generation resources and data. ComfyUI, OpenAI Images, or Gemini provides image generation; Pictide organizes candidates, recommendations, and browsing. With a cloud backend, generation prompts and options are sent to the selected service; local data storage does not mean cloud generation runs offline. Currently, one instance shares a single image collection and set of preferences. LAN access uses the same data, with no separate user accounts.
 
 ## Product scope
 

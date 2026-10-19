@@ -12,7 +12,7 @@
 | --- | --- |
 | Pictide 是什么，适合怎样使用？ | [认识 Pictide](guides/about.zh-CN.md) |
 | 如何安装和启动？ | [Windows](guides/setup/windows.zh-CN.md) · [Linux](guides/setup/linux.zh-CN.md) · [macOS](guides/setup/macos.zh-CN.md) |
-| 如何接入生图服务？ | [连接 ComfyUI](guides/getting-started.zh-CN.md#接入-comfyui) |
+| 如何接入生图服务？ | [连接 ComfyUI、OpenAI Images 或 Gemini](guides/getting-started.zh-CN.md) |
 | 如何让手机访问或添加主屏幕应用？ | [局域网与主屏幕应用](guides/access.zh-CN.md) |
 | 提示词怎么产生，固定词和共现参数怎么用？ | [提示词与共现预设](guides/prompts.zh-CN.md) |
 | 漫游、播放、锚点和推荐力度怎么用？ | [漫游](guides/roam.zh-CN.md) |

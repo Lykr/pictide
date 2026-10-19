@@ -10,7 +10,7 @@
 
 解压对应系统与 CPU 架构的发行包，在发行目录执行 `./start.sh`。就绪后自动打开系统默认浏览器，关闭启动窗口或按 Ctrl+C 停止。个人数据保存在包内 data，下一次启动继续使用。
 
-已提供本机构建与启动路径；原生运行尚待该系统验证。首次使用到[后端设置](../getting-started.zh-CN.md#接入-comfyui)连接 ComfyUI。启动参数支持 `--port`、`--data-dir`、`--lan` 和 `--no-browser`；桌面环境可自动打开浏览器，服务器环境通过终端显示的地址访问。
+已提供本机构建与启动路径；原生运行尚待该系统验证。首次使用到[后端设置](../getting-started.zh-CN.md)连接 ComfyUI、OpenAI Images 或 Gemini。启动参数支持 `--port`、`--data-dir`、`--lan` 和 `--no-browser`；桌面环境可自动打开浏览器，服务器环境通过终端显示的地址访问。
 
 ## 源码启动
 
@@ -20,7 +20,7 @@
 bash start.sh
 ```
 
-打开 http://127.0.0.1:8189 ，按 Ctrl+C 停止应用。接下来[连接 ComfyUI](../getting-started.zh-CN.md#接入-comfyui)。
+打开 http://127.0.0.1:8189 ，按 Ctrl+C 停止应用。接下来[连接生图后端](../getting-started.zh-CN.md)。
 
 启动器默认查找 `python3`，创建 `data/runtime/venv` 并安装后端依赖。Debian / Ubuntu 缺少 venv 时，安装与所用 Python 版本匹配的 `python3-venv` 包。需要指定 Python 时：
 

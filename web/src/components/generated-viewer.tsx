@@ -12,8 +12,9 @@ import { bindTouchNavigation } from "../controllers/touch-navigation.mjs";
 import { generatedNeighbour, generatedReplacement, generatedShortcut } from "../controllers/generated-viewer-controls.mjs";
 import "../styles/generated-viewer.css";
 import { playImageTransition, cancelImageTransition } from "../controllers/image-transitions.mjs";
+import { imageSeedLabel } from "../controllers/backend-controls.mjs";
 
-export type GeneratedArtifact = { id: string; positive?: string; negative?: string; seed?: number; seed_applied?: boolean; created_at: string; feedback?: number | null };
+export type GeneratedArtifact = { id: string; positive?: string; negative?: string; seed?: number; seed_applied?: boolean; backend_kind?: string; created_at: string; feedback?: number | null };
 export type GeneratedViewerProps = {
   items: GeneratedArtifact[];
   activeId: string | null;
@@ -155,7 +156,7 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
         <Popover open={infoOpen && !immersive} onOpenChange={setInfoOpen}>
           <PopoverTrigger asChild><IconButton icon={Info} label={t("图片信息")} /></PopoverTrigger>
           <PopoverContent className="generated-viewer-info image-details-popover" align="start" side="top" aria-label={t("图片信息")}>
-            <ImagePromptDetails key={item.id} imageId={item.id} active={infoOpen && !immersive} seed={item.seed_applied === false ? t("使用工作流种子设置") : item.seed ?? "—"} positive={item.positive || ""} negative={item.negative || ""}
+            <ImagePromptDetails key={item.id} imageId={item.id} active={infoOpen && !immersive} seed={item.seed_applied === false ? imageSeedLabel(item) : item.seed ?? "—"} positive={item.positive || ""} negative={item.negative || ""}
               actions={<Button asChild variant="ghost" size="icon-sm"><a href={artifactPath(item, "prompts")} download aria-label={t("下载提示词 JSON")} data-tooltip={t("下载提示词 JSON")}><Download aria-hidden="true" /></a></Button>} />
           </PopoverContent>
         </Popover>

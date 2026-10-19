@@ -111,5 +111,17 @@
   "已喜欢": "Liked",
   "已不喜欢": "Disliked",
   "已取消喜欢": "Like removed",
-  "已取消不喜欢": "Dislike removed"
+  "已取消不喜欢": "Dislike removed",
+  "连接生图后端，开始生成。": "Connect an image generation backend to get started.",
+  "提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。": "Prompts are sent to this service; images and feedback stay local. API usage may be billed.",
+  "每轮提交的生成任务数，同轮共用提示词；单个任务可能输出多张图片。": "Generation tasks per round share prompts. A task may output multiple images.",
+  "整批生成的轮数；每轮包含左侧设置的生成任务数。": "Number of rounds in this batch. Each round contains the generation tasks set on the left.",
+  "填写服务支持的生图模型 ID": "Enter an image model ID supported by the service",
+  "请填写服务支持的生图模型 ID；可选参数留空时使用服务默认值。": "Enter an image model ID supported by the service. Leave optional parameters blank to use service defaults.",
+  "图片尺寸（可选）": "Image dimensions (optional)",
+  "图片质量（可选）": "Image quality (optional)",
+  "宽高比（可选）": "Aspect ratio (optional)",
+  "图片分辨率（可选）": "Image resolution (optional)",
+  "测试连接只读取服务信息，不会生成图片。": "Connection tests only read service information and do not generate images.",
+  "首次选择云端后端会关闭自动预取；再次保存非零预取数量可开启连续生成。": "Selecting a cloud backend for the first time turns off automatic prefetch. Save a nonzero prefetch count again to enable continuous generation."
 }

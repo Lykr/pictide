@@ -1,9 +1,12 @@
 """Backend registry. Add adapters here without changing feed business logic."""
-from .base import BackendError, GenerationBackend
+from .base import BackendError, GenerationBackend, CompletedGeneration
 from .comfyui import ComfyBackend, validate_comfyui
+from .cloud import OpenAIBackend, GeminiBackend, validate_openai, validate_gemini
 
 _BACKENDS = {
     "comfyui": {"label": "ComfyUI", "validate": validate_comfyui, "create": ComfyBackend},
+    "openai": {"label": "OpenAI Images", "validate": validate_openai, "create": OpenAIBackend},
+    "gemini": {"label": "Gemini Interactions", "validate": validate_gemini, "create": GeminiBackend},
 }
 
 
@@ -25,4 +28,12 @@ def create_backend(config, session) -> GenerationBackend:
     return _BACKENDS[validated["kind"]]["create"](validated, session)
 
 
-__all__ = ["BackendError", "GenerationBackend", "ComfyBackend", "validate_backend", "create_backend", "get_backend_types"]
+def backend_capabilities(config) -> dict:
+    cloud = config.get("kind", "comfyui") != "comfyui"
+    bindings = config.get("bindings", {})
+    return {"cloud": cloud, "negative_prompt": not cloud and "negative" in bindings,
+            "seed": not cloud and "seed" in bindings, "models": not cloud,
+            "events": not cloud, "cancel": not cloud, "recovery": not cloud}
+
+
+__all__ = ["BackendError", "GenerationBackend", "CompletedGeneration", "ComfyBackend", "validate_backend", "create_backend", "get_backend_types", "backend_capabilities"]

@@ -4,7 +4,7 @@
 
 [文档导航](../README.zh-CN.md) · [漫游接口](../dev/reference/api/roam.zh-CN.md)
 
-先在「设置 → 漫游」选择后端与候选预设，设置预取数量，再进入漫游浏览。
+先在「设置 → 漫游」选择后端与候选预设，设置预取数量，再进入漫游浏览。切换到新的 OpenAI Images 或 Gemini 后端会关闭自动预取（`0`），明确增加数量后才允许后台生成；云端预设的负向提示词必须为空。每次生图都可能产生服务商费用，见[后端接入](getting-started.zh-CN.md#接入-openai-images-或-gemini)。
 
 ## 偏好范围与漫游方式
 

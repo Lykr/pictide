@@ -4,7 +4,7 @@
 
 [Documentation](../README.md) · Next: [Prompts](prompts.md) / [Roam](roam.md)
 
-This page covers startup preparation and generation backend setup for the portable and source editions. Prepare ComfyUI and a working text-to-image model before starting Pictide.
+This page covers startup preparation and generation backend setup for the portable and source editions. Connect a local ComfyUI instance, OpenAI Images, or Gemini native image generation.
 
 ## Before you start
 
@@ -22,7 +22,24 @@ Choose your system and follow its page for startup, source preparation, custom p
 - [Linux](setup/linux.md)
 - [macOS](setup/macos.md)
 
-After startup, continue with the ComfyUI setup below. The application and ComfyUI start and stop independently; there is no automatic startup or persistent service.
+After startup, choose a generation backend below. When using ComfyUI, the two applications start and stop independently; there is no automatic startup or persistent service.
+
+## Connect OpenAI Images or Gemini
+
+1. Open Settings → Backend, create a backend, and choose **OpenAI Images** or **Gemini**.
+2. Enter a name, API Base URL including its version path, API key, and image-capable model ID. For the official services, use `https://api.openai.com/v1` or `https://generativelanguage.googleapis.com/v1beta`. Keep the model ID explicit; Pictide does not select or download a cloud model for you.
+3. Optionally set OpenAI size and quality, or Gemini aspect ratio and image size, using values supported by your model. Empty options use the service defaults.
+4. Test the connection and save. The check only looks up the selected model; it sends no generation request and does not verify that your account can generate images. Submit a small manual request on Generate when you are ready to verify generation.
+
+OpenAI uses `/images/generations`; Gemini uses `/interactions` for single-turn image output. Gemini `generateContent`, Imagen, image editing, and conversation history are outside this integration. A custom Base URL may work with an equivalent endpoint, but each service's models, fields, and returned images need separate validation; sharing the OpenAI endpoint path alone does not establish compatibility.
+
+These adapters accept positive prompts. Negative prompts and deterministic image seeds are unavailable; Generate reflects these capabilities. For candidate generation and Roam, choose or create a preset with an empty negative prompt. A nonempty negative prompt is rejected clearly, including one produced by a preset. Candidate seeds still control prompt selection locally; they do not control cloud image randomness. Tag prompts and anchors are sent as written, and their effect depends on the chosen model.
+
+Images, prompt records, likes, and learned preferences are saved locally. Prompts and generation options are sent to your chosen service, which applies its own billing and data policies. Selecting a new cloud backend for Roam starts with automatic prefetch disabled (`0`); explicitly increase it to enable paid background generation through the existing browsing events. Moving to the next missing image still requests one image when prefetch is disabled.
+
+Cloud generation waits for a completed HTTP response, then saves Base64 or downloaded image outputs into the data directory. Once a cloud request has started, local cancellation does not guarantee remote cancellation or prevent charges. If submission times out or the application stops before the response is recorded, the task remains uncertain and is not automatically sent again. Check your provider's activity before starting a new request.
+
+Protocol mocks cover integration behavior; generation against paid official services and third-party compatible endpoints remains unverified. Connection checking is read-only and is separate from successful image generation.
 
 ## Connect ComfyUI
 

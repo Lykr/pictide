@@ -10,7 +10,7 @@ Read [Before you start](../getting-started.md#before-you-start) first. Run the c
 
 Extract the release package for your operating system and CPU architecture, then run `./start.sh` in the release directory. Once ready, it opens the system's default browser automatically. Close the launcher window or press Ctrl+C to stop. Personal data is stored in the package's data directory and reused on the next startup.
 
-Native build and startup paths are provided; native execution still needs verification on this operating system. On first use, connect ComfyUI in [Backend settings](../getting-started.md#connect-comfyui). Supported startup parameters are `--port`, `--data-dir`, `--lan`, and `--no-browser`. Desktop environments can open a browser automatically; on a server, use the address shown in the terminal.
+Native build and startup paths are provided; native execution still needs verification on this operating system. On first use, connect ComfyUI, OpenAI Images, or Gemini in [Backend settings](../getting-started.md). Supported startup parameters are `--port`, `--data-dir`, `--lan`, and `--no-browser`. Desktop environments can open a browser automatically; on a server, use the address shown in the terminal.
 
 ## Run from source
 
@@ -20,7 +20,7 @@ In a directory with the frontend already built, run:
 bash start.sh
 ```
 
-Open http://127.0.0.1:8189 and press Ctrl+C to stop the application. Next, [connect ComfyUI](../getting-started.md#connect-comfyui).
+Open http://127.0.0.1:8189 and press Ctrl+C to stop the application. Next, [connect a generation backend](../getting-started.md).
 
 By default, the launcher looks for `python3`, creates `data/runtime/venv`, and installs backend dependencies. On Debian / Ubuntu, if venv is missing, install the `python3-venv` package matching the Python version in use. To specify Python:
 

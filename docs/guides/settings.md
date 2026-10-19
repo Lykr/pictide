@@ -31,5 +31,5 @@ When files are in use or temporarily cannot be deleted, pending deletions persis
 ## Continue reading
 
 - [Roaming scope, modes, and prefetch](roam.md)
-- [Editing backends and workflows](getting-started.md#connect-comfyui)
+- [Connecting generation backends and editing workflows](getting-started.md)
 - [Data backup and recovery](backup.md#backup-and-recovery)

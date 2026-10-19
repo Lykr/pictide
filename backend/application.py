@@ -15,6 +15,7 @@ from .contracts.recommendation import ScoreCandidate, ScoreRequest, ScoreTerm
 from .candidate.rounds import validate_options
 from .domain import GoneError, NotFoundError, ValidationError, feedback_value, generation_count, generation_fields, roam_can_enqueue
 from .events import EventHub
+from .generation import backend_capabilities
 from .store.contracts import Storage
 from .store.roam_settings import max_history_images, prefetch_count, selection, recommendation_options
 
@@ -22,7 +23,17 @@ from .store.roam_settings import max_history_images, prefetch_count, selection, 
 def public_backend(config):
     result = {key: value for key, value in config.items() if key != "api_key"}
     result["has_api_key"] = bool(config.get("api_key"))
+    result["capabilities"] = backend_capabilities(config)
     return result
+
+
+def validate_generation_options(config, fields):
+    capabilities = backend_capabilities(config)
+    if capabilities["cloud"]:
+        if fields.get("negative"):
+            raise ValidationError("此生图接口不支持负向提示词，请清空负向提示词，或选择负向词为空的候选预设。")
+        if fields.get("seed", -1) != -1:
+            raise ValidationError("此生图接口不支持指定图像种子，请使用随机种子（-1）。")
 
 
 class PictideApplication:
@@ -172,16 +183,17 @@ class PictideApplication:
             raise ValidationError("后端 ID 只能包含字母、数字、下划线和横线。")
         draft = dict(payload)
         old = await asyncio.to_thread(self.storage.backend, identifier)
-        if "api_key" not in draft and old:
+        if "api_key" not in draft and old and draft.get("kind", "comfyui") == old.get("kind", "comfyui"):
             draft["api_key"] = old.get("api_key", "")
         draft["id"] = identifier
         draft.pop("has_api_key", None)
         return draft
 
     async def save_backend(self, identifier, payload):
+        previous_backend = await asyncio.to_thread(self.storage.backend, identifier)
         draft = await self.connection_draft(identifier, payload)
         draft = await self.tasks.connections.resolve_connection(draft)
-        if draft["workflow_mode"] == "custom" and any(
+        if draft.get("workflow_mode") == "custom" and any(
                 key in payload for key in ("workflow_name", "workflow_id", "workflow_revision")):
             document = {key: draft[key] for key in ("workflow", "bindings", "output_nodes")}
             document["name"] = payload.get("workflow_name")
@@ -196,6 +208,11 @@ class PictideApplication:
             backends = await asyncio.to_thread(self.storage.backends)
             active_backend = roam["backend_id"] or (backends[0]["id"] if backends else "")
             if saved["id"] == active_backend:
+                if (backend_capabilities(saved)["cloud"]
+                        and (previous_backend is None or previous_backend.get("kind") != saved["kind"])):
+                    roam = await asyncio.to_thread(self.roam.save, 0, roam["backend_id"],
+                                                   roam["preset_id"], roam["max_history_images"])
+                    self.events.publish("roam_settings")
                 state = await asyncio.to_thread(self.storage.ensure_roam, roam["epoch"], None, 0)
                 if state["paused"]:
                     # A new epoch isolates old failures, retaining all options and queued work.
@@ -240,6 +257,10 @@ class PictideApplication:
         else:
             fields = generation_fields(payload)
             count = generation_count(payload.get("count", 1))
+            backend = await asyncio.to_thread(self.storage.backend, fields["backend_id"])
+            if backend is None:
+                raise ValidationError("生图后端不存在，请先保存后端配置。")
+            validate_generation_options(backend, fields)
             jobs = await self.tasks.database(self.storage.create_jobs, fields, count)
             result = {"job": jobs[0], "jobs": jobs, "next_seed": -1 if fields["seed"] == -1 else (fields["seed"] + count) % 2**53,
                       "candidate_result": None, "next_candidate": None}
@@ -270,6 +291,7 @@ class PictideApplication:
             next_candidate = None
         plans = []
         for round_result in rounds:
+            validate_generation_options(validated, {**fields, **round_result})
             if round_result["negative"] and not validated.get("bindings", {}).get("negative"):
                 raise ValidationError("当前后端未绑定负向输入，请清空负向提示词或配置负向绑定。")
             for _ in range(count):
@@ -499,6 +521,12 @@ class PictideApplication:
                 backend_id = selection(payload.get("backend_id", previous["backend_id"]), "生图后端")
                 preset_id = selection(payload.get("preset_id", previous["preset_id"]), "候选预设")
                 max_history = max_history_images(payload.get("max_history_images", previous["max_history_images"]))
+                backends = await asyncio.to_thread(self.storage.backends)
+                first_backend = backends[0]["id"] if backends else ""
+                if (backend_id or first_backend) != (previous["backend_id"] or first_backend):
+                    selected_backend = next((item for item in backends if item["id"] == (backend_id or first_backend)), None)
+                    if selected_backend and backend_capabilities(selected_backend)["cloud"]:
+                        count = 0
                 # Disabling must work even when a previously selected resource was deleted.
                 if count:
                     if backend_id and not await asyncio.to_thread(self.storage.backend, backend_id):
@@ -621,6 +649,8 @@ class PictideApplication:
                     base["recommendation_error"] = self._recommendation_error
                 fields = generation_fields({"backend_id": backend_id, "request_id": "roam-" + uuid.uuid4().hex,
                                             "positive": chosen.positive, "negative": chosen.negative, "seed": -1})
+                backend = await asyncio.to_thread(self.storage.backend, backend_id)
+                validate_generation_options(backend, fields)
                 state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], anchor, target, fields, snapshot)
             except NotFoundError:
                 raise

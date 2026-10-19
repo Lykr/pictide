@@ -32,7 +32,7 @@
 
 The response also includes `artifact_revision,paused,preference_learning`, and may include `error` while paused. `epoch` is internal state and is not submitted as an HTTP field.
 
-PUT can update any one or a combination of `playback_interval_seconds,liked_tags_only,prompt_mode,candidate_count,recommendation_strength,strong_candidate_multiplier,pinned_positive` independently. Updates to the prefetch count, history count, backend, or preset must include `prefetch_count`; other omitted fields are preserved.
+PUT can update any one or a combination of `playback_interval_seconds,liked_tags_only,prompt_mode,candidate_count,recommendation_strength,strong_candidate_multiplier,pinned_positive` independently. Updates to the prefetch count, history count, backend, or preset must include `prefetch_count`; other omitted fields are preserved. Switching to a different cloud backend forces `prefetch_count` to `0` for that save; a later explicit save on the same backend can enable it. Creating the first cloud backend or converting the active backend to cloud also disables automatic prefetch. Cloud generation requires a preset with an empty negative prompt.
 
 Changing the scope, mode, backend, preset, or anchors preserves the current image and invalidates subsequent old prefetched results; old results already running are hidden when they finish. Changing only the playback interval, candidate count, or recommendation strength preserves existing prefetched results. Preset fixed terms take priority, and duplicate anchors are removed; anchors cannot be edited in Anchor mode. Count-based cleanup counts only Roam images before the current image. Excess unliked images are cleaned up, while liked images are only hidden from Roam.
 
