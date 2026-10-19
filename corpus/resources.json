@@ -54,36 +54,5 @@
         "sha256": "165c55634266be99a4429091fef48ab3e6db33acfeaad7107035ddfe5ce65f2b"
       }
     ]
-  },
-  "model": {
-    "source": "Qdrant/all-MiniLM-L6-v2-onnx",
-    "revision": "d13954661f83248295ba75c1ed411eef3b7b936e",
-    "files": [
-      {
-        "path": "model.onnx",
-        "bytes": 90387630,
-        "sha256": "bbd7b466f6d58e646fdc2bd5fd67b2f5e93c0b687011bd4548c420f7bd46f0c5"
-      },
-      {
-        "path": "tokenizer.json",
-        "bytes": 711649,
-        "sha256": "851ca67100d372ca3ae031a6abd168f53489eebfd7d89523f35c5c9b4d372c3c"
-      },
-      {
-        "path": "config.json",
-        "bytes": 650,
-        "sha256": "1b4d8e2a3988377ed8b519a31d8d31025a25f1c5f8606998e8014111438efcd7"
-      },
-      {
-        "path": "tokenizer_config.json",
-        "bytes": 1412,
-        "sha256": "abda01c8c14c5151ae498aceb30db406d6b91242c394fd88d3b6fd5a63a101e6"
-      },
-      {
-        "path": "special_tokens_map.json",
-        "bytes": 695,
-        "sha256": "5d5b662e421ea9fac075174bb0688ee0d9431699900b90662acd44b2a350503a"
-      }
-    ]
   }
 }

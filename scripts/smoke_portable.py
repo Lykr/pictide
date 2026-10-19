@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import socket
 import sqlite3
 import stat
@@ -92,7 +93,7 @@ def stop(process):
         process.wait(timeout=10)
 
 
-def smoke(archive, report_path, timeout=180):
+def smoke(archive, report_path, timeout=900, model_dir=None):
     archive = Path(archive).resolve()
     report_path = Path(report_path).resolve()
     report = dict(passed=False, archive=archive.name, platform=sys.platform, checks=[])
@@ -105,7 +106,28 @@ def smoke(archive, report_path, timeout=180):
         try:
             executable = unpack(archive, directory / 'unpacked')
             report['checks'].append('archive entries and native executable permissions')
+            internal = executable.parent / '_internal'
+            manifest = json.loads((internal / 'resources/manifest.json').read_text(encoding='utf-8'))
+            catalog = json.loads((internal / 'backend/recommand/model.json').read_text(encoding='utf-8'))
+            if manifest['model'] != catalog or any(not item['path'].startswith('libraries/') for item in manifest['files']):
+                raise RuntimeError('Portable resources must contain only vocabulary files and the locked model catalog')
+            if any(path.name == 'model.onnx' or path.suffix == '.safetensors' for path in executable.parent.rglob('*')):
+                raise RuntimeError('Portable archive must not bundle model weights')
+            report['checks'].append('vocabulary-only seed, locked model catalog and no bundled model weights')
             data = directory / 'fresh-data'
+            if model_dir is not None:
+                target = data / 'models/minilm'
+                target.mkdir(parents=True)
+                for item in catalog['files']:
+                    source = Path(model_dir) / item['path']
+                    with source.open('rb') as handle:
+                        actual = hashlib.file_digest(handle, 'sha256').hexdigest()
+                    if source.stat().st_size != item['bytes'] or actual != item['sha256']:
+                        raise RuntimeError('Warm-start model failed verification: ' + str(source))
+                    shutil.copyfile(source, target / item['path'])
+                report['model_source'] = 'verified local model (warm startup)'
+            else:
+                report['model_source'] = 'first-start download'
             with closing(socket.socket()) as listener:
                 listener.bind(('127.0.0.1', 0))
                 port = listener.getsockname()[1]
@@ -124,7 +146,7 @@ def smoke(archive, report_path, timeout=180):
             environment = os.environ.copy()
             # The explicit data directory wins over inherited development settings.
             environment['PICTIDE_DATA_DIR'] = environment['PICTIDE_WEB_DATA_DIR'] = str(data)
-            environment['HF_HUB_OFFLINE'] = '1'
+            environment.pop('HF_HUB_OFFLINE', None)
             with log_path.open('wb') as log:
                 process = subprocess.Popen([str(executable), '--data-dir', str(data), '--host', '127.0.0.1',
                                             '--port', str(port), '--no-browser'], cwd=executable.parent,
@@ -150,8 +172,14 @@ def smoke(archive, report_path, timeout=180):
                 report['checks'].append('HTTP bootstrap with fresh isolated data and no generation jobs')
                 recommendation = bootstrap['recommendation']
                 if not recommendation['available'] or recommendation.get('error'):
-                    raise RuntimeError('Bundled recommendation model is unavailable: ' + str(recommendation))
-                report['checks'].append('offline model files and recommendation dependency availability')
+                    raise RuntimeError('Downloaded recommendation model is unavailable: ' + str(recommendation))
+                for item in catalog['files']:
+                    model_file = data / 'models/minilm' / item['path']
+                    with model_file.open('rb') as handle:
+                        actual = hashlib.file_digest(handle, 'sha256').hexdigest()
+                    if model_file.stat().st_size != item['bytes'] or actual != item['sha256']:
+                        raise RuntimeError('Startup model failed verification: ' + item['path'])
+                report['checks'].append('verified downloaded model before HTTP readiness and recommendation availability')
                 html = get('/', document=False).decode('utf-8')
                 assets = Assets()
                 assets.feed(html)
@@ -194,6 +222,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', type=Path, required=True)
     parser.add_argument('--report', type=Path, required=True)
-    parser.add_argument('--timeout', type=float, default=180)
+    parser.add_argument('--timeout', type=float, default=900)
+    parser.add_argument('--model-dir', type=Path,
+                        help='Optional verified MiniLM snapshot to seed a warm-start smoke; omitted for a real first-start download')
     arguments = parser.parse_args()
-    smoke(arguments.archive, arguments.report, arguments.timeout)
+    smoke(arguments.archive, arguments.report, arguments.timeout, arguments.model_dir)

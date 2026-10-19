@@ -24,7 +24,7 @@ cd ../pictide-example
 
 ## 首次准备检出目录
 
-源码环境由开发者按本节准备。[便携发行包设计](issues/automatic-startup.md)将运行环境、前端成品、词库和推荐模型统一纳入构建发布流程，Windows 目录式产物已验证，Linux/macOS 原生验证待完成。
+源码环境由开发者按本节准备。便携发行流程交付运行环境、前端成品和词库，MiniLM 按[启动前模型准备设计](issues/minilm-startup-download.md)在用户启动时下载并校验完成后再启动服务。Windows 目录式产物已验证；Linux/macOS 原生 CI 构建与启动验证待实际运行。
 
 需要 Git、Python 3.10+、Node.js 20.19+（或 22.12+）和 `web/package.json` 指定的 pnpm。Python 运行依赖放在 `backend/requirements.txt`，离线数据处理工具与依赖集中在 [`corpus/`](corpus.zh-CN.md)；前端依赖由 `web/package.json` 管理。依赖安装遵循锁文件，不复制或提交 `node_modules`。
 
@@ -42,11 +42,11 @@ cd ../pictide-example
 
 完成当前检出的前端构建后，按本机系统阅读：[Windows](setup/windows.md#构建便携包) · [Linux](setup/linux.md#构建便携包) · [macOS](setup/macos.md#构建便携包)。推荐使用 Python 3.12，应用运行要求仍为 Python 3.10+。独立的 `dev/runtime/builder/` 环境安装 `backend/requirements-release.txt`；本地需要处理原始数据时另装 `corpus/requirements.txt`（Python 3.11+）。准备发行包无需先启动应用，也不读写开发运行目录 `data/`。
 
-构建默认按 `corpus/profiles/compact.json` 准备词库，固定版本 MiniLM 随包交付。原始分片和下载清单长期保存在 `dev/datasets/danbooru-2026/`；统计中间结果与成品词库放在 `dev/cache/portable/`，固定 MiniLM 长期保存在 `dev/models/minilm/<model-revision>/`。有效词库和模型齐备时不请求网络；缺失时补充下载并处理。清理构建缓存保留原始数据和模型，直接本地重新统计。指纹、校验和恢复规则见[独立发行资源与构建缓存](issues/portable-build-cache.md)。
+构建默认按 `corpus/profiles/compact.json` 准备词库，仅携带 `backend/recommand/model.json` 固定模型清单，保留 FastEmbed、ONNX Runtime、tokenizers 等推理依赖。构建不下载或打包 MiniLM。原始分片和下载清单长期保存在 `dev/datasets/danbooru-2026/`；统计中间结果与成品词库放在 `dev/cache/portable/`。有效词库缓存可离线准备发行资源；缺失时补充下载并处理。清理构建缓存保留原始数据，直接本地重新统计。指纹、校验和恢复规则见[独立发行资源与构建缓存](issues/portable-build-cache.md)。
 
-通过 `--dataset-dir`、`--cache-dir`、`--models-dir` 和 `--profile` 可分别指定原始数据目录、缓存目录、长期模型目录与处理配置。指定 `--prebuilt-library DIR` 时，`DIR` 必须包含匹配当前源数据版本、配置和处理代码的 `vocabulary.sqlite3` 与 `report.json`；校验失败即终止，不回退到原始数据处理。该路径无需安装 PyArrow、SciPy 等离线处理依赖；MiniLM 仍按固定版本准备。词库导出、清单与指纹规则见[预构建词库](corpus.zh-CN.md#预构建词库)。
+通过 `--dataset-dir`、`--cache-dir` 和 `--profile` 可分别指定原始数据目录、缓存目录与处理配置。指定 `--prebuilt-library DIR` 时，`DIR` 必须包含匹配当前源数据版本、配置和处理代码的 `vocabulary.sqlite3` 与 `report.json`；校验失败即终止，不回退到原始数据处理。该路径无需安装 PyArrow、SciPy 等离线处理依赖。源码和便携启动共用 `prepare_startup`，在创建 HTTP 服务、打开页面前校验并补齐所选数据目录下的 MiniLM；失败终止启动，重启后续传。词库导出、清单与指纹规则见[预构建词库](corpus.zh-CN.md#预构建词库)。
 
-PyInstaller 临时构建在 `dev/build/`，最终产物包含 Pictide 目录、ZIP 和 `build-report.json`。省略 `--output-dir` 时在 `releases/` 下按版本、平台与时间创建新目录，也可显式指定新目录。运行用户直接启动产物，首次资源初始化沿用[便携发行方案](issues/automatic-startup.md)。
+PyInstaller 临时构建在 `dev/build/`，最终产物包含 Pictide 目录、ZIP 和 `build-report.json`。省略 `--output-dir` 时在 `releases/` 下按版本、平台与时间创建新目录，也可显式指定新目录。运行用户直接启动产物，词库初始化沿用[便携发行方案](issues/automatic-startup.md)，模型下载与离线准备见[安装与接入](../guides/getting-started.zh-CN.md#推荐模型启动准备)。
 
 ### GitHub Actions 发版
 

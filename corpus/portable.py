@@ -18,7 +18,6 @@ DEFAULT_PREBUILT_LOCK = Path(__file__).with_name('prebuilt.json')
 @dataclass(frozen=True)
 class PreparedResources:
     library: Path
-    model_dir: Path
     provenance: dict
 
 
@@ -117,13 +116,9 @@ def load_prebuilt(directory, profile, *, lock_path=DEFAULT_LOCK,
     return library, report
 
 
-def prepare_resources(dataset_dir, cache_dir, profile, *, models_dir=ROOT / 'dev/models',
+def prepare_resources(dataset_dir, cache_dir, profile, *,
                       lock_path=DEFAULT_LOCK, prebuilt_library=None,
                       prebuilt_lock_path=DEFAULT_PREBUILT_LOCK, progress=print):
-    models_dir = Path(models_dir).expanduser().resolve()
-    cache_dir = Path(cache_dir).expanduser().resolve()
-    if models_dir.is_relative_to(cache_dir) or cache_dir.is_relative_to(models_dir):
-        raise ValueError('Models and build cache must use separate directory trees')
     if os.environ.get('GITHUB_ACTIONS') == 'true' and prebuilt_library is None:
         raise ValueError('GitHub Actions builds require --prebuilt-library; prepare the resource locally')
     if prebuilt_library is not None:
@@ -133,13 +128,5 @@ def prepare_resources(dataset_dir, cache_dir, profile, *, models_dir=ROOT / 'dev
     else:
         library, report = prepare_vocabulary(dataset_dir, cache_dir, profile,
                                              lock_path=lock_path, progress=progress)
-    model = json.loads(Path(lock_path).read_text(encoding='utf-8'))['model']
-    snapshot = download.resource_path(models_dir / 'minilm', model['revision'])
-    for item in model['files']:
-        path = download.resource_path(snapshot, item['path'])
-        if not download.verified(path, item):
-            progress(f'Downloading MiniLM: {item["path"]}')
-            url = f'https://huggingface.co/{model["source"]}/resolve/{model["revision"]}/{item["path"]}?download=true'
-            download.download_file(url, path, item, replace_invalid=True)
-    progress(f'Resources ready: vocabulary {report["fingerprint"]}, MiniLM {model["revision"]}')
-    return PreparedResources(library, snapshot, dict(library=report, model=model))
+    progress(f'Resources ready: vocabulary {report["fingerprint"]}')
+    return PreparedResources(library, dict(library=report))

@@ -19,13 +19,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from backend import __version__
 from backend.paths import DataPaths
-from backend.recommand.encoder import MiniLMEncoder
+from backend.recommand.resources import model_catalog
 from corpus.download import sha256 as digest
 from corpus.portable import prepare_resources
 
 
 def export_resources(resources, seed):
-    """Export only the prepared public library and fixed encoder snapshot."""
+    """Export the public library and metadata for the startup model download."""
     seed = Path(seed)
     library = resources.library
     target = seed / 'libraries' / library.name
@@ -39,14 +39,11 @@ def export_resources(resources, seed):
         db.execute('VACUUM')
         if db.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
             raise RuntimeError('Vocabulary integrity check failed.')
-    encoder = MiniLMEncoder(resources.model_dir)
-    directory, files = encoder._files()
-    model_target = seed / 'models/minilm'
-    model_target.mkdir(parents=True)
-    for source in files:
-        shutil.copyfile(source, model_target / source.name)
+    model = model_catalog()
     manifest = {'version': __version__, 'provenance': resources.provenance,
-                'model_sha256': digest(directory / 'model.onnx'), 'files': []}
+                'model': model,
+                'model_sha256': next(item['sha256'] for item in model['files'] if item['path'] == 'model.onnx'),
+                'files': []}
     for path in sorted(seed.rglob('*')):
         if path.is_file():
             manifest['files'].append({'path': path.relative_to(seed).as_posix(), 'bytes': path.stat().st_size, 'sha256': digest(path)})
@@ -96,7 +93,7 @@ def copy_licenses(destination):
 
 
 def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
-          cache_dir=ROOT / 'dev/cache/portable', models_dir=ROOT / 'dev/models',
+          cache_dir=ROOT / 'dev/cache/portable',
           profile=ROOT / 'corpus/profiles/compact.json', prebuilt_library=None):
     started = time.perf_counter()
     build_paths = DataPaths(ROOT / 'dev/build').configure_runtime()
@@ -106,7 +103,7 @@ def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
     front = ROOT / 'web/dist'
     if not (front / 'index.html').is_file():
         raise RuntimeError('Build the frontend before packaging.')
-    resources = prepare_resources(dataset_dir, cache_dir, profile, models_dir=models_dir,
+    resources = prepare_resources(dataset_dir, cache_dir, profile,
                                   prebuilt_library=prebuilt_library,
                                   progress=lambda text: print(text, flush=True))
     output.mkdir(parents=True)
@@ -121,6 +118,7 @@ def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
         command = [sys.executable, '-m', 'PyInstaller', '--onedir', '--noconfirm', '--name', 'Pictide',
                    '--distpath', str(runtime), '--workpath', str(working / 'work'), '--specpath', str(working),
                    '--paths', str(ROOT), '--add-data', f'{front}{os.pathsep}web/dist',
+                   '--add-data', f'{ROOT / "backend/recommand/model.json"}{os.pathsep}backend/recommand',
                    '--add-data', f'{seed}{os.pathsep}resources', '--collect-all', 'fastembed',
                    '--collect-all', 'onnxruntime', '--collect-all', 'tokenizers',
                    '--copy-metadata', 'fastembed', '--copy-metadata', 'onnxruntime', '--copy-metadata', 'tokenizers',
@@ -137,7 +135,7 @@ def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
         launcher = package / ('start.command' if sys.platform == 'darwin' else 'start.sh')
         launcher.write_text('#!/bin/sh\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$root/data/runtime/pictide/Pictide" "$@"\n', encoding='utf-8')
         launcher.chmod(0o755)
-    (package / 'README.txt').write_text('Pictide\n\nRun ' + launcher.name + ' to open Pictide.\nConfigure an image API in Settings.\nClose the launcher window or press Ctrl+C to stop.\nData stays in data/.\nUse --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
+    (package / 'README.txt').write_text('Pictide\n\nRun ' + launcher.name + ' to open Pictide.\nThe first launch downloads and verifies MiniLM before opening the app.\nAn internet connection is required until this download completes.\nLater launches reuse the verified model in data/models/minilm/.\nConfigure an image API in Settings.\nClose the launcher window or press Ctrl+C to stop.\nData stays in data/.\nUse --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
     for name in ('LICENSE', 'NOTICE'):
         shutil.copyfile(ROOT / name, package / name)
     notices = package / 'licenses'
@@ -172,8 +170,6 @@ if __name__ == '__main__':
                         help='Persistent raw dataset and download manifest directory')
     parser.add_argument('--cache-dir', type=Path, default=ROOT / 'dev/cache/portable',
                         help='Rebuildable vocabulary cache directory')
-    parser.add_argument('--models-dir', type=Path, default=ROOT / 'dev/models',
-                        help='Persistent pinned recommendation model directory')
     parser.add_argument('--profile', type=Path, default=ROOT / 'corpus/profiles/compact.json',
                         help='Vocabulary processing profile')
     parser.add_argument('--prebuilt-library', type=Path,
@@ -182,4 +178,4 @@ if __name__ == '__main__':
                         help='New release directory (default: releases/<version-platform-time>).')
     options = parser.parse_args()
     build(options.output_dir, dataset_dir=options.dataset_dir, cache_dir=options.cache_dir,
-          models_dir=options.models_dir, profile=options.profile, prebuilt_library=options.prebuilt_library)
+          profile=options.profile, prebuilt_library=options.prebuilt_library)

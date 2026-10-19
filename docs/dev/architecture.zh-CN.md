@@ -92,6 +92,10 @@ pictide/
 - 浏览器通过 HTTP/SSE 管理展示、输入和草稿，不直接读写配置或数据库。提示词页是同一前端中的视图，没有额外站点或 iframe。
 - Store 持久化任务、图片、反馈、快照和学习状态。反馈学习依据实际生成快照，不用当前词库覆盖历史语义。
 
+## 启动准备
+
+源码与便携启动共用 `backend/application.py` 的 `PictideApplication.prepare_startup()`。该入口先初始化存在的随包词库，再通过 `backend/recommand/resources.py` 校验或下载固定 MiniLM 文件到所选运行数据目录。准备成功后，Host 才启动 HTTP/SSE 并打开浏览器；失败终止启动，保留未完成下载供下次重试。编码器只读取准备好的本地文件，离线 corpus 工具继续独立于启动链路。详见[模型准备](architecture/recommendation.zh-CN.md#模型准备)。
+
 ## 继续阅读
 
 | 要了解的内容 | 主题 |

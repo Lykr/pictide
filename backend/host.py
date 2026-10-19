@@ -394,7 +394,11 @@ def main(argv=None):
     args = parser.parse_args(argv)
     frozen = getattr(sys, "frozen", False)
     paths = DataPaths(args.data_dir).configure_runtime()
-    PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
+    try:
+        PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
+    except (OSError, ValueError, RuntimeError) as error:
+        print(f"Pictide startup failed: {error}", file=sys.stderr, flush=True)
+        raise SystemExit(1) from None
     host = "0.0.0.0" if args.lan else args.host
     app = create_app(paths.root, allow_lan=host == "0.0.0.0")
     if frozen and not args.no_browser:

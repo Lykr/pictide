@@ -8,11 +8,13 @@
 
 ## 便携版本
 
-解压对应系统与 CPU 架构的发行包，双击 `start.cmd`。就绪后自动打开系统默认浏览器，关闭启动窗口或按 Ctrl+C 停止。个人数据保存在包内 data，下一次启动继续使用。
+解压对应系统与 CPU 架构的发行包，双击 `start.cmd`。首次启动先在启动窗口等待 [MiniLM 下载与校验](../getting-started.zh-CN.md#推荐模型启动准备)，完成后才启动服务并自动打开系统默认浏览器，关闭启动窗口或按 Ctrl+C 停止。个人数据保存在包内 data，下一次启动继续使用。
 
 Windows 真实便携产物已验证。首次使用到[后端设置](../getting-started.zh-CN.md)连接 ComfyUI、OpenAI Images 或 Gemini。启动参数支持 `--port`、`--data-dir`、`--lan` 和 `--no-browser`；桌面环境可自动打开浏览器，服务器环境通过终端显示的地址访问。
 
 ## 源码启动
+
+源码启动同样先完成[模型准备](../getting-started.zh-CN.md#推荐模型启动准备)，完成后才能进入应用。
 
 已准备好前端的目录，双击 `start.cmd`。打开 http://127.0.0.1:8189 ，按 Ctrl+C 或关闭启动窗口停止应用。接下来[连接生图后端](../getting-started.zh-CN.md)。
 

@@ -8,11 +8,25 @@
 
 ## 启动前准备
 
-便携版随包提供程序、前端、精简词库和离线 MiniLM。解压后运行对应系统的启动入口即可，详见 [Windows](setup/windows.zh-CN.md#便携版本) · [Linux](setup/linux.zh-CN.md#便携版本) · [macOS](setup/macos.zh-CN.md#便携版本)。
+便携版随包提供程序、前端、精简词库和推荐推理依赖，MiniLM 模型文件在首次启动前下载。解压后运行对应系统的启动入口即可，详见 [Windows](setup/windows.zh-CN.md#便携版本) · [Linux](setup/linux.zh-CN.md#便携版本) · [macOS](setup/macos.zh-CN.md#便携版本)。
 
 源码版需要 Python 3.10+；新检出的源码还需要先构建前端，Node.js 与 pnpm 版本见[开发环境要求](../dev/development.md#首次准备检出目录)。已准备好前端的目录日常运行不需要 Node.js 服务。
 
-启动器自动准备所选数据目录下的 Python 环境、依赖与缓存，不下载生图模型、词库或推荐模型。不同系统分别创建运行环境，不直接复用其他系统的 venv。Linux 与 macOS 的脚本流程已做 Bash 冒烟，原生环境安装尚未验证。
+源码启动器自动准备所选数据目录下的 Python 环境、依赖与缓存。源码版与便携版都先完成下文的 MiniLM 准备，再启动 HTTP 服务和打开页面。生图模型由所选生图服务提供。不同系统分别创建源码运行环境。Linux/macOS 原生 CI 构建与启动验证待实际运行。
+
+## 推荐模型启动准备
+
+首次启动时，Pictide 将下载约 91 MB 的 MiniLM 模型文件到所选数据目录的 `models/minilm/`（默认 `data/models/minilm/`）。保持启动窗口打开，查看下载进度。所有必需文件通过大小与 SHA-256 校验后，才启动 HTTP 服务并允许打开应用页面；下载属于进入应用前的启动准备。
+
+下载失败时终止启动，终端显示错误。恢复网络后重新运行同一启动器即可；中断下载的 `.part` 文件会保留，下次续传。完整且校验有效的本地模型直接离线复用，日常缓存清理保留模型目录。
+
+需要离线首次启动时，在可联网的机器下载以下五个文件，保留文件名，直接放入所选数据目录的 `models/minilm/`。固定版本和校验值以[模型清单](../../backend/recommand/model.json)为准，使用这里的固定快照链接：
+
+- [model.onnx](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/model.onnx)
+- [tokenizer.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/tokenizer.json)
+- [config.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/config.json)
+- [tokenizer_config.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/tokenizer_config.json)
+- [special_tokens_map.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/special_tokens_map.json)
 
 ## 按系统安装与启动
 
@@ -75,4 +89,4 @@ ComfyUI 只执行生图 API，不再安装提示词生成、预览或提示词�
 
 ## 从源码开始
 
-新检出仓库没有依赖、词库、推荐模型或前端构建产物。先按[开发流程](../dev/development.md#首次准备检出目录)安装和构建；词库导入见[提示词指南](prompts.zh-CN.md#数据准备)，推荐模型准备见[推荐模块](../dev/architecture/recommendation.zh-CN.md#模型准备)。数据路径和备份见[数据目录](backup.zh-CN.md)。
+新检出仓库没有依赖、词库、推荐模型或前端构建产物。先按[开发流程](../dev/development.md#首次准备检出目录)安装和构建；词库导入见[提示词指南](prompts.zh-CN.md#数据准备)，推荐模型准备见[推荐模型启动准备](#推荐模型启动准备)。数据路径和备份见[数据目录](backup.zh-CN.md)。

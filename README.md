@@ -18,7 +18,7 @@ Pictide is a local generative image exploration app that gradually adapts to you
 2. Extract the portable package for your system and run its launcher: [Windows](docs/guides/setup/windows.md#portable-edition) · [Linux](docs/guides/setup/linux.md#portable-edition) · [macOS](docs/guides/setup/macos.md#portable-edition). Your browser opens automatically when the application is ready.
 3. Connect your generation service in **Settings → Image API** using the [backend setup guide](docs/guides/getting-started.md), then open **Roam** to start browsing. Cloud Roam starts with automatic prefetch disabled; use a preset with an empty negative prompt.
 
-The package includes the runtime, frontend, compact statistical library, and MiniLM. Personal data stays in the package's `data/` directory. The Windows package has been validated; see the platform guides for the status of native Linux and macOS builds and verification.
+The package includes the runtime, frontend, and compact statistical library. On first startup, it downloads and verifies MiniLM before opening the application; follow the progress in the launcher window. Later startups reuse the local model. See [model startup preparation](docs/guides/getting-started.md#recommendation-model-startup) for offline setup and download retries. Personal data stays in the package's `data/` directory. The Windows package has been validated; see the platform guides for the status of native Linux and macOS builds and verification.
 
 ### Run from source
 
@@ -51,7 +51,7 @@ Pictide connects to ComfyUI, OpenAI Images, and Gemini native image generation a
 - [Portable builds and validation (Chinese)](docs/dev/issues/automatic-startup.md): directory-based packaging, resource initialization, and platform validation.
 - [Development workflow (Chinese)](docs/dev/development.md): source setup, builds, verification, and deployment. Start with [preparing a checkout (Chinese)](docs/dev/development.md#首次准备检出目录).
 - [Architecture and module boundaries](docs/dev/architecture.md): responsibilities, dependencies, and call flows.
-- [Corpus tools (Chinese)](docs/dev/corpus.md): library downloads, offline statistics, and processing records.
+- [Corpus tools](docs/dev/corpus.md): library downloads, offline statistics, and processing records.
 - [HTTP API reference](docs/dev/api.md): endpoints, request parameters, and responses.
 - [UI design system (Chinese)](docs/dev/design-system.md): components, visuals, and interactions.
 - [Developer documentation index](docs/dev/README.md): code entry points, storage reference, issue records, and design template.

@@ -12,13 +12,12 @@ Produce a ready-to-use Pictide statistical library from raw Parquet metadata wit
 | --- | --- |
 | `corpus/download.py` | Optional metadata downloader with a pinned revision and SHA-256 verification |
 | `corpus/importer.py` | Deduplication, tag counts, pair counts, PMI, and finished SQLite export |
-| `corpus/portable.py`, `corpus/resources.json` | Portable resource preparation and pinned source/model file checksums |
+| `corpus/portable.py`, `corpus/resources.json` | Portable vocabulary preparation and pinned source file checksums |
 | `scripts/prepare_vocabulary.py`, `corpus/prebuilt.json` | Export a release vocabulary and lock its downloadable files |
 | `corpus/profiles/compact.json` | Default portable-build profile; also usable for manual processing |
 | `corpus/requirements.txt` | Offline dependencies: PyArrow, SciPy, and NumPy |
 | `dev/datasets/danbooru-2026/` | Long-lived raw files and download manifest; manual processing examples also write outputs here |
 | `dev/cache/portable/` | Portable-build intermediate state, completed libraries, and reports |
-| `dev/models/minilm/<model-revision>/` | Long-lived pinned recommendation model and tokenizer files |
 | `dev/runtime/importer/` | Local offline processing environment |
 | `data/libraries/` | Read-only libraries selected by the application |
 
@@ -34,7 +33,7 @@ The importer processes existing local files. Downloading and environment install
 
 Local `scripts/build_portable.py` builds can prepare the compact library from raw data, or consume an exported library with `--prebuilt-library DIR`. Both use a separate builder environment and stay independent of the development application's `data/`. See the native build instructions for [Windows (Chinese)](setup/windows.md#构建便携包), [Linux (Chinese)](setup/linux.md#构建便携包), or [macOS (Chinese)](setup/macos.md#构建便携包).
 
-Raw shards and `download.sqlite3` remain in `dev/datasets/danbooru-2026/`. Missing shards are downloaded at the pinned source revision; statistics and completed libraries go to `dev/cache/portable/`, while pinned MiniLM files remain in `dev/models/minilm/<model-revision>/`. Clearing the build cache preserves raw data and model files for local recomputation. Valid library and model files allow a build without network requests. Change `--dataset-dir`, `--cache-dir`, `--models-dir` (default: `dev/models/`), or `--profile` to use other locations or processing settings. The [build cache record (Chinese)](issues/portable-build-cache.md) defines fingerprints and file verification. Manual processing below remains available for other library specifications.
+Raw shards and `download.sqlite3` remain in `dev/datasets/danbooru-2026/`. Missing shards are downloaded at the pinned source revision; statistics and completed libraries go to `dev/cache/portable/`. Clearing the build cache preserves raw data for local recomputation. A verified library cache allows resource preparation without network requests. Change `--dataset-dir`, `--cache-dir`, or `--profile` to use other locations or processing settings. Corpus prepares vocabulary only; MiniLM is prepared [before application startup](../guides/getting-started.md#recommendation-model-startup). The [build cache record (Chinese)](issues/portable-build-cache.md) defines fingerprints and file verification. Manual processing below remains available for other library specifications.
 
 ### Prebuilt vocabulary
 
@@ -50,7 +49,7 @@ The report records the source revision and checksums, normalized processing para
 
 Upload both files using the `gh release create` command printed by the preparation script. The resource tag is `corpus-<fingerprint>`; it is a prerelease excluded from the latest application release and does not match the application's `v*` workflow trigger. Authenticate GitHub CLI before uploading. Keep published resource assets unchanged; a changed vocabulary gets a new resource release. Commit and push the resulting resource lock after the upload succeeds.
 
-GitHub Actions downloads the exact locked files and passes their directory through `--prebuilt-library`. A missing, outdated, or damaged resource stops the build; CI never falls back to processing the raw dataset. MiniLM is still downloaded separately at its pinned revision. Release builders install `backend/requirements-release.txt`; PyArrow and SciPy are needed only on machines preparing raw vocabulary data. For tag/version requirements and release commands, see [GitHub Actions releases (Chinese)](development.md#github-actions-发版).
+GitHub Actions downloads the exact locked files and passes their directory through `--prebuilt-library`. A missing, outdated, or damaged resource stops the build; CI never falls back to processing the raw dataset. The build carries MiniLM's fixed runtime catalog, without downloading or bundling its model files. Release builders install `backend/requirements-release.txt`; PyArrow and SciPy are needed only on machines preparing raw vocabulary data. For tag/version requirements and release commands, see [GitHub Actions releases (Chinese)](development.md#github-actions-发版).
 
 ## One-command processing
 

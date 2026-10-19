@@ -8,11 +8,13 @@ Read [Before you start](../getting-started.md#before-you-start) first. Run the c
 
 ## Portable edition
 
-Extract the release package for your operating system and CPU architecture, then double-click `start.cmd`. Once ready, it opens the system's default browser automatically. Close the launcher window or press Ctrl+C to stop. Personal data is stored in the package's data directory and reused on the next startup.
+Extract the release package for your operating system and CPU architecture, then double-click `start.cmd`. On first startup, wait for [MiniLM download and verification](../getting-started.md#recommendation-model-startup) in the launcher window. Once complete, the service starts and opens the system's default browser automatically. Close the launcher window or press Ctrl+C to stop. Personal data is stored in the package's data directory and reused on the next startup.
 
 An actual Windows portable build has been verified. On first use, connect ComfyUI, OpenAI Images, or Gemini in [Backend settings](../getting-started.md). Supported startup parameters are `--port`, `--data-dir`, `--lan`, and `--no-browser`. Desktop environments can open a browser automatically; on a server, use the address shown in the terminal.
 
 ## Run from source
+
+Source startup also completes [model preparation](../getting-started.md#recommendation-model-startup) before the application can be opened.
 
 In a directory with the frontend already built, double-click `start.cmd`. Open http://127.0.0.1:8189 and press Ctrl+C or close the launcher window to stop the application. Next, [connect a generation backend](../getting-started.md).
 

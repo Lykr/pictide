@@ -18,6 +18,7 @@ from aiohttp.test_utils import TestServer
 from backend.application import PictideApplication
 from backend.host import open_browser_when_ready
 from backend.paths import DataPaths
+from backend.recommand.resources import model_catalog
 from corpus.portable import PreparedResources
 from scripts.build_portable import build, export_resources
 from tests.test_candidate_libraries import vocabulary
@@ -37,13 +38,12 @@ class PortableResourcesSmoke(unittest.TestCase):
             for name in ('LICENSE', 'NOTICE'):
                 (repo / name).write_text('project license fixture', encoding='utf-8')
             library = vocabulary(root / 'neutral.sqlite3')
-            snapshot = root / 'model'
-            snapshot.mkdir()
-            for name in ('model.onnx', 'tokenizer.json', 'config.json', 'tokenizer_config.json', 'special_tokens_map.json'):
-                (snapshot / name).write_text('fixture', encoding='utf-8')
+            catalog = repo / 'backend/recommand/model.json'
+            catalog.parent.mkdir(parents=True)
+            catalog.write_text(json.dumps(model_catalog()), encoding='utf-8')
             provenance = {'fixture': True, 'dataset_revision': 'pinned-v1'}
-            resources = PreparedResources(library, snapshot, provenance)
-            dataset, cache, models = (root / name for name in ('datasets', 'cache', 'models'))
+            resources = PreparedResources(library, provenance)
+            dataset, cache = (root / name for name in ('datasets', 'cache'))
             profile = root / 'profile.json'
             output = root / 'release'
 
@@ -57,7 +57,12 @@ class PortableResourcesSmoke(unittest.TestCase):
                 for index, arg in enumerate(command[:-1]):
                     if arg == '--add-data':
                         source, destination = command[index + 1].rsplit(os.pathsep, 1)
-                        shutil.copytree(source, bundled / '_internal' / destination)
+                        target = bundled / '_internal' / destination
+                        if Path(source).is_file():
+                            target.mkdir(parents=True, exist_ok=True)
+                            shutil.copyfile(source, target / Path(source).name)
+                        else:
+                            shutil.copytree(source, target)
 
             logger = logging.Logger('portable-build-smoke')
             try:
@@ -69,9 +74,9 @@ class PortableResourcesSmoke(unittest.TestCase):
                         patch.dict('os.environ'), patch('tempfile.tempdir', tempfile.tempdir), \
                         patch('sys.pycache_prefix', sys.pycache_prefix):
                     result = build(output, dataset_dir=dataset, cache_dir=cache,
-                                   models_dir=models, profile=profile)
+                                   profile=profile)
                     prepare.assert_called_once_with(dataset, cache, profile,
-                                                    models_dir=models, prebuilt_library=None, progress=ANY)
+                                                    prebuilt_library=None, progress=ANY)
             finally:
                 for handler in logger.handlers:
                     handler.close()
@@ -82,7 +87,11 @@ class PortableResourcesSmoke(unittest.TestCase):
                 seed = 'Pictide/data/runtime/pictide/_internal/resources/'
                 manifest = json.loads(archive.read(seed + 'manifest.json'))
                 self.assertEqual(manifest['provenance'], provenance)
+                self.assertEqual(manifest['model'], model_catalog())
+                self.assertEqual([item['path'] for item in manifest['files']], ['libraries/neutral.sqlite3'])
+                self.assertIn('Pictide/data/runtime/pictide/_internal/backend/recommand/model.json', archive.namelist())
                 self.assertIn(seed + 'libraries/neutral.sqlite3', archive.namelist())
+                self.assertFalse(any(name.endswith('.onnx') or '/models/' in name for name in archive.namelist()))
                 self.assertFalse(any('/db/' in name or '/images/' in name for name in archive.namelist()))
                 exported = root / 'exported.sqlite3'
                 exported.write_bytes(archive.read(seed + 'libraries/neutral.sqlite3'))
@@ -93,26 +102,21 @@ class PortableResourcesSmoke(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             library = vocabulary(root / 'neutral.sqlite3')
-            snapshot = root / 'model'
-            snapshot.mkdir(parents=True)
-            for name in ('model.onnx', 'tokenizer.json', 'config.json', 'tokenizer_config.json', 'special_tokens_map.json'):
-                (snapshot / name).write_text('fixture', encoding='utf-8')
             seed = root / 'seed'
-            resources = PreparedResources(library, snapshot, {'fixture': True})
+            resources = PreparedResources(library, {'fixture': True})
             manifest = export_resources(resources, seed)
             self.assertTrue(manifest['files'])
             with closing(sqlite3.connect(seed / 'libraries/neutral.sqlite3')) as db:
                 self.assertEqual(db.execute('SELECT count(*) FROM tags').fetchone()[0], 2)
                 self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='presets'").fetchone())
             target = DataPaths(root / 'portable data')
-            PictideApplication.prepare_startup(target, seed)
-            model = target.models / 'minilm/config.json'
-            self.assertEqual(model.read_text(), 'fixture')
-            model.write_text('user-model', encoding='utf-8')
+            with patch('backend.recommand.resources.prepare_model') as prepare:
+                PictideApplication.prepare_startup(target, seed)
+                prepare.assert_called_once_with(target.models / 'minilm')
             target.candidate_database.write_bytes(b'personal presets')
             target.database.write_bytes(b'personal history')
-            PictideApplication.prepare_startup(target, seed)
-            self.assertEqual(model.read_text(), 'user-model')
+            with patch('backend.recommand.resources.prepare_model'):
+                PictideApplication.prepare_startup(target, seed)
             self.assertEqual(target.candidate_database.read_bytes(), b'personal presets')
             self.assertEqual(target.database.read_bytes(), b'personal history')
 

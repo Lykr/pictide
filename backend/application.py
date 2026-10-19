@@ -39,10 +39,12 @@ def validate_generation_options(config, fields):
 class PictideApplication:
     @staticmethod
     def prepare_startup(paths, seed_dir):
-        """Initialize missing portable resources before composing application services."""
+        """Prepare vocabulary and model before composing application services."""
         if seed_dir is not None:
             from .store.portable_resources import initialize_resources
             initialize_resources(paths, seed_dir)
+        from .recommand.resources import prepare_model
+        prepare_model(paths.models / 'minilm')
 
     def __init__(self, paths, storage: Storage, tasks, candidates, recommendation,
                  history, cleanup, workflows, roam, recommendation_store=None, general=None):

@@ -12,13 +12,12 @@
 | --- | --- |
 | `corpus/download.py` | 可选的元数据下载器，固定版本并校验 SHA-256 |
 | `corpus/importer.py` | 去重、词频、共现次数、PMI 与成品 SQLite 导出 |
-| `corpus/portable.py`、`corpus/resources.json` | 便携资源准备与固定源数据/模型文件校验清单 |
+| `corpus/portable.py`、`corpus/resources.json` | 便携词库准备与固定源数据文件校验清单 |
 | `scripts/prepare_vocabulary.py`、`corpus/prebuilt.json` | 导出发行词库并锁定可下载的资源文件 |
 | `corpus/profiles/compact.json` | 便携构建默认配置，也可用于手动处理 |
 | `corpus/requirements.txt` | 离线依赖：PyArrow、SciPy、NumPy |
 | `dev/datasets/danbooru-2026/` | 长期保留的原始文件和下载清单；手动处理示例也在此保存成品 |
 | `dev/cache/portable/` | 便携构建统计中间状态、成品词库与报告 |
-| `dev/models/minilm/<model-revision>/` | 长期保留的固定推荐模型与 tokenizer 文件 |
 | `dev/runtime/importer/` | 本机离线处理环境 |
 | `data/libraries/` | 应用中选择的只读统计词库 |
 
@@ -34,7 +33,7 @@ python -m pip install -r corpus/requirements.txt
 
 本地 `scripts/build_portable.py` 可按精简配置处理原始数据，也可通过 `--prebuilt-library DIR` 复用已导出的词库。两种路径都使用独立构建环境，不读写开发应用的 `data/`。本机步骤见 [Windows](setup/windows.md#构建便携包)、[Linux](setup/linux.md#构建便携包) 或 [macOS](setup/macos.md#构建便携包)。
 
-原始分片与 `download.sqlite3` 长期保存在 `dev/datasets/danbooru-2026/`；仅按固定源版本补齐缺失分片。统计中间结果与成品词库放在 `dev/cache/portable/`，固定 MiniLM 长期保存在 `dev/models/minilm/<model-revision>/`。清理构建缓存保留原始数据和模型，可直接本地重新统计；词库和模型有效时构建不请求网络。通过 `--dataset-dir`、`--cache-dir`、`--models-dir`（默认 `dev/models/`）或 `--profile` 调整目录和处理配置。指纹与文件校验规则见[构建缓存记录](issues/portable-build-cache.md)。下文保留其他词库规格的手动处理入口。
+原始分片与 `download.sqlite3` 长期保存在 `dev/datasets/danbooru-2026/`；仅按固定源版本补齐缺失分片。统计中间结果与成品词库放在 `dev/cache/portable/`。清理构建缓存保留原始数据，可直接本地重新统计；有效词库缓存可离线准备发行词库。通过 `--dataset-dir`、`--cache-dir` 或 `--profile` 调整目录和处理配置。Corpus 只准备词库；MiniLM 改为[应用启动前准备](../guides/getting-started.zh-CN.md#推荐模型启动准备)。指纹与文件校验规则见[构建缓存记录](issues/portable-build-cache.md)。下文保留其他词库规格的手动处理入口。
 
 ### 预构建词库
 
@@ -50,7 +49,7 @@ python scripts/prepare_vocabulary.py
 
 按准备脚本打印的 `gh release create` 命令上传两个文件。资源标签为 `corpus-<fingerprint>`，发布为 prerelease，并排除在最新应用版本之外；它不匹配应用的 `v*` 工作流触发规则。上传前先登录 GitHub CLI。已发布资源保持不变；词库变更使用新的资源 Release。上传成功后，再提交并推送生成的资源锁。
 
-GitHub Actions 下载锁定的文件，将所在目录传给 `--prebuilt-library`。资源缺失、过期或损坏时构建终止，CI 不回退到原始数据统计；MiniLM 仍单独按固定版本下载。发行构建只安装 `backend/requirements-release.txt`，处理原始词库的机器才需要 PyArrow、SciPy 等离线依赖。版本标签要求与发版命令见 [GitHub Actions 发版](development.md#github-actions-发版)。
+GitHub Actions 下载锁定的文件，将所在目录传给 `--prebuilt-library`。资源缺失、过期或损坏时构建终止，CI 不回退到原始数据统计；构建只携带 MiniLM 固定运行清单，不下载或打包模型文件。发行构建只安装 `backend/requirements-release.txt`，处理原始词库的机器才需要 PyArrow、SciPy 等离线依赖。版本标签要求与发版命令见 [GitHub Actions 发版](development.md#github-actions-发版)。
 
 ## 一键处理
 

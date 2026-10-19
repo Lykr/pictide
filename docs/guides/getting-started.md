@@ -8,11 +8,25 @@ This page covers startup preparation and generation backend setup for the portab
 
 ## Before you start
 
-The portable edition includes the application, frontend, a compact tag library, and offline MiniLM. Extract it and run the startup entry point for your operating system: [Windows](setup/windows.md#portable-edition) · [Linux](setup/linux.md#portable-edition) · [macOS](setup/macos.md#portable-edition).
+The portable edition includes the application, frontend, a compact tag library, and recommendation inference dependencies. MiniLM model files are downloaded before first startup. Extract it and run the startup entry point for your operating system: [Windows](setup/windows.md#portable-edition) · [Linux](setup/linux.md#portable-edition) · [macOS](setup/macos.md#portable-edition).
 
 The source edition requires Python 3.10+. A fresh checkout also requires a frontend build; see [development prerequisites (Chinese)](../dev/development.md#首次准备检出目录) for Node.js and pnpm versions. Once the frontend is built, daily use does not require a Node.js service.
 
-The launcher automatically prepares the Python environment, dependencies, and caches inside the selected data directory. It does not download image generation models, tag libraries, or recommendation models. Create a separate runtime environment on each operating system rather than reusing another system's venv. The Linux and macOS script flows have passed Bash smoke checks; installation on their native environments remains unverified.
+The source launcher automatically prepares the Python environment, dependencies, and caches inside the selected data directory. Source and portable editions both finish the MiniLM preparation described below before starting the HTTP service or opening the page. Image generation models remain with your chosen generation service. Create a separate source runtime environment on each operating system. Linux and macOS native CI builds and startup checks await an actual run.
+
+## Recommendation model startup
+
+On first startup, Pictide downloads about 91 MB of MiniLM model files into `models/minilm/` under the selected data directory (normally `data/models/minilm/`). Keep the launcher window open to follow progress. Every required file must pass its size and SHA-256 checks before the HTTP service starts and the application can be opened. Downloads are part of startup preparation, before you enter the application.
+
+If a download fails, startup stops and the terminal shows the error. Fix the network connection and run the same launcher again; `.part` files are retained for resuming interrupted downloads. Complete, verified local model files are reused without network requests. Routine cache cleanup keeps this model directory.
+
+For an offline first startup, download the five files below on a connected machine and place them directly in the selected data directory's `models/minilm/`, preserving their names. The version and checksums are defined in the [model catalog](../../backend/recommand/model.json); use this fixed snapshot, rather than a changing `main` revision.
+
+- [model.onnx](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/model.onnx)
+- [tokenizer.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/tokenizer.json)
+- [config.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/config.json)
+- [tokenizer_config.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/tokenizer_config.json)
+- [special_tokens_map.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/special_tokens_map.json)
 
 ## Install and start on your operating system
 
@@ -75,4 +89,4 @@ Connection testing performs a read-only preflight that detects common missing mo
 
 ## Start from source
 
-A fresh checkout contains no dependencies, tag library, recommendation model, or frontend build output. Install and build using the [development workflow (Chinese)](../dev/development.md#首次准备检出目录); see the [prompts guide](prompts.md#data-preparation) for library import and the [recommendation module](../dev/architecture/recommendation.md#model-preparation) for model preparation. See [data backup](backup.md) for paths and backups.
+A fresh checkout contains no dependencies, tag library, recommendation model, or frontend build output. Install and build using the [development workflow (Chinese)](../dev/development.md#首次准备检出目录); see the [prompts guide](prompts.md#data-preparation) for library import and [model startup preparation](#recommendation-model-startup) for MiniLM. See [data backup](backup.md) for paths and backups.

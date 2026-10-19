@@ -19,7 +19,7 @@ The following paths are relative to the selected data directory:
 | `db/pictide.sqlite3` | Images, tasks, feedback, backends, settings, and recommendation learning; WAL/SHM files may exist at runtime |
 | `db/candidate.sqlite3` | Personal prompt presets, fixed terms, and current library selection |
 | `libraries/*.sqlite3` | Selectable read-only statistical libraries |
-| `models/minilm/` | Offline recommendation model: model.onnx, tokenizer.json, config.json, tokenizer_config.json, special_tokens_map.json |
+| `models/minilm/` | Recommendation files verified before startup: model.onnx, tokenizer.json, config.json, tokenizer_config.json, special_tokens_map.json; interrupted downloads use `.part` files |
 | `images/` | Images and matching prompt JSON files containing only positive / negative |
 | `workflows/` | API workflows; .backups holds versions from before updates or deletion |
 | `history-cleanup.json` | Historical image retention in days; defaults to 1 day |
@@ -29,7 +29,7 @@ The following paths are relative to the selected data directory:
 | `logs/` | Runtime logs |
 | `backups/` | Data backups |
 
-See the [Prompt Guide](../guides/prompts.md#add-and-switch-libraries) for adding and selecting libraries. MiniLM is a recommendation runtime resource stored separately under models; routine cache cleanup preserves it. The program serves compiled frontend assets. In the source tree, web/node_modules points to dev/runtime/frontend/node_modules at the project root.
+See the [Prompt Guide](../guides/prompts.md#add-and-switch-libraries) for adding and selecting libraries. MiniLM is a recommendation runtime resource stored separately under models; routine cache cleanup preserves it. Source and portable startup download missing files and verify the fixed catalog before serving the application; valid files are reused offline. See [startup preparation](../guides/getting-started.md#recommendation-model-startup). The program serves compiled frontend assets. In the source tree, web/node_modules points to dev/runtime/frontend/node_modules at the project root.
 
 ## Development Materials
 
@@ -41,7 +41,7 @@ Development materials and release artifacts are organized relative to the projec
 | [`docs/dev/`](README.md) | Version-controlled development guides, architecture, APIs, design guidelines, and issue records |
 | `dev/datasets/` | Long-lived raw Parquet and download manifests; manual offline processing outputs |
 | `dev/runtime/frontend/`, `dev/runtime/importer/`, `dev/runtime/builder/` | Frontend dependencies, offline import environment, and independent portable-build environment |
-| `dev/models/` | Long-lived build resources; pinned MiniLM files under `minilm/<model-revision>/` |
+| `dev/models/` | Historical build model resources; current builds do not use this directory, and existing files are retained |
 | `dev/cache/portable/` | Rebuildable portable statistics, completed libraries, reports, and prebuilt exports under `exports/<fingerprint>/` |
 | `dev/cache/`, `dev/tmp/`, `dev/build/` | Other development caches, temporary files, and portable build workspace |
 | `dev/verification/` | Isolated validation instances, screenshots, and reports |
@@ -50,7 +50,7 @@ Development materials and release artifacts are organized relative to the projec
 | `dev/legacy/` | Retired library directories, model download caches, and historical temporary materials |
 | `releases/` | Portable release directories, ZIP files, and build reports |
 
-Portable builds prepare resources independently of runtime data. [Prebuilt release vocabularies](corpus.md#prebuilt-vocabulary) are published as fixed resource Release assets and referenced by the version-controlled `corpus/prebuilt.json`; SQLite files remain outside Git. GitHub Actions validates and packages those files instead of processing raw metadata. Cache fingerprints, verification, and retention of raw data and models are described in the [build resource record (Chinese)](issues/portable-build-cache.md).
+Portable builds prepare resources independently of runtime data. [Prebuilt release vocabularies](corpus.md#prebuilt-vocabulary) are published as fixed resource Release assets and referenced by the version-controlled `corpus/prebuilt.json`; SQLite files remain outside Git. GitHub Actions validates and packages those files instead of processing raw metadata. Vocabulary fingerprints, verification, and raw-data retention are described in the [build resource record (Chinese)](issues/portable-build-cache.md). Model files are prepared at application startup under runtime data, using the single fixed catalog `backend/recommand/model.json`; `corpus/resources.json` records only the raw dataset. See [the model startup change (Chinese)](issues/minilm-startup-download.md).
 
 Source and portable deployments use the same runtime data responsibilities and relative paths. The source startup environment is data/runtime/venv; the portable program and dependencies are under data/runtime/pictide. Paths in historical reports reflect their location at the time; see dev/maintenance for the current mapping. ComfyUI manages its own models, environment, and output.
 
