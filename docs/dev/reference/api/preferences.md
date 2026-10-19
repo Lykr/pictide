@@ -1,16 +1,18 @@
-# 用户偏好
+# User Preferences
 
-[API 索引](../../api.md) · [通用约定与错误](../../api.md#通用约定)
+[简体中文](preferences.zh-CN.md)
 
-## 用户偏好
+[API index](../../api.md) · [Common conventions and errors](../../api.md#通用约定)
 
-| 方法 | 路径 | 请求 | 响应 |
+## User preferences
+
+| Method | Path | Request | Response |
 | --- | --- | --- | --- |
-| GET | `/api/recommendation/preferences` | `page` 默认 1；`all` 为 0 或 1，默认 0 | 偏好报告 |
+| GET | `/api/recommendation/preferences` | `page`, default 1; `all`, 0 or 1, default 0 | Preference report |
 | POST | `/api/recommendation/preferences/reset` | `{request_id,expected_reset_revision}` | `{request_id,reset_revision,reset_at}` |
 
-报告字段：`available,error,feature_version,state_revision,reset_revision,reset_at,evidence_count,term_count,page,page_size,total_pages,terms`。每项 term 为 `{text,channel,weight,evidence_count}`；方向为 `positive / negative`，权重表示模型参数，不是概率。
+Report fields: `available,error,feature_version,state_revision,reset_revision,reset_at,evidence_count,term_count,page,page_size,total_pages,terms`. Each term is `{text,channel,weight,evidence_count}`. Channels are `positive / negative`; weights are model parameters, rather than probabilities.
 
-默认每页 15 条；`all=1` 返回全部已学习词项，供前端导出 JSON，沿用同一接口。查看和导出不触发学习，不包含完整学习矩阵，无法用于恢复训练状态。只接受 page、all 查询参数。
+The default page size is 15. `all=1` returns all learned terms for frontend JSON export through the same endpoint. Viewing and exporting do not trigger learning, do not include the complete learning matrix, and cannot restore training state. Only the page and all query parameters are accepted.
 
-重置 `request_id` 为 1–128 位字母、数字、下划线或横线，`expected_reset_revision` 使用最新报告值。重复请求可安全重试，修订冲突返回 409。重置清除学习状态及评分缓存，保留图片和评价，不把重置前的反馈自动重放为新学习。详见[用户偏好](../../issues/recommendation-preferences.md)和[导出](../../issues/preference-export.md)。
+For reset, `request_id` contains 1–128 letters, digits, underscores, or hyphens; use the latest report value for `expected_reset_revision`. Duplicate requests can be retried safely, and revision conflicts return 409. Reset clears the learning state and score cache, preserves images and feedback, and does not automatically replay pre-reset feedback as new learning. See [User preferences](../../issues/recommendation-preferences.md) and [Export](../../issues/preference-export.md).

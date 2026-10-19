@@ -1,16 +1,18 @@
-# 初始化与实时事件
+# Bootstrap and Live Events
 
-[API 索引](../../api.md) · [通用约定与错误](../../api.md#通用约定)
+[简体中文](events.zh-CN.md)
 
-## 初始化与实时事件
+[API index](../../api.md) · [Common conventions and errors](../../api.md#通用约定)
 
-| 方法 | 路径 | 请求 | 响应 |
+## Bootstrap and live events
+
+| Method | Path | Request | Response |
 | --- | --- | --- | --- |
-| GET | `/api/bootstrap` | 无 | 初始化数据，字段见下文 |
-| GET | `/api/events` | SSE 长连接 | `event: change`，data 为 `{revision,topic}` |
+| GET | `/api/bootstrap` | None | Initialization data; fields listed below |
+| GET | `/api/events` | Persistent SSE connection | `event: change`; data is `{revision,topic}` |
 
-Bootstrap 包括：`name,module,version,database_path,data_directory,backend_types,backends,jobs,artifacts,roam_view,roam_settings,artifact_revision,counts,artifact_page,recommendation,capabilities`。后端配置隐藏 API Key；`jobs` 为最近 100 条，`artifacts` 为保存观看位置附近的漫游窗口。通用、历史设置另行读取各自接口。
+Bootstrap includes `name,module,version,database_path,data_directory,backend_types,backends,jobs,artifacts,roam_view,roam_settings,artifact_revision,counts,artifact_page,recommendation,capabilities`. Backend configurations hide API keys. `jobs` contains the most recent 100 jobs, and `artifacts` contains the Roam window near the saved viewing position. General and history settings are read through their respective endpoints.
 
-`recommendation` 包括 `available,model_version,feature_version,policy_version,error`。`capabilities` 包括 `generation,feedback,preference_learning,cooccurrence_prompts,prompt_sequences,events,roam_prefetch`。
+`recommendation` includes `available,model_version,feature_version,policy_version,error`. `capabilities` includes `generation,feedback,preference_learning,cooccurrence_prompts,prompt_sequences,events,roam_prefetch`.
 
-SSE 首条主题为 `ready`，之后可能为 `jobs,feedback,artifacts,backends,workflows,candidate,settings,roam_settings,general_settings,recommendation`；约 20 秒无变化发送注释心跳。它是刷新通知，客户端收到后重读有关资源。`revision` 为进程内递增值，重启归零；没有历史事件重放，慢客户端可能只收到最近通知。
+The first SSE topic is `ready`. Subsequent topics may be `jobs,feedback,artifacts,backends,workflows,candidate,settings,roam_settings,general_settings,recommendation`. A comment heartbeat is sent after approximately 20 seconds without changes. These are refresh notifications: clients reread the relevant resources after receiving them. `revision` increments within the process and resets to zero on restart. There is no replay of historical events, and slow clients may receive only the latest notification.

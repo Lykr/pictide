@@ -1,55 +1,57 @@
-# 图片、反馈与偏好评分
+# Images, Feedback, and Preference Scores
 
-[API 索引](../../api.md) · [通用约定与错误](../../api.md#通用约定)
+[简体中文](images.zh-CN.md)
 
-## 图片与反馈
+[API index](../../api.md) · [Common conventions and errors](../../api.md#通用约定)
 
-| 方法 | 路径 | 请求 | 响应 |
+## Images and feedback
+
+| Method | Path | Request | Response |
 | --- | --- | --- | --- |
-| GET | `/api/artifacts` | 图片列表查询参数 | 图片窗口，见下文 |
-| GET | `/api/artifacts/{id}/image` | 无 | 图片文件二进制 |
-| GET | `/api/artifacts/{id}/prompts` | 无 | 下载 JSON：`{positive,negative}` |
-| PUT | `/api/artifacts/{id}/feedback` | `{value:1或-1或null}` | `{artifact,artifact_revision}` |
+| GET | `/api/artifacts` | Image list query parameters | Image window; see below |
+| GET | `/api/artifacts/{id}/image` | None | Image file binary |
+| GET | `/api/artifacts/{id}/prompts` | None | JSON download: `{positive,negative}` |
+| PUT | `/api/artifacts/{id}/feedback` | `{value:1 or -1 or null}` | `{artifact,artifact_revision}` |
 | DELETE | `/api/generated` | `{}` | `{removed,hidden,revision,pending_files}` |
-| DELETE | `/api/generated/{id}` | `{}` | 同上，仅一张生成页图片 |
+| DELETE | `/api/generated/{id}` | `{}` | Same as above, for one image on the Generate page |
 
-### 图片查询
+### Image queries
 
-| 参数 | 说明 |
+| Parameter | Description |
 | --- | --- |
-| `liked` | `1` 仅喜欢图片，否则全部评价状态 |
-| `limit` | 1–200，默认 200；喜欢页客户端使用 100 |
-| `before` | 上一窗口的 `next_cursor`，继续读取更早图片 |
-| `source` | `all / roam / generate`，默认 all |
-| `around` | 漫游窗口中心图片 ID；仅 source=roam，不能与 before 或 liked=1 同用 |
-| `tag` | 可重复，如 `?liked=1&tag=smile&tag=long%20hair`；仅喜欢筛选，多个条件为 AND |
+| `liked` | `1` returns liked images only; otherwise includes all feedback states |
+| `limit` | 1–200; default 200; the Likes page client uses 100 |
+| `before` | `next_cursor` from the previous window, to continue reading older images |
+| `source` | `all / roam / generate`; default all |
+| `around` | Image ID at the center of the Roam window; only for source=roam; cannot be combined with before or liked=1 |
+| `tag` | Repeatable, e.g. `?liked=1&tag=smile&tag=long%20hair`; only for filtering liked images; multiple conditions use AND |
 
-响应为 `{artifacts,has_more,has_newer,anchor_id,next_cursor,total,counts,source,revision}`。通常按时间和 ID 从新到旧排列。`counts` 包含 `artifacts,roam,generate,liked`，是全局计数；`total` 为本次筛选总数。`next_cursor` 在还有更早图片时为末项 ID，否则 null。
+The response is `{artifacts,has_more,has_newer,anchor_id,next_cursor,total,counts,source,revision}`. Images are normally ordered newest first by time and ID. `counts` contains global counts for `artifacts,roam,generate,liked`; `total` is the count for the current filter. `next_cursor` is the last item's ID when older images remain, or null otherwise.
 
 ### Artifact
 
-主要字段：`id,job_id,node_id,output_index,created_at,local_path,content_type,deleted_at,generated_hidden_at,roam_hidden_at,positive,negative,seed,feedback,source,seed_applied,image_url`。`image_url` 指向同源图片接口；`seed` 是图像种子，是否实际绑定到工作流看 `seed_applied`。词项信息以生成时实际文本为准。
+Main fields: `id,job_id,node_id,output_index,created_at,local_path,content_type,deleted_at,generated_hidden_at,roam_hidden_at,positive,negative,seed,feedback,source,seed_applied,image_url`. `image_url` points to the same-origin image endpoint. `seed` is the image seed; `seed_applied` indicates whether it was actually bound to the workflow. Term information reflects the actual text used at generation time.
 
-反馈 `1` 喜欢、`-1` 不喜欢、`null` 撤回为未评价。反馈落库后返回，偏好学习及本次反馈触发的清理由编排层后台处理；评分可能暂时使用上一版偏好。重复设置同一状态不重复计入学习。
+Feedback values are `1` for like, `-1` for dislike, and `null` to withdraw feedback and return to unrated. The response is returned after feedback is persisted. Preference learning and cleanup triggered by this feedback are handled in the background by the orchestration layer, so scoring may temporarily use the previous preference state. Repeatedly setting the same state does not count again toward learning.
 
-生成图片清理：未喜欢图清除图片记录的可见状态并回收本地图片及提示词 JSON；喜欢图只从生成页隐藏，喜欢页保留；任务历史保留。不能用该接口清理漫游图。
+Generated image cleanup clears visibility from unliked image records and reclaims local image files and prompt JSON. Liked images are only hidden from the Generate page and remain on the Likes page. Job history is preserved. This endpoint cannot clean up Roam images.
 
-## 喜欢筛选与图片偏好评分
+## Like filters and image preference scores
 
-| 方法 | 路径 | 请求 | 响应 |
+| Method | Path | Request | Response |
 | --- | --- | --- | --- |
-| GET | `/api/liked/tags` | 无 | `{tags:[{text,count}],revision}` |
-| GET | `/api/liked/ranked` | 可重复 `tag`，同喜欢图片筛选 | `{artifacts,revision,state_revision,score_min,score_max,scoring_available,error,refreshed_at}` |
-| POST | `/api/liked/ranked/refresh` | `{tags:[]}`，或当前筛选词数组 | 同 ranked，主动重算该范围 |
-| GET | `/api/artifacts/{id}/preference-score` | 无 | 图片偏好评分，见下文 |
+| GET | `/api/liked/tags` | None | `{tags:[{text,count}],revision}` |
+| GET | `/api/liked/ranked` | Repeatable `tag`, as in liked-image filtering | `{artifacts,revision,state_revision,score_min,score_max,scoring_available,error,refreshed_at}` |
+| POST | `/api/liked/ranked/refresh` | `{tags:[]}`, or an array of current filter terms | Same as ranked; explicitly recalculates scores for that scope |
+| GET | `/api/artifacts/{id}/preference-score` | None | Image preference score; see below |
 
-标签计数为所有喜欢图中包含该正向词项的图片数，同图同词只计一次；列表默认字典序。Ranked 返回当前筛选范围的全部图片，客户端以每页 100 张分页；按原始偏好分数降序，同分按时间和 ID 降序，无评分图置后。
+Tag counts are the number of liked images containing that positive term, counted once per term per image. The list uses lexicographic order by default. Ranked returns all images within the current filter, and the client paginates them at 100 images per page. Images are sorted by descending raw preference score, then descending time and ID for ties; images without scores appear last.
 
-单图评分返回 `{status,score,love_score,score_min,score_max,state_revision,feature_version,reason}`：
+A single-image score returns `{status,score,love_score,score_min,score_max,state_revision,feature_version,reason}`:
 
-- `status`：`scored / missing_snapshot / unavailable`。
-- `score`：确定性后验均值分数，原始数值，不是抽样选择分，也不是百分比。
-- `love_score`：按历史评分范围转换的 0–100 相对值：`100 × (score-score_min)/(score_max-score_min)`；范围不可用或相等时为 null，不代表喜欢概率。
-- `state_revision,feature_version`：该缓存分数的学习状态与特征版本；无法评分时相关字段为 null，`reason` 提供说明。
+- `status`: `scored / missing_snapshot / unavailable`.
+- `score`: the deterministic posterior mean score, as a raw value; it is neither the sampled selection score nor a percentage.
+- `love_score`: a relative 0–100 value converted using the historical score range: `100 × (score-score_min)/(score_max-score_min)`. It is null when the range is unavailable or its endpoints are equal, and does not represent the probability of a like.
+- `state_revision,feature_version`: the learning-state and feature versions of this cached score. When scoring is unavailable, the relevant fields are null and `reason` explains why.
 
-分数持久缓存到图片信息；普通读取只补缺失缓存，不因每次学习而重算历史图片。主动 refresh 重算所选范围，更新 `refreshed_at`；普通读取不更新该时间。重置偏好会清除评分缓存。推荐暂不可用时仍可能展示已有缓存；刷新失败保留旧缓存，检查 `scoring_available,error`。详情见[评分缓存](../../issues/image-score-cache.md)。
+Scores are persistently cached in image metadata. Normal reads only fill missing cache entries; they do not rescore historical images after every learning update. An explicit refresh recalculates scores for the selected scope and updates `refreshed_at`; normal reads do not update that timestamp. Resetting preferences clears the score cache. Existing cached scores may still be shown while recommendations are temporarily unavailable. A failed refresh preserves the old cache; check `scoring_available,error`. See [Score caching](../../issues/image-score-cache.md).

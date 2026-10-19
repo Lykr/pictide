@@ -1,47 +1,49 @@
-# 生图后端与工作流
+# Generation Backends and Workflows
 
-[API 索引](../../api.md) · [通用约定与错误](../../api.md#通用约定)
+[简体中文](backends.zh-CN.md)
 
-## 生图后端
+[API index](../../api.md) · [Common conventions and errors](../../api.md#通用约定)
 
-| 方法 | 路径 | 请求 | 响应 |
+## Generation backends
+
+| Method | Path | Request | Response |
 | --- | --- | --- | --- |
-| PUT | `/api/backends/{id}` | 后端配置草稿 | 保存的公开配置 |
+| PUT | `/api/backends/{id}` | Backend configuration draft | Saved public configuration |
 | DELETE | `/api/backends/{id}` | `{}` | `{deleted:true,id}` |
-| POST | `/api/backends/{id}/check` | 后端配置草稿 | `{ok,message}`，只读预检 |
-| POST | `/api/backends/{id}/models` | 后端配置草稿 | `{models:[名称],selected:名称或null}` |
-| POST | `/api/backends/{id}/template` | 后端配置草稿 | 默认工作流配置及可用 `input_options` |
+| POST | `/api/backends/{id}/check` | Backend configuration draft | `{ok,message}`; read-only preflight check |
+| POST | `/api/backends/{id}/models` | Backend configuration draft | `{models:[name],selected:name or null}` |
+| POST | `/api/backends/{id}/template` | Backend configuration draft | Default workflow configuration and available `input_options` |
 
-后端列表由 Bootstrap 的 `backends` 提供，没有单独的 GET 列表路由。路径 ID 为 1–80 位字母、数字、下划线或横线；检查、模型发现和模板请求不保存配置。
+The backend list is provided by Bootstrap's `backends`; there is no separate GET list route. Path IDs contain 1–80 letters, digits, underscores, or hyphens. Check, model discovery, and template requests do not save configuration.
 
-| 草稿字段 | 说明 |
+| Draft field | Description |
 | --- | --- |
-| `name` | 后端名称 |
-| `kind` | 当前支持 `comfyui`，省略时同值 |
-| `base_url` | 生图服务 HTTP(S) 地址 |
-| `api_key` | 可选；已有配置省略时保留，空串清除；不会返回明文 |
-| `workflow_mode` | `default / custom`；未提供工作流时使用默认文生图 |
-| `default_checkpoint` | 默认模式的模型名称；空串选择首个可用模型 |
-| `workflow` | 自定义 ComfyUI API 节点对象，不是界面的 `nodes` 数组 |
-| `bindings` | 自定义正负文本绑定，及可选图像种子绑定 |
-| `output_nodes` | 要采集结果的工作流节点 ID 数组 |
-| `workflow_name` | 通过保存后端同时保存自定义工作流时使用 |
-| `workflow_id` / `workflow_revision` | 修改已保存模板时一起提交，保持原 ID |
-| `extra` | 可选适配器扩展对象 |
+| `name` | Backend name |
+| `kind` | Currently supports `comfyui`; the same value is used when omitted |
+| `base_url` | HTTP(S) URL of the generation service |
+| `api_key` | Optional; omitting it for an existing configuration preserves the key, and an empty string clears it; never returned in plaintext |
+| `workflow_mode` | `default / custom`; uses the default text-to-image workflow when no workflow is provided |
+| `default_checkpoint` | Model name for default mode; an empty string selects the first available model |
+| `workflow` | Custom ComfyUI API node object, rather than the UI's `nodes` array |
+| `bindings` | Custom positive and negative text bindings, plus an optional image seed binding |
+| `output_nodes` | Array of workflow node IDs from which to collect results |
+| `workflow_name` | Used when saving a custom workflow together with the backend |
+| `workflow_id` / `workflow_revision` | Submit both when modifying a saved template, preserving its original ID |
+| `extra` | Optional adapter extension object |
 
-绑定示例：`{"positive":{"node_id":"2","input":"text"},"negative":{"node_id":"3","input":"text"},"seed":{"node_id":"5","input":"seed"}}`。当前自定义配置要求正负文本绑定，且不能指向同一输入；种子绑定可省略。节点参数直接在 `workflow` 内编辑。
+Example bindings: `{"positive":{"node_id":"2","input":"text"},"negative":{"node_id":"3","input":"text"},"seed":{"node_id":"5","input":"seed"}}`. Custom configuration currently requires positive and negative text bindings, which must not point to the same input; the seed binding may be omitted. Edit node parameters directly in `workflow`.
 
-公开配置包含 `has_api_key`，不含 `api_key`。默认模式解析已安装模型后生成工作流；新任务保存后端快照。删除后端不删除历史任务和图片。保存当前漫游后端后，可恢复因旧错误暂停的预取；不自动重试旧失败任务或恢复播放。
+Public configuration includes `has_api_key` and excludes `api_key`. Default mode resolves installed models before creating the workflow; new jobs save a backend snapshot. Deleting a backend preserves historical jobs and images. Saving the current Roam backend can resume prefetching paused by an earlier error; it does not automatically retry previously failed jobs or resume playback.
 
-## 工作流库
+## Workflow library
 
-| 方法 | 路径 | 请求 | 响应 |
+| Method | Path | Request | Response |
 | --- | --- | --- | --- |
-| GET | `/api/workflows` | 无 | `{workflows:[{id,name,revision}]}` |
-| GET | `/api/workflows/{id}` | 无 | 完整工作流记录 |
-| POST | `/api/workflows` | `{name,workflow,bindings,output_nodes}` | `201`，新记录 |
+| GET | `/api/workflows` | None | `{workflows:[{id,name,revision}]}` |
+| GET | `/api/workflows/{id}` | None | Complete workflow record |
+| POST | `/api/workflows` | `{name,workflow,bindings,output_nodes}` | `201`; new record |
 | DELETE | `/api/workflows/{id}` | `{revision}` | `{deleted:true,id,detached_backends}` |
 
-完整记录为 `{id,name,workflow,bindings,output_nodes,revision}`。独立 POST 只创建新工作流，名称重复返回 409；更新、重命名并应用已有工作流通过 `PUT /api/backends/{id}` 提交 `workflow_id,workflow_revision,workflow_name`。
+A complete record is `{id,name,workflow,bindings,output_nodes,revision}`. A standalone POST only creates a new workflow; duplicate names return 409. To update, rename, and apply an existing workflow, submit `workflow_id,workflow_revision,workflow_name` through `PUT /api/backends/{id}`.
 
-`revision` 是工作流文件内容的 SHA-256。删除或更新时须使用读取到的最新值，冲突返回 409。删除保留备份，并解除当前后端的模板引用；后端和历史任务的实际工作流快照保留。
+`revision` is the SHA-256 of the workflow file contents. Use the latest value read when deleting or updating; conflicts return 409. Deletion retains a backup and detaches template references from current backends; the actual workflow snapshots in backends and historical jobs are preserved.

@@ -1,64 +1,66 @@
-# 候选词库与预设
+# Candidate Tag Libraries and Presets
 
-[API 索引](../../api.md) · [通用约定与错误](../../api.md#通用约定)
+[简体中文](candidate.zh-CN.md)
 
-## 词库文件管理
+[API index](../../api.md) · [Common conventions and errors](../../api.md#通用约定)
 
-| 方法 | 路径 | 请求 | 响应 |
+## Library file management
+
+| Method | Path | Request | Response |
 | --- | --- | --- | --- |
-| GET | `/api/candidate/library` | 无 | `{selected,libraries:[{filename,tag_count,relation_count,bytes}]}` |
-| POST | `/api/candidate/library` | multipart/form-data，字段 `file`，`.sqlite3` 或 `.sqlite3.gz` | 201，`{filename,tag_count,relation_count,bytes}` |
-| PUT | `/api/candidate/library` | JSON `{filename}` | `{selected}`，立即使用 |
+| GET | `/api/candidate/library` | None | `{selected,libraries:[{filename,tag_count,relation_count,bytes}]}` |
+| POST | `/api/candidate/library` | multipart/form-data, field `file`, `.sqlite3` or `.sqlite3.gz` | 201; `{filename,tag_count,relation_count,bytes}` |
+| PUT | `/api/candidate/library` | JSON `{filename}` | `{selected}`; takes effect immediately |
 
-文件放在所选数据目录的 `libraries/`。GET 刷新目录和所选文件状态；有效文件需要 tags、correlations、dataset 表，来源为 ready，dataset.min_cooccurrence 是词库保留关系的正整数下限。上传和 gzip 解压各支持最大 2 GiB，同名自动编号，仅复制统计表。页面在上传成功后调用 PUT 自动选用。选择保存到个人配置库，已有预设、任务和预取保留，状态变化复用 candidate 事件。详情见[词库管理](../../issues/library-selection.md)。
+Files are stored in `libraries/` under the selected data directory. GET refreshes the directory and selected file status. A valid file requires the tags, correlations, and dataset tables, a source status of ready, and dataset.min_cooccurrence as a positive-integer lower bound for relations retained in the library. Uploads and gzip decompression each support a maximum of 2 GiB. Duplicate filenames are automatically numbered, and only statistical tables are copied. After a successful upload, the page calls PUT to select the file automatically. The selection is saved in the personal configuration database; existing presets, jobs, and prefetched results are preserved. Status changes reuse the candidate event. See [Library management](../../issues/library-selection.md).
 
-## 候选词库、预设与预览
+## Candidate tag library, presets, and previews
 
-| 方法 | 路径 | 请求 | 响应 |
+| Method | Path | Request | Response |
 | --- | --- | --- | --- |
-| GET | `/api/candidate/tags` | `query`，`page=1`，`page_size=15`（1–200） | `{tags:[{id,name,post_count}],total,page,page_size}` |
-| GET | `/api/candidate/dataset` | 无 | 数据状态、来源、修订、图片总数、`tag_count` 和词库下限 `min_cooccurrence` |
-| GET | `/api/candidate/presets` | 无 | `{presets:[{id,name}]}` |
-| GET | `/api/candidate/presets/{id}` | 无 | `{id,name,document}` |
-| POST | `/api/candidate/presets` | `{name,document,id?}` | 保存后的 `{id,name,document}` |
-| DELETE | `/api/candidate/presets/{id}` | `{}` | `{deleted:布尔值,id}` |
-| POST | `/api/candidate/generate` | 候选生成参数 | 完整组合及报告 |
-| POST | `/api/candidate/relations` | `{anchor,terms:[完整词项]}` | `{anchor:{text,known},relations:[{text,known,pmi,count}]}` |
+| GET | `/api/candidate/tags` | `query`, `page=1`, `page_size=15` (1–200) | `{tags:[{id,name,post_count}],total,page,page_size}` |
+| GET | `/api/candidate/dataset` | None | Data status, source, revision, total image count, `tag_count`, and library lower bound `min_cooccurrence` |
+| GET | `/api/candidate/presets` | None | `{presets:[{id,name}]}` |
+| GET | `/api/candidate/presets/{id}` | None | `{id,name,document}` |
+| POST | `/api/candidate/presets` | `{name,document,id?}` | Saved `{id,name,document}` |
+| DELETE | `/api/candidate/presets/{id}` | `{}` | `{deleted:boolean,id}` |
+| POST | `/api/candidate/generate` | Candidate generation parameters | Complete combination and report |
+| POST | `/api/candidate/relations` | `{anchor,terms:[complete terms]}` | `{anchor:{text,known},relations:[{text,known,pmi,count}]}` |
 
-词库只读，无添加、编辑、删除词库词项的 HTTP 接口。原名保留下划线，例如 black_hair；搜索支持空格等价匹配，按词频降序、同频名称排序。候选最终输出使用逗号分隔、空格连接词。
+The library is read-only, with no HTTP endpoints for adding, editing, or deleting library terms. Original names retain underscores, such as black_hair. Search treats spaces as equivalent and sorts by descending frequency, then by name for ties. Final candidate output uses comma-separated terms with spaces between words.
 
-预设 POST 省略 id 创建，提供已有 id 更新。预设是可编辑的固定词和共现参数，不修改只读词库。保存与生成均使用 max(预设最低共现次数, 当前词库下限)；切换词库保留已存预设，页面只自动提高不足的草稿值，保存才写入。
+Preset POST creates a preset when id is omitted and updates one when an existing id is provided. Presets contain editable fixed terms and co-occurrence parameters; they do not modify the read-only library. Saving and generation both use max(preset minimum co-occurrence count, current library lower bound). Switching libraries preserves saved presets; the page only raises insufficient draft values automatically, and writes them only on save.
 
-### 预设 document
+### Preset document
 
-| 字段 | 范围 | 默认 |
+| Field | Range | Default |
 | --- | --- | --- |
-| `base_positive` / `base_negative` | 完整词项字符串数组，允许自定义文本 | `[]` |
-| `min_tags` | 整数 1–1000 | 10 |
-| `max_tags` | 整数 min_tags–1000 | 30 |
-| `pmi_threshold` | 有限数值 | 0 |
-| `min_cooccurrence` | 正整数，最大安全整数；有效值至少为当前词库下限 | max(10, 词库下限) |
-| `change_budget` | 整数 0–2000 | 2 |
-| `blocked_keywords` | 关键词字符串数组 | `[]` |
+| `base_positive` / `base_negative` | Arrays of complete term strings; custom text is allowed | `[]` |
+| `min_tags` | Integer 1–1000 | 10 |
+| `max_tags` | Integer min_tags–1000 | 30 |
+| `pmi_threshold` | Finite number | 0 |
+| `min_cooccurrence` | Positive integer up to the maximum safe integer; the effective value is at least the current library lower bound | max(10, library lower bound) |
+| `change_budget` | Integer 0–2000 | 2 |
+| `blocked_keywords` | Array of keyword strings | `[]` |
 
-固定正向词数不得超过 max_tags。新增正向词必须与已有词库正向词满足 PMI 和最低共现次数；自定义固定词无统计，不参与相关性门槛，负向词不参与 PMI 比较，但自动抽取会排除与负向列表完整同名的词（忽略大小写，空格/下划线等价）；显式固定正向词保留。关键词只过滤新抽取词，大小写不敏感，空格与下划线等价。
+The number of fixed positive terms must not exceed max_tags. Newly added positive terms must satisfy PMI and minimum co-occurrence requirements with existing positive terms from the library. Custom fixed terms have no statistics and do not participate in correlation thresholds. Negative terms do not participate in PMI comparisons, but automatic selection excludes terms whose full names match entries in the negative list (case-insensitive, treating spaces and underscores as equivalent); explicitly fixed positive terms are retained. Keywords filter only newly selected terms, with case-insensitive matching and equivalence between spaces and underscores.
 
-### 候选生成参数
+### Candidate generation parameters
 
-| 字段 | 范围及默认 |
+| Field | Range and default |
 | --- | --- |
-| `preset_id` | 必填，非空预设 ID |
-| `mode` | `random_each_run / fixed_seed / sequence`，默认 random_each_run |
-| `seed` | 整数 0–9007199254740991，默认 0，提示词种子 |
-| `sequence_step` | 整数 0–1000，默认 0，仅 sequence 使用 |
-| `max_steps` | 整数 1–1000000，省略时 100；所有模式的扩展搜索上限 |
-| `seed_control` / `step_control` | `fixed / increment / decrement / randomize`，默认 fixed |
-| `document` | 可选预设草稿，覆盖已保存预设内容 |
+| `preset_id` | Required, nonempty preset ID |
+| `mode` | `random_each_run / fixed_seed / sequence`; default random_each_run |
+| `seed` | Integer 0–9007199254740991; default 0; prompt seed |
+| `sequence_step` | Integer 0–1000; default 0; used only by sequence |
+| `max_steps` | Integer 1–1000000; 100 when omitted; expansion search limit for all modes |
+| `seed_control` / `step_control` | `fixed / increment / decrement / randomize`; default fixed |
+| `document` | Optional preset draft that overrides the saved preset contents |
 
-生成后控制用于任务多轮生成时推进下一轮参数；单次预览返回当前结果，不自动推进。random_each_run 每次生成新的提示词种子；图像种子在任务请求中单独设置。
+Post-generation controls advance the parameters for the next round during multi-round job generation. A single preview returns the current result without advancing automatically. random_each_run creates a new prompt seed on every generation; the image seed is configured separately in the job request.
 
-响应包括 `positive,negative,seed,selected_tags,candidate_id,source_id,preset_id,mode,report`。selected_tags 每项含 `id,text,categories,channel,source_id`。`report` 为 `{stop_reason,tag_count,unrecognized_fixed}`；sequence 另有 `{seed,step,change_budget,changes}`。
+The response includes `positive,negative,seed,selected_tags,candidate_id,source_id,preset_id,mode,report`. Each selected_tags item contains `id,text,categories,channel,source_id`. `report` is `{stop_reason,tag_count,unrecognized_fixed}`; sequence additionally includes `{seed,step,change_budget,changes}`.
 
-目标长度在上下限内均匀抽取，共现不足或搜索上限到达时返回当前组合，不因未达到目标长度报错。stop_reason 可能为 `target_length,search_limit,no_eligible_tags,budget_zero`。数据未 ready 或参数无效仍返回错误。
+The target length is sampled uniformly between the lower and upper bounds. When co-occurrence is insufficient or the search limit is reached, the current combination is returned; failing to reach the target length does not cause an error. Possible stop_reason values are `target_length,search_limit,no_eligible_tags,budget_zero`. Data that is not ready and invalid parameters still produce errors.
 
-Relations 仅查询当前词项关系，不创建生成任务；已知词对缺记录表示未保留统计，pmi/count 为 null；当前试用词库按共现 ≥1,000 次保留关系；自定义词 known=false，无统计。不能将 null 当作零共现或 PMI=0。统计口径见[PMI 数据设计](../../issues/candidate-pmi.md)。
+Relations only queries relationships among the current terms and does not create a generation job. A missing record for a pair of known terms means its statistics were not retained, and pmi/count are null. The current trial library retains relations with co-occurrence ≥1,000. Custom terms have known=false and no statistics. Do not interpret null as zero co-occurrence or PMI=0. See [PMI data design](../../issues/candidate-pmi.md) for statistical definitions.
