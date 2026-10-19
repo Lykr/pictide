@@ -50,7 +50,6 @@ export function createPictideGuide({ readFacts, subscribeFacts, navigate, storag
         const snapshot = machine.getSnapshot();
         navigate(snapshot.expectedRoute || 'feed');
       }
-      if (name === 'finish') navigate('feed');
     },
     dispose() { unsubscribe(); machine.dispose(); },
   };

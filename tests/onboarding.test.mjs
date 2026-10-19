@@ -115,7 +115,9 @@ test('anchor clear remains across further images and collapsed panels; next requ
   assert.equal(h.step(), 'liked-reveal');
   h.update({ likedLoading: false });
   assert.equal(h.step(), 'finish');
+  const navigationsBeforeFinish = [...h.navigations];
   h.guide.act('finish');
+  assert.deepEqual(h.navigations, navigationsBeforeFinish, 'finishing preserves the current page instead of navigating away');
   h.update({ likedTotal: 2 });
   assert.equal(h.guide.getSnapshot().status, 'idle');
   const refreshed = harness({ backendCount: 1 }, h.sharedStorage);
