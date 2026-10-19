@@ -28,7 +28,8 @@
 .feed-page .image-card:not(:where(.editor-page, .editor-page *)) { overflow: hidden; }
 /* The viewer receives programmatic focus for shortcuts; its controls keep their own focus rings. */
 .feed-page .image-card:focus { outline: none; }
-.feed-page .image-stage:not(:where(.editor-page, .editor-page *)) { height: calc(100dvh - 260px); min-height: 300px; max-height: 860px; background: var(--secondary); display: flex; align-items: center; justify-content: center; position: relative; }
+.feed-page .roam-image-card { --roam-image-height: clamp(300px, calc(100dvh - 260px), 860px); }
+.feed-page .image-stage:not(:where(.editor-page, .editor-page *)) { height: var(--roam-image-height); background: var(--secondary); display: flex; align-items: center; justify-content: center; position: relative; }
 .feed-page .image-stage img:not(:where(.editor-page, .editor-page *)) { width: 100%; height: 100%; object-fit: contain; display: block; }
 .feed-page .roam-heading-actions { display: flex; align-items: center; gap: 8px; }
 .feed-page .roam-active .image-stage { overflow: hidden; isolation: isolate; }
@@ -346,12 +347,12 @@ body.pictide-immersive { overflow: hidden; }
 .roam-anchor-terms { display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; gap: 6px; padding: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .feed-page .roam-anchor-term { height: auto; min-height: 32px; max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; }
 .feed-page .roam-anchor-term:disabled { opacity: 0.65; }
-.feed-page .roam-image-card[data-state=open] { --anchor-panel-width: clamp(160px, var(--anchor-panel-ratio, 30%), calc(100% - 326px)); display: grid; grid-template-columns: minmax(0, 1fr) 6px var(--anchor-panel-width); grid-template-rows: minmax(0, 1fr) auto; height: min(calc(100dvh - 208px), 912px); min-height: 0; }
+.feed-page .roam-image-card[data-state=open] { --anchor-panel-width: clamp(160px, var(--anchor-panel-ratio, 30%), calc(100% - 326px)); display: grid; grid-template-columns: minmax(0, 1fr) 6px var(--anchor-panel-width); grid-template-rows: var(--roam-image-height) auto; height: auto; min-height: 0; }
 .feed-page .roam-image-card[data-state=open] .image-stage { grid-column: 1; grid-row: 1; position: relative; inset: auto; width: 100%; height: 100%; min-height: 0; max-height: none; aspect-ratio: auto; }
-.feed-page .roam-image-card[data-state=open] > .roam-anchors { grid-column: 3; grid-row: 1 / 3; }
+.feed-page .roam-image-card[data-state=open] > .roam-anchors { grid-column: 3; grid-row: 1 / 3; contain: size; }
 .feed-page .roam-image-card[data-state=open] > .image-toolbar { grid-column: 1; grid-row: 2; min-width: 0; }
 .feed-page .roam-image-card.immersive .image-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); width: calc(100% - 32px); }
-.feed-page .roam-image-card.immersive[data-state=open] { height: 100dvh; cursor: auto; }
+.feed-page .roam-image-card.immersive[data-state=open] { grid-template-rows: minmax(0, 1fr) auto; height: 100dvh; cursor: auto; }
 .feed-page #image-card.immersive[data-state=open] > .image-toolbar { position: relative; left: auto; bottom: auto; transform: none; width: 100%; max-width: none; border: 0; border-radius: 0; background: var(--card); box-shadow: none; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
 .feed-page .roam-image-card.immersive[data-state=open] > .immersive-actions { right: calc(var(--anchor-panel-width) + 6px + max(12px, env(safe-area-inset-right))); }
 .feed-page .roam-image-card.immersive[data-state=open] > .roam-anchors { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
