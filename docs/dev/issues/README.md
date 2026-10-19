@@ -37,6 +37,7 @@
 
 ## 界面与设置
 
+- [首次使用引导（设计）](first-run-guide.md)
 - [桌面启动与托盘退出（设计）](desktop-launcher.md)
 - [通用设置](general-settings.md)
 - [跟随系统主题](system-theme.md)
