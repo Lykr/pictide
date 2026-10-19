@@ -28,7 +28,7 @@ The package includes the runtime, frontend, and `filtered` statistical vocabular
 
 Co-occurrence generation requires a statistical library; preference learning requires a local MiniLM model. See [setup and connections](docs/guides/getting-started.md) for preparation. Close the launcher window or press Ctrl+C to stop the application.
 
-### Workspace
+### Feature overview
 
 | Section | Purpose | Guide |
 | --- | --- | --- |

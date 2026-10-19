@@ -13,7 +13,7 @@ Pictide 提供两版处理好的统计词库。便携包默认随带 `filtered`�
 | `filtered` | `general`、`sensitive`；统计前整条排除包含 `questionable` 或 `explicit` 的图片数据 | 100 | 1,000 | 是 |
 | `all-ratings` | 全部四种评级：`general`、`sensitive`、`questionable`、`explicit` | 100 | 1,000 | 否 |
 
-两版均统计普通标签与观察到的评级，不额外移除单个标签名称。`all-ratings` 包含全部源评级，仍应用上述频次门槛，保存处理后的统计而非原始图片记录。版本名描述源数据过滤范围，因此使用 `filtered` / `all-ratings`，而非 SFW / NSFW。
+两版均统计普通标签与观察到的评级，不额外移除单个标签名称。`all-ratings` 包含全部源评级，仍应用上述频次门槛，保存处理后的统计而非原始图片记录。
 
 ## 下载与切换
 
