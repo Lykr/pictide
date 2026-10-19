@@ -41,25 +41,25 @@ function RoamChoices({ value, disabled = false, onChange, compact = false }: {
 }) {
   return <div className={compact ? "grid gap-1" : "form-grid"}>
     <div className={compact ? "roam-choice flex min-h-8 flex-wrap items-center justify-between gap-2" : "settings-field"}>
-      <span className="field-caption whitespace-nowrap">{t("偏好范围")}<HelpTip text={value.prompt_mode === "stay" ? t("停泊不重新抽取，暂不能切换范围；原选择会保留。") : t("切换后保留当前图，清空旧预取并重新准备后续图片。")} /></span>
+      <span className="field-caption whitespace-nowrap">{t("偏好范围")}<HelpTip text={t("选择从哪些标签中寻找画面灵感。")} /></span>
       <ToggleGroup type="single" size="sm" value={value.liked_tags_only ? "liked" : "all"} disabled={disabled || value.prompt_mode === "stay"} aria-label={t("偏好范围")} onValueChange={next => { if (next) onChange({ liked_tags_only: next === "liked" }); }}>
-        <ToggleGroupItem value="all" aria-label={t("全部")} data-tooltip={t("从完整词库抽取；固定词和 PMI 条件保持。")}>{t("全部")}</ToggleGroupItem>
-        <ToggleGroupItem value="liked" aria-label={t("喜欢")} data-tooltip={t("仅从喜欢图片的标签中抽取；固定词和 PMI 条件保持。")}>{t("喜欢")}</ToggleGroupItem>
+        <ToggleGroupItem value="all" aria-label={t("全部")} data-tooltip={t("从完整词库探索更多画面。")}>{t("全部")}</ToggleGroupItem>
+        <ToggleGroupItem value="liked" aria-label={t("喜欢")} data-tooltip={t("围绕喜欢过的图片元素继续探索。")}>{t("喜欢")}</ToggleGroupItem>
       </ToggleGroup>
     </div>
     <div className={compact ? "roam-choice flex min-h-8 flex-wrap items-center justify-between gap-2" : "settings-field"}>
-      <span className="field-caption whitespace-nowrap">{t("漫游方式")}<HelpTip text={t("切换后保留当前图，清空旧预取并重新准备后续图片。")} /></span>
+      <span className="field-caption whitespace-nowrap">{t("漫游方式")}<HelpTip text={t("选择画面之间如何延续或变化。")} /></span>
       <ToggleGroup type="single" size="sm" value={value.prompt_mode} disabled={disabled} aria-label={t("漫游方式")} onValueChange={next => { if (next) onChange({ prompt_mode: next as PromptMode }); }}>
-        <ToggleGroupItem value="random" aria-label={t("漂流")} data-tooltip={t("每张重新随机抽取提示词组合。")}>{t("漂流")}</ToggleGroupItem>
-        <ToggleGroupItem value="along" aria-label={t("顺流")} data-tooltip={t("从当前组合逐步变化；变化预算取自所选候选预设。")}>{t("顺流")}</ToggleGroupItem>
-        <ToggleGroupItem value="stay" aria-label={t("停泊")} data-tooltip={t("保持整组正负提示词，图像种子仍随机。")}>{t("停泊")}</ToggleGroupItem>
+        <ToggleGroupItem value="random" aria-label={t("漂流")} data-tooltip={t("每张探索新的画面组合。")}>{t("漂流")}</ToggleGroupItem>
+        <ToggleGroupItem value="along" aria-label={t("顺流")} data-tooltip={t("沿着当前画面逐步变化。")}>{t("顺流")}</ToggleGroupItem>
+        <ToggleGroupItem value="stay" aria-label={t("停泊")} data-tooltip={t("保持提示词，探索同一描述的不同画面。")}>{t("停泊")}</ToggleGroupItem>
       </ToggleGroup>
     </div>
     <div className={compact ? "roam-choice flex min-h-8 flex-wrap items-center justify-between gap-2" : "settings-field"}>
-      <span className="field-caption whitespace-nowrap">{t("推荐力度")}<HelpTip text={t("只影响新任务，保留已有预取。停泊已有提示词时不参与评分。")} /></span>
+      <span className="field-caption whitespace-nowrap">{t("推荐力度")}<HelpTip text={t("调整漫游贴近个人喜好的程度。")} /></span>
       <ToggleGroup type="single" size="sm" value={value.recommendation_strength} disabled={disabled} aria-label={t("推荐力度")} onValueChange={next => { if (next) onChange({ recommendation_strength: next as RecommendationStrength }); }}>
-        <ToggleGroupItem value="standard" aria-label={t("标准")} data-tooltip={t("保留探索，发现更多可能喜欢的组合。")}>{t("标准")}</ToggleGroupItem>
-        <ToggleGroupItem value="strong" aria-label={t("强力")} data-tooltip={t("比较更多候选，按当前偏好评分择优，不引入探索。")}>{t("强力")}</ToggleGroupItem>
+        <ToggleGroupItem value="standard" aria-label={t("标准")} data-tooltip={t("兼顾个人喜好与新鲜感。")}>{t("标准")}</ToggleGroupItem>
+        <ToggleGroupItem value="strong" aria-label={t("强力")} data-tooltip={t("更集中地寻找符合个人喜好的画面。")}>{t("强力")}</ToggleGroupItem>
       </ToggleGroup>
     </div>
   </div>;
