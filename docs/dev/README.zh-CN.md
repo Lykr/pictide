@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | 模块与调用 | [架构与边界](architecture.zh-CN.md) | [调用和数据流](architecture/flows.zh-CN.md)、[推荐模块](architecture/recommendation.zh-CN.md) |
 | HTTP 接口 | [API 索引与通用约定](api.zh-CN.md) | 按操作进入专题接口页 |
-| 数据 | [目录与职责](data-layout.zh-CN.md) | [SQLite 存储参考](reference/storage.zh-CN.md) |
+| 数据 | [目录与职责](data-layout.zh-CN.md) | [SQLite 存储参考](reference/storage.zh-CN.md)、[项目清理](cleanup.zh-CN.md) |
 
 ## 开发与维护
 

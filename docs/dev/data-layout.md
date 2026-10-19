@@ -56,6 +56,8 @@ Source and portable deployments use the same runtime data responsibilities and r
 
 ## Data Lifecycle
 
+For disposable caches, frontend backups and validation files, use the [project cleanup script](cleanup.md). It previews a reviewable list and preserves long-lived resources and personal data.
+
 - Each backend save creates an immutable revision; existing tasks reference their submission-time snapshot. Workflow versions are backed up before editing.
 - Liked images are retained across sections. Cleaning up unliked images reclaims images and prompt JSON files while retaining task history.
 - Time-based cleanup and roam history count cleanup run at startup and operation entry points. See [Settings and Cleanup](../guides/settings.md#historical-image-cleanup).

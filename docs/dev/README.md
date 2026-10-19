@@ -14,7 +14,7 @@ Prioritize changes that help people discover images they enjoy or guide explorat
 | --- | --- | --- |
 | Modules and calls | [Architecture and boundaries](architecture.md) | [Calls and data flow](architecture/flows.md), [Recommendation module](architecture/recommendation.md) |
 | HTTP API | [API index and conventions](api.md) | Follow the endpoint references by operation |
-| Data | [Layout and responsibilities](data-layout.md) | [SQLite storage reference](reference/storage.md) |
+| Data | [Layout and responsibilities](data-layout.md) | [SQLite storage reference](reference/storage.md), [Project cleanup](cleanup.md) |
 
 ## Development and maintenance
 
