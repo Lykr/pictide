@@ -54,7 +54,7 @@ cd ../pictide-example
 
 ### Commit 规范
 
-- 格式为 `type: 简短中文说明`；需要标明模块时使用 `type(scope): 简短中文说明`，如 `fix(roam): 修复切换锚点后的预取时机`。
+- 提交标题与正文统一使用英文。格式为 `type: short summary`；需要标明模块时使用 `type(scope): short summary`，如 `fix(roam): defer prefetch after anchor changes`。
 - 类型使用 `feat`（功能）、`fix`（修复）、`docs`（文档）、`refactor`（重构）、`perf`（性能）、`test`（测试）、`chore`（工具与依赖）或 `revert`（回退）。
 - 一次提交围绕一个完整目的，标题说明具体变化；复杂变更可在正文补充原因与验证结果。既有历史保留原样。
 - 任务交付前将新提交推送到 `origin`。已集成的任务推送 `main`；尚未集成的任务推送对应任务分支，首次使用 `git push -u origin <分支名>` 建立跟踪。
