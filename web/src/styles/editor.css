@@ -22,10 +22,10 @@
 .cooc-tag > span:first-child { flex: 1; }
 .cooc-frequency { min-width: 72px; text-align: right; color: var(--muted-foreground); font-size: 12px; font-variant-numeric: tabular-nums; }
 .cooc-empty { min-height: 150px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--muted-foreground); font-size: 12px; }
-.cooc-preset-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 24px; flex-wrap: wrap; }
-.cooc-preset-toolbar > [data-slot=select-trigger] { max-width: 300px; min-width: 170px; }
+.cooc-preset { margin-bottom: 24px; }
+.cooc-preset-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cooc-preset-picker { flex: 1 1 240px; max-width: 440px; }
 .cooc-settings { display: grid; gap: 24px; }
-.cooc-settings > .cooc-field { max-width: 440px; }
 .cooc-field { display: flex; flex-direction: column; align-items: stretch; min-width: 0; gap: 6px; }
 .cooc-field > label { display: flex; align-items: center; min-height: 24px; font-size: 12px; font-weight: 400; gap: 4px; }
 .cooc-field > [data-slot=select-trigger] { width: 100%; }
@@ -84,8 +84,9 @@
   .editor-page .editor-tabs { margin-bottom: 12px; }
   .editor-page .editor-tabs [data-slot=tabs-list] { width: 100%; }
   .editor-page .editor-tabs [data-slot=tabs-trigger] { flex: 1; }
-  .cooc-preset-toolbar { gap: 4px; margin-bottom: 16px; }
-  .cooc-preset-toolbar > [data-slot=select-trigger] { flex: 1 1 150px; min-width: 0; }
+  .cooc-preset { margin-bottom: 16px; }
+  .cooc-preset-toolbar { gap: 4px; }
+  .cooc-preset-picker { flex-basis: 100%; max-width: none; }
   .cooc-fixed-picker, .cooc-fixed-row { grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 0; }
   .cooc-positive-settings, .cooc-preview-grid { gap: 20px; }
   .cooc-fixed-origin { right: 8px; font-size: 10px; }

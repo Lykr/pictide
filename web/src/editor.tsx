@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { GripVertical, Check, ChevronRight, Settings2, ChevronsUpDown, Copy, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "./components/ui/input-group";
 import { Textarea } from "./components/ui/textarea";
 import { Label } from "./components/ui/label";
 import { Badge } from "./components/ui/badge";
@@ -345,9 +346,28 @@ export function EditorWorkspace() {
         <div className="cooc-tags" aria-busy={tagLoading}>{tagLoading ? <div className="cooc-empty" role="status"><LoaderCircle className="size-4 animate-spin" />{t("加载中")}</div> : tags.tags.length ? tags.tags.map(tag => <div className="cooc-tag" key={tag.id}><span className="min-w-0 break-words" data-tooltip={["general", "sensitive", "questionable", "explicit"].includes(tag.name) ? t("图片评级标签，可添加为固定正向词以参与共现筛选。") : undefined}>{tag.name}</span><span className="cooc-frequency" data-tooltip={t("数据集中包含此标签的图片数量")}>{tag.post_count.toLocaleString(locale())}</span></div>) : <p className="cooc-empty">{query ? t("没有匹配标签") : t("上传或选择词库，开始浏览标签。")}</p>}</div>
         <PageControls label={t("词库")} page={page} totalPages={pages} loading={tagLoading} onPageChange={setPage} />
       </section> : <>
-        <div className="cooc-preset-toolbar"><Choice label={t("生成预设")} value={preset.id || "__new"} onChange={selectPreset} disabled={busy} options={[...presets.map(item => ({ value: item.id, text: item.name })), ...(!preset.id ? [{ value: "__new", text: t("未保存预设") }] : [])]} /><HelpTip text={t("切换预设后用于漫游和生成；编辑内容保存后生效，预览可使用未保存的草稿。")} /><IconButton icon={Plus} label={t("新建预设")} disabled={busy} onClick={() => create()} /><IconButton icon={Copy} label={t("复制预设")} disabled={busy || !loaded} onClick={() => create(true)} /><IconButton icon={Trash2} label={t("删除预设")} disabled={busy || !preset.id} onClick={remove} /><span className="spacer" /><span className="text-xs text-muted-foreground" role="status">{loaded && dirty ? t("未保存") : ""}</span><Button disabled={busy || !dirty} onClick={save} data-tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")}>{busy ? <LoaderCircle className="animate-spin" /> : success ? <Check /> : <Save />}{success ? t("已保存") : t("保存")}</Button></div>
+        <section className="cooc-preset" aria-labelledby="cooc-preset-heading">
+          <div className="cooc-section-heading"><h2 id="cooc-preset-heading"><Label htmlFor="cooc-preset-name">{t("预设")}</Label></h2><HelpTip text={t("切换预设后用于漫游和生成；编辑内容保存后生效，预览可使用未保存的草稿。")} /></div>
+          <div className="cooc-preset-toolbar">
+            <InputGroup className="cooc-preset-picker" aria-labelledby="cooc-preset-heading" data-disabled={busy || !loaded}>
+              <InputGroupInput id="cooc-preset-name" aria-label={t("预设名称")} value={preset.name} placeholder={t("预设名称")} disabled={busy || !loaded} required onChange={event => { setPreset(current => ({ ...current, name: event.target.value })); setSuccess(false); }} onKeyDown={event => {
+                if (event.key === "Enter" && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) { event.preventDefault(); if (dirty) void save(); }
+              }} />
+              <InputGroupAddon align="inline-end">
+                <Select value={preset.id} onValueChange={selectPreset} disabled={busy || !presets.length}>
+                  <SelectTrigger size="sm" className="size-8 justify-center bg-transparent p-0" aria-label={t("选择预设")} data-tooltip={t("选择预设")} />
+                  <SelectContent position="popper" align="end" className="min-w-60 max-w-[calc(100vw-32px)]">{presets.map(item => <SelectItem value={item.id} key={item.id}>{item.id === preset.id ? preset.name || item.name : item.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </InputGroupAddon>
+            </InputGroup>
+            <IconButton icon={Plus} label={t("新建预设")} disabled={busy} onClick={() => create()} />
+            <IconButton icon={Copy} label={t("复制预设")} disabled={busy || !loaded} onClick={() => create(true)} />
+            <IconButton icon={Trash2} label={t("删除预设")} disabled={busy || !preset.id} onClick={remove} />
+            <span className="spacer" /><span className="text-xs text-muted-foreground" role="status">{loaded && dirty ? t("未保存") : ""}</span>
+            <Button disabled={busy || !dirty} onClick={save} data-tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")}>{busy ? <LoaderCircle className="animate-spin" /> : success ? <Check /> : <Save />}{success ? t("已保存") : t("保存")}</Button>
+          </div>
+        </section>
         {tab === "settings" ? <form className="cooc-settings" onSubmit={event => { event.preventDefault(); save(); }}>
-          <Field label={t("预设名称")}><Input aria-label={t("预设名称")} value={preset.name} disabled={busy} required onChange={event => { setPreset(current => ({ ...current, name: event.target.value })); setSuccess(false); }} /></Field>
           <section className="cooc-positive-settings" aria-label={t("正向生成")}>
             <FixedTags key={`positive:${libraryRevision}`} positive label={t("固定正向词")} values={preset.document.base_positive} disabled={busy} onChange={values => update("base_positive", values)} />
             <div className="cooc-section-heading"><h2>{t("共现扩展")}</h2><HelpTip text={t("根据标签共同出现的情况扩展正向提示词。统计相关不保证画面协调。")} /></div>
