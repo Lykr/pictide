@@ -2,28 +2,24 @@
 
 [简体中文](access.zh-CN.md)
 
-[Documentation](../README.md) · Complete [local setup](getting-started.md) first
+[User documentation](../README.md)
+
+Use the same Pictide library on your phone, tablet, or another computer to keep browsing and roaming.
 
 ## LAN access
 
-Follow the LAN startup and firewall instructions for the host operating system:
+1. Connect your computer and phone to the same trusted LAN.
+2. Enable LAN access on the host computer: [Windows](setup/windows.md#lan-access) · [Linux](setup/linux.md#lan-access) · [macOS](setup/macos.md#lan-access).
+3. Open the computer's LAN address on your phone, such as `http://192.168.50.50:8189`.
 
-- [Windows](setup/windows.md#lan-access)
-- [Linux](setup/linux.md#lan-access)
-- [macOS](setup/macos.md#lan-access)
+Keep Pictide running on the computer. If its IP changes, use the new address. You do not need to expose ComfyUI's port.
 
-Use `http://127.0.0.1:8189` on the host computer. Other devices use its LAN IP address, such as `http://192.168.50.50:8189`; use the new address if the IP changes. Normal startup allows local access only.
-
-All devices must be on a trusted LAN that permits communication between them. You do not need to expose the ComfyUI port. If you use a different port, update the firewall rule accordingly; do not configure router port forwarding.
-
-LAN startup listens on all IPv4 interfaces, but HTTP only accepts the loopback address or the host's private IP address on which the request actually arrived. Same-origin checks for modifications remain enabled. LAN devices share images, settings, tasks, and preferences without account isolation, and can generate, rate, and delete images. Grant access only to trusted devices.
-
-Phones use bottom navigation, and enlarged images support horizontal swipes. In standalone app mode, swiping up on a roaming image raises its rating by one level; swiping down lowers it by one level. In a regular browser, vertical swipes retain page scrolling. Immersive mode provides a touch-accessible exit button. A regular iPhone browser uses page scrolling and remembers the position in each section; address-bar collapse still depends on content height and browser handling of user gestures. Home Screen standalone mode hides the top brand bar while retaining section titles and system safe areas, with a fixed shell and separate layouts for images and the bottom action bar. Over plain HTTP, copying attempts a browser-compatible fallback; when native fullscreen is unavailable, an in-page immersive layout is used.
+All devices share images, settings, and preferences, and can generate and delete images. Open access only to a trusted LAN; router port forwarding is unnecessary.
 
 ## iPhone Home Screen app
 
-Open the computer's LAN address in Safari → Share → Add to Home Screen → Add. If the system shows “Open as Web App,” leave it enabled. Launch Pictide from its Home Screen icon to use a standalone window without the Safari address bar, reusing the existing bottom navigation and safe-area layout. If you installed an older shortcut, remove it and add it again to update the installation-time icon and window mode.
+Open the LAN address in Safari, then choose Share → Add to Home Screen → Add. Leave “Open as Web App” enabled if shown. The Home Screen icon opens Pictide in its own window.
 
-Current support includes Home Screen launch, an app icon, a standalone window, and theme colors; there is no Service Worker or offline cache. Pictide must be running on the computer, and the phone must be able to reach its LAN address. If the computer's IP changes, add the app again using the new address. An Apple developer account is not required. Modern iOS can open websites directly as Home Screen web apps; see [Apple's instructions](https://support.apple.com/guide/iphone/open-as-web-app-iphea86e5236/ios) and [WebKit's Home Screen app notes](https://webkit.org/blog/17333/webkit-features-in-safari-26-0/#every-site-can-be-a-web-app-on-ios-and-ipados) for installation and behavior details.
+The app still needs a connection to the computer running Pictide. If the computer's IP changes, add it again using the new address.
 
-After the computer deploys an interface update, fully close Pictide in the iOS app switcher and launch it again from the Home Screen. Returning from the background can keep the previous page running. JavaScript and CSS use content-versioned filenames so a newly loaded page requests the matching build; reinstalling the Home Screen app is not part of a normal interface update.
+After an interface update, fully close Pictide in the iOS app switcher and reopen it from the Home Screen. Regular updates do not require reinstallation. To update an installation-time icon or window mode, remove the old shortcut and add it again.

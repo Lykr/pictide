@@ -1,0 +1,16 @@
+{
+  "release_tag": "corpus-a6d094bdf1e3c1614581320753536b03f651fe79f357e8519f71a26b92cce3ff",
+  "fingerprint": "a6d094bdf1e3c1614581320753536b03f651fe79f357e8519f71a26b92cce3ff",
+  "files": [
+    {
+      "path": "vocabulary.sqlite3",
+      "bytes": 18518016,
+      "sha256": "d6dada523525d1811a90c49fa5b1490781639a331ac18d1fc6c36b44d62360f0"
+    },
+    {
+      "path": "report.json",
+      "bytes": 3129,
+      "sha256": "17afe8bcedc85eab31c420b5a1d5134a96bf7e3552d46178ea3e78843a2ca352"
+    }
+  ]
+}

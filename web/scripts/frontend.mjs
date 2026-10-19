@@ -26,6 +26,9 @@ if (command === 'build') {
   const { build } = await import(pathToFileURL(require.resolve('vite')).href);
   await build({ root, configFile: resolve(root, 'vite.config.ts') });
   copyFileSync(resolve(root, 'src/THIRD_PARTY_NOTICES.md'), resolve(root, 'dist/THIRD_PARTY_NOTICES.md'));
+  for (const name of ['LICENSE', 'NOTICE']) {
+    copyFileSync(resolve(root, '..', name), resolve(root, 'dist', name));
+  }
 } else if (command === 'typecheck') {
   mkdirSync(resolve(devRoot, 'cache/typescript'), { recursive: true });
   const result = spawnSync(process.execPath, [require.resolve('typescript/bin/tsc'), '--noEmit', '-p', resolve(root, 'tsconfig.json')], { cwd: root, stdio: 'inherit' });

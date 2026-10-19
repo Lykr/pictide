@@ -268,7 +268,7 @@ function setSettingsSection(section, updateUrl = true) {
     if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
   });
   for (const name of ['general', 'backend', 'roam', 'history']) $(`settings-${name}`).hidden = name !== section;
-  if (section === 'roam' && !roamSettingsLoading) { if (!roamSettingsLoaded) loadRoamSettings(); else loadRoamConfigs(); }
+  if (section === 'roam' && !roamSettingsLoading && !roamSettingsLoaded) loadRoamSettings();
   if (section === 'history') {
     if (!historyLoaded && !historyLoading) loadHistorySettings();
     jobPager.load();
@@ -1001,20 +1001,10 @@ function updateRoamBackendNote() {
   $('roam-cloud-note').hidden = !backendCapabilities(backend).cloud;
 }
 $('roam-backend').addEventListener('change', updateRoamBackendNote);
-async function loadRoamConfigs() {
-  try {
-    const selected = $('roam-config').value;
-    const listing = await api('/api/candidate/presets');
-    const presets = listing.presets;
-    $('roam-config').replaceChildren(translatedOption('', "自动选择预设"), ...presets.map(item => option(item.id, item.name)));
-    if (selected && !presets.some(item => item.id === selected)) $('roam-config').append(translatedOption(selected, "已移除的预设，请重新选择"));
-    $('roam-config').value = selected;
-  } catch (error) { inlineStatus('roam-result', () => tr`预设读取失败：${error.message}`); }
-}
 const roamFields = {
   recommendation_strength: 'roam-recommendation-strength', strong_candidate_multiplier: 'roam-strong-candidate-multiplier',
   candidate_count: 'roam-candidate-count', prefetch_count: 'roam-prefetch-count', max_history_images: 'roam-max-history-images',
-  backend_id: 'roam-backend', preset_id: 'roam-config',
+  backend_id: 'roam-backend',
   playback_interval_seconds: 'roam-playback-interval', liked_tags_only: 'roam-liked-tags-only', prompt_mode: 'roam-prompt-mode',
 };
 function roamDraftDirty() {
@@ -1050,10 +1040,8 @@ async function applyRoamSettings(settings, savedFields = []) {
   if (switched) beginRoamSwitch();
   const draft = Object.fromEntries(Object.entries(roamFields).map(([key, id]) => [key, key === 'liked_tags_only' ? $(id).checked : $(id).value]));
   const merged = mergeRoamDraft(roamSettings, next, draft, savedFields);
-  for (const key of ['backend_id', 'preset_id']) {
-    const control = $(roamFields[key]);
-    if (merged[key] && ![...control.options].some(item => item.value === merged[key])) control.append(option(merged[key], merged[key]));
-  }
+  const backendControl = $('roam-backend');
+  if (merged.backend_id && ![...backendControl.options].some(item => item.value === merged.backend_id)) backendControl.append(option(merged.backend_id, merged.backend_id));
   for (const [key, id] of Object.entries(roamFields)) {
     if (key === 'liked_tags_only') $(id).checked = merged[key];
     else $(id).value = String(merged[key] ?? '');
@@ -1092,7 +1080,7 @@ async function loadRoamSettings({ preserveDraft = false } = {}) {
     const settings = await api('/api/settings/roam');
     if (roamSettingsSaving || version !== roamVersion) return;
     await applyRoamSettings(settings, preserveDraft ? [] : Object.keys(roamFields));
-    renderRoamBackends(); await loadRoamConfigs();
+    renderRoamBackends();
   } catch (error) { inlineStatus('roam-result', () => tr`设置读取失败：${error.message}`); }
   finally { roamSettingsLoading = false; }
 }
@@ -1120,7 +1108,7 @@ $('roam-form').addEventListener('submit', async event => {
   event.preventDefault(); if ($('roam-save').disabled) return;
   $('roam-save').disabled = true; $('roam-fields').disabled = true;
   try {
-    const payload = { recommendation_strength: $('roam-recommendation-strength').value, strong_candidate_multiplier: strongCandidateMultiplier($('roam-strong-candidate-multiplier').value), candidate_count: candidateCount($('roam-candidate-count').value), prefetch_count: prefetchCount($('roam-prefetch-count').value), max_history_images: maxHistoryImages($('roam-max-history-images').value), backend_id: $('roam-backend').value, preset_id: $('roam-config').value, playback_interval_seconds: playbackInterval($('roam-playback-interval').value), liked_tags_only: $('roam-liked-tags-only').checked, prompt_mode: $('roam-prompt-mode').value };
+    const payload = { recommendation_strength: $('roam-recommendation-strength').value, strong_candidate_multiplier: strongCandidateMultiplier($('roam-strong-candidate-multiplier').value), candidate_count: candidateCount($('roam-candidate-count').value), prefetch_count: prefetchCount($('roam-prefetch-count').value), max_history_images: maxHistoryImages($('roam-max-history-images').value), backend_id: $('roam-backend').value, playback_interval_seconds: playbackInterval($('roam-playback-interval').value), liked_tags_only: $('roam-liked-tags-only').checked, prompt_mode: $('roam-prompt-mode').value };
     await saveRoamSettings(payload);
     inlineStatus('roam-result', () => t("已保存漫游设置。"));
     await refresh(true);
@@ -1491,7 +1479,7 @@ window.addEventListener('pageshow', (event) => { roamPageActive = true; if (even
 setInterval(() => { if (!realtimeConnected) refresh(); }, 2000);
 
 // Preset changes refresh selectors without resetting generator counters or manual drafts.
-document.addEventListener('pictide:candidate-presets-changed', () => { loadRuleConfigs(); if (roamSettingsLoaded) loadRoamConfigs(); });
+document.addEventListener('pictide:candidate-presets-changed', () => { loadRuleConfigs(); });
 
 
 document.addEventListener('pictide:language-changed', () => queueMicrotask(() => {

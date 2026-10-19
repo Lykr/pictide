@@ -6,73 +6,28 @@
 
 **A world of images unfolds as you roam.**
 
-New images are generated along the way, guided by your feedback and anchors.
-
-Pictide is a local generative image exploration app that gradually adapts to your preferences through feedback. Browse, express what you like, and guide the next image.
-
-## What it helps with
-
-“I want to see images I like, even when I do not know how to describe them.”
-
-Once setup is complete, you can start roaming without a specific creative goal or a carefully written prompt. Likes, dislikes, and anchors let you guide future images as you discover your preferences and find visual inspiration. When you have a clear idea, you can enter specific prompts and generate images directly.
-
-The core experience is an ongoing exploration of images, with room for surprise and a way to steer what comes next. The interface should let you begin without first learning PMI, prompt seeds, or sampling parameters; those controls remain available when you need them.
+You can start exploring even when you cannot quite describe what you want to see. Pictide generates new images as you explore. You can begin without writing prompts or having a specific creative goal, then guide what comes next through browsing and feedback.
 
 ## Discover, guide, collect
 
-| Experience | How Pictide supports it |
-| --- | --- |
-| Discover | Co-occurrence generation supplies image concepts, and the recommendation system selects candidates using your preferences to keep browsing fresh. |
-| Guide | Express preferences through likes and dislikes, preserve image elements with anchors, and control variation through Drift, Flow, and Anchor modes. |
-| Collect | Keep images you happen to love, then browse your likes using tag filters and preference-score sorting. |
+- **Discover new images**: start [Roam](roam.md) and use likes and dislikes to help future recommendations gradually adapt to your preferences.
+- **Keep elements you enjoy**: use anchors to retain a character, color, or setting as you continue exploring.
+- **Return to a chance discovery**: collect and find images in [Liked](liked.md). When you have a specific idea, use [Generate](generate.md) to create it directly.
 
-## Roaming is the core experience
-
-Roaming connects generation, browsing, and feedback so you can focus on images. Generation, prompts, and settings give you control over this experience:
-
-| Section | Role in the product |
-| --- | --- |
-| Roam | Discover images, express preferences, and guide exploration. |
-| Generate | Generate images from a specific idea or preset. |
-| Liked | Save and organize images worth keeping. |
-| Prompts | Manage fixed terms and co-occurrence presets, and preview possible combinations. |
-| Settings | Configure generation backends, roaming behavior, and data management. |
+Start with the default preset. Open [Prompts and presets](prompts.md) when you want a consistent style or more control over image concepts.
 
 ## Local and personal
 
-Images, tag libraries, and preferences are stored locally, giving you control over your generation resources and data. ComfyUI, OpenAI Images, or Gemini provides image generation; Pictide organizes candidates, recommendations, and browsing. With a cloud backend, generation prompts and options are sent to the selected service; local data storage does not mean cloud generation runs offline. Currently, one instance shares a single image collection and set of preferences. LAN access uses the same data, with no separate user accounts.
+Images and preferences stay on your computer. Your connected ComfyUI, OpenAI Images, or Gemini service provides image generation; see [Installation and connections](getting-started.md) to get ready.
 
 ## Product scope
 
-Pictide focuses on discovering, guiding, and collecting images through roaming. Its scope guides which features receive priority:
+Pictide focuses on exploring images: discovering, guiding variation, and returning to favorites. Generation, presets, and settings support this experience, with defaults that make it easy to begin.
 
-| Related product category | Pictide's scope |
-| --- | --- |
-| ComfyUI replacement or full frontend | Connect to ComfyUI and accept API workflows with the controls needed for exploration. Node-graph editing, custom-node management, and inference optimization belong to the generation backend. |
-| Prompt-engineering workspace | Libraries, presets, and prompt controls support roaming. Users should be able to start exploring with prepared defaults and open these controls when they want more direction. |
-| Model installer or model-management platform | Backend setup and a usable starting model can reduce first-use friction. They support onboarding; a model marketplace and general environment management are outside the core experience. |
-| Professional production workspace | Manual generation supports a specific idea or preset. Complex image editing, compositing, and production pipelines are outside the current product focus. |
-
-This scope describes product priorities. It does not announce new features or change the current setup requirements.
-
-## Current approach and learning limits
-
-Danbooru tag co-occurrence is the current way to build candidate prompts. Recommendation scores complete prompt combinations using feedback associated with the generated images. It learns associations between prompts and preferences; it does not directly analyze visual image features or fully understand a person's aesthetic.
-
-Likes and dislikes provide explicit feedback, unrated images remain unknown, and withdrawing feedback removes that rating. Learning runs in the background, so saving a rating does not mean the next image will immediately change or match your taste. Anchors and roaming modes give you a separate way to guide the direction and amount of variation.
-
-The product identity is image exploration. The current tag library, candidate algorithm, and generation model are implementation choices. Future approaches should preserve the experience of expressing preferences and steering exploration; changes to those mechanisms still require their own design and validation. See the [recommendation architecture](../dev/architecture/recommendation.md) for current implementation details.
+Use the connected backend for node-workflow editing and generation-model management, and dedicated creative tools for complex editing, compositing, and production pipelines. A model marketplace, general environment management, and professional production are outside the current product focus.
 
 ## Experience goals
 
-Help you easily encounter images you enjoy while continuing to find something fresh. Prioritize:
+Reach the first image easily, understand what you are waiting for, keep discovering something fresh, guide the direction naturally, and find favorites again. New features should serve these experiences.
 
-- A clear path from initial setup to the first image, with understandable defaults.
-- Short, predictable waits and clear generation, waiting, and failure states.
-- Reliable feedback and anchors, with controls that make the direction and amount of change understandable.
-- A balance of familiar elements and new possibilities, while keeping user guidance available.
-- Easy collection and rediscovery of liked images.
-
-When evaluating a feature, ask: **Does it help people encounter images they enjoy more easily, or guide the next part of their exploration more naturally?** Model selection, candidate algorithms, prefetching, and interface controls should be judged by their contribution to this experience. These are design goals, not guarantees about generation time or image quality.
-
-Continue reading: [Roam](roam.md) · [Generation and likes](images.md) · [Prompts and presets](prompts.md)
+Feedback gradually influences recommendations; it does not guarantee the next image will match your taste. Anchors offer more direct guidance. For how learning works today, see the [recommendation architecture](../dev/architecture/recommendation.md).

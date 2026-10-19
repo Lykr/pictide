@@ -2,31 +2,29 @@
 
 [简体中文](backup.zh-CN.md)
 
-[User documentation](../README.md). This page explains where personal data is stored and how to back it up and restore it.
+[User documentation](../README.md)
+
+Back up your data directory before upgrading or moving computers to keep your images, likes, preferences, and settings.
 
 ## Data location
 
-View the current data directory under Settings → General. The portable edition defaults to `data/` inside the release directory; the source edition defaults to `data/` in the project. Moving the entire portable directory keeps your personal data together with the application.
+Find the current directory under Settings → General. It defaults to `data/` inside the portable package or project. Moving the entire portable directory keeps your personal data with it.
 
-To choose another data directory, follow the instructions for [Windows](setup/windows.md#port-and-data-directory), [Linux](setup/linux.md#port-and-data-directory), or [macOS](setup/macos.md#port-and-data-directory).
+To store data on another drive, follow the steps for [Windows](setup/windows.md#port-and-data-directory), [Linux](setup/linux.md#port-and-data-directory), or [macOS](setup/macos.md#port-and-data-directory).
 
 ## Backup and recovery
 
 1. Close Pictide and wait for it to exit.
-2. Copy the entire data directory to a backup location named with the date. For the portable edition, you can instead back up the entire release directory to preserve both the application and your personal data.
-3. Before restoring, close Pictide, save another copy of the current data directory, then replace the corresponding directory with the backup.
-4. Start Pictide and check images, likes, and backend settings.
+2. Copy the entire data directory to your backup location. For portable editions, you can back up the whole application directory instead.
+3. To restore, close the application, save a separate copy of your current data, and replace the data directory with the backup.
+4. Restart and check your images, likes, and Image API settings.
 
-A full directory backup preserves images, tasks, ratings, preferences, prompt presets, backend settings, workflows, tag libraries, and recommendation models. Backups contain backend API keys; store them securely.
+Backups also contain prompt presets, workflows, libraries, recommendation models, and API keys. Store them securely.
 
-When moving to another operating system, use its portable package or prepare a source environment for that system, then restore your personal data: `db/`, `images/`, `workflows/`, `history-cleanup.json`, plus `libraries/` and `models/`. Restore images, tasks, and ratings from the same backup.
+When moving between operating systems, prepare the appropriate application first, then copy `db/`, `images/`, `workflows/`, `history-cleanup.json`, `libraries/`, and `models/` from the same backup. Leave the old operating system's runtime behind.
 
 ## Restore an individual workflow
 
-Versions saved before a workflow was updated or deleted are in `workflows/.backups/` under the data directory. Copy the required version back to the corresponding workflow file, then select it again and save under Settings → Image API.
+Previous versions are saved under `workflows/.backups/` in the data directory before updates or deletions. Copy the required version back to its workflow file, then select it again and save under Settings → Image API.
 
-## Further reading
-
-- [Add and switch tag libraries](prompts.md#add-and-switch-libraries)
-- [Historical image cleanup](settings.md#historical-image-cleanup)
-- [Developers: full directory layout and responsibilities](../dev/data-layout.md)
+Before cleaning up images, see [retention rules](settings.md#historical-image-cleanup). Developers can find the full layout in [Data directories](../dev/data-layout.md).

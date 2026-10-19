@@ -85,7 +85,6 @@
   "请选择负向提示词输入，以便准确记录本次实际使用的提示词。": "Select the negative prompt input so actual prompts can be recorded accurately.",
   "正向和负向提示词不能绑定同一个输入。": "Positive and negative prompts cannot use the same input.",
   "已移除的生图 API，请重新选择": "Image API removed. Select another.",
-  "已移除的预设，请重新选择": "Preset removed. Select another.",
   "设置读取失败：{0}": "Could not load settings: {0}",
   "正在保存漫游设置，请稍候。": "Saving roam settings. Please wait.",
   "已保存漫游设置。": "Roam settings saved.",

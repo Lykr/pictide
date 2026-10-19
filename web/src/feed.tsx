@@ -293,7 +293,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <fieldset id="roam-fields" className="settings-stack">
 <div className="form-grid">
 <div className="settings-field"><Label htmlFor="roam-backend">{t("生图 API")}</Label><NativeSelect id="roam-backend"><option value="">{t("自动选择 API")}</option></NativeSelect></div>
-<div className="settings-field"><Label htmlFor="roam-config"><span className="field-caption">{t("候选预设")}<HelpTip text={t("使用该预设的固定词、共现规则和顺流变化预算。")} /></span></Label><NativeSelect id="roam-config"><option value="">{t("自动选择预设")}</option></NativeSelect></div>
 </div>
 <p id="roam-cloud-note" className="hint" hidden>{t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")}{' '}{t("首次选择云端 API 会关闭自动预取；再次保存非零预取数量可开启连续生成。")}</p>
 <RoamSettingsChoices />

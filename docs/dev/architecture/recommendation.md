@@ -81,7 +81,11 @@ Preference scores in image information reuse a deterministic raw-score cache; an
 
 ## Model Preparation
 
-Recommendation uses an offline FastEmbed-format [MiniLM ONNX model](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx). Place model.onnx, tokenizer.json, config.json, tokenizer_config.json, and special_tokens_map.json directly under `models/minilm/` in the selected data directory. Obtain these five files from a fixed model snapshot; the portable package prepares them automatically. The application does not download the model automatically. If the model or dependencies are missing, image generation remains available, and bootstrap's `recommendation` and roam responses report the status. Application startup scripts install versioned CPU dependencies. This version has been validated on Python 3.12; installers select compatible dependencies for older Python versions.
+Recommendation uses an offline FastEmbed-format [MiniLM ONNX model](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx). `backend/recommand/model.json` is the single catalog for the fixed source revision, five required files, byte sizes, and SHA-256 values. `backend/recommand/resources.py` prepares and verifies these files in the selected data directory's `models/minilm/`. It resumes partial downloads and preserves existing invalid files in a backup before replacing them successfully.
+
+Source and portable startup share `PictideApplication.prepare_startup()` in `backend/application.py`: initialize any bundled library, then prepare the model. Host creates the HTTP service and opens the page only after preparation succeeds. A model download or verification failure stops startup; restarting retries with retained `.part` files. Valid local files allow offline startup. See [startup and offline model preparation](../../guides/getting-started.md#recommendation-model-startup) for user instructions and [the startup design (Chinese)](../issues/minilm-startup-download.md) for the boundary change.
+
+Portable builds carry the catalog and CPU inference dependencies (FastEmbed, ONNX Runtime, and tokenizers), without model weights or build-time model downloads. The encoder remains an offline reader; runtime encoder availability is reported through bootstrap's `recommendation` and roam responses. Python 3.12 has been validated; installers select compatible dependencies for older Python versions.
 
 ## Further Reading
 

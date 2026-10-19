@@ -24,7 +24,7 @@ cd ../pictide-example
 
 ## 首次准备检出目录
 
-源码环境由开发者按本节准备。[便携发行包设计](issues/automatic-startup.md)将运行环境、前端成品、词库和推荐模型统一纳入构建发布流程，Windows 目录式产物已验证，Linux/macOS 原生验证待完成。
+源码环境由开发者按本节准备。便携发行流程交付运行环境、前端成品和词库，MiniLM 按[启动前模型准备设计](issues/minilm-startup-download.md)在用户启动时下载并校验完成后再启动服务。Windows x64、Linux x64、macOS ARM64/Intel 已通过原生 CI 构建及隔离启动冒烟，见[多平台验证记录](issues/github-releases.md#2026-10-19-多平台验证)。
 
 需要 Git、Python 3.10+、Node.js 20.19+（或 22.12+）和 `web/package.json` 指定的 pnpm。Python 运行依赖放在 `backend/requirements.txt`，离线数据处理工具与依赖集中在 [`corpus/`](corpus.zh-CN.md)；前端依赖由 `web/package.json` 管理。依赖安装遵循锁文件，不复制或提交 `node_modules`。
 
@@ -40,9 +40,32 @@ cd ../pictide-example
 
 ## 构建便携发行包
 
-完成当前检出的前端构建后，按本机系统阅读：[Windows](setup/windows.md#构建便携包) · [Linux](setup/linux.md#构建便携包) · [macOS](setup/macos.md#构建便携包)。构建工具为 `scripts/build_portable.py`，仅从指定数据目录导出所选统计词库与编码器所需模型，个人后端、图片、预设与偏好留在本地。
+完成当前检出的前端构建后，按本机系统阅读：[Windows](setup/windows.md#构建便携包) · [Linux](setup/linux.md#构建便携包) · [macOS](setup/macos.md#构建便携包)。推荐使用 Python 3.12，应用运行要求仍为 Python 3.10+。独立的 `dev/runtime/builder/` 环境安装 `backend/requirements-release.txt`；本地需要处理原始数据时另装 `corpus/requirements.txt`（Python 3.11+）。准备发行包无需先启动应用，也不读写开发运行目录 `data/`。
 
-构建与验证材料归入根目录 `dev/`，发行产物归入根目录 `releases/`，启动环境保留在 `data/runtime/`。省略 --output-dir 时自动在 releases 下按版本、平台与时间创建新目录；也可指定新目录。产物包括 Pictide 目录、ZIP 和 build-report.json。默认词库由源数据目录的选择决定；正式发布优先选择精简词库。构建阶段安装 `backend/requirements-release.txt`，用户直接启动已构建产物。
+构建默认按 `corpus/profiles/compact.json` 准备词库，仅携带 `backend/recommand/model.json` 固定模型清单，保留 FastEmbed、ONNX Runtime、tokenizers 等推理依赖。构建不下载或打包 MiniLM。原始分片和下载清单长期保存在 `dev/datasets/danbooru-2026/`；统计中间结果与成品词库放在 `dev/cache/portable/`。有效词库缓存可离线准备发行资源；缺失时补充下载并处理。清理构建缓存保留原始数据，直接本地重新统计。指纹、校验和恢复规则见[独立发行资源与构建缓存](issues/portable-build-cache.md)。
+
+通过 `--dataset-dir`、`--cache-dir` 和 `--profile` 可分别指定原始数据目录、缓存目录与处理配置。指定 `--prebuilt-library DIR` 时，`DIR` 必须包含匹配当前源数据版本、配置和处理代码的 `vocabulary.sqlite3` 与 `report.json`；校验失败即终止，不回退到原始数据处理。该路径无需安装 PyArrow、SciPy 等离线处理依赖。源码和便携启动共用 `prepare_startup`，在创建 HTTP 服务、打开页面前校验并补齐所选数据目录下的 MiniLM；失败终止启动，重启后续传。词库导出、清单与指纹规则见[预构建词库](corpus.zh-CN.md#预构建词库)。
+
+PyInstaller 临时构建在 `dev/build/`，最终产物包含 Pictide 目录、ZIP 和 `build-report.json`。省略 `--output-dir` 时在 `releases/` 下按版本、平台与时间创建新目录，也可显式指定新目录。运行用户直接启动产物，词库初始化沿用[便携发行方案](issues/automatic-startup.md)，模型下载与离线准备见[安装与接入](../guides/getting-started.zh-CN.md#推荐模型启动准备)。
+
+### GitHub Actions 发版
+
+`.github/workflows/release.yml` 在推送 `v*` 标签时构建 Windows x64、Linux x64、macOS ARM64 和 macOS Intel 便携包。各平台使用原生 runner、Python 3.12 与 Node.js 22，标签去掉 `v` 后必须与 `backend/__init__.py` 和 `web/package.json` 中的版本一致。Linux/macOS 的实际兼容范围以对应平台的构建和启动冒烟结果为准。
+
+每次发版按以下顺序操作：
+
+1. 本地按[预构建词库步骤](corpus.zh-CN.md#预构建词库)生成资源，上传到 `corpus-<fingerprint>` 资源 Release。该标签避开应用的 `v*` 触发规则；已有资源保持不变。
+2. 将生成的 `corpus/prebuilt.json` 资源锁与版本变更一起提交、推送。源数据、精简配置或处理代码发生变化时，先重新准备并上传匹配的词库。
+3. 确认标签所指提交包含工作流与资源锁，再推送版本标签。例如源码版本均为 `0.4.0` 时：
+
+```shell
+git tag v0.4.0
+git push origin v0.4.0
+```
+
+工作流从资源锁指定的 Release 下载词库并校验文件大小、SHA-256、报告与数据库；始终显式使用 `--prebuilt-library`，不在 runner 下载原始数据或进行统计。所有平台构建并通过隔离启动冒烟后，统一发布 ZIP、`SHA256SUMS` 和构建报告。带预发布后缀的版本发布为 prerelease；已发布版本和资源不覆盖。
+
+也可从 Actions 页面手动运行 `workflow_dispatch`，只生成短期 Actions artifacts，便于在正式推送标签前检查构建。手动运行不创建应用 Release。资源 Release 保存固定词库，应用 Release 保存用户下载的便携包；Actions cache 只用于加速，资源可用性由资源锁和 Release 保证。
 
 ## 验证与提交
 

@@ -1,5 +1,6 @@
 {
-  "exclude_tags": ["watermark"],
-  "min_tag_occurrences": 500,
+  "exclude_posts_with_tags": ["questionable", "explicit"],
+  "exclude_tags": [],
+  "min_tag_occurrences": 100,
   "min_cooccurrences": 1000
 }

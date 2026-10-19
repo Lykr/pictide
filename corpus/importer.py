@@ -3,7 +3,8 @@
 Only metadata is read. Intermediate counts and import progress live in a
 separate SQLite file, never in the application's finished vocabulary.
 Defaults retain general tags occurring >=100 times, observed ratings, and pairs
-with >=10 co-occurrences. Thresholds and excluded tags are configurable.
+with >=10 co-occurrences. Posts tagged questionable or explicit are excluded
+by default; whole-post filters, tag exclusions, and thresholds are configurable.
 """
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ import time
 SOURCE = "Shio-Koube/Danbooru-2026-parquet-metadata"
 MIN_POST_COUNT = 100
 MIN_PAIR_COUNT = 10
+DEFAULT_EXCLUDE_POSTS_WITH_TAGS = ("questionable", "explicit")
 RATINGS = {"g": "general", "s": "sensitive", "q": "questionable", "e": "explicit"}
 SCHEMA = """
 CREATE TABLE tags (
@@ -37,10 +39,10 @@ STATE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS source (source TEXT, revision TEXT);
 CREATE TABLE IF NOT EXISTS processing (
  id INTEGER PRIMARY KEY CHECK(id=1), min_tag_occurrences INTEGER NOT NULL,
- excluded_tags TEXT NOT NULL
+ excluded_tags TEXT NOT NULL, excluded_post_tags TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS inputs (path TEXT PRIMARY KEY, bytes INTEGER);
-CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, included INTEGER NOT NULL CHECK(included IN (0,1)));
 CREATE TABLE IF NOT EXISTS frequencies (name TEXT PRIMARY KEY, count INTEGER) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS groups (
  path TEXT, group_no INTEGER, phase INTEGER, next_block INTEGER DEFAULT 0,
@@ -59,6 +61,23 @@ def _post_tags(text, rating):
     return set((text or "").split()) | {RATINGS[rating]}
 
 
+def _records(pq, path, group, batch_size, filter_posts):
+    """Read extra raw tag columns only for whole-post matching, not statistics."""
+    parquet = pq.ParquetFile(path)
+    extra = [name for name in parquet.schema.names
+             if (name == 'tag_string' or name.startswith('tag_string_'))
+             and name != 'tag_string_general'] if filter_posts else []
+    for batch in parquet.iter_batches(batch_size=batch_size,
+            columns=['id', 'tag_string_general', 'rating', *extra], row_groups=[group]):
+        data = batch.to_pydict()
+        for index, (post_id, text, rating) in enumerate(zip(data['id'], data['tag_string_general'], data['rating'])):
+            yield post_id, text, rating, (data[name][index] for name in extra)
+
+
+def _exclude_post(tags, extra, excluded):
+    return not tags.isdisjoint(excluded) or any(excluded.intersection((text or '').split()) for text in extra)
+
+
 def _summary(db):
     result = dict(zip(("source", "revision", "post_count", "status", "min_cooccurrence"),
                       db.execute("SELECT source,revision,post_count,status,min_cooccurrence FROM dataset WHERE id=1").fetchone()))
@@ -70,6 +89,7 @@ def _summary(db):
 def import_parquet(paths, destination, *, source=SOURCE, revision="local",
                    state_path=None, block_size=256, batch_size=16384,
                    exclude_tags=(), min_tag_occurrences=MIN_POST_COUNT,
+                   exclude_posts_with_tags=DEFAULT_EXCLUDE_POSTS_WITH_TAGS,
                    min_cooccurrences=MIN_PAIR_COUNT, progress=print):
     """Two passes: count general tags + ratings, then retained tag pairs.
 
@@ -79,7 +99,8 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
     Only globally accumulated pairs meeting min_cooccurrences enter the DB.
 
     Post IDs are deduplicated across sorted input paths, keeping the first record.
-    Every unique post contributes to N, including posts with no retained tags.
+    Posts matching any excluded raw tag/rating are removed before statistics;
+    remaining unique posts contribute to N, including those with no retained tags.
     Row groups / pair blocks resume from the separate state database.
     """
     import numpy as np
@@ -87,9 +108,11 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
     from scipy.sparse import csr_matrix
 
     paths = sorted({Path(path).resolve() for path in paths})
-    options = processing_options(dict(exclude_tags=exclude_tags,
+    options = processing_options(dict(exclude_tags=exclude_tags, exclude_posts_with_tags=exclude_posts_with_tags,
         min_tag_occurrences=min_tag_occurrences, min_cooccurrences=min_cooccurrences))
     excluded_tags = options["exclude_tags"]
+    excluded_post_tags = options['exclude_posts_with_tags']
+    post_filter = set(excluded_post_tags)
     if not paths or any(type(value) is not int or value < 1 for value in (block_size, batch_size)):
         raise ValueError("Supply Parquet files and positive integer block/batch sizes")
     destination = Path(destination).resolve()
@@ -105,6 +128,10 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
     if tables and "processing" not in tables:
         db.close()
         raise ValueError("State has no recorded processing parameters; use a new --state path")
+    if tables and ('excluded_post_tags' not in {row[1] for row in db.execute('PRAGMA table_info(processing)')}
+                   or 'included' not in {row[1] for row in db.execute('PRAGMA table_info(posts)')}):
+        db.close()
+        raise ValueError('State has no recorded post filters; use a new --state path')
     db.execute("PRAGMA journal_mode=WAL")
     db.execute("PRAGMA synchronous=NORMAL")
     db.execute("PRAGMA cache_size=-131072")
@@ -113,12 +140,13 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
         identity = db.execute("SELECT source,revision FROM source").fetchone()
         if identity and identity != (source, revision):
             raise ValueError("Intermediate database belongs to another dataset version")
-        processing = (min_tag_occurrences, json.dumps(excluded_tags, ensure_ascii=False))
-        recorded_options = db.execute("SELECT min_tag_occurrences,excluded_tags FROM processing WHERE id=1").fetchone()
+        processing = (min_tag_occurrences, json.dumps(excluded_tags, ensure_ascii=False),
+                      json.dumps(excluded_post_tags, ensure_ascii=False))
+        recorded_options = db.execute("SELECT min_tag_occurrences,excluded_tags,excluded_post_tags FROM processing WHERE id=1").fetchone()
         if recorded_options and recorded_options != processing:
             raise ValueError("Tag filters differ from intermediate state; use a new --state path")
         if not recorded_options:
-            db.execute("INSERT INTO processing VALUES(1,?,?)", processing)
+            db.execute("INSERT INTO processing VALUES(1,?,?,?)", processing)
         if not identity:
             db.execute("INSERT INTO source VALUES(?,?)", (source, revision))
         inputs = [(str(path), path.stat().st_size) for path in paths]
@@ -136,18 +164,19 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
                 continue
             frequencies = Counter()
             new_posts = []
-            for batch in pq.ParquetFile(path).iter_batches(batch_size=batch_size, columns=["id", "tag_string_general", "rating"], row_groups=[group]):
-                data = batch.to_pydict()
-                for post_id, text, rating in zip(data["id"], data["tag_string_general"], data["rating"]):
-                    if post_id is None:
-                        raise ValueError(f"Post without id in {path.name}")
-                    if post_id in seen:
-                        continue
-                    seen.add(post_id)
-                    new_posts.append(post_id)
-                    frequencies.update(_post_tags(text, rating))
+            for post_id, text, rating, extra in _records(pq, path, group, batch_size, bool(post_filter)):
+                if post_id is None:
+                    raise ValueError(f"Post without id in {path.name}")
+                if post_id in seen:
+                    continue
+                seen.add(post_id)
+                post_tags = _post_tags(text, rating)
+                included = not _exclude_post(post_tags, extra, post_filter)
+                new_posts.append((post_id, int(included)))
+                if included:
+                    frequencies.update(post_tags)
             with db:
-                db.executemany("INSERT INTO posts VALUES(?)", ((ident,) for ident in new_posts))
+                db.executemany("INSERT INTO posts VALUES(?,?)", new_posts)
                 db.executemany("INSERT INTO frequencies VALUES(?,?) ON CONFLICT(name) DO UPDATE SET count=count+excluded.count", frequencies.items())
                 db.execute("INSERT INTO groups VALUES(?,?,?,0,1)", key)
             progress(f"Frequency pass: {path.name}/group={group}, {len(new_posts):,} new posts")
@@ -159,7 +188,7 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
         tags = [(name, count) for name, count in tags if name not in excluded_names]
         tag_ids = {name: index for index, (name, _) in enumerate(tags)}
         n_tags = len(tags)
-        n_posts = db.execute("SELECT count(*) FROM posts").fetchone()[0]
+        source_post_count, n_posts = db.execute("SELECT count(*),coalesce(sum(included),0) FROM posts").fetchone()
         if not n_posts or not n_tags:
             raise ValueError("No posts or retained tags; adjust filters and use a new state path")
         progress(f"Retained {n_tags:,} tags (general frequency >= {min_tag_occurrences}, {len(excluded_tags)} excluded names); N={n_posts:,}")
@@ -172,16 +201,17 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
                 continue
             started = time.monotonic()
             pointers = array("i", [0]); indices = array("i"); new_posts = []
-            for batch in pq.ParquetFile(path).iter_batches(batch_size=batch_size, columns=["id", "tag_string_general", "rating"], row_groups=[group]):
-                data = batch.to_pydict()
-                for post_id, text, rating in zip(data["id"], data["tag_string_general"], data["rating"]):
-                    if post_id in seen:
-                        continue
-                    seen.add(post_id)
-                    new_posts.append(post_id)
-                    indices.extend(sorted({tag_ids[name] for name in _post_tags(text, rating) if name in tag_ids}))
-                    pointers.append(len(indices))
-            matrix = csr_matrix((np.ones(len(indices), dtype=np.int64), np.frombuffer(indices, dtype=np.int32), np.frombuffer(pointers, dtype=np.int32)), shape=(len(new_posts), n_tags))
+            for post_id, text, rating, extra in _records(pq, path, group, batch_size, bool(post_filter)):
+                if post_id in seen:
+                    continue
+                seen.add(post_id)
+                new_posts.append(post_id)
+                post_tags = _post_tags(text, rating)
+                if _exclude_post(post_tags, extra, post_filter):
+                    continue
+                indices.extend(sorted({tag_ids[name] for name in post_tags if name in tag_ids}))
+                pointers.append(len(indices))
+            matrix = csr_matrix((np.ones(len(indices), dtype=np.int64), np.frombuffer(indices, dtype=np.int32), np.frombuffer(pointers, dtype=np.int32)), shape=(len(pointers) - 1, n_tags))
             columns_matrix = matrix.tocsc()
             next_block = state[0] if state else 0
             for first in range(next_block, n_tags, block_size):
@@ -223,7 +253,8 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
         with output:
             output.execute("UPDATE dataset SET status='ready' WHERE id=1")
         return {**_summary(output), "min_tag_occurrences": min_tag_occurrences,
-                "exclude_tags": excluded_tags}
+                "exclude_tags": excluded_tags, 'exclude_posts_with_tags': excluded_post_tags,
+                'source_post_count': source_post_count, 'excluded_post_count': source_post_count - n_posts}
     except BaseException:
         output.close()
         destination.unlink()
@@ -234,17 +265,19 @@ def import_parquet(paths, destination, *, source=SOURCE, revision="local",
 
 def processing_options(document):
     """Resolve the small, shared JSON / Python processing contract."""
-    defaults = dict(exclude_tags=[], min_tag_occurrences=MIN_POST_COUNT, min_cooccurrences=MIN_PAIR_COUNT)
+    defaults = dict(exclude_tags=[], exclude_posts_with_tags=list(DEFAULT_EXCLUDE_POSTS_WITH_TAGS),
+                    min_tag_occurrences=MIN_POST_COUNT, min_cooccurrences=MIN_PAIR_COUNT)
     if not isinstance(document, dict) or set(document) - defaults.keys():
-        raise ValueError("Config must be an object with exclude_tags, min_tag_occurrences and/or min_cooccurrences")
+        raise ValueError("Config must contain only exclude_tags, exclude_posts_with_tags, min_tag_occurrences and/or min_cooccurrences")
     options = {**defaults, **document}
     for key in ("min_tag_occurrences", "min_cooccurrences"):
         if type(options[key]) is not int or not 1 <= options[key] <= 2**53 - 1:
             raise ValueError(f"{key} must be an integer between 1 and {2**53 - 1}")
-    names = options["exclude_tags"]
-    if not isinstance(names, (list, tuple)) or any(not isinstance(name, str) or not name.strip() for name in names):
-        raise ValueError("exclude_tags must be a list of nonempty tag names")
-    options["exclude_tags"] = sorted({name.strip() for name in names})
+    for key in ('exclude_tags', 'exclude_posts_with_tags'):
+        names = options[key]
+        if not isinstance(names, (list, tuple)) or any(not isinstance(name, str) or not name.strip() for name in names):
+            raise ValueError(f'{key} must be a list of nonempty tag names')
+        options[key] = sorted({name.strip() for name in names})
     return options
 
 
@@ -259,6 +292,8 @@ def main(argv=None):
     parser.add_argument("--batch-size", type=int, default=16384)
     parser.add_argument("--config", type=Path, help="JSON processing profile; explicit CLI values take precedence")
     parser.add_argument("--exclude-tags", nargs="+", action="extend", help="Exact raw tag names to remove; posts stay in the dataset")
+    parser.add_argument('--exclude-posts-with-tags', nargs='*', action='extend',
+                        help='Drop posts matching any raw tag or rating (default: questionable explicit); an empty option disables the filter')
     parser.add_argument("--min-tag-occurrences", type=int, help=f"Minimum general-tag post count (default {MIN_POST_COUNT})")
     parser.add_argument("--min-cooccurrences", type=int, help=f"Minimum global pair count (default {MIN_PAIR_COUNT})")
     parser.add_argument("--report", type=Path, help="Write processing options, input paths and result statistics to a new JSON file")
