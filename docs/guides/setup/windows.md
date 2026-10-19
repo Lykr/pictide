@@ -6,9 +6,13 @@
 
 ## Portable edition
 
-Extract the Windows portable package and double-click `start.cmd`. On first launch, wait for the [recommendation model download](../getting-started.md#recommendation-model-startup); the browser opens when ready. Next, [connect an image service](../getting-started.md) and start roaming.
+The startup behavior below applies to the current source and portable packages built from it.
 
-Keep the launcher window open while using Pictide. Press Ctrl+C or close the window to stop. Personal data stays in the package's `data/` directory for your next session.
+Extract the Windows portable package and double-click `start.cmd`. A temporary window shows startup progress, including the first [recommendation model download](../getting-started.md#recommendation-model-startup). When ready, Pictide opens your browser and moves to the system tray. Next, [connect an image service](../getting-started.md) and start roaming.
+
+Closing the browser keeps Pictide running. Use its tray menu to reopen Pictide, view logs, or exit. Startup messages and the tray menu follow your system language, with Simplified Chinese and English supported. Personal data stays in the package's `data/` directory.
+
+To keep the terminal open instead, run `.\start.cmd --cli`; press Ctrl+C to stop.
 
 ## LAN access
 
@@ -18,7 +22,7 @@ Open PowerShell in the portable package directory and run:
 .\start.cmd --lan
 ```
 
-Connect your phone to the same LAN and open the LAN address shown in the launcher window. Set the Windows network to a trusted Private network. If the firewall blocks access, allow it from an administrator PowerShell:
+Connect your phone to the same LAN and open the LAN address recorded in the startup log; choose **View logs** from the tray menu to find it. Set the Windows network to a trusted Private network. If the firewall blocks access, allow it from an administrator PowerShell:
 
 ```powershell
 New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8189 -Profile Private -RemoteAddress LocalSubnet
@@ -38,4 +42,4 @@ To use another port or store data on another drive, run from the portable packag
 
 Follow [Windows source preparation (Chinese)](../../dev/setup/windows.md#从源码准备) to install prerequisites and build the frontend, then run `.\start.cmd` in the project directory.
 
-The source launcher uses `-Lan`, `-Port`, and `-DataDir`, for example `.\start.cmd -Lan -Port 8191 -DataDir 'E:\PictideData'`. See the [development guide (Chinese)](../../dev/setup/windows.md#构建便携包) to build a release package.
+The source launcher uses `-Lan`, `-Port`, and `-DataDir`, for example `.\start.cmd -Lan -Port 8191 -DataDir 'E:\PictideData'`. Add `-Cli` to keep the terminal open. See the [development guide (Chinese)](../../dev/setup/windows.md#构建便携包) to build a release package.

@@ -1,7 +1,8 @@
 param(
     [ValidateRange(1, 65535)][int]$Port = 8189,
     [string]$DataDir = "",
-    [switch]$Lan
+    [switch]$Lan,
+    [switch]$Cli
 )
 $ErrorActionPreference = 'Stop'
 $projectPath = $PSScriptRoot
@@ -51,6 +52,16 @@ if ($LASTEXITCODE -ne 0) {
 }
 $listenAddress = if ($Lan) { '0.0.0.0' } else { '127.0.0.1' }
 $appArguments = @('-m', 'backend.host', '--host', $listenAddress, '--port', "$Port", '--data-dir', $dataRoot)
+if (-not $Cli) {
+    $appArguments += '--desktop'
+    # Start-Process joins ArgumentList into one command line; quote for the Windows CRT.
+    $quotedArguments = $appArguments | ForEach-Object {
+        '"' + ($_ -replace '(\\*)"', '$1$1\"' -replace '(\\+)$', '$1$1') + '"'
+    }
+    Start-Process -FilePath $venvPython -ArgumentList ($quotedArguments -join ' ') -WorkingDirectory $projectPath -WindowStyle Normal
+    exit 0
+}
+$appArguments += '--cli'
 Write-Host "Pictide: http://127.0.0.1:$Port"
 if ($Lan) {
     Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |

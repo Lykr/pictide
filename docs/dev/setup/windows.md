@@ -21,8 +21,9 @@ Pop-Location
 .\start.cmd
 ```
 
-启动时自动准备 Python 环境，无需在系统 Python 中安装应用依赖。
+启动时自动准备 Python 环境，无需在系统 Python 中安装应用依赖。当前源码已实现 Windows 托盘启动：临时终端显示初始化和模型下载进度，就绪后打开浏览器并隐藏启动窗口。关闭网页后服务继续运行，通过托盘菜单重开网页、查看日志或退出。提示与菜单跟随系统显示语言，支持简体中文，其余语言默认英文。
 
+调试时用 `.\start.cmd -Cli` 保留终端，以 Ctrl+C 停止；`-Lan`、`-Port`、`-DataDir` 可照常组合使用。便携包使用 `--cli`、`--lan`、`--port`、`--data-dir` 参数。
 
 ## 构建便携包
 
@@ -51,4 +52,4 @@ GitHub 多平台自动构建、资源上传与版本标签步骤见 [GitHub Acti
 .\dev\runtime\builder\Scripts\python.exe scripts/build_portable.py --dataset-dir DATASET_PATH --cache-dir CACHE_PATH --profile corpus/profiles/compact.json --output-dir releases/windows-portable
 ```
 
-`DATASET_PATH` 使用含 `raw/` 与 `download.sqlite3` 的数据集根目录。输出目录使用新目录；省略 `--output-dir` 时自动在 `releases/` 下创建带版本、平台和时间的新目录。构建完成后使用其中的 Pictide 目录或 ZIP。缓存校验与恢复规则见[发行资源准备](../issues/portable-build-cache.md)，各平台历史验证范围见[发行记录](../issues/automatic-startup.md)。
+`DATASET_PATH` 使用含 `raw/` 与 `download.sqlite3` 的数据集根目录。输出目录使用新目录；省略 `--output-dir` 时自动在 `releases/` 下创建带版本、平台和时间的新目录。构建完成后使用其中的 Pictide 目录或 ZIP。Windows 托盘启动需使用本次源码新构建的便携包；已有发行包保持其原有启动方式。缓存校验与恢复规则见[发行资源准备](../issues/portable-build-cache.md)，各平台历史验证范围见[发行记录](../issues/automatic-startup.md)。

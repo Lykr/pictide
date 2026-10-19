@@ -6,6 +6,7 @@ import webbrowser
 import ipaddress
 import json
 import math
+import logging
 import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -367,20 +368,24 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
     return app
 
 
-async def open_browser_when_ready(url):
+async def open_browser_when_ready(url, on_ready=None):
     """Open the default browser only after the listening service answers bootstrap."""
     async with ClientSession(timeout=ClientTimeout(total=2)) as session:
         for _ in range(30):
+            ready = False
             try:
                 async with session.get(url + "/api/bootstrap") as response:
-                    if response.status == 200:
-                        try:
-                            await asyncio.to_thread(webbrowser.open, url)
-                        except webbrowser.Error:
-                            print("Open Pictide in your browser: " + url)
-                        return
+                    ready = response.status == 200
             except (OSError, asyncio.TimeoutError):
                 pass
+            if ready:
+                if on_ready is not None:
+                    await on_ready()
+                try:
+                    await asyncio.to_thread(webbrowser.open, url)
+                except webbrowser.Error:
+                    print("Open Pictide in your browser: " + url)
+                return
             await asyncio.sleep(0.1)
 
 
@@ -391,29 +396,55 @@ def main(argv=None):
     parser.add_argument("--data-dir", default=None)
     parser.add_argument("--lan", action="store_true", help="Allow devices on the local network")
     parser.add_argument("--no-browser", action="store_true", help="Keep the browser closed")
+    parser.add_argument("--desktop", action="store_true", help="Use the Windows desktop tray")
+    parser.add_argument("--cli", action="store_true", help="Keep the terminal and disable desktop integration")
     args = parser.parse_args(argv)
     frozen = getattr(sys, "frozen", False)
     paths = DataPaths(args.data_dir).configure_runtime()
-    try:
-        PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
-    except (OSError, ValueError, RuntimeError) as error:
-        print(f"Pictide startup failed: {error}", file=sys.stderr, flush=True)
-        raise SystemExit(1) from None
     host = "0.0.0.0" if args.lan else args.host
-    app = create_app(paths.root, allow_lan=host == "0.0.0.0")
-    if frozen and not args.no_browser:
-        browser_task = None
-        url_host = "[::1]" if host == "::1" else "127.0.0.1" if host == "0.0.0.0" else host
-        async def launch_browser(app):
-            nonlocal browser_task
-            browser_task = asyncio.create_task(open_browser_when_ready(f"http://{url_host}:{args.port}"))
-        async def stop_browser(app):
-            if browser_task is not None:
-                browser_task.cancel()
-                await asyncio.gather(browser_task, return_exceptions=True)
-        app.on_startup.append(launch_browser)
-        app.on_shutdown.append(stop_browser)
-    web.run_app(app, host=host, port=args.port, access_log=None)
+    url_host = "[::1]" if host == "::1" else "127.0.0.1" if host == "0.0.0.0" else host
+    url = f"http://{url_host}:{args.port}"
+    desktop = None
+    if args.desktop and sys.platform == 'win32' and not (args.cli or args.no_browser):
+        from .desktop import DesktopSession, announce
+        desktop = DesktopSession(paths, url)
+    try:
+        if desktop is not None:
+            if not desktop.claim():
+                return
+            desktop.reserve(host, args.port)
+            announce('starting')
+            announce('data_directory', directory=paths.root)
+        PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
+        app = create_app(paths.root, allow_lan=host == "0.0.0.0")
+        if (desktop is not None or frozen) and not (args.no_browser or args.cli):
+            browser_task = None
+            async def launch_browser(app):
+                nonlocal browser_task
+                browser_task = asyncio.create_task(open_browser_when_ready(url, desktop.ready if desktop else None))
+            async def stop_browser(app):
+                if browser_task is not None:
+                    browser_task.cancel()
+                    await asyncio.gather(browser_task, return_exceptions=True)
+            app.on_startup.append(launch_browser)
+            app.on_shutdown.append(stop_browser)
+        if desktop is not None:
+            web.run_app(app, sock=desktop.socket, access_log=None, print=None)
+        else:
+            web.run_app(app, host=host, port=args.port, access_log=None)
+    except Exception as error:
+        from .desktop_text import translate
+        logging.getLogger('backend').exception('Pictide startup failed')
+        print(translate('startup_failed', error=error), file=sys.stderr, flush=True)
+        if desktop is not None and sys.stdin is not None and sys.stdin.isatty():
+            try:
+                input(translate('close_prompt'))
+            except EOFError:
+                pass
+        raise SystemExit(1) from None
+    finally:
+        if desktop is not None:
+            desktop.close()
 
 
 if __name__ == "__main__":

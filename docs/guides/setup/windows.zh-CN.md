@@ -6,9 +6,13 @@
 
 ## 便携版本
 
-解压 Windows 便携包，双击 `start.cmd`。首次启动等待[推荐模型下载](../getting-started.zh-CN.md#推荐模型启动准备)，完成后自动打开浏览器。接下来[连接生图服务](../getting-started.zh-CN.md)，开始漫游。
+以下启动方式适用于当前源码及据此新构建的便携包。
 
-使用时保持启动窗口打开，按 Ctrl+C 或关闭窗口停止。个人数据保存在包内 `data/`，下次启动会继续使用。
+解压 Windows 便携包，双击 `start.cmd`。临时窗口会显示启动进度，首次启动时包含[推荐模型下载](../getting-started.zh-CN.md#推荐模型启动准备)。就绪后自动打开浏览器，程序转入系统托盘。接下来[连接生图服务](../getting-started.zh-CN.md)，开始漫游。
+
+关闭网页后程序继续运行。通过托盘菜单可以重新打开 Pictide、查看日志或退出。启动提示与托盘菜单跟随系统语言，支持简体中文和英文。个人数据保存在包内 `data/`。
+
+希望保留终端时，运行 `.\start.cmd --cli`，按 Ctrl+C 停止。
 
 ## 局域网访问
 
@@ -18,7 +22,7 @@
 .\start.cmd --lan
 ```
 
-手机连接同一个局域网，打开启动窗口显示的局域网地址。Windows 网络需设为可信的「专用网络」。连接被防火墙拦截时，在管理员 PowerShell 放行：
+手机连接同一个局域网，打开启动日志中的局域网地址；通过托盘菜单「查看日志」可以找到日志。Windows 网络需设为可信的「专用网络」。连接被防火墙拦截时，在管理员 PowerShell 放行：
 
 ```powershell
 New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8189 -Profile Private -RemoteAddress LocalSubnet
@@ -38,4 +42,4 @@ New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -
 
 先按[Windows 源码准备](../../dev/setup/windows.md#从源码准备)安装环境并构建前端，再在项目目录运行 `.\start.cmd`。
 
-源码启动器的参数使用 `-Lan`、`-Port` 和 `-DataDir`，例如 `.\start.cmd -Lan -Port 8191 -DataDir 'E:\PictideData'`。构建发行包见[开发文档](../../dev/setup/windows.md#构建便携包)。
+源码启动器的参数使用 `-Lan`、`-Port` 和 `-DataDir`，例如 `.\start.cmd -Lan -Port 8191 -DataDir 'E:\PictideData'`；加 `-Cli` 保留终端。构建发行包见[开发文档](../../dev/setup/windows.md#构建便携包)。

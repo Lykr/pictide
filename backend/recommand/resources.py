@@ -1,11 +1,14 @@
 """Prepare the pinned MiniLM files before the application starts listening."""
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 import shutil
 import time
 from urllib.request import Request, urlopen
+
+from ..desktop_text import translate
 
 
 def model_catalog():
@@ -14,6 +17,7 @@ def model_catalog():
 
 def _progress(message):
     print(message, flush=True)
+    logging.getLogger('backend').info(message)
 
 
 def _verified(path, item):
@@ -49,8 +53,9 @@ def _download(path, item, url, progress):
                             output.write(chunk)
                             received += len(chunk)
                             if received >= next_progress:
-                                progress(f'MiniLM {item["path"]}: {min(100, received * 100 // item["bytes"])}% '
-                                         f'({received:,}/{item["bytes"]:,} bytes)')
+                                progress(translate('model_progress', path=item['path'],
+                                                   percent=min(100, received * 100 // item['bytes']),
+                                                   received=received, total=item['bytes']))
                                 next_progress = received + max(1024 * 1024, item['bytes'] // 10)
                 if not _verified(partial, item):
                     raise ValueError('Model download failed size/SHA-256 verification: ' + item['path'])
@@ -58,15 +63,14 @@ def _download(path, item, url, progress):
             if path.exists():
                 backup = path.with_name(path.name + f'.before-download-{time.time_ns()}.bak')
                 shutil.copy2(path, backup)
-                progress('Previous model file preserved: ' + str(backup))
+                progress(translate('model_preserved', path=backup))
             os.replace(partial, path)
-            progress('MiniLM verified: ' + item['path'])
+            progress(translate('model_verified', path=item['path']))
             return
         except (OSError, ValueError) as error:
             if attempt == 2:
-                raise RuntimeError(f'Cannot prepare MiniLM {item["path"]}: {error}. '
-                                   'Check the connection and restart to resume the download.') from error
-            progress(f'MiniLM download retry {attempt + 1}/2: {item["path"]} ({error})')
+                raise RuntimeError(translate('model_failed', path=item['path'], error=error)) from error
+            progress(translate('model_retry', attempt=attempt + 1, path=item['path'], error=error))
             time.sleep(1)
 
 
@@ -75,17 +79,17 @@ def prepare_model(directory, *, catalog=None, progress=_progress):
     directory = Path(directory).expanduser().resolve()
     catalog = model_catalog() if catalog is None else catalog
     directory.mkdir(parents=True, exist_ok=True)
-    progress('Preparing MiniLM before starting Pictide: ' + str(directory))
+    progress(translate('preparing_model', directory=directory))
     for item in catalog['files']:
         path = (directory / item['path']).resolve()
         if not path.is_relative_to(directory) or path == directory:
-            raise ValueError('Model files must remain inside the selected model directory')
+            raise ValueError(translate('invalid_model_path'))
         if _verified(path, item):
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
         url = (f'https://huggingface.co/{catalog["source"]}/resolve/{catalog["revision"]}/'
                f'{item["path"]}?download=true')
-        progress('Downloading MiniLM: ' + item['path'])
+        progress(translate('downloading_model', path=item['path']))
         _download(path, item, url, progress)
-    progress('MiniLM ready. Starting Pictide.')
+    progress(translate('model_ready'))
     return directory

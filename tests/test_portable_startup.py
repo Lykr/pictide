@@ -32,6 +32,9 @@ class PortableResourcesSmoke(unittest.TestCase):
             front = repo / 'web/dist'
             front.mkdir(parents=True)
             (front / 'index.html').write_text('frontend fixture', encoding='utf-8')
+            icon = repo / 'web/public/icons/pictide-512.png'
+            icon.parent.mkdir(parents=True)
+            shutil.copyfile(Path(__file__).resolve().parents[1] / 'web/public/icons/pictide-512.png', icon)
             notices = repo / 'web/src/THIRD_PARTY_NOTICES.md'
             notices.parent.mkdir(parents=True)
             notices.write_text('frontend licenses', encoding='utf-8')

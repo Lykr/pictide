@@ -50,6 +50,9 @@ pictide/
     dist/                      Vite distribution assets
   backend/
     host.py                    HTTP API, SSE, static assets, startup, and shutdown
+    desktop.py                 Windows desktop session, single-instance lock, and tray lifecycle
+    windows_tray.py            Native Windows notification area and owned-console handling
+    desktop_text.py            System-language startup and tray messages
     application.py             Application orchestration: generation, candidates, feedback, cleanup
     domain.py                  Shared input validation and errors
     paths.py                   Data paths and this process's runtime environment
@@ -94,6 +97,8 @@ pictide/
 ## Startup Preparation
 
 Source and portable startup share `PictideApplication.prepare_startup()` in `backend/application.py`. It initializes bundled vocabulary when present, then asks `backend/recommand/resources.py` to verify or download the fixed MiniLM files into the selected runtime data directory. Host starts HTTP/SSE and opens the browser only after preparation succeeds. Failure terminates startup, preserving partial downloads for the next attempt. The encoder reads the prepared local files; offline corpus tools remain outside the startup path. See [Model Preparation](architecture/recommendation.md#model-preparation).
+
+Windows launchers select `--desktop`: `backend/desktop.py` owns a data-directory lock and reserves the HTTP port before resource preparation. Once HTTP is ready, it registers the native tray, hides its own startup console and opens the browser. The tray requests normal Host shutdown or opens the browser/log directory; it owns no business state. Startup progress and tray messages follow the system display language, using Simplified Chinese or English. `--cli` and `--no-browser` keep terminal operation; Linux and macOS retain their existing launchers. See the [desktop lifecycle design](issues/desktop-launcher.md).
 
 ## Further Reading
 

@@ -92,6 +92,26 @@ def copy_licenses(destination):
             shutil.copyfile(installer.locate_file(file), target)
 
 
+def desktop_icon(directory):
+    """Convert the existing website icon for Windows without adding a GUI runtime."""
+    from PIL import Image
+    destination = Path(directory) / 'desktop.ico'
+    with Image.open(ROOT / 'web/public/icons/pictide-512.png') as image:
+        image.convert('RGBA').save(destination, format='ICO',
+                                   sizes=[(size, size) for size in (16, 20, 24, 32, 40, 48, 64, 128, 256)])
+    return destination
+
+
+def windows_launcher():
+    return ('@echo off\r\n'
+            'if /i "%~1"=="--cli" goto cli\r\n'
+            'start "Pictide" "%~dp0data\\runtime\\pictide\\Pictide.exe" --desktop %*\r\n'
+            'exit /b %errorlevel%\r\n'
+            ':cli\r\n'
+            '"%~dp0data\\runtime\\pictide\\Pictide.exe" %*\r\n'
+            'exit /b %errorlevel%\r\n')
+
+
 def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
           cache_dir=ROOT / 'dev/cache/portable',
           profile=ROOT / 'corpus/profiles/compact.json', prebuilt_library=None):
@@ -124,18 +144,28 @@ def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
                    '--copy-metadata', 'fastembed', '--copy-metadata', 'onnxruntime', '--copy-metadata', 'tokenizers',
                    '--exclude-module', 'torch', '--exclude-module', 'tensorflow', '--exclude-module', 'pytest',
                    str(ROOT / 'scripts/portable_entry.py')]
+        if sys.platform == 'win32':
+            icon = desktop_icon(working)
+            command[-1:-1] = ['--icon', str(icon), '--add-data', f'{icon}{os.pathsep}backend',
+                              '--exclude-module', 'tkinter', '--exclude-module', 'PySide6',
+                              '--exclude-module', 'PyQt6', '--exclude-module', 'PyQt5',
+                              '--exclude-module', 'wx']
         subprocess.run(command, cwd=ROOT, check=True)
     # Native bundle name is stable across systems; launcher paths are platform-specific.
     bundled = runtime / 'Pictide'
     bundled.rename(runtime / 'pictide')
     if sys.platform == 'win32':
         launcher = package / 'start.cmd'
-        launcher.write_bytes(b'@echo off\r\n"%~dp0data\\runtime\\pictide\\Pictide.exe" %*\r\nif errorlevel 1 pause\r\n')
+        launcher.write_bytes(windows_launcher().encode('ascii'))
     else:
         launcher = package / ('start.command' if sys.platform == 'darwin' else 'start.sh')
         launcher.write_text('#!/bin/sh\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$root/data/runtime/pictide/Pictide" "$@"\n', encoding='utf-8')
         launcher.chmod(0o755)
-    (package / 'README.txt').write_text('Pictide\n\nRun ' + launcher.name + ' to open Pictide.\nThe first launch downloads and verifies MiniLM before opening the app.\nAn internet connection is required until this download completes.\nLater launches reuse the verified model in data/models/minilm/.\nConfigure an image API in Settings.\nClose the launcher window or press Ctrl+C to stop.\nData stays in data/.\nUse --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
+    desktop_help = ('Windows shows startup progress in a temporary console, then opens your browser and stays in the system tray.\n'
+                    'Use the tray menu to reopen Pictide, view logs or exit. Closing the browser keeps Pictide running.\n'
+                    'Run start.cmd --cli to keep the service in the calling terminal; press Ctrl+C to stop.\n'
+                    if sys.platform == 'win32' else 'Close the launcher window or press Ctrl+C to stop.\n')
+    (package / 'README.txt').write_text('Pictide\n\nRun ' + launcher.name + ' to open Pictide.\nThe first launch downloads and verifies MiniLM before opening the app.\nAn internet connection is required until this download completes.\nLater launches reuse the verified model in data/models/minilm/.\nConfigure an image API in Settings.\n' + desktop_help + 'Data stays in data/.\nUse --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
     for name in ('LICENSE', 'NOTICE'):
         shutil.copyfile(ROOT / name, package / name)
     notices = package / 'licenses'
@@ -159,6 +189,17 @@ def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
               'unpacked_bytes': sum(p.stat().st_size for p in package.rglob('*') if p.is_file()),
               'build_seconds': round(time.perf_counter() - started, 2),
               'resources': manifest['provenance']}
+    if sys.platform == 'win32':
+        gui_files = [path.relative_to(package).as_posix() for path in package.rglob('*')
+                     if path.name.lower() in {'tcl', 'tk', '_tkinter.pyd', 'pyside6', 'pyqt6', 'pyqt5', 'wx'}
+                     or path.name.lower().startswith(('tcl86', 'tk86', 'qt6core', 'qt5core'))]
+        if gui_files:
+            raise RuntimeError('Unexpected GUI runtime in portable package: ' + ', '.join(gui_files))
+        icon_path = runtime / 'pictide/_internal/backend/desktop.ico'
+        result['desktop'] = {'mode': 'native Windows tray with temporary startup console',
+                             'icon_source': 'web/public/icons/pictide-512.png',
+                             'icon_bytes': icon_path.stat().st_size,
+                             'extra_gui_runtime_files': gui_files}
     (output / 'build-report.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
     print(json.dumps(result), flush=True)
     return result
