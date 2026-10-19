@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import platform
 import shutil
 import sqlite3
 import sys
@@ -16,6 +17,7 @@ from aiohttp import web
 from aiohttp.test_utils import TestServer
 
 from backend.application import PictideApplication
+from backend import __version__
 from backend.host import open_browser_when_ready
 from backend.paths import DataPaths
 from backend.recommand.resources import model_catalog
@@ -49,6 +51,9 @@ class PortableResourcesSmoke(unittest.TestCase):
             dataset, cache = (root / name for name in ('datasets', 'cache'))
             profile = root / 'profile.json'
             output = root / 'release'
+            output.mkdir()
+            previous = output / f'pictide-{__version__}-{sys.platform}-{platform.machine().lower()}.zip'
+            previous.write_bytes(b'previous local build')
 
             def bundle(command, *, cwd, check):
                 self.assertEqual(cwd, repo)
@@ -70,6 +75,7 @@ class PortableResourcesSmoke(unittest.TestCase):
             logger = logging.Logger('portable-build-smoke')
             try:
                 with patch('scripts.build_portable.ROOT', repo), \
+                        patch('scripts.build_portable.build_frontend', side_effect=lambda target: shutil.copytree(front, target)) as frontend, \
                         patch('scripts.build_portable.prepare_resources', return_value=resources) as prepare, \
                         patch('scripts.build_portable.subprocess.run', side_effect=bundle), \
                         patch('scripts.build_portable.copy_licenses', side_effect=lambda target: (target / 'Apache-2.0.txt').write_text('license fixture')), \
@@ -80,12 +86,17 @@ class PortableResourcesSmoke(unittest.TestCase):
                                    profile=profile)
                     prepare.assert_called_once_with(dataset, cache, profile,
                                                     prebuilt_library=None, progress=ANY)
+                    frontend.assert_called_once()
             finally:
                 for handler in logger.handlers:
                     handler.close()
             self.assertFalse((repo / 'data').exists())
             self.assertEqual(result['resources'], provenance)
-            self.assertEqual(json.loads((output / 'build-report.json').read_text())['resources'], provenance)
+            self.assertTrue(result['passed'])
+            self.assertEqual(json.loads(Path(result['report']).read_text())['resources'], provenance)
+            self.assertEqual(list(output.iterdir()), [Path(result['archive'])])
+            self.assertFalse(list((repo / 'dev/build/tmp').glob('portable-build-*')))
+            self.assertEqual((front / 'index.html').read_text(), 'frontend fixture')
             with zipfile.ZipFile(result['archive']) as archive:
                 seed = 'Pictide/data/runtime/pictide/_internal/resources/'
                 manifest = json.loads(archive.read(seed + 'manifest.json'))
@@ -100,6 +111,32 @@ class PortableResourcesSmoke(unittest.TestCase):
                 exported.write_bytes(archive.read(seed + 'libraries/neutral.sqlite3'))
                 with closing(sqlite3.connect(exported)) as db:
                     self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='presets'").fetchone())
+
+    def test_failed_build_preserves_final_archives_and_writes_failure_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            output = repo / 'releases'
+            output.mkdir()
+            previous = output / f'pictide-{__version__}-{sys.platform}-{platform.machine().lower()}.zip'
+            previous.write_bytes(b'previous final package')
+            logger = logging.Logger('portable-failure-smoke')
+            try:
+                with patch('scripts.build_portable.ROOT', repo), \
+                        patch('scripts.build_portable.build_frontend', side_effect=RuntimeError('frontend fixture failed')), \
+                        patch('backend.paths.logging.getLogger', return_value=logger), \
+                        patch.dict('os.environ'), patch('tempfile.tempdir', tempfile.tempdir), \
+                        patch('sys.pycache_prefix', sys.pycache_prefix):
+                    with self.assertRaisesRegex(RuntimeError, 'frontend fixture failed'):
+                        build()
+            finally:
+                for handler in logger.handlers:
+                    handler.close()
+            self.assertEqual(list(output.iterdir()), [previous])
+            self.assertEqual(previous.read_bytes(), b'previous final package')
+            self.assertFalse(list((repo / 'dev/build/tmp').glob('portable-build-*')))
+            report = next((repo / 'dev/verification/portable').rglob('build-report.json'))
+            self.assertEqual(json.loads(report.read_text())['error'], 'frontend fixture failed')
+            self.assertFalse(json.loads(report.read_text())['passed'])
 
     def test_export_initialize_and_preserve_user_data(self):
         with tempfile.TemporaryDirectory() as directory:

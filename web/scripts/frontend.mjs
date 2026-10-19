@@ -23,11 +23,16 @@ if (!existsSync(link)) symlinkSync(modules, link, 'junction');
 const require = createRequire(resolve(root, 'package.json'));
 const command = process.argv[2];
 if (command === 'build') {
+  const options = process.argv.slice(3);
+  if (options.length && (options.length !== 2 || options[0] !== '--out-dir')) {
+    throw new Error('Usage: node scripts/frontend.mjs build [--out-dir PATH]');
+  }
+  const outDir = options.length ? resolve(root, options[1]) : resolve(root, 'dist');
   const { build } = await import(pathToFileURL(require.resolve('vite')).href);
-  await build({ root, configFile: resolve(root, 'vite.config.ts') });
-  copyFileSync(resolve(root, 'src/THIRD_PARTY_NOTICES.md'), resolve(root, 'dist/THIRD_PARTY_NOTICES.md'));
+  await build({ root, configFile: resolve(root, 'vite.config.ts'), build: { outDir } });
+  copyFileSync(resolve(root, 'src/THIRD_PARTY_NOTICES.md'), resolve(outDir, 'THIRD_PARTY_NOTICES.md'));
   for (const name of ['LICENSE', 'NOTICE']) {
-    copyFileSync(resolve(root, '..', name), resolve(root, 'dist', name));
+    copyFileSync(resolve(root, '..', name), resolve(outDir, name));
   }
 } else if (command === 'typecheck') {
   mkdirSync(resolve(devRoot, 'cache/typescript'), { recursive: true });

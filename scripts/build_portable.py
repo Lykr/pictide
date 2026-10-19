@@ -112,95 +112,124 @@ def windows_launcher():
             'exit /b %errorlevel%\r\n')
 
 
-def build(output_dir, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
+def build_frontend(destination):
+    """Prepare locked dependencies and build into the isolated package workspace."""
+    pnpm = shutil.which('pnpm')
+    if pnpm is None:
+        raise RuntimeError('Install the pnpm version specified by web/package.json before building.')
+    web = ROOT / 'web'
+    for arguments in (['install', '--frozen-lockfile'], ['run', 'typecheck'],
+                      ['run', 'build', '--out-dir', str(destination)]):
+        subprocess.run([pnpm, '--dir', str(web), *arguments], cwd=ROOT, check=True)
+
+
+def build(output_dir=None, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
           cache_dir=ROOT / 'dev/cache/portable',
           profile=ROOT / 'corpus/profiles/compact.json', prebuilt_library=None):
     started = time.perf_counter()
     build_paths = DataPaths(ROOT / 'dev/build').configure_runtime()
-    output = Path(output_dir).expanduser().resolve()
-    if output.exists():
-        raise RuntimeError('Choose a new output directory: ' + str(output))
-    front = ROOT / 'web/dist'
-    if not (front / 'index.html').is_file():
-        raise RuntimeError('Build the frontend before packaging.')
-    resources = prepare_resources(dataset_dir, cache_dir, profile,
-                                  prebuilt_library=prebuilt_library,
-                                  progress=lambda text: print(text, flush=True))
-    output.mkdir(parents=True)
-    package = output / 'Pictide'
-    runtime = package / 'data/runtime'
-    runtime.mkdir(parents=True)
-    with tempfile.TemporaryDirectory(prefix='portable-build-', dir=build_paths.tmp) as working:
-        working = Path(working)
-        seed = working / 'resources'
-        manifest = export_resources(resources, seed)
-        print('Resources exported; packaging the native runtime.', flush=True)
-        command = [sys.executable, '-m', 'PyInstaller', '--onedir', '--noconfirm', '--name', 'Pictide',
-                   '--distpath', str(runtime), '--workpath', str(working / 'work'), '--specpath', str(working),
-                   '--paths', str(ROOT), '--add-data', f'{front}{os.pathsep}web/dist',
-                   '--add-data', f'{ROOT / "backend/recommand/model.json"}{os.pathsep}backend/recommand',
-                   '--add-data', f'{seed}{os.pathsep}resources', '--collect-all', 'fastembed',
-                   '--collect-all', 'onnxruntime', '--collect-all', 'tokenizers',
-                   '--copy-metadata', 'fastembed', '--copy-metadata', 'onnxruntime', '--copy-metadata', 'tokenizers',
-                   '--exclude-module', 'torch', '--exclude-module', 'tensorflow', '--exclude-module', 'pytest',
-                   str(ROOT / 'scripts/portable_entry.py')]
-        if sys.platform == 'win32':
-            icon = desktop_icon(working)
-            command[-1:-1] = ['--icon', str(icon), '--add-data', f'{icon}{os.pathsep}backend',
-                              '--exclude-module', 'tkinter', '--exclude-module', 'PySide6',
-                              '--exclude-module', 'PyQt6', '--exclude-module', 'PyQt5',
-                              '--exclude-module', 'wx']
-        subprocess.run(command, cwd=ROOT, check=True)
-    # Native bundle name is stable across systems; launcher paths are platform-specific.
-    bundled = runtime / 'Pictide'
-    bundled.rename(runtime / 'pictide')
-    if sys.platform == 'win32':
-        launcher = package / 'start.cmd'
-        launcher.write_bytes(windows_launcher().encode('ascii'))
-    else:
-        launcher = package / ('start.command' if sys.platform == 'darwin' else 'start.sh')
-        launcher.write_text('#!/bin/sh\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$root/data/runtime/pictide/Pictide" "$@"\n', encoding='utf-8')
-        launcher.chmod(0o755)
-    desktop_help = ('Windows shows startup progress in a temporary console, then opens your browser and stays in the system tray.\n'
-                    'Use the tray menu to reopen Pictide, view logs or exit. Closing the browser keeps Pictide running.\n'
-                    'Run start.cmd --cli to keep the service in the calling terminal; press Ctrl+C to stop.\n'
-                    if sys.platform == 'win32' else 'Close the launcher window or press Ctrl+C to stop.\n')
-    (package / 'README.txt').write_text('Pictide\n\nRun ' + launcher.name + ' to open Pictide.\nThe first launch downloads and verifies MiniLM before opening the app.\nAn internet connection is required until this download completes.\nLater launches reuse the verified model in data/models/minilm/.\nConfigure an image API in Settings.\n' + desktop_help + 'Data stays in data/.\nUse --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
-    for name in ('LICENSE', 'NOTICE'):
-        shutil.copyfile(ROOT / name, package / name)
-    notices = package / 'licenses'
-    notices.mkdir()
-    copy_licenses(notices)
-    shutil.copyfile(ROOT / 'web/src/THIRD_PARTY_NOTICES.md', notices / 'frontend.md')
-    (notices / 'MiniLM.txt').write_text('Model: sentence-transformers/all-MiniLM-L6-v2\nONNX export: Qdrant/all-MiniLM-L6-v2-onnx\nLicense: Apache-2.0\nONNX SHA-256: ' + manifest['model_sha256'] + '\nhttps://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx\n', encoding='utf-8')
-    archive = output / f'pictide-{__version__}-{sys.platform}-{platform.machine().lower()}.zip'
-    with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zip:
-        for path in sorted(package.rglob('*')):
-            name = path.relative_to(output).as_posix()
-            if path.is_symlink():
-                # POSIX PyInstaller bundles use relative library/framework links.
-                link = zipfile.ZipInfo(name)
-                link.create_system = 3
-                link.external_attr = (stat.S_IFLNK | 0o777) << 16
-                zip.writestr(link, os.readlink(path))
+    output = Path(output_dir or ROOT / 'releases').expanduser().resolve()
+    name = f'pictide-{__version__}-{sys.platform}-{platform.machine().lower()}'
+    archive_path = output / (name + '.zip')
+    report = ROOT / 'dev/verification/portable' / name.removeprefix('pictide-') / 'build-report.json'
+    result = {'passed': False, 'archive': str(archive_path), 'report': str(report)}
+    try:
+        output.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='portable-build-', dir=build_paths.tmp) as temporary:
+            working = Path(temporary)
+            front = working / 'frontend'
+            build_frontend(front)
+            resources = prepare_resources(dataset_dir, cache_dir, profile,
+                                          prebuilt_library=prebuilt_library,
+                                          progress=lambda text: print(text, flush=True))
+            package = working / 'Pictide'
+            runtime = package / 'data/runtime'
+            runtime.mkdir(parents=True)
+            seed = working / 'resources'
+            manifest = export_resources(resources, seed)
+            print('Resources exported; packaging the native runtime.', flush=True)
+            command = [sys.executable, '-m', 'PyInstaller', '--onedir', '--noconfirm', '--name', 'Pictide',
+                       '--distpath', str(runtime), '--workpath', str(working / 'work'), '--specpath', str(working),
+                       '--paths', str(ROOT), '--add-data', f'{front}{os.pathsep}web/dist',
+                       '--add-data', f'{ROOT / "backend/recommand/model.json"}{os.pathsep}backend/recommand',
+                       '--add-data', f'{seed}{os.pathsep}resources', '--collect-all', 'fastembed',
+                       '--collect-all', 'onnxruntime', '--collect-all', 'tokenizers',
+                       '--copy-metadata', 'fastembed', '--copy-metadata', 'onnxruntime', '--copy-metadata', 'tokenizers',
+                       '--exclude-module', 'torch', '--exclude-module', 'tensorflow', '--exclude-module', 'pytest',
+                       str(ROOT / 'scripts/portable_entry.py')]
+            if sys.platform == 'win32':
+                icon = desktop_icon(working)
+                command[-1:-1] = ['--icon', str(icon), '--add-data', f'{icon}{os.pathsep}backend',
+                                  '--exclude-module', 'tkinter', '--exclude-module', 'PySide6',
+                                  '--exclude-module', 'PyQt6', '--exclude-module', 'PyQt5',
+                                  '--exclude-module', 'wx']
+            subprocess.run(command, cwd=ROOT, check=True)
+            # Native bundle name is stable across systems; launcher paths are platform-specific.
+            bundled = runtime / 'Pictide'
+            bundled.rename(runtime / 'pictide')
+            if sys.platform == 'win32':
+                launcher = package / 'start.cmd'
+                launcher.write_bytes(windows_launcher().encode('ascii'))
             else:
-                zip.write(path, name)
-    result = {'directory': str(package), 'archive': str(archive), 'archive_bytes': archive.stat().st_size,
-              'unpacked_bytes': sum(p.stat().st_size for p in package.rglob('*') if p.is_file()),
-              'build_seconds': round(time.perf_counter() - started, 2),
-              'resources': manifest['provenance']}
-    if sys.platform == 'win32':
-        gui_files = [path.relative_to(package).as_posix() for path in package.rglob('*')
-                     if path.name.lower() in {'tcl', 'tk', '_tkinter.pyd', 'pyside6', 'pyqt6', 'pyqt5', 'wx'}
-                     or path.name.lower().startswith(('tcl86', 'tk86', 'qt6core', 'qt5core'))]
-        if gui_files:
-            raise RuntimeError('Unexpected GUI runtime in portable package: ' + ', '.join(gui_files))
-        icon_path = runtime / 'pictide/_internal/backend/desktop.ico'
-        result['desktop'] = {'mode': 'native Windows tray with temporary startup console',
-                             'icon_source': 'web/public/icons/pictide-512.png',
-                             'icon_bytes': icon_path.stat().st_size,
-                             'extra_gui_runtime_files': gui_files}
-    (output / 'build-report.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+                launcher = package / ('start.command' if sys.platform == 'darwin' else 'start.sh')
+                launcher.write_text('#!/bin/sh\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$root/data/runtime/pictide/Pictide" "$@"\n', encoding='utf-8')
+                launcher.chmod(0o755)
+            desktop_help = ('Windows shows startup progress in a temporary console, then opens your browser and stays in the system tray.\n'
+                            'Use the tray menu to reopen Pictide, view logs or exit. Closing the browser keeps Pictide running.\n'
+                            'Run start.cmd --cli to keep the service in the calling terminal; press Ctrl+C to stop.\n'
+                            if sys.platform == 'win32' else 'Close the launcher window or press Ctrl+C to stop.\n')
+            (package / 'README.txt').write_text('Pictide\n\nRun ' + launcher.name + ' to open Pictide.\nThe first launch downloads and verifies MiniLM before opening the app.\nAn internet connection is required until this download completes.\nLater launches reuse the verified model in data/models/minilm/.\nConfigure an image API in Settings.\n' + desktop_help + 'Data stays in data/.\nUse --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
+            for name in ('LICENSE', 'NOTICE'):
+                shutil.copyfile(ROOT / name, package / name)
+            notices = package / 'licenses'
+            notices.mkdir()
+            copy_licenses(notices)
+            shutil.copyfile(ROOT / 'web/src/THIRD_PARTY_NOTICES.md', notices / 'frontend.md')
+            (notices / 'MiniLM.txt').write_text('Model: sentence-transformers/all-MiniLM-L6-v2\nONNX export: Qdrant/all-MiniLM-L6-v2-onnx\nLicense: Apache-2.0\nONNX SHA-256: ' + manifest['model_sha256'] + '\nhttps://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx\n', encoding='utf-8')
+            archive = working / f'pictide-{__version__}-{sys.platform}-{platform.machine().lower()}.zip'
+            with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zip:
+                for path in sorted(package.rglob('*')):
+                    name = path.relative_to(working).as_posix()
+                    if path.is_symlink():
+                        # POSIX PyInstaller bundles use relative library/framework links.
+                        link = zipfile.ZipInfo(name)
+                        link.create_system = 3
+                        link.external_attr = (stat.S_IFLNK | 0o777) << 16
+                        zip.writestr(link, os.readlink(path))
+                    else:
+                        zip.write(path, name)
+            result.update({'archive_bytes': archive.stat().st_size,
+                           'unpacked_bytes': sum(p.stat().st_size for p in package.rglob('*') if p.is_file()),
+                           'resources': manifest['provenance']})
+            if sys.platform == 'win32':
+                gui_files = [path.relative_to(package).as_posix() for path in package.rglob('*')
+                             if path.name.lower() in {'tcl', 'tk', '_tkinter.pyd', 'pyside6', 'pyqt6', 'pyqt5', 'wx'}
+                             or path.name.lower().startswith(('tcl86', 'tk86', 'qt6core', 'qt5core'))]
+                if gui_files:
+                    raise RuntimeError('Unexpected GUI runtime in portable package: ' + ', '.join(gui_files))
+                icon_path = runtime / 'pictide/_internal/backend/desktop.ico'
+                result['desktop'] = {'mode': 'native Windows tray with temporary startup console',
+                                     'icon_source': 'web/public/icons/pictide-512.png',
+                                     'icon_bytes': icon_path.stat().st_size,
+                                     'extra_gui_runtime_files': gui_files}
+            # Publish only the complete archive; existing local versions remain usable on failure.
+            with tempfile.NamedTemporaryFile(prefix='.', suffix='.zip.part', dir=output, delete=False) as handle:
+                partial_archive = Path(handle.name)
+            try:
+                shutil.copyfile(archive, partial_archive)
+                os.replace(partial_archive, archive_path)
+            finally:
+                partial_archive.unlink(missing_ok=True)
+            result['passed'] = True
+    except Exception as error:
+        result['error'] = str(error)
+        raise
+    finally:
+        result['build_seconds'] = round(time.perf_counter() - started, 2)
+        report.parent.mkdir(parents=True, exist_ok=True)
+        partial = report.with_suffix('.json.part')
+        partial.write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+        os.replace(partial, report)
     print(json.dumps(result), flush=True)
     return result
 
@@ -215,8 +244,8 @@ if __name__ == '__main__':
                         help='Vocabulary processing profile')
     parser.add_argument('--prebuilt-library', type=Path,
                         help='Directory containing the locked vocabulary.sqlite3 and report.json; never rebuilds raw data')
-    parser.add_argument('--output-dir', default=ROOT / 'releases' / f'pictide-{__version__}-{sys.platform}-{time.strftime("%Y%m%d-%H%M%S")}',
-                        help='New release directory (default: releases/<version-platform-time>).')
+    parser.add_argument('--output-dir', type=Path, default=ROOT / 'releases',
+                        help='Final archive directory (default: releases/); local same-name builds are replaced atomically.')
     options = parser.parse_args()
     build(options.output_dir, dataset_dir=options.dataset_dir, cache_dir=options.cache_dir,
           profile=options.profile, prebuilt_library=options.prebuilt_library)

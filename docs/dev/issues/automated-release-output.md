@@ -46,3 +46,10 @@ sequenceDiagram
 - 归档完成全部检查后再替换本地同名最终包；失败不会留下半成品或覆盖已有最终包。远端发布版本和标签保持原有不可覆盖规则。
 - 本地旧验证包中已有数据库、推荐依赖和词库，整体保留到 `dev/legacy/release-builds/`；整理前核对进程，保留数据备份及文件清单。验证 JSON 移到 `dev/verification/`，不删除历史个人数据。
 - 当前 macOS 加载问题仍待本机诊断，未发布的 `codex/macos-portable-archive` 变更本次不集成。
+
+## 验证与整理结果
+
+- 4 项资源与发行检查通过：已有收集目录可重复构建、同名 ZIP 替换、失败时保留已有最终包和错误报告、临时打包目录回收；资源初始化与个人记录保留沿用原用例。
+- Windows 真实构建一次完成锁定前端依赖准备、类型检查、独立前端构建和 PyInstaller 打包，最终 ZIP 约 66 MiB。解压后使用校验过的本地 MiniLM 做隔离启动冒烟，通过 HTTP、前端资源、词库初始化与 SQLite 完整性检查；未启动浏览器或提交生图任务。
+- Actions 的 Python 步骤语法与标签触发条件检查通过，真实 ZIP 和两份报告按新目录完成附件收集；本次未触发远端四平台构建，未发布新版本。
+- 本地旧目录整体迁至 `dev/legacy/release-builds/windows-tray-dpi-20261019/`，731 个文件移动前后哈希一致；个人数据备份在 `data/backups/portable-relocation-20261020/`，清单位于 `dev/maintenance/release-output-20261020/relocation.json`。词库验证 JSON 已迁至 `dev/verification/vocabulary-editions/`。
