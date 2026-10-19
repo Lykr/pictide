@@ -10,6 +10,18 @@ from .desktop_text import translate
 STATUS_ENV = 'PICTIDE_DESKTOP_STATUS'
 
 
+def watch_desktop_parent():
+    """A macOS app owns the write end of stdin; EOF also stops orphaned workers."""
+    import signal
+    import threading
+
+    def watch():
+        sys.stdin.buffer.read()
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    threading.Thread(target=watch, name='desktop-parent', daemon=True).start()
+
+
 def notify_launcher(status):
     destination = os.environ.get(STATUS_ENV)
     if destination:

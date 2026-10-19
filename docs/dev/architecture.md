@@ -51,7 +51,7 @@ pictide/
   backend/
     host.py                    HTTP API, SSE, static assets, startup, and shutdown
     desktop.py                 Windows desktop session, single-instance lock, and tray lifecycle
-    desktop_launcher.py        Temporary progress process and windowless service startup
+    desktop_launcher.py        Windows progress launcher and desktop-worker parent lifetime
     windows_tray.py            Native Windows notification area and owned-console handling
     desktop_text.py            System-language startup and tray messages
     application.py             Application orchestration: generation, candidates, feedback, cleanup
@@ -69,6 +69,8 @@ pictide/
       architecture/            Architecture and flow details
       reference/               API, data, and design references
       issues/                  Requirement designs, feature changes, and delivery records
+  scripts/
+    macos_launcher.swift       System AppKit launcher: preparation, menu bar, and service lifecycle
   tests/
   start.cmd
   start.ps1
@@ -105,7 +107,9 @@ The guide observes successful tests, saves, feedback, anchor changes, and actual
 
 Source and portable startup share `PictideApplication.prepare_startup()` in `backend/application.py`. It initializes bundled vocabulary when present, then asks `backend/recommand/resources.py` to verify or download the fixed MiniLM files into the selected runtime data directory. Host starts HTTP/SSE and opens the browser only after preparation succeeds. Failure terminates startup, preserving partial downloads for the next attempt. The encoder reads the prepared local files; offline corpus tools remain outside the startup path. See [Recommendation Dependency Preparation](architecture/recommendation.md#recommendation-dependency-preparation).
 
-Windows launchers select `--desktop`: a temporary progress process starts the service with `CREATE_NO_WINDOW`, relays startup output and exits after tray registration. This also closes startup terminals hosted by Windows Terminal. `backend/desktop.py` owns a data-directory lock and reserves the HTTP port before resource preparation. Once HTTP is ready, it registers the native tray and opens the browser. A failed startup stays visible; unavailable tray support falls back to the original terminal. The tray thread uses Per-Monitor V2 DPI awareness and loads the icon at the taskbar's DPI, without changing system settings. The tray requests normal Host shutdown or opens the browser/log directory; it owns no business state. Startup progress and tray messages follow the system display language, using Simplified Chinese or English. `--cli` and `--no-browser` keep terminal operation; Linux and macOS retain their existing launchers. See the [desktop lifecycle design](issues/desktop-launcher.md).
+Windows launchers select `--desktop`: a temporary progress process starts the service with `CREATE_NO_WINDOW`, relays startup output and exits after tray registration. This also closes startup terminals hosted by Windows Terminal. `backend/desktop.py` owns a data-directory lock and reserves the HTTP port before resource preparation. Once HTTP is ready, it registers the native tray and opens the browser. A failed startup stays visible; unavailable tray support falls back to the original terminal. The tray thread uses Per-Monitor V2 DPI awareness and loads the icon at the taskbar's DPI, without changing system settings. The tray requests normal Host shutdown or opens the browser/log directory; it owns no business state. Startup progress and tray messages follow the system display language, using Simplified Chinese or English. `--cli` and `--no-browser` keep terminal operation; Linux retains its terminal launcher. See the [desktop lifecycle design](issues/desktop-launcher.md).
+
+The macOS `.app` uses a small native launcher compiled from `scripts/macos_launcher.swift` with system AppKit. `Contents/MacOS/Pictide` owns the preparation window, menu bar, data-directory session lock, and child process; `PictideService` runs the existing Host with `--cli --no-browser`. Preparation output updates the window, and HTTP readiness gates opening the browser. Quitting sends a normal stop signal to the owned service and waits for it to exit. CLI arguments delegate to the engine. No additional business API or GUI runtime is introduced. `backend/paths.py` resolves the bundled macOS default to the user’s Application Support directory; explicit paths and environment variables retain precedence. Windows packages expose the existing desktop lifecycle directly through their top-level `Pictide.exe`. See the [desktop distribution design and verification status (Chinese)](issues/desktop-distribution.md).
 
 ## Further Reading
 

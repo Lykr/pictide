@@ -6,30 +6,38 @@
 
 ## 便携版本
 
-解压与 Mac 芯片匹配的便携包，双击 `start.command`。首次启动等待[推荐依赖下载](../getting-started.zh-CN.md#推荐依赖准备)，完成后自动打开浏览器。接下来[连接生图服务](../getting-started.zh-CN.md)，开始漫游。
+以下介绍当前源码新构建的 `.app` 包，尚未发布或通过 Mac 桌面实机验证；已有发行版本沿用原启动方式。
 
-保持启动终端打开，按 Ctrl+C 停止。个人数据保存在包内 `data/`，下次启动会继续使用。
+解压与 Mac 芯片匹配的 ZIP（Apple Silicon 或 Intel），将 `Pictide.app` 拖入「应用程序」并打开。首次启动的小准备窗口会显示[推荐依赖下载](../getting-started.zh-CN.md#推荐依赖准备)进度，就绪后自动打开浏览器。接下来[连接生图服务](../getting-started.zh-CN.md)，开始漫游。
+
+关闭网页后程序继续运行。菜单栏图标显示服务状态和访问地址，也可以重新打开 Pictide、查看日志或退出。提示跟随系统语言，支持简体中文，其余语言默认英文。
+
+应用暂未使用 Developer ID 签名或经过 Apple 公证。如果首次打开被拦截，尝试打开后按 Apple 的[「仍要打开」步骤](https://support.apple.com/zh-cn/102445)，在「系统设置 → 隐私与安全性」允许打开。Pictide 不修改系统安全设置。
+
+个人数据保存在 `~/Library/Application Support/Pictide/`，替换应用会保留图片和偏好。从旧包迁移时，先退出两个版本，按[备份与恢复](../backup.zh-CN.md#备份与恢复)保存并复制个人数据到新位置，检查完成前保留旧副本。
 
 ## 局域网访问
 
-在便携包目录打开终端，运行：
+打开终端，运行：
 
 ```bash
-./start.command --lan
+/Applications/Pictide.app/Contents/MacOS/Pictide --lan
 ```
 
-手机连接同一个局域网，打开电脑的局域网地址，例如 `http://192.168.50.50:8189`。若防火墙询问是否允许传入连接，按可信局域网使用场景允许。手机主屏幕安装见[局域网与主屏幕应用](../access.zh-CN.md)。
+手机连接同一局域网，打开 Pictide 菜单中的局域网地址。参见[局域网与主屏幕应用](../access.zh-CN.md)。
 
 ## 端口与数据目录
 
-需要换端口或把数据放到其他位置时：
+需要换端口或数据位置时：
 
 ```bash
-./start.command --port 8191 --data-dir "$HOME/PictideData"
+/Applications/Pictide.app/Contents/MacOS/Pictide --port 8191 --data-dir "$HOME/PictideData"
 ```
+
+加 `--cli` 使用终端模式，按 Ctrl+C 停止。
 
 ## 从源码准备
 
-先按[macOS 源码准备](../../dev/setup/macos.md#从源码准备)安装环境并构建前端，再在项目目录双击 `start.command`；局域网、端口和数据目录参数同上。
+先按[macOS 源码准备](../../dev/setup/macos.md#从源码准备)安装环境并构建前端，再在项目目录运行 `./start.command`。源码启动保留终端，默认使用项目内 `data/`；可按需添加 `--lan`、`--port` 或 `--data-dir`。
 
 源码启动需要 Python 3.10+。若源码启动脚本缺少执行权限，在项目目录运行 `chmod +x start.sh start.command`。构建发行包见[开发文档](../../dev/setup/macos.md#构建便携包)。

@@ -21,7 +21,7 @@
 2. 从 [GitHub Releases](https://github.com/Lykr/pictide/releases) 下载并解压适合系统的便携包。
 3. 按系统选择启动方式：[Windows](docs/guides/setup/windows.zh-CN.md#便携版本) · [Linux](docs/guides/setup/linux.zh-CN.md#便携版本) · [macOS](docs/guides/setup/macos.zh-CN.md#便携版本)，然后跟随应用内引导快速上手。
 
-便携包随带默认词库，个人数据保存在包内 `data/`。从源码运行、离线准备或更换词库，见[用户文档](docs/README.zh-CN.md)。
+发行包随带默认词库。Windows 和 Linux 的个人数据保存在程序旁的 `data/`，macOS 保存在用户目录。查看数据位置、从源码运行或更换词库，见[用户文档](docs/README.zh-CN.md)。
 
 ### 功能概览
 

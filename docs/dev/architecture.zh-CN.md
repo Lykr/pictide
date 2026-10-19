@@ -52,7 +52,7 @@ pictide/
   backend/
     host.py                    HTTP API、SSE、静态资源、启动与关闭
     desktop.py                 Windows 桌面会话、单实例锁与托盘生命周期
-    desktop_launcher.py        临时进度进程与无控制台窗口的服务启动
+    desktop_launcher.py        Windows 进度启动器与桌面服务父进程存活监视
     windows_tray.py            Windows 原生托盘与自有启动终端管理
     desktop_text.py            跟随系统语言的启动与托盘文案
     application.py             生成、候选、评价、清理等应用编排
@@ -70,6 +70,8 @@ pictide/
       architecture/            架构与流程细节
       reference/               API、数据与设计参考
       issues/                  需求设计、功能变更与交付记录
+  scripts/
+    macos_launcher.swift       系统 AppKit 入口：准备窗口、菜单栏与服务生命周期
   tests/
   start.cmd
   start.ps1
@@ -106,7 +108,9 @@ pictide/
 
 源码与便携启动共用 `backend/application.py` 的 `PictideApplication.prepare_startup()`。该入口先初始化存在的随包词库，再通过 `backend/recommand/resources.py` 校验或下载固定 MiniLM 文件到所选运行数据目录。准备成功后，Host 才启动 HTTP/SSE 并打开浏览器；失败终止启动，保留未完成下载供下次重试。编码器只读取准备好的本地文件，离线 corpus 工具继续独立于启动链路。详见[推荐依赖准备](architecture/recommendation.zh-CN.md#推荐依赖准备)。
 
-Windows 启动入口选择 `--desktop`：临时进度进程以 `CREATE_NO_WINDOW` 启动服务、转发启动输出，托盘注册成功后退出，兼容由 Windows Terminal 承载的启动终端。`backend/desktop.py` 在准备资源前取得数据目录锁并预留 HTTP 端口，HTTP 就绪后注册原生托盘并打开浏览器。启动失败时保留错误信息，托盘不可用时回退到原终端。托盘线程使用 Per-Monitor V2 DPI 感知，按任务栏 DPI 加载图标，不修改系统设置。托盘只负责打开网页、日志目录和请求 Host 正常退出，不承载业务状态。启动进度和托盘文案按系统显示语言使用简体中文或英文。`--cli` 与 `--no-browser` 保留终端模式；Linux/macOS 沿用既有入口。详见[桌面生命周期设计](issues/desktop-launcher.md)。
+Windows 启动入口选择 `--desktop`：临时进度进程以 `CREATE_NO_WINDOW` 启动服务、转发启动输出，托盘注册成功后退出，兼容由 Windows Terminal 承载的启动终端。`backend/desktop.py` 在准备资源前取得数据目录锁并预留 HTTP 端口，HTTP 就绪后注册原生托盘并打开浏览器。启动失败时保留错误信息，托盘不可用时回退到原终端。托盘线程使用 Per-Monitor V2 DPI 感知，按任务栏 DPI 加载图标，不修改系统设置。托盘只负责打开网页、日志目录和请求 Host 正常退出，不承载业务状态。启动进度和托盘文案按系统显示语言使用简体中文或英文。`--cli` 与 `--no-browser` 保留终端模式；Linux 沿用既有终端入口。详见[桌面生命周期设计](issues/desktop-launcher.md)。
+
+macOS `.app` 使用从 `scripts/macos_launcher.swift` 编译的轻量系统 AppKit 入口。`Contents/MacOS/Pictide` 负责准备窗口、菜单栏、数据目录会话锁和服务子进程；`PictideService` 以 `--cli --no-browser` 运行现有 Host。准备输出更新窗口，HTTP 就绪后打开浏览器；退出时向自己拥有的服务发送正常停止信号并等待结束。CLI 参数委托引擎处理，不新增业务 API 或 GUI 运行时。`backend/paths.py` 将 macOS 包的默认数据目录解析到用户的 Application Support，显式路径与环境变量继续优先。Windows 包通过最外层的 `Pictide.exe` 直接使用既有桌面生命周期。详见[桌面分发设计与验证状态](issues/desktop-distribution.md)。
 
 ## 继续阅读
 

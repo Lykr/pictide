@@ -6,20 +6,20 @@
 
 ## 便携版本
 
-以下启动方式适用于当前源码及据此新构建的便携包。
+以下步骤适用于当前源码新构建的发行包；已有发行版本沿用原启动方式。
 
-解压 Windows 便携包，双击 `start.cmd`。临时窗口会显示启动进度，首次启动时包含[推荐依赖下载](../getting-started.zh-CN.md#推荐依赖准备)。就绪后启动进程退出，自动打开浏览器，服务通过系统托盘运行，不保留服务终端窗口；启动失败时保留错误提示。接下来[连接生图服务](../getting-started.zh-CN.md)，开始漫游。
+解压 Windows 便携包，双击 `Pictide.exe`。临时窗口会显示启动进度，首次启动时包含[推荐依赖下载](../getting-started.zh-CN.md#推荐依赖准备)。就绪后启动进程退出，自动打开浏览器，服务通过系统托盘运行，不保留服务终端窗口；启动失败时保留错误提示。接下来[连接生图服务](../getting-started.zh-CN.md)，开始漫游。
 
 关闭网页后程序继续运行。通过托盘菜单可以重新打开 Pictide、查看日志或退出。启动提示与托盘菜单跟随系统语言，支持简体中文和英文。个人数据保存在包内 `data/`。
 
-希望保留终端时，运行 `.\start.cmd --cli`，按 Ctrl+C 停止。
+请将 `Pictide.exe` 与 `_internal/` 放在一起。希望使用终端时，运行 `.\Pictide.exe --cli`，按 Ctrl+C 停止。
 
 ## 局域网访问
 
 在便携包目录打开 PowerShell，运行：
 
 ```powershell
-.\start.cmd --lan
+.\Pictide.exe --lan
 ```
 
 手机连接同一个局域网，打开启动日志中的局域网地址；通过托盘菜单「查看日志」可以找到日志。Windows 网络需设为可信的「专用网络」。连接被防火墙拦截时，在管理员 PowerShell 放行：
@@ -35,7 +35,7 @@ New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -
 需要换端口或把数据放到其他磁盘时，在便携包目录运行：
 
 ```powershell
-.\start.cmd --port 8191 --data-dir 'E:\PictideData'
+.\Pictide.exe --port 8191 --data-dir 'E:\PictideData'
 ```
 
 ## 从源码准备

@@ -405,6 +405,9 @@ def main(argv=None):
     paths = DataPaths(args.data_dir).configure_runtime()
     desktop_requested = args.desktop and sys.platform == 'win32' and not (args.cli or args.no_browser)
     if args.desktop_worker:
+        if sys.platform == 'darwin' and os.environ.get('PICTIDE_DESKTOP_PARENT_PIPE') == '1':
+            from .desktop_launcher import watch_desktop_parent
+            watch_desktop_parent()
         # Frozen console programs ignore PYTHONIOENCODING; use UTF-8 for the startup log.
         for stream in (sys.stdout, sys.stderr):
             if stream is not None:

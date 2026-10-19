@@ -12,7 +12,7 @@ Download and extract a portable package, then follow the startup steps for [Wind
 
 Connect your local ComfyUI installation, or choose OpenAI Images or Gemini for cloud generation. Pictide does not include an image generation model. When using ComfyUI, start both applications separately.
 
-Portable builds and startup checks have passed on Windows, Linux, and macOS. Live cloud image generation remains unverified.
+Previous portable packages passed native builds and startup checks on Windows, Linux, and macOS. The new desktop packaging is described in the platform guides; Mac desktop behavior still needs verification. Live cloud image generation remains unverified.
 
 On your first visit, choose **Show me around** for a short tour from connecting a service to exploring images. You can end it anytime and reopen it under **Settings → General → Getting started**.
 
@@ -47,7 +47,7 @@ First launch downloads MiniLM, a recommendation dependency (about **91 MB**). Ke
 <details>
 <summary>First launch offline: prepare the model manually</summary>
 
-Download these five files on a connected machine, keep their names, and place them in `models/minilm/` under your selected data directory (normally `data/models/minilm/`). Then start Pictide. See the [model catalog](../../backend/recommand/model.json) for the version and checksums.
+Download these five files on a connected machine, keep their names, and place them in `models/minilm/` under your selected [data directory](backup.md#data-location). Then start Pictide. See the [model catalog](../../backend/recommand/model.json) for the version and checksums.
 
 - [model.onnx](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/model.onnx)
 - [tokenizer.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/tokenizer.json)

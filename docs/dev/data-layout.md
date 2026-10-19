@@ -6,7 +6,7 @@
 
 ## Data Location
 
-The data directory is selected in this order: startup argument → PICTIDE_DATA_DIR → legacy PICTIDE_WEB_DATA_DIR → default data. Source deployments default to data inside the project; portable deployments default to data inside the release directory. Moving the entire portable directory preserves personal data alongside the program.
+The data directory is selected in this order: startup argument → PICTIDE_DATA_DIR → legacy PICTIDE_WEB_DATA_DIR → default data. Source deployments default to `data/` inside the project. Windows and Linux packages default to `data/` beside the program; the macOS app defaults to `~/Library/Application Support/Pictide/`, outside its bundle. Replacing the macOS app preserves personal data; moving a Windows or Linux portable directory includes its data.
 
 For custom directories, follow your platform's guide: [Windows](../guides/setup/windows.md#port-and-data-directory) · [Linux](../guides/setup/linux.md#port-and-data-directory) · [macOS](../guides/setup/macos.md#port-and-data-directory). Relative paths resolve from the working directory where the command is run.
 
@@ -23,7 +23,7 @@ The following paths are relative to the selected data directory:
 | `images/` | Images and matching prompt JSON files containing only positive / negative |
 | `workflows/` | API workflows; .backups holds versions from before updates or deletion |
 | `history-cleanup.json` | Historical image retention in days; defaults to 1 day |
-| `runtime/` | Program and dependencies: venv for source deployments; pictide program and bundled resources for portable deployments |
+| `runtime/` | Source Python environment; the existing Linux package also keeps its bundled program here. New Windows and macOS packages keep program dependencies outside user data |
 | `cache/` | Regenerable runtime caches for Python, pip, and related tools |
 | `tmp/` | Runtime temporary files |
 | `logs/` | Runtime logs |
@@ -53,7 +53,7 @@ Development materials and release artifacts are organized relative to the projec
 
 Portable builds prepare resources independently of runtime data. After the build environment is prepared once, `scripts/build_portable.py` installs locked frontend dependencies, checks types, and builds temporary frontend assets before preparing resources and packaging. The source runtime's `web/dist/` stays in place. The final package collection directory defaults to `releases/`; `--output-dir DIR` can select an existing directory. Builds atomically replace the same local ZIP only after archive checks succeed, preserving other versions and any previous final ZIP on failure. [Prebuilt release vocabularies](corpus.md#prebuilt-vocabulary) are published as fixed resource Release assets and referenced by the version-controlled `corpus/prebuilt.json`; SQLite files remain outside Git. GitHub Actions validates and packages those files instead of processing raw metadata. Vocabulary fingerprints, verification, and raw-data retention are described in the [build resource record (Chinese)](issues/portable-build-cache.md). Model files are prepared at application startup under runtime data, using the single fixed catalog `backend/recommand/model.json`; `corpus/resources.json` records only the raw dataset. See [the model startup change (Chinese)](issues/minilm-startup-download.md).
 
-Source and portable deployments use the same runtime data responsibilities and relative paths. The source startup environment is data/runtime/venv; the portable program and dependencies are under data/runtime/pictide. Paths in historical reports reflect their location at the time; see dev/maintenance for the current mapping. ComfyUI manages its own models, environment, and output.
+Source and packaged deployments use the same personal data responsibilities and relative paths. The source startup environment is `data/runtime/venv`. Windows packages place `Pictide.exe` and `_internal/` beside `data/`; macOS packages place the native `Pictide` launcher, `PictideService` engine, frameworks, and bundled resources inside `Pictide.app`. Linux retains `data/runtime/pictide/`. Paths in historical reports reflect their location at the time; see dev/maintenance for the current mapping. ComfyUI manages its own models, environment, and output.
 
 ## Data Lifecycle
 

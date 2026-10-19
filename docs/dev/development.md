@@ -24,7 +24,7 @@ cd ../pictide-example
 
 ## 首次准备检出目录
 
-源码环境由开发者按本节准备。便携发行流程交付运行环境、前端成品和词库，MiniLM 按[启动前模型准备设计](issues/minilm-startup-download.md)在用户启动时下载并校验完成后再启动服务。Windows x64、Linux x64、macOS ARM64/Intel 已通过原生 CI 构建及隔离启动冒烟，见[多平台验证记录](issues/github-releases.md#2026-10-19-多平台验证)。
+源码环境由开发者按本节准备。便携发行流程交付运行环境、前端成品和词库，MiniLM 按[启动前模型准备设计](issues/minilm-startup-download.md)在用户启动时下载并校验完成后再启动服务。旧版 Windows x64、Linux x64、macOS ARM64/Intel 目录包已通过原生 CI 构建及隔离启动冒烟，见[多平台验证记录](issues/github-releases.md#2026-10-19-多平台验证)。新 Windows EXE 与 macOS `.app` 分发的实现、验证及未验证项单独记录在[桌面分发](issues/desktop-distribution.md)。
 
 需要 Git、Python 3.10+、Node.js 20.19+（或 22.12+）和 `web/package.json` 指定的 pnpm。Python 运行依赖放在 `backend/requirements.txt`，离线数据处理工具与依赖集中在 [`corpus/`](corpus.zh-CN.md)；前端依赖由 `web/package.json` 管理。依赖安装遵循锁文件，不复制或提交 `node_modules`。
 
@@ -48,7 +48,9 @@ cd ../pictide-example
 
 便携构建默认只向 `releases/` 输出最终 `pictide-版本-平台-架构.zip`，无需手工创建输出目录，文件名不含日期。`--output-dir DIR` 可指定已有的最终包收集目录。本地重复构建在归档检查完成后原子替换同名 ZIP，保留其他版本，失败时保留已有最终包。`dev/build/` 下的临时前端、PyInstaller 工作区与展开目录在成功或失败后自动回收；构建报告保存到 `dev/verification/portable/版本-平台-架构/build-report.json`，失败时也保留。运行用户解压 ZIP 后启动 Pictide，词库初始化沿用[便携发行方案](issues/automatic-startup.md)，模型下载与离线准备见[安装与接入](../guides/getting-started.zh-CN.md#推荐依赖准备)。
 
-### GitHub Actions 发版
+#Windows 新构建包解压后以最外层 `Pictide.exe` 启动，依赖置于 `_internal/`，个人数据置于 `data/`。macOS 构建需要 Xcode Command Line Tools，编译系统 AppKit 原生入口并封装 `Pictide.app`；默认数据在用户 Application Support，构建采用 ad-hoc 签名，不接入 Developer ID 或公证。Linux 保持 ZIP 与 `start.sh` 终端入口。具体职责与验证状态见[桌面分发](issues/desktop-distribution.md)。
+
+## GitHub Actions 发版
 
 `.github/workflows/release.yml` 在推送 `v*` 标签时构建 Windows x64、Linux x64、macOS ARM64 和 macOS Intel 便携包。各平台使用原生 runner、Python 3.12 与 Node.js 22，标签去掉 `v` 后必须与 `backend/__init__.py` 和 `web/package.json` 中的版本一致。Linux/macOS 的实际兼容范围以对应平台的构建和启动冒烟结果为准。
 

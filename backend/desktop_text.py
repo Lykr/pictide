@@ -15,6 +15,9 @@ def _windows_ui_language():
 def system_language():
     """Use Simplified Chinese where explicitly requested, English otherwise."""
     try:
+        desktop_language = os.environ.get('PICTIDE_DESKTOP_LANGUAGE')
+        if sys.platform == 'darwin' and desktop_language in ('zh-CN', 'en'):
+            return desktop_language
         if sys.platform == 'win32':
             # Chinese (Simplified), Chinese (PRC), and Chinese (Singapore).
             return 'zh-CN' if _windows_ui_language() in (0x0004, 0x0804, 0x1004) else 'en'

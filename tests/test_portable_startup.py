@@ -5,6 +5,7 @@ import logging
 import os
 from pathlib import Path
 import platform
+import plistlib
 import shutil
 import sqlite3
 import sys
@@ -22,12 +23,18 @@ from backend.host import open_browser_when_ready
 from backend.paths import DataPaths
 from backend.recommand.resources import model_catalog
 from corpus.portable import PreparedResources
-from scripts.build_portable import build, export_resources
+from scripts.build_portable import build, export_resources, write_archive
+from scripts.smoke_portable import unpack
 from tests.test_candidate_libraries import vocabulary
 
 
 class PortableResourcesSmoke(unittest.TestCase):
     def test_build_from_prepared_resources_without_application_data(self):
+        for target in ('win32', 'darwin', 'linux'):
+            with self.subTest(platform=target):
+                self.check_platform_build(target)
+
+    def check_platform_build(self, target_platform):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             repo = root / 'clean repository'
@@ -52,32 +59,56 @@ class PortableResourcesSmoke(unittest.TestCase):
             profile = root / 'profile.json'
             output = root / 'release'
             output.mkdir()
-            previous = output / f'pictide-{__version__}-{sys.platform}-{platform.machine().lower()}.zip'
+            previous = output / f'pictide-{__version__}-{target_platform}-{platform.machine().lower()}.zip'
             previous.write_bytes(b'previous local build')
 
-            def bundle(command, *, cwd, check):
+            commands = []
+
+            def bundle(command, *, cwd=None, check):
+                commands.append(command)
+                if command[0] == '/usr/bin/xcrun':
+                    Path(command[command.index('-o') + 1]).write_text('native Swift fixture', encoding='utf-8')
+                    return
+                if command[0] == '/usr/bin/codesign':
+                    return
                 self.assertEqual(cwd, repo)
                 self.assertTrue(check)
-                bundled = Path(command[command.index('--distpath') + 1]) / 'Pictide'
-                bundled.mkdir()
-                executable = bundled / ('Pictide.exe' if sys.platform == 'win32' else 'Pictide')
+                dist = Path(command[command.index('--distpath') + 1])
+                if target_platform == 'darwin':
+                    self.assertIn('--windowed', command)
+                    bundled = dist / 'Pictide.app/Contents/MacOS'
+                    internal = dist / 'Pictide.app/Contents/Frameworks'
+                    (dist / 'Pictide.app/Contents/Resources').mkdir(parents=True)
+                    (dist / 'Pictide.app/Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleExecutable': 'Pictide'}))
+                else:
+                    bundled = dist / 'Pictide'
+                    internal = bundled / '_internal'
+                bundled.mkdir(parents=True)
+                executable = bundled / ('Pictide.exe' if target_platform == 'win32' else 'Pictide')
                 executable.write_text('native fixture', encoding='utf-8')
                 for index, arg in enumerate(command[:-1]):
                     if arg == '--add-data':
                         source, destination = command[index + 1].rsplit(os.pathsep, 1)
-                        target = bundled / '_internal' / destination
+                        target = internal / destination
                         if Path(source).is_file():
                             target.mkdir(parents=True, exist_ok=True)
                             shutil.copyfile(source, target / Path(source).name)
                         else:
                             shutil.copytree(source, target)
 
+            def fixture_archive(package, archive):
+                with zipfile.ZipFile(archive, 'w') as result:
+                    for path in package.rglob('*'):
+                        result.write(path, path.relative_to(package.parent).as_posix())
+
             logger = logging.Logger('portable-build-smoke')
             try:
                 with patch('scripts.build_portable.ROOT', repo), \
+                        patch('scripts.build_portable.sys.platform', target_platform), \
                         patch('scripts.build_portable.build_frontend', side_effect=lambda target: shutil.copytree(front, target)) as frontend, \
                         patch('scripts.build_portable.prepare_resources', return_value=resources) as prepare, \
                         patch('scripts.build_portable.subprocess.run', side_effect=bundle), \
+                        patch('scripts.build_portable.write_archive', side_effect=fixture_archive), \
                         patch('scripts.build_portable.copy_licenses', side_effect=lambda target: (target / 'Apache-2.0.txt').write_text('license fixture')), \
                         patch('backend.paths.logging.getLogger', return_value=logger), \
                         patch.dict('os.environ'), patch('tempfile.tempdir', tempfile.tempdir), \
@@ -98,19 +129,67 @@ class PortableResourcesSmoke(unittest.TestCase):
             self.assertFalse(list((repo / 'dev/build/tmp').glob('portable-build-*')))
             self.assertEqual((front / 'index.html').read_text(), 'frontend fixture')
             with zipfile.ZipFile(result['archive']) as archive:
-                seed = 'Pictide/data/runtime/pictide/_internal/resources/'
+                internal = ('Pictide.app/Contents/Frameworks/' if target_platform == 'darwin'
+                            else 'Pictide/_internal/' if target_platform == 'win32'
+                            else 'Pictide/data/runtime/pictide/_internal/')
+                seed = internal + 'resources/'
                 manifest = json.loads(archive.read(seed + 'manifest.json'))
                 self.assertEqual(manifest['provenance'], provenance)
                 self.assertEqual(manifest['model'], model_catalog())
                 self.assertEqual([item['path'] for item in manifest['files']], ['libraries/neutral.sqlite3'])
-                self.assertIn('Pictide/data/runtime/pictide/_internal/backend/recommand/model.json', archive.namelist())
+                self.assertIn(internal + 'backend/recommand/model.json', archive.namelist())
                 self.assertIn(seed + 'libraries/neutral.sqlite3', archive.namelist())
+                names = archive.namelist()
+                if target_platform == 'win32':
+                    self.assertIn('Pictide/Pictide.exe', names)
+                    self.assertFalse(any(name.startswith('Pictide/data/') or name.endswith('start.cmd') for name in names))
+                elif target_platform == 'darwin':
+                    self.assertIn('Pictide.app/Contents/MacOS/Pictide', names)
+                    self.assertIn('Pictide.app/Contents/MacOS/PictideService', names)
+                    self.assertIn('Pictide.app/Contents/Resources/LICENSE', names)
+                    self.assertIn('Pictide.app/Contents/Resources/desktop.png', names)
+                    info = plistlib.loads(archive.read('Pictide.app/Contents/Info.plist'))
+                    self.assertTrue(info['LSUIElement'])
+                    self.assertTrue(info['NSHighResolutionCapable'])
+                    self.assertEqual(info['CFBundleShortVersionString'], __version__)
+                    self.assertFalse(any(name.endswith('start.command') for name in names))
+                    signing = [command for command in commands if command[0] == '/usr/bin/codesign']
+                    self.assertEqual(len(signing), 3)
+                    self.assertTrue(Path(signing[0][-1]).as_posix().endswith('Contents/MacOS/Pictide'))
+                    self.assertTrue(signing[1][-1].endswith('Pictide.app'))
+                else:
+                    self.assertIn('Pictide/start.sh', names)
+                    self.assertIn('Pictide/data/runtime/pictide/Pictide', names)
                 self.assertFalse(any(name.endswith('.onnx') or '/models/' in name for name in archive.namelist()))
                 self.assertFalse(any('/db/' in name or '/images/' in name for name in archive.namelist()))
                 exported = root / 'exported.sqlite3'
                 exported.write_bytes(archive.read(seed + 'libraries/neutral.sqlite3'))
                 with closing(sqlite3.connect(exported)) as db:
                     self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='presets'").fetchone())
+
+    def test_macos_archive_uses_native_bundle_archiver(self):
+        with patch('scripts.build_portable.sys.platform', 'darwin'), patch('scripts.build_portable.subprocess.run') as run:
+            write_archive(Path('Pictide.app'), Path('native.zip'))
+        run.assert_called_once_with(['/usr/bin/ditto', '-c', '-k', '--keepParent', 'Pictide.app', 'native.zip'], check=True)
+
+    def test_macos_smoke_checks_both_native_entries_and_framework(self):
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / 'unpacked'
+            package = destination / 'Pictide.app'
+            native = package / 'Contents/MacOS'
+            native.mkdir(parents=True)
+            frameworks = package / 'Contents/Frameworks'
+            (frameworks / 'Python.framework').mkdir(parents=True)
+            for entry in (native / 'Pictide', native / 'PictideService', frameworks / 'Python'):
+                entry.write_bytes(b'native fixture')
+                entry.chmod(0o755)
+            with patch('scripts.smoke_portable.sys.platform', 'darwin'), \
+                    patch('scripts.smoke_portable.subprocess.run') as run:
+                run.return_value.stdout = 'usage: Pictide --data-dir PATH'
+                self.assertEqual(unpack(Path('mac.zip'), destination), native / 'PictideService')
+            commands = [call.args[0] for call in run.call_args_list]
+            self.assertEqual(commands[0], ['/usr/bin/ditto', '-x', '-k', 'mac.zip', str(destination)])
+            self.assertEqual(commands[-2:], [[str(native / 'PictideService'), '--help'], [str(native / 'Pictide'), '--help']])
 
     def test_failed_build_preserves_final_archives_and_writes_failure_report(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -162,11 +241,19 @@ class PortableResourcesSmoke(unittest.TestCase):
 
     def test_portable_default_uses_executable_location(self):
         with tempfile.TemporaryDirectory() as directory:
-            expected = Path(directory).resolve() / 'data'
-            executable = expected / 'runtime/pictide/Pictide.exe'
-            with patch('backend.paths.sys.executable', str(executable)), patch('backend.paths.sys.frozen', True, create=True), patch.dict('os.environ', {}, clear=True):
-                self.assertEqual(DataPaths().root, expected)
-                self.assertEqual(DataPaths(expected / 'custom').root, expected / 'custom')
+            root = Path(directory).resolve()
+            cases = [('win32', root / 'Pictide/Pictide.exe', root / 'Pictide/data'),
+                     ('darwin', root / 'Pictide.app/Contents/MacOS/PictideService', root / 'Library/Application Support/Pictide'),
+                     ('linux', root / 'Pictide/data/runtime/pictide/Pictide', root / 'Pictide/data')]
+            for target, executable, expected in cases:
+                with self.subTest(platform=target), patch('backend.paths.sys.platform', target), \
+                        patch('backend.paths.Path.home', return_value=root), \
+                        patch('backend.paths.sys.executable', str(executable)), \
+                        patch('backend.paths.sys.frozen', True, create=True), patch.dict('os.environ', {}, clear=True):
+                    self.assertEqual(DataPaths().root, expected)
+                    self.assertEqual(DataPaths(root / 'custom').root, root / 'custom')
+                    with patch.dict('os.environ', {'PICTIDE_DATA_DIR': str(root / 'environment')}):
+                        self.assertEqual(DataPaths().root, root / 'environment')
 
 
 class BrowserStartupSmoke(unittest.IsolatedAsyncioTestCase):

@@ -16,7 +16,15 @@ class DataPaths:
     root: Path
 
     def __init__(self, data_dir=None):
-        default = Path(sys.executable).resolve().parents[2] if getattr(sys, "frozen", False) else ROOT / "data"
+        default = ROOT / "data"
+        if getattr(sys, "frozen", False):
+            executable = Path(sys.executable).resolve()
+            if sys.platform == 'darwin':
+                default = Path.home() / 'Library/Application Support/Pictide'
+            elif sys.platform == 'win32':
+                default = executable.parent / 'data'
+            else:
+                default = executable.parents[2]
         selected = data_dir if data_dir is not None else os.environ.get("PICTIDE_DATA_DIR") or os.environ.get("PICTIDE_WEB_DATA_DIR") or default
         object.__setattr__(self, "root", Path(selected).expanduser().resolve())
 

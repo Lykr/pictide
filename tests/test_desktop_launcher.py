@@ -1,5 +1,6 @@
 """Progress processes exit after readiness; failures and no-tray fallback stay visible."""
 import os
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -8,6 +9,25 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from backend.desktop_launcher import STATUS_ENV, launch_desktop
+
+
+class DesktopParentPipeSmoke(unittest.TestCase):
+    def test_worker_exits_when_owning_launcher_closes_pipe(self):
+        # Exercise an actual inherited stdin pipe; no app data or HTTP server.
+        process = subprocess.Popen([sys.executable, '-c',
+            'import time; from backend.desktop_launcher import watch_desktop_parent; '
+            'watch_desktop_parent(); print("watching", flush=True); time.sleep(30)'],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            self.assertEqual(process.stdout.readline().strip(), b'watching')
+            self.assertIsNone(process.poll())
+            process.stdin.close()
+            self.assertNotEqual(process.wait(timeout=5), 0)
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=5)
+            process.stdout.close(); process.stderr.close()
 
 
 @unittest.skipUnless(sys.platform == 'win32', 'Windows desktop process creation')

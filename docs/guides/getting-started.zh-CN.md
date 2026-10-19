@@ -12,7 +12,7 @@
 
 已有本地 ComfyUI 就连接它；希望使用云端模型，可以选择 OpenAI Images 或 Gemini。Pictide 不自带生图模型。使用 ComfyUI 时，需要分别启动两个应用。
 
-Windows、Linux 和 macOS 便携包已通过构建与启动检查；云端服务真实出图尚待验证。
+旧版 Windows、Linux 和 macOS 便携包已通过原生构建与启动检查。新桌面分发方式见各平台指南，Mac 桌面体验仍待实机验证；云端服务真实出图尚待验证。
 
 首次进入时，选择「带我看看」，跟着简短引导接入服务、探索图片。随时可以结束，也能在「设置 → 通用 → 新手引导」重新开始。
 
@@ -47,7 +47,7 @@ Windows、Linux 和 macOS 便携包已通过构建与启动检查；云端服务
 <details>
 <summary>离线首次启动：手动准备模型</summary>
 
-在可联网的机器下载以下五个文件，保留文件名，放入所选数据目录的 `models/minilm/`（默认 `data/models/minilm/`），再启动 Pictide。版本和校验值见[模型清单](../../backend/recommand/model.json)。
+在可联网的机器下载以下五个文件，保留文件名，放入所选[数据目录](backup.zh-CN.md#数据位置)的 `models/minilm/`，再启动 Pictide。版本和校验值见[模型清单](../../backend/recommand/model.json)。
 
 - [model.onnx](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/model.onnx)
 - [tokenizer.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/tokenizer.json)

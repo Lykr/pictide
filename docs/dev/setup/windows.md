@@ -59,4 +59,4 @@ GitHub 多平台自动构建、资源上传与版本标签步骤见 [GitHub Acti
 .\dev\runtime\builder\Scripts\python.exe scripts/build_portable.py --dataset-dir DATASET_PATH --cache-dir CACHE_PATH --profile corpus/profiles/compact.json
 ```
 
-`DATASET_PATH` 使用含 `raw/` 与 `download.sqlite3` 的数据集根目录。默认将最终 `pictide-版本-平台-架构.zip` 放入 `releases/`，无需手工创建目录，文件名不含日期。`--output-dir DIR` 可指定已有的最终包收集目录；本地重复构建在归档检查完成后原子替换同名 ZIP，保留其他版本，失败时保留已有最终包。临时构建与展开目录在成功或失败后自动回收，报告保存在 `dev/verification/portable/版本-平台-架构/build-report.json`，失败时也保留。解压 ZIP 后启动 Pictide。Windows 托盘启动需使用本次源码新构建的便携包；已有发行包保持其原有启动方式。缓存校验与恢复规则见[发行资源准备](../issues/portable-build-cache.md)，各平台历史验证范围见[发行记录](../issues/automatic-startup.md)。
+`DATASET_PATH` 使用含 `raw/` 与 `download.sqlite3` 的数据集根目录。默认将最终 `pictide-版本-平台-架构.zip` 放入 `releases/`，无需手工创建目录，文件名不含日期。`--output-dir DIR` 可指定已有的最终包收集目录；本地重复构建在归档检查完成后原子替换同名 ZIP，保留其他版本，失败时保留已有最终包。临时构建与展开目录在成功或失败后自动回收，报告保存在 `dev/verification/portable/版本-平台-架构/build-report.json`，失败时也保留。解压 ZIP 后双击最外层 `Pictide.exe`，保持 `_internal/` 与程序并列，个人数据放在 `data/`。调试运行 `.\Pictide.exe --cli`。新分发入口需使用当前源码新构建的包；已有发行包保持原启动方式。缓存校验与恢复规则见[发行资源准备](../issues/portable-build-cache.md)，各平台历史验证范围见[发行记录](../issues/automatic-startup.md)。

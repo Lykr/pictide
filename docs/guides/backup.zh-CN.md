@@ -8,14 +8,14 @@
 
 ## 数据位置
 
-在「设置 → 通用」查看当前数据目录。默认是便携包或项目中的 `data/`；移动整个便携目录时，个人数据会一起保留。
+在「设置 → 通用」查看当前数据目录。Windows 和 Linux 发行包默认使用程序旁的 `data/`，macOS 应用使用 `~/Library/Application Support/Pictide/`；源码版使用项目内 `data/`。
 
 想把数据放到其他磁盘，按系统设置：[Windows](setup/windows.zh-CN.md#端口与数据目录) · [Linux](setup/linux.zh-CN.md#端口与数据目录) · [macOS](setup/macos.zh-CN.md#端口与数据目录)。
 
 ## 备份与恢复
 
 1. 关闭 Pictide，等待程序退出。
-2. 复制整个数据目录到备份位置。便携版也可以直接备份整个程序目录。
+2. 复制整个数据目录到备份位置。Windows 和 Linux 便携版也可以直接备份整个程序目录；macOS 需单独备份数据目录。
 3. 恢复时先关闭程序、另存当前数据，再用备份替换数据目录。
 4. 重新启动，检查图片、喜欢记录与生图 API 设置。
 

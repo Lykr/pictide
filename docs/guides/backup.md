@@ -8,14 +8,14 @@ Back up your data directory before upgrading or moving computers to keep your im
 
 ## Data location
 
-Find the current directory under Settings → General. It defaults to `data/` inside the portable package or project. Moving the entire portable directory keeps your personal data with it.
+Find the current directory under Settings → General. Windows and Linux packages default to `data/` beside the program; the macOS app uses `~/Library/Application Support/Pictide/`. Source deployments use the project's `data/`.
 
 To store data on another drive, follow the steps for [Windows](setup/windows.md#port-and-data-directory), [Linux](setup/linux.md#port-and-data-directory), or [macOS](setup/macos.md#port-and-data-directory).
 
 ## Backup and recovery
 
 1. Close Pictide and wait for it to exit.
-2. Copy the entire data directory to your backup location. For portable editions, you can back up the whole application directory instead.
+2. Copy the entire data directory to your backup location. For Windows and Linux portable editions, you can back up the whole application directory instead. On macOS, back up the separate data directory even when you keep a copy of the app.
 3. To restore, close the application, save a separate copy of your current data, and replace the data directory with the backup.
 4. Restart and check your images, likes, and Image API settings.
 

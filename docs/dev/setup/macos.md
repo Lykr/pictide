@@ -22,6 +22,10 @@ chmod +x start.sh start.command
 
 ## 构建便携包
 
+构建 `.app` 需要 Xcode Command Line Tools 提供的 Swift 编译器与 AppKit SDK；先用 `xcrun --find swiftc` 确认可用。GitHub macOS runner 已提供这些构建工具，发行包使用系统框架运行。
+
+先安装 Xcode Command Line Tools（`xcode-select --install`），供构建时 `swiftc` 编译系统 AppKit 原生入口；运行包复用系统框架，无需安装 Swift 或第三方 GUI 环境。
+
 一次准备[开发环境要求](../development.md#首次准备检出目录)中的 Python、Node.js 和 pnpm，并在本机项目根目录创建独立构建环境。构建使用 Python 3.11+（推荐 3.12，PyArrow 26 要求 3.11+）；应用运行仍支持 Python 3.10+：
 
 ```bash
@@ -54,6 +58,6 @@ GitHub 多平台自动构建、资源上传与版本标签步骤见 [GitHub Acti
 ./dev/runtime/builder/bin/python scripts/build_portable.py --dataset-dir DATASET_PATH --cache-dir CACHE_PATH --profile corpus/profiles/compact.json
 ```
 
-`DATASET_PATH` 使用含 `raw/` 与 `download.sqlite3` 的数据集根目录。默认将最终 `pictide-版本-平台-架构.zip` 放入 `releases/`，无需手工创建目录，文件名不含日期。`--output-dir DIR` 可指定已有的最终包收集目录；本地重复构建在归档检查完成后原子替换同名 ZIP，保留其他版本，失败时保留已有最终包。临时构建与展开目录在成功或失败后自动回收，报告保存在 `dev/verification/portable/版本-平台-架构/build-report.json`，失败时也保留。解压 ZIP 后启动 Pictide。缓存校验与恢复规则见[发行资源准备](../issues/portable-build-cache.md)，各平台历史验证范围见[发行记录](../issues/automatic-startup.md)。
+`DATASET_PATH` 使用含 `raw/` 与 `download.sqlite3` 的数据集根目录。默认将最终 `pictide-版本-平台-架构.zip` 放入 `releases/`，无需手工创建目录，文件名不含日期。`--output-dir DIR` 可指定已有的最终包收集目录；本地重复构建在归档检查完成后原子替换同名 ZIP，保留其他版本，失败时保留已有最终包。临时构建与展开目录在成功或失败后自动回收，报告保存在 `dev/verification/portable/版本-平台-架构/build-report.json`，失败时也保留。ZIP 直接包含 `Pictide.app`，用户拖入「应用程序」后启动。`Contents/MacOS/Pictide` 是原生 AppKit 入口，`PictideService` 是目录式 Python 引擎；CLI 可执行 `/Applications/Pictide.app/Contents/MacOS/Pictide --cli`。构建采用 ad-hoc 签名，暂不接入 Developer ID 或 Apple 公证。默认个人数据位于 `~/Library/Application Support/Pictide/`，替换应用保留数据。缓存校验与恢复规则见[发行资源准备](../issues/portable-build-cache.md)，各平台历史验证范围见[发行记录](../issues/automatic-startup.md)。
 
-macOS ARM64 和 Intel 已通过原生 CI 构建和启动冒烟，包含首次模型下载、词库初始化及 HTTP 资源检查，见[多平台验证记录](../issues/github-releases.md#2026-10-19-多平台验证)。
+旧版 macOS ARM64 和 Intel 目录包已通过原生 CI 构建和启动冒烟，见[多平台验证记录](../issues/github-releases.md#2026-10-19-多平台验证)。新 `.app` 的原生构建、菜单、首次打开和退出仍需 Mac 验证；v0.4.0 用户端 Python 加载错误尚未查明，不能据包装变化视为已修复。当前验证状态见[桌面分发](../issues/desktop-distribution.md)。

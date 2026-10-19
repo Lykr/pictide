@@ -34,6 +34,28 @@ class Assets(HTMLParser):
 
 
 def unpack(archive, directory):
+    directory = Path(directory)
+    if sys.platform == 'darwin':
+        directory.mkdir(parents=True, exist_ok=True)
+        subprocess.run(['/usr/bin/ditto', '-x', '-k', str(archive), str(directory)], check=True)
+        package = directory / 'Pictide.app'
+        for path in package.rglob('*'):
+            if path.is_symlink() and (not path.exists() or not path.resolve().is_relative_to(package.resolve())):
+                raise RuntimeError('App bundle contains a broken or external symlink: ' + str(path))
+        executable = package / 'Contents/MacOS/PictideService'
+        launcher = package / 'Contents/MacOS/Pictide'
+        framework = package / 'Contents/Frameworks/Python.framework'
+        if not framework.is_dir() or not (package / 'Contents/Frameworks/Python').is_file():
+            raise RuntimeError('App bundle is missing its Python framework or library link')
+        subprocess.run(['/usr/bin/codesign', '--verify', '--deep', '--strict', str(package)], check=True)
+        subprocess.run(['/usr/bin/codesign', '--verify', str(framework)], check=True)
+        for entry in (executable, launcher):
+            if not entry.is_file() or not os.access(entry, os.X_OK):
+                raise RuntimeError('Missing executable app entry: ' + str(entry))
+            result = subprocess.run([str(entry), '--help'], capture_output=True, text=True, timeout=30, check=True)
+            if '--data-dir' not in result.stdout:
+                raise RuntimeError('App entry did not delegate command-line help: ' + str(entry))
+        return executable
     links = []
     with zipfile.ZipFile(archive) as bundle:
         for item in bundle.infolist():
@@ -61,9 +83,9 @@ def unpack(archive, directory):
         if not path.resolve().is_relative_to(directory.resolve()) or not path.exists():
             raise RuntimeError('Archive contains a broken or external symlink')
     root = directory / 'Pictide'
-    executable = root / 'data/runtime/pictide' / ('Pictide.exe' if os.name == 'nt' else 'Pictide')
-    launcher = root / ('start.cmd' if os.name == 'nt' else 'start.command' if sys.platform == 'darwin' else 'start.sh')
-    for path in (executable, launcher):
+    executable = root / 'Pictide.exe' if sys.platform == 'win32' else root / 'data/runtime/pictide/Pictide'
+    entries = (executable,) if sys.platform == 'win32' else (executable, root / 'start.sh')
+    for path in entries:
         if not path.is_file():
             raise RuntimeError('Missing portable entry: ' + str(path))
         if os.name != 'nt' and not os.access(path, os.X_OK):
@@ -106,12 +128,14 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
         try:
             executable = unpack(archive, directory / 'unpacked')
             report['checks'].append('archive entries and native executable permissions')
-            internal = executable.parent / '_internal'
+            if sys.platform == 'darwin':
+                report['checks'].append('macOS ditto roundtrip, internal framework links, code signatures and both entry help commands')
+            internal = executable.parent.parent / 'Frameworks' if sys.platform == 'darwin' else executable.parent / '_internal'
             manifest = json.loads((internal / 'resources/manifest.json').read_text(encoding='utf-8'))
             catalog = json.loads((internal / 'backend/recommand/model.json').read_text(encoding='utf-8'))
             if manifest['model'] != catalog or any(not item['path'].startswith('libraries/') for item in manifest['files']):
                 raise RuntimeError('Portable resources must contain only vocabulary files and the locked model catalog')
-            if any(path.name == 'model.onnx' or path.suffix == '.safetensors' for path in executable.parent.rglob('*')):
+            if any(path.name == 'model.onnx' or path.suffix == '.safetensors' for path in internal.rglob('*')):
                 raise RuntimeError('Portable archive must not bundle model weights')
             report['checks'].append('vocabulary-only seed, locked model catalog and no bundled model weights')
             data = directory / 'fresh-data'
@@ -148,7 +172,7 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
             environment['PICTIDE_DATA_DIR'] = environment['PICTIDE_WEB_DATA_DIR'] = str(data)
             environment.pop('HF_HUB_OFFLINE', None)
             with log_path.open('wb') as log:
-                process = subprocess.Popen([str(executable), '--data-dir', str(data), '--host', '127.0.0.1',
+                process = subprocess.Popen([str(executable), '--cli', '--data-dir', str(data), '--host', '127.0.0.1',
                                             '--port', str(port), '--no-browser'], cwd=executable.parent,
                                            stdout=log, stderr=subprocess.STDOUT, env=environment,
                                            start_new_session=os.name != 'nt',

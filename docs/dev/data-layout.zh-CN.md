@@ -6,7 +6,7 @@
 
 ## 数据位置
 
-数据目录按「启动参数 → PICTIDE_DATA_DIR → 旧 PICTIDE_WEB_DATA_DIR → 默认 data」选择。源码版默认使用项目内 data；便携版默认使用发行目录中的 data。移动整个便携目录后，个人数据与程序一起保留。
+数据目录按「启动参数 → PICTIDE_DATA_DIR → 旧 PICTIDE_WEB_DATA_DIR → 默认 data」选择。源码版默认使用项目内 `data/`。Windows 和 Linux 发行包默认使用程序旁的 `data/`；macOS 应用默认使用包外的 `~/Library/Application Support/Pictide/`。替换 macOS 应用保留个人数据，移动 Windows 或 Linux 整个便携目录会同时带走数据。
 
 自定义目录按系统查阅：[Windows](../guides/setup/windows.zh-CN.md#端口与数据目录) · [Linux](../guides/setup/linux.zh-CN.md#端口与数据目录) · [macOS](../guides/setup/macos.zh-CN.md#端口与数据目录)。相对路径按运行命令时所在目录解析。
 
@@ -23,7 +23,7 @@
 | `images/` | 图片及同名提示词 JSON，仅含 positive / negative |
 | `workflows/` | API 工作流；.backups 保存更新或删除前的版本 |
 | `history-cleanup.json` | 历史图片保留天数，缺省 1 天 |
-| `runtime/` | 程序与依赖：源码版 venv；便携版 pictide 程序及随包资源 |
+| `runtime/` | 源码 Python 环境；现有 Linux 包也在此保存随包程序。新 Windows 与 macOS 包的程序依赖位于用户数据之外 |
 | `cache/` | Python、pip 等运行缓存，可重新生成 |
 | `tmp/` | 运行临时文件 |
 | `logs/` | 运行日志 |
@@ -53,7 +53,7 @@
 
 便携构建独立于运行数据准备资源。构建环境一次准备后，`scripts/build_portable.py` 自动安装锁定的前端依赖、检查类型并构建临时前端产物，再准备资源与打包，保留源码运行目录 `web/dist/`。最终包收集目录默认为 `releases/`，`--output-dir DIR` 可指定已有目录。本地重复构建在归档检查完成后原子替换同名 ZIP，保留其他版本，失败时保留已有最终包。[预构建发行词库](corpus.zh-CN.md#预构建词库)作为固定资源 Release 附件保存，由 Git 跟踪的 `corpus/prebuilt.json` 引用；SQLite 文件保留在 Git 之外。GitHub Actions 校验并打包这些文件，省去原始元数据处理。词库指纹、校验与原始数据保留规则见[构建资源记录](issues/portable-build-cache.md)。模型文件改为应用启动时准备到运行数据目录，由唯一固定清单 `backend/recommand/model.json` 定义；`corpus/resources.json` 仅记录原始数据集。详见[模型启动准备变更](issues/minilm-startup-download.md)。
 
-源码版和便携版使用相同的运行数据职责与相对路径；源码版的启动环境是 data/runtime/venv，便携版的程序与依赖是 data/runtime/pictide。历史报告中的路径反映当时位置，当前映射见 dev/maintenance。ComfyUI 的模型、环境与输出由 ComfyUI 管理。
+源码版与发行版使用相同的个人数据职责与相对路径。源码启动环境是 `data/runtime/venv`。Windows 将 `Pictide.exe`、`_internal/` 与 `data/` 并列；macOS 将原生 `Pictide` 入口、`PictideService` 引擎、framework 和随包资源封装在 `Pictide.app` 内。Linux 保留 `data/runtime/pictide/`。历史报告中的路径反映当时位置，当前映射见 dev/maintenance。ComfyUI 的模型、环境与输出由 ComfyUI 管理。
 
 ## 数据生命周期
 
