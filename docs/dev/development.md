@@ -46,7 +46,7 @@ cd ../pictide-example
 
 通过 `--dataset-dir`、`--cache-dir` 和 `--profile` 可分别指定原始数据目录、缓存目录与处理配置。指定 `--prebuilt-library DIR` 时，`DIR` 必须包含匹配当前源数据版本、配置和处理代码的 `vocabulary.sqlite3` 与 `report.json`；校验失败即终止，不回退到原始数据处理。该路径无需安装 PyArrow、SciPy 等离线处理依赖。源码和便携启动共用 `prepare_startup`，在创建 HTTP 服务、打开页面前校验并补齐所选数据目录下的 MiniLM；失败终止启动，重启后续传。词库导出、清单与指纹规则见[预构建词库](corpus.zh-CN.md#预构建词库)。
 
-PyInstaller 临时构建在 `dev/build/`，最终产物包含 Pictide 目录、ZIP 和 `build-report.json`。省略 `--output-dir` 时在 `releases/` 下按版本、平台与时间创建新目录，也可显式指定新目录。运行用户直接启动产物，词库初始化沿用[便携发行方案](issues/automatic-startup.md)，模型下载与离线准备见[安装与接入](../guides/getting-started.zh-CN.md#推荐模型启动准备)。
+PyInstaller 临时构建在 `dev/build/`，最终产物包含 Pictide 目录、ZIP 和 `build-report.json`。省略 `--output-dir` 时在 `releases/` 下按版本、平台与时间创建新目录，也可显式指定新目录。运行用户直接启动产物，词库初始化沿用[便携发行方案](issues/automatic-startup.md)，模型下载与离线准备见[安装与接入](../guides/getting-started.zh-CN.md#推荐依赖准备)。
 
 ### GitHub Actions 发版
 

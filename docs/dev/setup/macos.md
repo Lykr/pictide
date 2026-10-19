@@ -31,7 +31,7 @@ python3.12 -m venv dev/runtime/builder
 ./dev/runtime/builder/bin/python scripts/build_portable.py
 ```
 
-原始数据默认长期保存在 `dev/datasets/danbooru-2026/`，可重建的词库与统计缓存放在 `dev/cache/portable/`。缺少资源时自动补充下载并按 `corpus/profiles/compact.json` 处理词库；有效词库缓存可离线准备发行资源。清理构建缓存保留原始数据，可直接本地重新统计。构建独立于应用运行目录 `data/`。MiniLM 文件不参与构建，用户启动时完成[模型准备](../../guides/getting-started.zh-CN.md#推荐模型启动准备)后才进入应用；推理依赖仍随包交付。
+原始数据默认长期保存在 `dev/datasets/danbooru-2026/`，可重建的词库与统计缓存放在 `dev/cache/portable/`。缺少资源时自动补充下载并按 `corpus/profiles/compact.json` 处理词库；有效词库缓存可离线准备发行资源。清理构建缓存保留原始数据，可直接本地重新统计。构建独立于应用运行目录 `data/`。MiniLM 文件不参与构建，用户启动时完成[推荐依赖准备](../../guides/getting-started.zh-CN.md#推荐依赖准备)后才进入应用；推理依赖仍随包交付。
 
 已有[预构建词库](../corpus.zh-CN.md#预构建词库)时，可省略安装 `corpus/requirements.txt`，改用以下命令；`PREBUILT_DIR` 包含 `vocabulary.sqlite3` 与 `report.json`，校验失败即终止：
 

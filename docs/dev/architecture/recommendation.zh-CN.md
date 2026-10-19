@@ -79,11 +79,11 @@ flowchart TD
 
 图片信息中的偏好评分复用确定性原始分缓存，手动刷新才重算已有缓存；界面的 0–100 是历史范围相对刻度，不是喜欢概率。详见[评分接口](../reference/api/images.zh-CN.md#喜欢筛选与图片偏好评分)和[缓存设计记录](../issues/image-score-cache.md)。
 
-## 模型准备
+## 推荐依赖准备
 
-推荐模型使用离线 FastEmbed 格式的 [MiniLM ONNX 模型](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx)。`backend/recommand/model.json` 统一定义固定来源版本、五个必需文件、字节数与 SHA-256。`backend/recommand/resources.py` 将文件准备并校验到所选数据目录的 `models/minilm/`，支持断点续传；已有无效文件在成功替换前保留备份。
+推荐依赖 [MiniLM](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx) 负责文本向量编码，使用离线 FastEmbed 格式的 ONNX 文件。`backend/recommand/model.json` 统一定义固定来源版本、五个必需文件、字节数与 SHA-256。`backend/recommand/resources.py` 将文件准备并校验到所选数据目录的 `models/minilm/`，支持断点续传；已有无效文件在成功替换前保留备份。
 
-源码与便携启动共用 `backend/application.py` 的 `PictideApplication.prepare_startup()`：先初始化随包词库，再准备模型。准备成功后，Host 才创建 HTTP 服务并打开页面。下载或校验失败则终止启动；重启后利用保留的 `.part` 文件重试。有效本地文件支持离线启动。用户步骤见[启动与离线模型准备](../../guides/getting-started.zh-CN.md#推荐模型启动准备)，边界变化见[启动前准备设计](../issues/minilm-startup-download.md)。
+源码与便携启动共用 `backend/application.py` 的 `PictideApplication.prepare_startup()`：先初始化随包词库，再准备模型。准备成功后，Host 才创建 HTTP 服务并打开页面。下载或校验失败则终止启动；重启后利用保留的 `.part` 文件重试。有效本地文件支持离线启动。用户步骤见[启动与离线模型准备](../../guides/getting-started.zh-CN.md#推荐依赖准备)，边界变化见[启动前准备设计](../issues/minilm-startup-download.md)。
 
 便携构建携带固定清单与 CPU 推理依赖（FastEmbed、ONNX Runtime、tokenizers），不下载或打包模型权重。编码器继续只读本地模型；运行中的编码器可用状态通过 bootstrap 的 `recommendation` 和漫游响应报告。Python 3.12 已完成验证，较旧 Python 的兼容依赖由安装器选择。
 

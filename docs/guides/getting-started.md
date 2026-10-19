@@ -8,7 +8,7 @@ Connect an image generation service and start exploring, without writing prompts
 
 ## Before you start
 
-Download and extract a portable package, then follow the startup steps for [Windows](setup/windows.md#portable-edition), [Linux](setup/linux.md#portable-edition), or [macOS](setup/macos.md#portable-edition). It includes the runtime and tag library; the recommendation model below downloads on first launch. Once the browser opens, connect a service under Settings → Image API.
+Download and extract a portable package, then follow the startup steps for [Windows](setup/windows.md#portable-edition), [Linux](setup/linux.md#portable-edition), or [macOS](setup/macos.md#portable-edition). It includes the runtime and tag library; the recommendation dependency below downloads on first launch. Once the browser opens, connect a service under Settings → Image API.
 
 Connect your local ComfyUI installation, or choose OpenAI Images or Gemini for cloud generation. Pictide does not include an image generation model. When using ComfyUI, start both applications separately.
 
@@ -40,9 +40,9 @@ Images, likes, and preferences stay local. Prompts and generation options go to 
 
 Once a request starts, local cancellation cannot guarantee remote cancellation or prevent charges. If a request times out or its result is uncertain, check your provider's activity before retrying.
 
-## Recommendation model startup
+## Recommendation dependency preparation
 
-First launch downloads about **91 MB** of MiniLM recommendation model files. Keep the launcher window open until downloading and verification finish; the application opens afterward. If downloading fails, restore connectivity and restart to resume. Completed downloads are reused offline.
+First launch downloads MiniLM, a recommendation dependency (about **91 MB**). Keep the launcher window open until downloading and verification finish; the application opens afterward. If downloading fails, restore connectivity and restart to resume. Completed downloads are reused offline.
 
 <details>
 <summary>First launch offline: prepare the model manually</summary>

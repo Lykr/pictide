@@ -6,7 +6,7 @@
 
 ## 便携版本
 
-解压与 Mac 芯片匹配的便携包，双击 `start.command`。首次启动等待[推荐模型下载](../getting-started.zh-CN.md#推荐模型启动准备)，完成后自动打开浏览器。接下来[连接生图服务](../getting-started.zh-CN.md)，开始漫游。
+解压与 Mac 芯片匹配的便携包，双击 `start.command`。首次启动等待[推荐依赖下载](../getting-started.zh-CN.md#推荐依赖准备)，完成后自动打开浏览器。接下来[连接生图服务](../getting-started.zh-CN.md)，开始漫游。
 
 保持启动终端打开，按 Ctrl+C 停止。个人数据保存在包内 `data/`，下次启动会继续使用。
 

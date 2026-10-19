@@ -35,7 +35,7 @@ python -m pip install -r corpus/requirements.txt
 
 本地 `scripts/build_portable.py` 默认使用 `corpus/profiles/compact.json` 对应的 `filtered` 版，可处理原始数据，也可通过 `--prebuilt-library DIR` 复用已导出的词库。两种路径都使用独立构建环境，不读写开发应用的 `data/`。本机步骤见 [Windows](setup/windows.md#构建便携包)、[Linux](setup/linux.md#构建便携包) 或 [macOS](setup/macos.md#构建便携包)。
 
-原始分片与 `download.sqlite3` 长期保存在 `dev/datasets/danbooru-2026/`；仅按固定源版本补齐缺失分片。统计中间结果与成品词库放在 `dev/cache/portable/`。清理构建缓存保留原始数据，可直接本地重新统计；有效词库缓存可离线准备发行词库。通过 `--dataset-dir`、`--cache-dir` 或 `--profile` 调整目录和处理配置。Corpus 只准备词库；MiniLM 改为[应用启动前准备](../guides/getting-started.zh-CN.md#推荐模型启动准备)。指纹与文件校验规则见[构建缓存记录](issues/portable-build-cache.md)。下文保留其他词库规格的手动处理入口。
+原始分片与 `download.sqlite3` 长期保存在 `dev/datasets/danbooru-2026/`；仅按固定源版本补齐缺失分片。统计中间结果与成品词库放在 `dev/cache/portable/`。清理构建缓存保留原始数据，可直接本地重新统计；有效词库缓存可离线准备发行词库。通过 `--dataset-dir`、`--cache-dir` 或 `--profile` 调整目录和处理配置。Corpus 只准备词库；MiniLM 改为[应用启动前准备](../guides/getting-started.zh-CN.md#推荐依赖准备)。指纹与文件校验规则见[构建缓存记录](issues/portable-build-cache.md)。下文保留其他词库规格的手动处理入口。
 
 ### 预构建词库
 

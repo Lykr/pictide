@@ -172,7 +172,7 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
                 report['checks'].append('HTTP bootstrap with fresh isolated data and no generation jobs')
                 recommendation = bootstrap['recommendation']
                 if not recommendation['available'] or recommendation.get('error'):
-                    raise RuntimeError('Downloaded recommendation model is unavailable: ' + str(recommendation))
+                    raise RuntimeError('Downloaded recommendation dependency is unavailable: ' + str(recommendation))
                 for item in catalog['files']:
                     model_file = data / 'models/minilm' / item['path']
                     with model_file.open('rb') as handle:

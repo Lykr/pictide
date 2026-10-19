@@ -8,7 +8,7 @@
 
 The startup behavior below applies to the current source and portable packages built from it.
 
-Extract the Windows portable package and double-click `start.cmd`. A temporary window shows startup progress, including the first [recommendation model download](../getting-started.md#recommendation-model-startup). When ready, the startup process exits and Pictide opens your browser, running through the system tray with no service terminal window. Startup failures remain visible. Next, [connect an image service](../getting-started.md) and start roaming.
+Extract the Windows portable package and double-click `start.cmd`. A temporary window shows startup progress, including the first [recommendation dependency download](../getting-started.md#recommendation-dependency-preparation). When ready, the startup process exits and Pictide opens your browser, running through the system tray with no service terminal window. Startup failures remain visible. Next, [connect an image service](../getting-started.md) and start roaming.
 
 Closing the browser keeps Pictide running. Use its tray menu to reopen Pictide, view logs, or exit. Startup messages and the tray menu follow your system language, with Simplified Chinese and English supported. Personal data stays in the package's `data/` directory.
 

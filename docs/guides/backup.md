@@ -19,7 +19,7 @@ To store data on another drive, follow the steps for [Windows](setup/windows.md#
 3. To restore, close the application, save a separate copy of your current data, and replace the data directory with the backup.
 4. Restart and check your images, likes, and Image API settings.
 
-Backups also contain prompt presets, workflows, libraries, recommendation models, and API keys. Store them securely.
+Backups also contain prompt presets, workflows, libraries, recommendation dependencies, and API keys. Store them securely.
 
 When moving between operating systems, prepare the appropriate application first, then copy `db/`, `images/`, `workflows/`, `history-cleanup.json`, `libraries/`, and `models/` from the same backup. Leave the old operating system's runtime behind.
 

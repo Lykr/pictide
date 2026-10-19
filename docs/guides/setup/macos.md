@@ -6,7 +6,7 @@
 
 ## Portable edition
 
-Extract the portable package matching your Mac's chip and double-click `start.command`. On first launch, wait for the [recommendation model download](../getting-started.md#recommendation-model-startup); the browser opens when ready. Next, [connect an image service](../getting-started.md) and start roaming.
+Extract the portable package matching your Mac's chip and double-click `start.command`. On first launch, wait for the [recommendation dependency download](../getting-started.md#recommendation-dependency-preparation); the browser opens when ready. Next, [connect an image service](../getting-started.md) and start roaming.
 
 Keep the launcher terminal open and press Ctrl+C to stop. Personal data stays in the package's `data/` directory for your next session.
 

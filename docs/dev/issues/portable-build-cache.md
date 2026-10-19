@@ -36,7 +36,7 @@ flowchart TD
 | 便携构建脚本 | 原始数据默认使用已有 `dev/datasets/danbooru-2026/`，构建缓存使用 `dev/cache/portable/`，长期模型使用 `dev/models/`；提供 `--dataset-dir PATH`、`--cache-dir PATH`、`--models-dir PATH`、`--profile PATH` 与现有 `--output-dir PATH`。移除 `--source-data-dir`，不读取个人词库选择、图片、偏好、密钥或模型目录。前端构建仍沿用现有准备步骤。 |
 | 发行资源准备 | `prepare_resources(dataset_dir, cache_dir, profile, *, models_dir=ROOT / 'dev/models')` 返回已校验词库、模型路径及来源信息。命中词库缓存和长期模型直接导出，缺失或无效时准备对应资源。固定来源纳入 `corpus/resources.json`，记录数据集 10 个分片和模型 5 个文件的版本、字节数与 SHA-256；资源准备实现位于 `corpus/portable.py`。生成随包 `resources/` 和来源、参数及校验清单。 |
 | `corpus.download` / `corpus.importer` | 继续负责元数据下载、断点与统计处理；原始分片及下载清单长期保留在 datasets，完整且版本匹配时从本地读取，仅补齐缺失分片。统计中间结果与成品放构建缓存。离线源码及其依赖留在 `corpus/`，首次构建依赖纳入开发构建环境，运行发行包无需安装数据处理依赖。 |
-| 模型准备 | 按固定 MiniLM 快照下载现有编码器需要的五个文件；校验文件后长期保存在 `dev/models/minilm/<model-revision>/`。只准备推荐模型，生图模型仍由用户选用的服务提供。 |
+| 模型准备 | 按固定 MiniLM 快照下载现有编码器需要的五个文件；校验文件后长期保存在 `dev/models/minilm/<model-revision>/`。只准备推荐依赖，生图模型仍由用户选用的服务提供。 |
 | 运行时资源初始化 | 继续使用包内种子，补齐用户所选数据目录中缺失的文件；不在应用启动时下载或统计原始数据。 |
 
 目录布局：

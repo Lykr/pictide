@@ -78,7 +78,7 @@
   "当前参与偏好学习的图片反馈数量。": "Image feedback currently used for preference learning.",
   "学习标签": "Learned tags",
   "上次重置": "Last reset",
-  "推荐模型暂不可用，仍可重置偏好。": "Recommendation model unavailable. Preferences can still be reset.",
+  "推荐依赖暂不可用，仍可重置偏好。": "Recommendation dependency unavailable. Preferences can still be reset.",
   "方向": "Direction",
   "关联权重": "Weight",
   "反馈形成的偏好参数中心值，不是喜欢概率。": "The mean preference weight learned from feedback, not a like probability.",

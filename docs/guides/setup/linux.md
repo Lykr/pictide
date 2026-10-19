@@ -12,7 +12,7 @@ Extract the Linux portable package, open a terminal in that directory, and run:
 ./start.sh
 ```
 
-On first launch, wait for the [recommendation model download](../getting-started.md#recommendation-model-startup). The browser opens when ready; you can also visit `http://127.0.0.1:8189`. Next, [connect an image service](../getting-started.md) and start roaming.
+On first launch, wait for the [recommendation dependency download](../getting-started.md#recommendation-dependency-preparation). The browser opens when ready; you can also visit `http://127.0.0.1:8189`. Next, [connect an image service](../getting-started.md) and start roaming.
 
 Keep the terminal open and press Ctrl+C to stop. Personal data stays in the package's `data/` directory for your next session.
 

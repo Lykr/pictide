@@ -49,7 +49,7 @@ Pictide/
     db/pictide.sqlite3             首次启动生成，业务数据
 ```
 
-- 随包词库仅含 `tags/correlations/dataset` 和索引，默认按 `corpus/profiles/compact.json` 构建；推荐模型只导出当前编码器实际需要的 ONNX、tokenizer 配套文件。
+- 随包词库仅含 `tags/correlations/dataset` 和索引，默认按 `corpus/profiles/compact.json` 构建；推荐依赖只导出当前编码器实际需要的 ONNX、tokenizer 配套文件。
 - 发行资源与个人数据分开，包内种子用于首次初始化和指定新数据目录；后续启动沿用用户已有资源。压缩包包含种子，个人运行副本在首次启动时生成。
 - 前端依赖安装、构建和 PyInstaller 安装属于开发构建流程；所需打包依赖统一列在 `backend/requirements-release.txt`。
 - 构建仅使用独立发行资源，不读写开发运行目录；随包个人预设在首次启动时初始化。
@@ -83,7 +83,7 @@ sequenceDiagram
 
 ## 重点关注
 
-- 验收终点是应用、前端、词库和推荐模型就绪，连接可用 ComfyUI 后能够开始完整漫游。
+- 验收终点是应用、前端、词库和推荐依赖就绪，连接可用 ComfyUI 后能够开始完整漫游。
 - Windows 优先验证真实产物：从新的解压目录运行程序，确认随包依赖、候选生成、离线 MiniLM 编码和页面资源可用；记录 ZIP 体积、解压占用与启动耗时。
 - 少数冒烟覆盖首次启动、再次启动、带空格的移动路径、自定义数据目录和已有个人配置保留；验证实例使用独立端口与数据。
 - Linux/macOS 按系统与 CPU 架构在本机构建；分别维护启动说明，原生运行结果按实际验证状态记录。

@@ -212,7 +212,7 @@ export function PreferenceActions() {
               <div><dt className="text-muted-foreground">{t("学习标签")}</dt><dd className="mt-1 text-sm font-medium">{result.term_count.toLocaleString(locale())}</dd></div>
               <div><dt className="text-muted-foreground">{t("上次重置")}</dt><dd className="mt-1">{timeLabel(result.reset_at)}</dd></div>
             </dl>
-            {!result.available && <p role="status" className="text-sm text-muted-foreground">{result.error || t("推荐模型暂不可用，仍可重置偏好。")}</p>}
+            {!result.available && <p role="status" className="text-sm text-muted-foreground">{result.error || t("推荐依赖暂不可用，仍可重置偏好。")}</p>}
             {result.terms.length > 0 ? <div className="min-w-0 overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-border text-muted-foreground"><tr>

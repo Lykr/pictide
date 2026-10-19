@@ -33,7 +33,7 @@ sequenceDiagram
   actor User as 用户
   participant Host as Host
   participant App as 应用编排
-  participant Model as 推荐模型准备
+  participant Model as 推荐依赖准备
   participant Hub as Hugging Face
   participant UI as 页面
   User->>Host: 启动应用

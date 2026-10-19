@@ -19,7 +19,7 @@ The following paths are relative to the selected data directory:
 | `db/pictide.sqlite3` | Images, tasks, feedback, backends, settings, and recommendation learning; WAL/SHM files may exist at runtime |
 | `db/candidate.sqlite3` | Personal prompt presets, fixed terms, and current library selection |
 | `libraries/*.sqlite3` | Selectable read-only statistical libraries |
-| `models/minilm/` | Recommendation files verified before startup: model.onnx, tokenizer.json, config.json, tokenizer_config.json, special_tokens_map.json; interrupted downloads use `.part` files |
+| `models/minilm/` | Recommendation dependency files (MiniLM), verified before startup: model.onnx, tokenizer.json, config.json, tokenizer_config.json, special_tokens_map.json; interrupted downloads use `.part` files |
 | `images/` | Images and matching prompt JSON files containing only positive / negative |
 | `workflows/` | API workflows; .backups holds versions from before updates or deletion |
 | `history-cleanup.json` | Historical image retention in days; defaults to 1 day |
@@ -29,7 +29,7 @@ The following paths are relative to the selected data directory:
 | `logs/` | Runtime logs |
 | `backups/` | Data backups |
 
-See the [Prompt Guide](../guides/prompts.md#add-and-switch-libraries) for adding and selecting libraries. MiniLM is a recommendation runtime resource stored separately under models; routine cache cleanup preserves it. Source and portable startup download missing files and verify the fixed catalog before serving the application; valid files are reused offline. See [startup preparation](../guides/getting-started.md#recommendation-model-startup). The program serves compiled frontend assets. In the source tree, web/node_modules points to dev/runtime/frontend/node_modules at the project root.
+See the [Prompt Guide](../guides/prompts.md#add-and-switch-libraries) for adding and selecting libraries. MiniLM is a recommendation runtime resource stored separately under models; routine cache cleanup preserves it. Source and portable startup download missing files and verify the fixed catalog before serving the application; valid files are reused offline. See [startup preparation](../guides/getting-started.md#recommendation-dependency-preparation). The program serves compiled frontend assets. In the source tree, web/node_modules points to dev/runtime/frontend/node_modules at the project root.
 
 ## Development Materials
 

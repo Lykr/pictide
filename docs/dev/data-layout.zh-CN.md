@@ -19,7 +19,7 @@
 | `db/pictide.sqlite3` | 图片、任务、反馈、后端、设置和推荐学习；运行时可能存在 WAL/SHM |
 | `db/candidate.sqlite3` | 个人提示词预设、固定词与当前词库选择 |
 | `libraries/*.sqlite3` | 可选择的只读统计词库 |
-| `models/minilm/` | 启动前校验的推荐模型，包含 model.onnx、tokenizer.json、config.json、tokenizer_config.json、special_tokens_map.json；中断下载保留 `.part` 文件 |
+| `models/minilm/` | 启动前校验的推荐依赖，包含 model.onnx、tokenizer.json、config.json、tokenizer_config.json、special_tokens_map.json；中断下载保留 `.part` 文件 |
 | `images/` | 图片及同名提示词 JSON，仅含 positive / negative |
 | `workflows/` | API 工作流；.backups 保存更新或删除前的版本 |
 | `history-cleanup.json` | 历史图片保留天数，缺省 1 天 |
@@ -29,7 +29,7 @@
 | `logs/` | 运行日志 |
 | `backups/` | 数据备份 |
 
-词库添加与选择见[提示词指南](../guides/prompts.zh-CN.md#添加与切换词库)。MiniLM 是推荐运行所需资源，独立放在 models，日常缓存清理保留该目录。源码与便携启动在提供页面前按固定清单补齐、校验文件，有效文件离线复用，详见[启动准备](../guides/getting-started.zh-CN.md#推荐模型启动准备)。前端构建成品由程序提供，源码中的 web/node_modules 指向根目录 dev/runtime/frontend/node_modules。
+词库添加与选择见[提示词指南](../guides/prompts.zh-CN.md#添加与切换词库)。MiniLM 是推荐运行所需资源，独立放在 models，日常缓存清理保留该目录。源码与便携启动在提供页面前按固定清单补齐、校验文件，有效文件离线复用，详见[启动准备](../guides/getting-started.zh-CN.md#推荐依赖准备)。前端构建成品由程序提供，源码中的 web/node_modules 指向根目录 dev/runtime/frontend/node_modules。
 
 ## 开发材料
 
