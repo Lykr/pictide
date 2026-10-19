@@ -97,5 +97,5 @@ pictide/
 | Recommendation responsibilities, features, and current capabilities | [Recommendation Module](architecture/recommendation.md) |
 | All HTTP fields and status codes | [API Reference](api.md) |
 | Data files, backups, and table ownership | [Data Layout](data-layout.md), [Storage Reference](reference/storage.md) |
-| Adding frontend features or generation adapters | [Development Workflow](development.md), [Page Design Guidelines](design-system.md) |
-| Design decisions and validation at the time | [Issue Records](issues/README.md) |
+| Adding frontend features or generation adapters | [Development Workflow (Chinese)](development.md), [Page Design Guidelines (Chinese)](design-system.md) |
+| Design decisions and validation at the time | [Issue Records (Chinese)](issues/README.md) |

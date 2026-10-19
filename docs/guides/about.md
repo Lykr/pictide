@@ -2,7 +2,7 @@
 
 [简体中文](about.zh-CN.md)
 
-[User documentation](../README.md#用户文档) · [Getting started](getting-started.md)
+[User documentation](../README.md#user-documentation) · [Getting started](getting-started.md)
 
 Pictide is a generative image exploration tool that learns your personal aesthetic, helping you discover, guide, and collect images you enjoy.
 

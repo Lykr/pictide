@@ -8,7 +8,7 @@
 
 View the current data directory under Settings → General. The portable edition defaults to `data/` inside the release directory; the source edition defaults to `data/` in the project. Moving the entire portable directory keeps your personal data together with the application.
 
-To choose another data directory, follow the instructions for [Windows](setup/windows.md#端口与数据目录), [Linux](setup/linux.md#端口与数据目录), or [macOS](setup/macos.md#端口与数据目录).
+To choose another data directory, follow the instructions for [Windows](setup/windows.md#port-and-data-directory), [Linux](setup/linux.md#port-and-data-directory), or [macOS](setup/macos.md#port-and-data-directory).
 
 ## Backup and recovery
 
@@ -27,6 +27,6 @@ Versions saved before a workflow was updated or deleted are in `workflows/.backu
 
 ## Further reading
 
-- [Add and switch tag libraries](prompts.md#添加与切换词库)
-- [Historical image cleanup](settings.md#历史图片清理)
+- [Add and switch tag libraries](prompts.md#add-and-switch-libraries)
+- [Historical image cleanup](settings.md#historical-image-cleanup)
 - [Developers: full directory layout and responsibilities](../dev/data-layout.md)

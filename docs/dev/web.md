@@ -2,7 +2,7 @@
 
 [简体中文](web.zh-CN.md)
 
-Pictide's only browser entry point; npm package `pictide-web`. See the [User Guides](../README.md#使用指南) for product operations and the [API Index](api.md) for interfaces.
+Pictide's only browser entry point; npm package `pictide-web`. See the [User Guides](../README.md#guides) for product operations and the [API Index](api.md) for interfaces.
 
 ## Code Entry Points
 
@@ -12,7 +12,7 @@ Code paths in this section are relative to `web/` at the project root.
 - `src/feed.tsx`: application shell, sidebar, Roam, Generate, and categorized Settings pages.
 - `src/editor.tsx`: React-managed workspaces for read-only libraries, generation presets, and previews; no separate page entry point.
 - `src/controllers/`: browser state, events, and API calls. The backend Candidate module handles preset validation, co-occurrence expansion, and continuous generation within a budget.
-- `src/components/ui/`, `src/styles/theme.css`: shared shadcn/ui components and design tokens. See [Design Guidelines](design-system.md).
+- `src/components/ui/`, `src/styles/theme.css`: shared shadcn/ui components and design tokens. See [Design Guidelines (Chinese)](design-system.md).
 
 The React shell and existing DOM controllers manage presentation and drafts. Controllers initialize only once per page lifecycle. The shared control layer integrates official shadcn/Radix components through portals, maintaining a single React root. Hidden form-state interfaces bridge legacy controllers and must not appear as visible native controls. New features reuse this layer without creating separate page entry points or a React root per control.
 
@@ -28,13 +28,13 @@ The entire application shares one `/api/events` EventSource. Existing polling fa
 
 ## Build
 
-Run `pnpm install --frozen-lockfile`, `pnpm run typecheck`, and `pnpm run build` in `web/`. The [Development Workflow](development.md) defines initial setup, validation, and release order. Do not clear dist directly in a directory currently serving pages.
+Run `pnpm install --frozen-lockfile`, `pnpm run typecheck`, and `pnpm run build` in `web/`. The [Development Workflow (Chinese)](development.md) defines initial setup, validation, and release order. Do not clear dist directly in a directory currently serving pages.
 
 Builds use dependencies under the project root's `dev/runtime/frontend/` and caches under `dev/cache/`. `web/node_modules` points to the actual dependencies, and `web/dist` contains distribution assets. Node.js is used only for builds; the Python host serves `/static/ui/` at runtime.
 
 ## Further Reading
 
-- [Shared Components, Theme, and Page Guidelines](design-system.md)
+- [Shared Components, Theme, and Page Guidelines (Chinese)](design-system.md)
 - [Module Boundaries](architecture.md)
-- [Image Operations and Keyboard Shortcuts](../guides/roam.md#浏览与自动播放)
-- [Third-Party Component Notices](../../web/src/THIRD_PARTY_NOTICES.md)
+- [Image Operations and Keyboard Shortcuts](../guides/roam.md#browsing-and-autoplay)
+- [Third-Party Component Notices (Chinese)](../../web/src/THIRD_PARTY_NOTICES.md)

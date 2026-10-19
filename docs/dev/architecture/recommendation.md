@@ -56,10 +56,10 @@ flowchart TD
     Score --> Response[/"Scores keyed by combination ID"/]
 ```
 
-The learning entry follows a separate flow: read the actual generated combination snapshot → use the same feature encoder version → associate combination features with user feedback → update preference state. A scoring request does not run this learning flow. [Module Call Sequence](flows.md#候选评分与生成) describes the order of App's calls to Candidate, Recommendation, and Task; it complements the static architecture diagram.
+The learning entry follows a separate flow: read the actual generated combination snapshot → use the same feature encoder version → associate combination features with user feedback → update preference state. A scoring request does not run this learning flow. [Module Call Sequence](flows.md#candidates-scoring-and-generation) describes the order of App's calls to Candidate, Recommendation, and Task; it complements the static architecture diagram.
 
 - Combination IDs associate returned scores with App's combinations. Tag content identity supports learning and sharing experience across combinations. Normalized text and polarity define tag content identity; identical text under different IDs can reuse content features. Synonyms and antonyms retain their own specific tag features, and semantic vectors do not automatically merge preferences.
-- Combination-level features comprise sparse features for specific tags and semantic vectors aggregated separately by positive/negative polarity. Only complete-combination scores are returned externally. Version 1 is a linear model and does not claim to have learned complex interactions. See [Recommendation Module Design](../issues/recommendation-v1.md) for details.
+- Combination-level features comprise sparse features for specific tags and semantic vectors aggregated separately by positive/negative polarity. Only complete-combination scores are returned externally. Version 1 is a linear model and does not claim to have learned complex interactions. See [Recommendation Module Design (Chinese)](../issues/recommendation-v1.md) for details.
 - At Standard strength, all combinations in a request are compared using the same sampled preference parameters. Strong uses the posterior mean without sampling. After Recommendation returns scores, App selects a combination and calls Task, without calling Candidate again to sample tags by score.
 - Frozen MiniLM encodes base tags. The vector cache includes text, model files, runtime dependencies, and preprocessing versions. User likes update preference state without training the text encoding model.
 - Learning input is the actual generated combination and feedback supplied by App, using the text, polarity, and feature version at that time. Current categories or tag content do not replace history. A whole-image like/dislike learns +1/-1 for the combination, without directly turning it into independent feedback for every tag. Unrated remains unknown; withdrawal removes the corresponding contribution or replays valid feedback, rather than counting as negative feedback.
@@ -69,7 +69,7 @@ The learning entry follows a separate flow: read the actual generated combinatio
 
 Version 1 implements offline MiniLM tag encoding on CPU, complete-combination scoring, Bayesian linear posterior sampling, explicit positive/negative feedback learning, withdrawal, and restart recovery. App first receives the candidate set, passes it to the recommendation service's `score`, then selects a combination and submits a task. The old `choose` interface and Recommendation's type imports from Candidate have been removed; neutral contracts live in `backend/contracts/recommendation.py`.
 
-Learning associates explicit positive/negative feedback with combinations; unrated remains unknown. Scores are not like probabilities. Exposure/non-conversion learning, complex interactions, and image features are not implemented. Missing or unavailable models are reported as status; App retains its existing default candidate handling, and fallback is not called learning. Bootstrap's `recommendation` reports availability and version, while `preference_learning` reflects actual availability. Unapplied learning notifications remain pending for retry without rolling back user feedback. Preference inspection and reset reuse Web → Host → App → Recommendation → Store. Inspection reads current learning state only. Reset atomically clears preferences for all feature versions and records a feedback-event boundary, retaining images and feedback. See [Version 1 Recommendation Design](../issues/recommendation-v1.md), [Preference Inspection and Reset](../issues/recommendation-preferences.md), and [Dislike Feedback](../issues/dislike-feedback.md).
+Learning associates explicit positive/negative feedback with combinations; unrated remains unknown. Scores are not like probabilities. Exposure/non-conversion learning, complex interactions, and image features are not implemented. Missing or unavailable models are reported as status; App retains its existing default candidate handling, and fallback is not called learning. Bootstrap's `recommendation` reports availability and version, while `preference_learning` reflects actual availability. Unapplied learning notifications remain pending for retry without rolling back user feedback. Preference inspection and reset reuse Web → Host → App → Recommendation → Store. Inspection reads current learning state only. Reset atomically clears preferences for all feature versions and records a feedback-event boundary, retaining images and feedback. See [Version 1 Recommendation Design (Chinese)](../issues/recommendation-v1.md), [Preference Inspection and Reset (Chinese)](../issues/recommendation-preferences.md), and [Dislike Feedback (Chinese)](../issues/dislike-feedback.md).
 
 ## Scoring and Feedback at Runtime
 
@@ -77,7 +77,7 @@ Standard uses Thompson Sampling; Strong uses deterministic posterior means. Both
 
 Feedback and pending learning records are saved in the same transaction before returning immediately. App's single background learning worker processes persisted records. Scoring uses only completed preference state and does not wait for the current feedback to be learned. When the model is unavailable, feedback remains for later processing; a new feedback event does not invalidate existing prefetch.
 
-Preference scores in image information reuse a deterministic raw-score cache; an existing cache is recomputed only by manual refresh. The UI's 0–100 scale is relative to the historical score range, not a probability of liking. See the [Scoring API](../reference/api/images.md#喜欢筛选与图片偏好评分) and [Cache Design Record](../issues/image-score-cache.md).
+Preference scores in image information reuse a deterministic raw-score cache; an existing cache is recomputed only by manual refresh. The UI's 0–100 scale is relative to the historical score range, not a probability of liking. See the [Scoring API](../reference/api/images.md#like-filters-and-image-preference-scores) and [Cache Design Record (Chinese)](../issues/image-score-cache.md).
 
 ## Model Preparation
 
@@ -85,6 +85,6 @@ Recommendation uses an offline FastEmbed-format [MiniLM ONNX model](https://hugg
 
 ## Further Reading
 
-- [Version 1 Algorithm and Internal Contracts](../issues/recommendation-v1.md)
-- [Approved Background Learning Design](../issues/feedback-background-learning.md)
+- [Version 1 Algorithm and Internal Contracts (Chinese)](../issues/recommendation-v1.md)
+- [Approved Background Learning Design (Chinese)](../issues/feedback-background-learning.md)
 - [User Preference Inspection, Export, and Reset API](../reference/api/preferences.md)

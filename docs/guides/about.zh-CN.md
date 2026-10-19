@@ -2,7 +2,7 @@
 
 [English](about.md)
 
-[用户文档](../README.md#用户文档) · [开始使用](getting-started.md)
+[用户文档](../README.zh-CN.md#用户文档) · [开始使用](getting-started.zh-CN.md)
 
 Pictide 是一个会学习个人审美的生成式图片漫游工具，帮助用户轻松发现、引导并收藏喜欢的画面。
 
@@ -40,4 +40,4 @@ Pictide 是一个会学习个人审美的生成式图片漫游工具，帮助用
 
 用户能轻松遇到喜欢的画面，同时持续获得新鲜感。推荐应帮助探索贴近个人审美，锚点和漫游方式则让用户保留对方向与变化的控制。
 
-继续阅读：[漫游](roam.md) · [生成与喜欢](images.md) · [提示词与预设](prompts.md)
+继续阅读：[漫游](roam.zh-CN.md) · [生成与喜欢](images.zh-CN.md) · [提示词与预设](prompts.zh-CN.md)

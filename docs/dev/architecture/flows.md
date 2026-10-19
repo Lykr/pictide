@@ -69,7 +69,7 @@ The browser checks for gaps when entering roam, switching images, receiving task
 
 When the preference scope, roam mode, or anchor changes, App saves settings and prefetch invalidation state through Store; late artifacts are hidden. Flow continues from the actually selected combination; Anchor reuses the full prompt set. Candidate, Recommendation, and Task never interact directly.
 
-A failure, uncertain state, or cancellation in the current settings version pauses prefetch. Saving the complete roam settings clears the pause; correcting and saving the current roam backend can also resume it. Historical images and tasks remain, and old failed tasks are not automatically resubmitted. See the [Roam Guide](../../guides/roam.md), [Prefetch API](../reference/api/roam.md), and [Event Design](../issues/task-events.md).
+A failure, uncertain state, or cancellation in the current settings version pauses prefetch. Saving the complete roam settings clears the pause; correcting and saving the current roam backend can also resume it. Historical images and tasks remain, and old failed tasks are not automatically resubmitted. See the [Roam Guide](../../guides/roam.md), [Prefetch API](../reference/api/roam.md), and [Event Design (Chinese)](../issues/task-events.md).
 
 ## Feedback and Background Learning
 
@@ -90,10 +90,10 @@ sequenceDiagram
     Worker->>Store: Run lazy cleanup triggered by this feedback
 ```
 
-Learning uses the actual text, polarity, and combination associations at generation time, without reinterpreting history using the current library. Unrated remains unknown; withdrawal removes the original contribution. A successful feedback request means the feedback was saved, not that recommendation learning has completed. Records are retained when the model is temporarily unavailable, and later operations wake processing. See the [Background Learning Record](../issues/feedback-background-learning.md).
+Learning uses the actual text, polarity, and combination associations at generation time, without reinterpreting history using the current library. Unrated remains unknown; withdrawal removes the original contribution. A successful feedback request means the feedback was saved, not that recommendation learning has completed. Records are retained when the model is temporarily unavailable, and later operations wake processing. See the [Background Learning Record (Chinese)](../issues/feedback-background-learning.md).
 
 ## Further Reading
 
-- [Generation Submission Window Design](../issues/task-window.md)
+- [Generation Submission Window Design (Chinese)](../issues/task-window.md)
 - [Storage and Image Sources](../reference/storage.md)
 - [Recommendation Feature Flow](recommendation.md)

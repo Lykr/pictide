@@ -29,7 +29,7 @@ flowchart TD
 | 平台启动入口 | Windows 双击 `start.cmd`；Linux 执行 `start.sh`；macOS 双击 `start.command`。入口仅运行随包程序并传递参数。 |
 | Host 启动 | 沿用 `--port`、`--data-dir`、`--host`；增加 `--lan` 作为局域网入口、`--no-browser` 用于验证。便携启动默认就绪后打开浏览器，源码入口保留现有默认行为。 |
 | 应用编排初始化 | 新增 `PictideApplication.prepare_startup(paths, seed_dir)`：在服务组装前补齐所选数据目录中缺失的默认词库和模型；预设复用候选模块现有默认值。已有个人预设、所选词库、模型和业务数据保留。 |
-| 数据路径 `DataPaths` | 便携程序默认使用发行目录下的 `data/`，与当前工作目录无关；显式路径和环境变量继续按[数据目录约定](../data-layout.md#数据位置)生效。 |
+| 数据路径 `DataPaths` | 便携程序默认使用发行目录下的 `data/`，与当前工作目录无关；显式路径和环境变量继续按[数据目录约定](../data-layout.md#data-location)生效。 |
 | 资源清单 | 记录种子资源的相对路径、大小、SHA-256 与来源版本，供构建校验和定位资源问题；启动检查所需文件齐备。 |
 
 Windows 发行目录示意：

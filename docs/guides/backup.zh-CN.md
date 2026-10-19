@@ -2,13 +2,13 @@
 
 [English](backup.md)
 
-[用户文档](../README.md)。本页说明个人数据的位置，以及备份和恢复的方法。
+[用户文档](../README.zh-CN.md)。本页说明个人数据的位置，以及备份和恢复的方法。
 
 ## 数据位置
 
 在「设置 → 通用」查看当前数据目录。便携版默认使用发行目录中的 `data/`，源码版默认使用项目内的 `data/`；移动整个便携目录时，个人数据与程序一起保留。
 
-指定其他数据目录的方法按系统查阅：[Windows](setup/windows.md#端口与数据目录) · [Linux](setup/linux.md#端口与数据目录) · [macOS](setup/macos.md#端口与数据目录)。
+指定其他数据目录的方法按系统查阅：[Windows](setup/windows.zh-CN.md#端口与数据目录) · [Linux](setup/linux.zh-CN.md#端口与数据目录) · [macOS](setup/macos.zh-CN.md#端口与数据目录)。
 
 ## 备份与恢复
 
@@ -27,6 +27,6 @@
 
 ## 进一步查阅
 
-- [添加与切换词库](prompts.md#添加与切换词库)
-- [历史图片清理](settings.md#历史图片清理)
-- [开发者：完整目录结构与职责](../dev/data-layout.md)
+- [添加与切换词库](prompts.zh-CN.md#添加与切换词库)
+- [历史图片清理](settings.zh-CN.md#历史图片清理)
+- [开发者：完整目录结构与职责](../dev/data-layout.zh-CN.md)

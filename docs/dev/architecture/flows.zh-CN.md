@@ -2,7 +2,7 @@
 
 [English](flows.md)
 
-[架构概览](../architecture.md) · [API 入口](../api.md)
+[架构概览](../architecture.zh-CN.md) · [API 入口](../api.zh-CN.md)
 
 这里说明现有模块间的调用顺序与数据关联；静态职责以架构概览为准。
 
@@ -36,7 +36,7 @@ sequenceDiagram
 
 App 接收每次数量和生成次数，必要时调用 Candidate 逐轮产生完整文本，再一次校验并保存整批任务。Task 执行确定的生成请求，不重新抽词。每轮内共用提示词；图像种子逐任务独立随机或按序递增。
 
-批次幂等与容量检查在存储事务中执行，不足时整批拒绝；同一 request_id 重试恢复原计划，不再次抽取。新计划最多 100 个待处理任务，旧式无 repetitions/candidate 的提交沿用 10 个入队门槛。具体字段见[任务接口](../reference/api/jobs.md)。
+批次幂等与容量检查在存储事务中执行，不足时整批拒绝；同一 request_id 重试恢复原计划，不再次抽取。新计划最多 100 个待处理任务，旧式无 repetitions/candidate 的提交沿用 10 个入队门槛。具体字段见[任务接口](../reference/api/jobs.zh-CN.md)。
 
 ## 漫游预取与出图
 
@@ -69,7 +69,7 @@ sequenceDiagram
 
 切换偏好范围、漫游方式或锚点时，App 经 Store 保存设置与预取失效状态，迟到产物隐藏。顺流从实际选中组合继续，停泊复用整组提示词；候选、推荐和任务之间始终不直接交互。
 
-当前设置版本失败、状态不确定或取消时暂停预取。保存完整漫游设置可解除暂停；修正并保存当前漫游后端也可恢复。保留历史图片和任务，不自动重提旧失败任务。详情见[漫游指南](../../guides/roam.md)、[预取接口](../reference/api/roam.md)和[事件设计](../issues/task-events.md)。
+当前设置版本失败、状态不确定或取消时暂停预取。保存完整漫游设置可解除暂停；修正并保存当前漫游后端也可恢复。保留历史图片和任务，不自动重提旧失败任务。详情见[漫游指南](../../guides/roam.zh-CN.md)、[预取接口](../reference/api/roam.zh-CN.md)和[事件设计](../issues/task-events.md)。
 
 ## 反馈与后台学习
 
@@ -95,5 +95,5 @@ sequenceDiagram
 ## 进一步查阅
 
 - [生图提交窗口设计](../issues/task-window.md)
-- [存储与图片来源](../reference/storage.md)
-- [推荐内部特征流程](recommendation.md)
+- [存储与图片来源](../reference/storage.zh-CN.md)
+- [推荐内部特征流程](recommendation.zh-CN.md)

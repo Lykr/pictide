@@ -2,7 +2,7 @@
 
 [English](events.md)
 
-[API 索引](../../api.md) · [通用约定与错误](../../api.md#通用约定)
+[API 索引](../../api.zh-CN.md) · [通用约定与错误](../../api.zh-CN.md#通用约定)
 
 ## 初始化与实时事件
 

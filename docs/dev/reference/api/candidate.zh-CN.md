@@ -2,7 +2,7 @@
 
 [English](candidate.md)
 
-[API 索引](../../api.md) · [通用约定与错误](../../api.md#通用约定)
+[API 索引](../../api.zh-CN.md) · [通用约定与错误](../../api.zh-CN.md#通用约定)
 
 ## 词库文件管理
 

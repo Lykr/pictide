@@ -2,7 +2,7 @@
 
 [English](settings.md)
 
-[文档导航](../README.md) · [设置接口](../dev/reference/api/settings.md)
+[文档导航](../README.zh-CN.md) · [设置接口](../dev/reference/api/settings.zh-CN.md)
 
 设置分为「通用、漫游、后端、历史」；数据位置在通用，任务记录和图片清理在历史。
 
@@ -30,6 +30,6 @@
 
 ## 继续阅读
 
-- [漫游范围、方式和预取](roam.md)
-- [后端与工作流编辑](getting-started.md#接入-comfyui)
-- [数据备份与恢复](backup.md#备份与恢复)
+- [漫游范围、方式和预取](roam.zh-CN.md)
+- [后端与工作流编辑](getting-started.zh-CN.md#接入-comfyui)
+- [数据备份与恢复](backup.zh-CN.md#备份与恢复)

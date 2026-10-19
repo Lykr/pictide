@@ -2,7 +2,7 @@
 
 [English](images.md)
 
-[文档导航](../README.md) · [任务接口](../dev/reference/api/jobs.md) / [图片接口](../dev/reference/api/images.md)
+[文档导航](../README.zh-CN.md) · [任务接口](../dev/reference/api/jobs.zh-CN.md) / [图片接口](../dev/reference/api/images.zh-CN.md)
 
 「生成」保存手动或按预设生成的结果，「漫游」展示推荐预取结果，「喜欢」汇集两种来源。
 

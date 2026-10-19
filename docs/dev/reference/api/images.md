@@ -2,7 +2,7 @@
 
 [简体中文](images.zh-CN.md)
 
-[API index](../../api.md) · [Common conventions and errors](../../api.md#通用约定)
+[API index](../../api.md) · [Common conventions and errors](../../api.md#general-conventions)
 
 ## Images and feedback
 
@@ -20,7 +20,7 @@
 | Parameter | Description |
 | --- | --- |
 | `liked` | `1` returns liked images only; otherwise includes all feedback states |
-| `limit` | 1–200; default 200; the Likes page client uses 100 |
+| `limit` | 1–200; default 200; the Liked page client uses 100 |
 | `before` | `next_cursor` from the previous window, to continue reading older images |
 | `source` | `all / roam / generate`; default all |
 | `around` | Image ID at the center of the Roam window; only for source=roam; cannot be combined with before or liked=1 |
@@ -34,7 +34,7 @@ Main fields: `id,job_id,node_id,output_index,created_at,local_path,content_type,
 
 Feedback values are `1` for like, `-1` for dislike, and `null` to withdraw feedback and return to unrated. The response is returned after feedback is persisted. Preference learning and cleanup triggered by this feedback are handled in the background by the orchestration layer, so scoring may temporarily use the previous preference state. Repeatedly setting the same state does not count again toward learning.
 
-Generated image cleanup clears visibility from unliked image records and reclaims local image files and prompt JSON. Liked images are only hidden from the Generate page and remain on the Likes page. Job history is preserved. This endpoint cannot clean up Roam images.
+Generated image cleanup clears visibility from unliked image records and reclaims local image files and prompt JSON. Liked images are only hidden from the Generate page and remain on the Liked page. Job history is preserved. This endpoint cannot clean up Roam images.
 
 ## Like filters and image preference scores
 
@@ -54,4 +54,4 @@ A single-image score returns `{status,score,love_score,score_min,score_max,state
 - `love_score`: a relative 0–100 value converted using the historical score range: `100 × (score-score_min)/(score_max-score_min)`. It is null when the range is unavailable or its endpoints are equal, and does not represent the probability of a like.
 - `state_revision,feature_version`: the learning-state and feature versions of this cached score. When scoring is unavailable, the relevant fields are null and `reason` explains why.
 
-Scores are persistently cached in image metadata. Normal reads only fill missing cache entries; they do not rescore historical images after every learning update. An explicit refresh recalculates scores for the selected scope and updates `refreshed_at`; normal reads do not update that timestamp. Resetting preferences clears the score cache. Existing cached scores may still be shown while recommendations are temporarily unavailable. A failed refresh preserves the old cache; check `scoring_available,error`. See [Score caching](../../issues/image-score-cache.md).
+Scores are persistently cached in image metadata. Normal reads only fill missing cache entries; they do not rescore historical images after every learning update. An explicit refresh recalculates scores for the selected scope and updates `refreshed_at`; normal reads do not update that timestamp. Resetting preferences clears the score cache. Existing cached scores may still be shown while recommendations are temporarily unavailable. A failed refresh preserves the old cache; check `scoring_available,error`. See [Score caching (Chinese)](../../issues/image-score-cache.md).

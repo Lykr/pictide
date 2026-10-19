@@ -1,51 +1,53 @@
 # Pictide
 
-画流 Pictide 是一个会学习个人审美的生成式图片漫游工具。通过浏览、评价和锚点，发现、引导并收藏喜欢的画面。
+[简体中文](README.zh-CN.md)
 
-漫游是体验核心，生成、提示词与设置提供控制；图片和偏好保存在本地。[了解 Pictide](docs/guides/about.md)。
+Pictide is a generative image exploration tool that learns your visual preferences. Browse, give feedback, and use anchors to discover, guide, and collect images you like.
 
-## 用户指南
+Roam is the core experience. Generate, Prompts, and Settings give you control, while images and preferences stay on your computer. [About Pictide](docs/guides/about.md).
 
-### 快速开始（便携版本）
+## User guide
 
-1. 启动 ComfyUI，准备可用的文生图模型。
-2. 解压对应系统的便携包，运行启动入口：[Windows](docs/guides/setup/windows.md#便携版本) · [Linux](docs/guides/setup/linux.md#便携版本) · [macOS](docs/guides/setup/macos.md#便携版本)。程序就绪后自动打开浏览器。
-3. 在「设置 → 后端」连接 ComfyUI，进入「漫游」开始浏览。
+### Quick start (portable edition)
 
-便携包随带运行环境、前端、精简词库和 MiniLM；个人数据保存在包内 `data/`。Windows 已验证真实产物，Linux/macOS 的本机构建与原生验证状态见各系统说明。
+1. Start ComfyUI with a working text-to-image model.
+2. Extract the portable package for your system and run its launcher: [Windows](docs/guides/setup/windows.md#portable-edition) · [Linux](docs/guides/setup/linux.md#portable-edition) · [macOS](docs/guides/setup/macos.md#portable-edition). Your browser opens automatically when the application is ready.
+3. Connect to ComfyUI in **Settings → Backend**, then open **Roam** to start browsing.
 
-### 从源码开始
+The package includes the runtime, frontend, compact statistical library, and MiniLM. Personal data stays in the package's `data/` directory. The Windows package has been validated; see the platform guides for the status of native Linux and macOS builds and verification.
 
-1. 启动 ComfyUI，准备可用的文生图模型。
-2. 按系统完成安装与启动：[Windows](docs/guides/setup/windows.md) · [Linux](docs/guides/setup/linux.md) · [macOS](docs/guides/setup/macos.md)。打开 http://127.0.0.1:8189 。
-3. 在「设置 → 后端」填写 ComfyUI 地址、测试并保存；词库与推荐模型准备完成后，进入「漫游」点击「开始漫游」，浏览、评价并切换下一张。
+### Run from source
 
-共现生成需要词库，推荐学习需要本地 MiniLM；准备与接入步骤见[安装与接入](docs/guides/getting-started.md)。关闭启动窗口或按 Ctrl+C 停止应用。
+1. Start ComfyUI with a working text-to-image model.
+2. Follow the installation and startup guide for [Windows](docs/guides/setup/windows.md), [Linux](docs/guides/setup/linux.md), or [macOS](docs/guides/setup/macos.md). Open http://127.0.0.1:8189.
+3. Enter your ComfyUI URL in **Settings → Backend**, test the connection, and save. Once the library and recommendation model are ready, open **Roam**, select **Start roaming**, and browse, rate, and advance through images.
 
-### 工作台
+Co-occurrence generation requires a statistical library; preference learning requires a local MiniLM model. See [setup and connections](docs/guides/getting-started.md) for preparation. Close the launcher window or press Ctrl+C to stop the application.
 
-| 栏目 | 用途 | 说明 |
+### Workspace
+
+| Section | Purpose | Guide |
 | --- | --- | --- |
-| 漫游 | 浏览推荐图片、评价、锚定画面元素 | [漫游指南](docs/guides/roam.md) |
-| 生成 | 手动或按预设批量生图 | [生成与喜欢](docs/guides/images.md) |
-| 喜欢 | 图片网格、标签筛选、偏好评分排序 | [生成与喜欢](docs/guides/images.md#喜欢标签筛选) |
-| 提示词 | 查看只读词库、编辑预设、预览共现扩展 | [提示词指南](docs/guides/prompts.md) |
-| 设置 | 通用、漫游、后端和任务历史 | [设置与清理](docs/guides/settings.md) |
+| Roam | Browse recommended images, give feedback, and anchor visual elements | [Roam](docs/guides/roam.md) |
+| Generate | Generate images manually or in batches from presets | [Generate and Liked](docs/guides/images.md) |
+| Liked | Browse the image grid, filter by tags, and sort by preference score | [Generate and Liked](docs/guides/images.md#tag-filters-in-liked) |
+| Prompts | Browse the read-only library, edit presets, and preview co-occurrence expansion | [Prompts](docs/guides/prompts.md) |
+| Settings | Manage general settings, roaming, backends, and task history | [Settings and cleanup](docs/guides/settings.md) |
 
-### 更多帮助
+### More help
 
-- [局域网与主屏幕应用](docs/guides/access.md)：手机访问与 PWA。
-- [数据备份与恢复](docs/guides/backup.md)：数据保存位置、备份和恢复。
-- [用户文档导航](docs/README.md#用户文档)：按使用问题查找说明。
+- [LAN access and Home Screen app](docs/guides/access.md): mobile access and PWA support.
+- [Backup and recovery](docs/guides/backup.md): data locations, backup, and restoration.
+- [User documentation](docs/README.md#user-documentation): find a guide by task.
 
-ComfyUI 是独立的生成后端；Pictide 不作为其插件加载。当前为概念验证版本，尚无多用户账号、图像特征学习或离线网页缓存。
+ComfyUI runs as a separate generation backend; Pictide is a standalone application. This proof of concept currently has no separate user accounts, image-feature learning, or offline web caching.
 
-## 开发者文档
+## Developer documentation
 
-- [便携发行构建与验证](docs/dev/issues/automatic-startup.md)：目录式打包、资源初始化和平台验证。
-- [开发流程](docs/dev/development.md)：从源码安装、构建、验证及发布；首次检出从[准备环境](docs/dev/development.md#首次准备检出目录)开始。
-- [架构与模块边界](docs/dev/architecture.md)：模块职责、依赖和调用流程。
-- [数据处理工具](docs/dev/corpus.md)：词库下载、离线统计与处理记录。
-- [HTTP API 参考](docs/dev/api.md)：接口索引、请求参数和响应。
-- [页面设计规范](docs/dev/design-system.md)：组件、视觉与交互约定。
-- [开发者文档导航](docs/dev/README.md)：代码入口、存储参考、需求记录与设计模板。
+- [Portable builds and validation (Chinese)](docs/dev/issues/automatic-startup.md): directory-based packaging, resource initialization, and platform validation.
+- [Development workflow (Chinese)](docs/dev/development.md): source setup, builds, verification, and deployment. Start with [preparing a checkout (Chinese)](docs/dev/development.md#首次准备检出目录).
+- [Architecture and module boundaries](docs/dev/architecture.md): responsibilities, dependencies, and call flows.
+- [Corpus tools (Chinese)](docs/dev/corpus.md): library downloads, offline statistics, and processing records.
+- [HTTP API reference](docs/dev/api.md): endpoints, request parameters, and responses.
+- [UI design system (Chinese)](docs/dev/design-system.md): components, visuals, and interactions.
+- [Developer documentation index](docs/dev/README.md): code entry points, storage reference, issue records, and design template.

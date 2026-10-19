@@ -2,13 +2,13 @@
 
 [简体中文](data-layout.zh-CN.md)
 
-[Developer Documentation](README.md). This page defines directories for runtime data, development materials, and release artifacts. See the [SQLite Storage Reference](reference/storage.md) for tables and [Separating Development and Release Directories](issues/development-release-directories.md) for the reorganization record.
+[Developer Documentation](README.md). This page defines directories for runtime data, development materials, and release artifacts. See the [SQLite Storage Reference](reference/storage.md) for tables and [Separating Development and Release Directories (Chinese)](issues/development-release-directories.md) for the reorganization record.
 
 ## Data Location
 
 The data directory is selected in this order: startup argument → PICTIDE_DATA_DIR → legacy PICTIDE_WEB_DATA_DIR → default data. Source deployments default to data inside the project; portable deployments default to data inside the release directory. Moving the entire portable directory preserves personal data alongside the program.
 
-For custom directories, follow your platform's guide: [Windows](../guides/setup/windows.md#端口与数据目录) · [Linux](../guides/setup/linux.md#端口与数据目录) · [macOS](../guides/setup/macos.md#端口与数据目录). Relative paths resolve from the working directory where the command is run.
+For custom directories, follow your platform's guide: [Windows](../guides/setup/windows.md#port-and-data-directory) · [Linux](../guides/setup/linux.md#port-and-data-directory) · [macOS](../guides/setup/macos.md#port-and-data-directory). Relative paths resolve from the working directory where the command is run.
 
 ## Runtime Data
 
@@ -29,7 +29,7 @@ The following paths are relative to the selected data directory:
 | `logs/` | Runtime logs |
 | `backups/` | Data backups |
 
-See the [Prompt Guide](../guides/prompts.md#添加与切换词库) for adding and selecting libraries. MiniLM is a recommendation runtime resource stored separately under models; routine cache cleanup preserves it. The program serves compiled frontend assets. In the source tree, web/node_modules points to dev/runtime/frontend/node_modules at the project root.
+See the [Prompt Guide](../guides/prompts.md#add-and-switch-libraries) for adding and selecting libraries. MiniLM is a recommendation runtime resource stored separately under models; routine cache cleanup preserves it. The program serves compiled frontend assets. In the source tree, web/node_modules points to dev/runtime/frontend/node_modules at the project root.
 
 ## Development Materials
 
@@ -37,7 +37,7 @@ Development materials and release artifacts are organized relative to the projec
 
 | Path | Contents |
 | --- | --- |
-| [`corpus/`](corpus.md) | Version-controlled offline download and statistics import tools, with dependency manifests |
+| [`corpus/` (Chinese)](corpus.md) | Version-controlled offline download and statistics import tools, with dependency manifests |
 | [`docs/dev/`](README.md) | Version-controlled development guides, architecture, APIs, design guidelines, and issue records |
 | `dev/datasets/` | Raw Parquet, download verification, and intermediate offline statistics |
 | `dev/runtime/frontend/`, `dev/runtime/importer/` | Frontend development dependencies and offline import environment |
@@ -54,7 +54,7 @@ Source and portable deployments use the same runtime data responsibilities and r
 
 - Each backend save creates an immutable revision; existing tasks reference their submission-time snapshot. Workflow versions are backed up before editing.
 - Liked images are retained across sections. Cleaning up unliked images reclaims images and prompt JSON files while retaining task history.
-- Time-based cleanup and roam history count cleanup run at startup and operation entry points. See [Settings and Cleanup](../guides/settings.md#历史图片清理).
+- Time-based cleanup and roam history count cleanup run at startup and operation entry points. See [Settings and Cleanup](../guides/settings.md#historical-image-cleanup).
 - Feedback and pending learning records are persisted in one transaction; recommendation processes them in the background. Historical records are interpreted using generation-time snapshots.
 
-See the [User Guide](../guides/backup.md#备份与恢复) for backup and recovery. To retain local development environments, raw data, or release artifacts, separately back up `dev/` and `releases/` at the project root.
+See the [User Guide](../guides/backup.md#backup-and-recovery) for backup and recovery. To retain local development environments, raw data, or release artifacts, separately back up `dev/` and `releases/` at the project root.

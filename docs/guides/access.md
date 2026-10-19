@@ -8,9 +8,9 @@
 
 Follow the LAN startup and firewall instructions for the host operating system:
 
-- [Windows](setup/windows.md#局域网访问)
-- [Linux](setup/linux.md#局域网访问)
-- [macOS](setup/macos.md#局域网访问)
+- [Windows](setup/windows.md#lan-access)
+- [Linux](setup/linux.md#lan-access)
+- [macOS](setup/macos.md#lan-access)
 
 Use `http://127.0.0.1:8189` on the host computer. Other devices use its LAN IP address, such as `http://192.168.50.50:8189`; use the new address if the IP changes. Normal startup allows local access only.
 

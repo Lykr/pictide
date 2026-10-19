@@ -2,7 +2,7 @@
 
 [简体中文](candidate.zh-CN.md)
 
-[API index](../../api.md) · [Common conventions and errors](../../api.md#通用约定)
+[API index](../../api.md) · [Common conventions and errors](../../api.md#general-conventions)
 
 ## Library file management
 
@@ -12,7 +12,7 @@
 | POST | `/api/candidate/library` | multipart/form-data, field `file`, `.sqlite3` or `.sqlite3.gz` | 201; `{filename,tag_count,relation_count,bytes}` |
 | PUT | `/api/candidate/library` | JSON `{filename}` | `{selected}`; takes effect immediately |
 
-Files are stored in `libraries/` under the selected data directory. GET refreshes the directory and selected file status. A valid file requires the tags, correlations, and dataset tables, a source status of ready, and dataset.min_cooccurrence as a positive-integer lower bound for relations retained in the library. Uploads and gzip decompression each support a maximum of 2 GiB. Duplicate filenames are automatically numbered, and only statistical tables are copied. After a successful upload, the page calls PUT to select the file automatically. The selection is saved in the personal configuration database; existing presets, jobs, and prefetched results are preserved. Status changes reuse the candidate event. See [Library management](../../issues/library-selection.md).
+Files are stored in `libraries/` under the selected data directory. GET refreshes the directory and selected file status. A valid file requires the tags, correlations, and dataset tables, a source status of ready, and dataset.min_cooccurrence as a positive-integer lower bound for relations retained in the library. Uploads and gzip decompression each support a maximum of 2 GiB. Duplicate filenames are automatically numbered, and only statistical tables are copied. After a successful upload, the page calls PUT to select the file automatically. The selection is saved in the personal configuration database; existing presets, jobs, and prefetched results are preserved. Status changes reuse the candidate event. See [Library management (Chinese)](../../issues/library-selection.md).
 
 ## Candidate tag library, presets, and previews
 
@@ -63,4 +63,4 @@ The response includes `positive,negative,seed,selected_tags,candidate_id,source_
 
 The target length is sampled uniformly between the lower and upper bounds. When co-occurrence is insufficient or the search limit is reached, the current combination is returned; failing to reach the target length does not cause an error. Possible stop_reason values are `target_length,search_limit,no_eligible_tags,budget_zero`. Data that is not ready and invalid parameters still produce errors.
 
-Relations only queries relationships among the current terms and does not create a generation job. A missing record for a pair of known terms means its statistics were not retained, and pmi/count are null. The current trial library retains relations with co-occurrence ≥1,000. Custom terms have known=false and no statistics. Do not interpret null as zero co-occurrence or PMI=0. See [PMI data design](../../issues/candidate-pmi.md) for statistical definitions.
+Relations only queries relationships among the current terms and does not create a generation job. A missing record for a pair of known terms means its statistics were not retained, and pmi/count are null. The current trial library retains relations with co-occurrence ≥1,000. Custom terms have known=false and no statistics. Do not interpret null as zero co-occurrence or PMI=0. See [PMI data design (Chinese)](../../issues/candidate-pmi.md) for statistical definitions.

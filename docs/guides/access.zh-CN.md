@@ -2,15 +2,15 @@
 
 [English](access.md)
 
-[文档导航](../README.md) · 先完成[本机接入](getting-started.md)
+[文档导航](../README.zh-CN.md) · 先完成[本机接入](getting-started.zh-CN.md)
 
 ## 局域网访问
 
 按宿主系统完成局域网启动与防火墙配置：
 
-- [Windows](setup/windows.md#局域网访问)
-- [Linux](setup/linux.md#局域网访问)
-- [macOS](setup/macos.md#局域网访问)
+- [Windows](setup/windows.zh-CN.md#局域网访问)
+- [Linux](setup/linux.zh-CN.md#局域网访问)
+- [macOS](setup/macos.zh-CN.md#局域网访问)
 
 本机通过 `http://127.0.0.1:8189` 使用，其他设备通过电脑的局域网 IP 访问，例如 `http://192.168.50.50:8189`；IP 变化后使用新地址。普通启动默认仅本机访问。
 

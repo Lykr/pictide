@@ -2,7 +2,7 @@
 
 [English](roam.md)
 
-[文档导航](../README.md) · [漫游接口](../dev/reference/api/roam.md)
+[文档导航](../README.zh-CN.md) · [漫游接口](../dev/reference/api/roam.zh-CN.md)
 
 先在「设置 → 漫游」选择后端与候选预设，设置预取数量，再进入漫游浏览。
 

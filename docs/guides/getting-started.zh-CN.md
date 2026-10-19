@@ -2,13 +2,13 @@
 
 [English](getting-started.md)
 
-[文档导航](../README.md) · 下一步：[提示词](prompts.md) / [漫游](roam.md)
+[文档导航](../README.zh-CN.md) · 下一步：[提示词](prompts.zh-CN.md) / [漫游](roam.zh-CN.md)
 
 本页说明便携版与源码版的启动准备和生图后端接入。先准备 ComfyUI 和可用的文生图模型，再启动 Pictide。
 
 ## 启动前准备
 
-便携版随包提供程序、前端、精简词库和离线 MiniLM。解压后运行对应系统的启动入口即可，详见 [Windows](setup/windows.md#便携版本) · [Linux](setup/linux.md#便携版本) · [macOS](setup/macos.md#便携版本)。
+便携版随包提供程序、前端、精简词库和离线 MiniLM。解压后运行对应系统的启动入口即可，详见 [Windows](setup/windows.zh-CN.md#便携版本) · [Linux](setup/linux.zh-CN.md#便携版本) · [macOS](setup/macos.zh-CN.md#便携版本)。
 
 源码版需要 Python 3.10+；新检出的源码还需要先构建前端，Node.js 与 pnpm 版本见[开发环境要求](../dev/development.md#首次准备检出目录)。已准备好前端的目录日常运行不需要 Node.js 服务。
 
@@ -18,9 +18,9 @@
 
 选择当前系统，沿对应页面完成启动、源码准备、自定义参数与局域网配置：
 
-- [Windows](setup/windows.md)
-- [Linux](setup/linux.md)
-- [macOS](setup/macos.md)
+- [Windows](setup/windows.zh-CN.md)
+- [Linux](setup/linux.zh-CN.md)
+- [macOS](setup/macos.zh-CN.md)
 
 启动完成后，继续下面的 ComfyUI 接入步骤。应用与 ComfyUI 可分别启动、停止，没有自启动或常驻服务。
 
@@ -40,7 +40,7 @@
 
 工作流更新应用于本次保存的后端，其他后端保留各自已保存的工作流快照；重新选择工作流并保存可应用最新版。已有任务始终使用提交时的后端配置，不受后续编辑影响。
 
-删除工作流会从选择列表移除并保留文件备份，同时解除当前后端对模板的引用；后端中已经应用的节点、绑定和输出快照保留，可以继续生成。删除后端只移除当前可选配置，原配置修订、历史任务、图片和评价保留；已提交任务继续使用原配置执行。删除操作不会清理图片或 ComfyUI 数据，恢复说明见 [数据目录](backup.md)。
+删除工作流会从选择列表移除并保留文件备份，同时解除当前后端对模板的引用；后端中已经应用的节点、绑定和输出快照保留，可以继续生成。删除后端只移除当前可选配置，原配置修订、历史任务、图片和评价保留；已提交任务继续使用原配置执行。删除操作不会清理图片或 ComfyUI 数据，恢复说明见 [数据目录](backup.zh-CN.md)。
 
 默认文生图的「节点参数」可展开为自定义草稿，支持模型、尺寸、批次数、采样步数、CFG、采样器、调度器和降噪等普通输入；连线保持不变。API 工作流 JSON 默认折叠，展开后可编辑或导入 API JSON，普通参数编辑与 JSON 使用同一草稿。
 
@@ -58,4 +58,4 @@ ComfyUI 只执行生图 API，不再安装提示词生成、预览或提示词�
 
 ## 从源码开始
 
-新检出仓库没有依赖、词库、推荐模型或前端构建产物。先按[开发流程](../dev/development.md#首次准备检出目录)安装和构建；词库导入见[提示词指南](prompts.md#数据准备)，推荐模型准备见[推荐模块](../dev/architecture/recommendation.md#模型准备)。数据路径和备份见[数据目录](backup.md)。
+新检出仓库没有依赖、词库、推荐模型或前端构建产物。先按[开发流程](../dev/development.md#首次准备检出目录)安装和构建；词库导入见[提示词指南](prompts.zh-CN.md#数据准备)，推荐模型准备见[推荐模块](../dev/architecture/recommendation.zh-CN.md#模型准备)。数据路径和备份见[数据目录](backup.zh-CN.md)。

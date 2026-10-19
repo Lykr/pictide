@@ -2,7 +2,7 @@
 
 [English](architecture.md)
 
-[文档导航](README.md)。本页只说明模块、职责和依赖；具体调用顺序见[调用和数据流](architecture/flows.md)，推荐内部见[推荐模块](architecture/recommendation.md)。
+[文档导航](README.zh-CN.md)。本页只说明模块、职责和依赖；具体调用顺序见[调用和数据流](architecture/flows.zh-CN.md)，推荐内部见[推荐模块](architecture/recommendation.zh-CN.md)。
 
 Pictide 是前后端分离的本地 Web 应用。`web/` 是唯一浏览器入口，`backend/` 提供业务 API；部署时由同一 Python 进程提供已编译前端与 API，正常运行不需要 Node 服务。
 
@@ -94,9 +94,9 @@ pictide/
 
 | 要了解的内容 | 主题 |
 | --- | --- |
-| 生成、预取与反馈的模块调用 | [调用和数据流](architecture/flows.md) |
-| 推荐内部职责、特征和当前能力 | [推荐模块](architecture/recommendation.md) |
-| 所有 HTTP 字段与状态码 | [API 参考](api.md) |
-| 数据文件、备份与表的归属 | [数据目录](data-layout.md)、[存储参考](reference/storage.md) |
+| 生成、预取与反馈的模块调用 | [调用和数据流](architecture/flows.zh-CN.md) |
+| 推荐内部职责、特征和当前能力 | [推荐模块](architecture/recommendation.zh-CN.md) |
+| 所有 HTTP 字段与状态码 | [API 参考](api.zh-CN.md) |
+| 数据文件、备份与表的归属 | [数据目录](data-layout.zh-CN.md)、[存储参考](reference/storage.zh-CN.md) |
 | 如何新增前端或生图适配器 | [开发流程](development.md)、[页面设计规范](design-system.md) |
 | 当时的设计决定与验证 | [需求记录](issues/README.md) |

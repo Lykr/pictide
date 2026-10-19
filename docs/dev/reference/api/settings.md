@@ -2,7 +2,7 @@
 
 [简体中文](settings.zh-CN.md)
 
-[API index](../../api.md) · [Common conventions and errors](../../api.md#通用约定)
+[API index](../../api.md) · [Common conventions and errors](../../api.md#general-conventions)
 
 ## General and history settings
 

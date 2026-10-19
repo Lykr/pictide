@@ -8,18 +8,18 @@ Pictide 当前已实现的 HTTP API 统一入口。先阅读通用约定，再�
 
 | 要做什么 | 接口详情 |
 | --- | --- |
-| 初始化页面、订阅状态变化 | [初始化与实时事件](reference/api/events.md) |
-| 修改语言、主题、清理期限 | [通用与历史设置](reference/api/settings.md) |
-| 配置漫游、保存观看位置、补足预取 | [漫游](reference/api/roam.md) |
-| 接入 ComfyUI、检查连接、管理工作流 | [生图后端与工作流](reference/api/backends.md) |
-| 创建、分页查看和取消任务 | [生成任务](reference/api/jobs.md) |
-| 查询图片、反馈、清理、偏好评分与排序 | [图片、反馈与评分](reference/api/images.md) |
-| 查看、导出和重置偏好 | [用户偏好](reference/api/preferences.md) |
-| 搜索词库、保存预设、生成和预览相关性 | [候选词库与预设](reference/api/candidate.md) |
+| 初始化页面、订阅状态变化 | [初始化与实时事件](reference/api/events.zh-CN.md) |
+| 修改语言、主题、清理期限 | [通用与历史设置](reference/api/settings.zh-CN.md) |
+| 配置漫游、保存观看位置、补足预取 | [漫游](reference/api/roam.zh-CN.md) |
+| 接入 ComfyUI、检查连接、管理工作流 | [生图后端与工作流](reference/api/backends.zh-CN.md) |
+| 创建、分页查看和取消任务 | [生成任务](reference/api/jobs.zh-CN.md) |
+| 查询图片、反馈、清理、偏好评分与排序 | [图片、反馈与评分](reference/api/images.zh-CN.md) |
+| 查看、导出和重置偏好 | [用户偏好](reference/api/preferences.zh-CN.md) |
+| 搜索词库、保存预设、生成和预览相关性 | [候选词库与预设](reference/api/candidate.zh-CN.md) |
 
 ## 通用约定
 
-- 默认地址：`http://127.0.0.1:8189`；以下路径均相对此地址。局域网启动方式见[项目 README](../guides/access.md#局域网访问)。当前没有账号认证，数据和偏好共用本地用户 `local`。
+- 默认地址：`http://127.0.0.1:8189`；以下路径均相对此地址。局域网启动方式见[项目 README](../guides/access.zh-CN.md#局域网访问)。当前没有账号认证，数据和偏好共用本地用户 `local`。
 - 除图片、下载和 SSE 外，响应为 JSON。成功通常返回 `200`；提交任务为 `202`，单独新建工作流为 `201`。
 - 词库上传 `POST /api/candidate/library` 使用 multipart/form-data；其余非 GET/HEAD 的 `/api/` 请求，包括 DELETE，必须携带 `Content-Type: application/json`；无参数时发送 `{}`。请求体须为 JSON 对象，不允许重复字段或 NaN/Infinity。通常上限 8 MiB，候选请求 1,100,000 字节，重置偏好请求 2,048 字节。
 - 修改请求的 `Origin` 若存在须与访问地址同源，`Sec-Fetch-Site: cross-site` 被拒绝；Host 限制为本机地址或局域网入口允许的本机内网 IP。未开放通用跨域调用。

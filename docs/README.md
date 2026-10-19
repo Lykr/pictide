@@ -1,26 +1,28 @@
-# 文档导航
+# Documentation
 
-这里汇总安装、漫游、提示词和设置的使用指南。各主题先给概览，再链接到细节。
+[简体中文](README.zh-CN.md)
 
-## 用户文档
+Guides for setup, roaming, prompts, and settings. Each topic starts with an overview and links to further details.
 
-### 使用指南
+## User documentation
 
-| 问题 | 从这里开始 |
+### Guides
+
+| Question | Start here |
 | --- | --- |
-| Pictide 是什么，适合怎样使用？ | [认识 Pictide](guides/about.md) |
-| 如何安装和启动？ | [Windows](guides/setup/windows.md) · [Linux](guides/setup/linux.md) · [macOS](guides/setup/macos.md) |
-| 如何接入生图服务？ | [连接 ComfyUI](guides/getting-started.md#接入-comfyui) |
-| 如何让手机访问或添加主屏幕应用？ | [局域网与主屏幕应用](guides/access.md) |
-| 提示词怎么产生，固定词和共现参数怎么用？ | [提示词与共现预设](guides/prompts.md) |
-| 漫游、播放、锚点和推荐力度怎么用？ | [漫游](guides/roam.md) |
-| 如何批量生成、筛选喜欢和浏览评分？ | [生成与喜欢](guides/images.md) |
-| 语言主题、任务记录和清理在哪里？ | [设置与清理](guides/settings.md) |
+| What is Pictide, and how can I use it? | [About Pictide](guides/about.md) |
+| How do I install and start it? | [Windows](guides/setup/windows.md) · [Linux](guides/setup/linux.md) · [macOS](guides/setup/macos.md) |
+| How do I connect a generation backend? | [Connect to ComfyUI](guides/getting-started.md#connect-comfyui) |
+| How do I access it from my phone or add it to my Home Screen? | [LAN access and Home Screen app](guides/access.md) |
+| How are prompts generated, and how do fixed terms and co-occurrence settings work? | [Prompts and presets](guides/prompts.md) |
+| How do roaming, playback, anchors, and recommendation strength work? | [Roam](guides/roam.md) |
+| How do I generate batches, filter liked images, and browse scores? | [Generate and Liked](guides/images.md) |
+| Where are language, theme, task history, and cleanup settings? | [Settings and cleanup](guides/settings.md) |
 
-### 数据与备份
+### Data and backups
 
-[数据备份与恢复](guides/backup.md)说明保存位置、备份和恢复；数据库表及实现细节归入开发者参考。
+[Backup and recovery](guides/backup.md) covers data locations, backups, and restoration. Database tables and implementation details are in the developer reference.
 
-## 开发者文档
+## Developer documentation
 
-构建、开发和维护从[开发文档导航](dev/README.md)开始。
+For builds, development, and maintenance, start with the [developer documentation index](dev/README.md).

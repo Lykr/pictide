@@ -2,7 +2,7 @@
 
 [English](prompts.md)
 
-[文档导航](../README.md) · [候选接口](../dev/reference/api/candidate.md)
+[文档导航](../README.zh-CN.md) · [候选接口](../dev/reference/api/candidate.zh-CN.md)
 
 先在「词库」查找标签，在「编排」保存固定词与共现参数，再到「预览」检查结果。
 
@@ -46,4 +46,4 @@
 
 ## 数据准备
 
-离线下载和导入集中在根目录 [`corpus/`](../dev/corpus.md)，包含工具、依赖与处理步骤；源 Parquet、中间 SQLite 和待导入成品库放在 dev/datasets，运行词库放在 data/libraries。成品数据口径与文件布局见[存储参考](../dev/reference/storage.md#候选数据)，设计与验证见[共现候选记录](../dev/issues/cooccurrence-candidates-v1.md#离线导入)。处理完成后，在词库页面上传成品 SQLite，或复制到 libraries 目录后刷新选择，即可用于共现预览和漫游。
+离线下载和导入集中在根目录 [`corpus/`](../dev/corpus.md)，包含工具、依赖与处理步骤；源 Parquet、中间 SQLite 和待导入成品库放在 dev/datasets，运行词库放在 data/libraries。成品数据口径与文件布局见[存储参考](../dev/reference/storage.zh-CN.md#候选数据)，设计与验证见[共现候选记录](../dev/issues/cooccurrence-candidates-v1.md#离线导入)。处理完成后，在词库页面上传成品 SQLite，或复制到 libraries 目录后刷新选择，即可用于共现预览和漫游。

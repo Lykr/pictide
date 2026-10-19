@@ -8,11 +8,11 @@ Settings has General, Roam, Backend, and History sections. General shows the dat
 
 ## General settings
 
-Settings → General offers System / 简体中文 / English for the interface language. The default follows the browser's preferred language, falling back to English for unsupported languages. Changes apply immediately, are saved in SQLite, and synchronize live to other pages of the same application. Interface language does not change prompts, original tag names, or user-defined names. See [internationalization](../dev/issues/i18n.md) for the maintenance entry point for new languages.
+Settings → General offers System / `简体中文` (Simplified Chinese) / English for the interface language. The default follows the browser's preferred language, falling back to English for unsupported languages. Changes apply immediately, are saved in SQLite, and synchronize live to other pages of the same application. Interface language does not change prompts, original tag names, or user-defined names. See [internationalization (Chinese)](../dev/issues/i18n.md) for the maintenance entry point for new languages.
 
-Settings → General offers System / Dark / Light themes. Changes apply immediately, are saved in `data/db/pictide.sqlite3`, and persist across refreshes and restarts. Other open pages of the same application synchronize through live events. The default follows the system; existing explicit choices are retained. Changes in system appearance apply live, and all sections and overlays share the theme. See [general settings](../dev/issues/general-settings.md) for API details.
+Settings → General offers System / Dark / Light themes. Changes apply immediately, are saved in `data/db/pictide.sqlite3`, and persist across refreshes and restarts. Other open pages of the same application synchronize through live events. The default follows the system; existing explicit choices are retained. Changes in system appearance apply live, and all sections and overlays share the theme. See [general settings (Chinese)](../dev/issues/general-settings.md) for API details.
 
-Settings → General includes an Image transition animation switch, enabled by default, controlling fade-ins in Roam and the enlarged Generate / Liked views. The choice survives refreshes; animations do not play when the system requests reduced motion. See [general settings](../dev/issues/general-settings.md).
+Settings → General includes an Image transition animation switch, enabled by default, controlling fade-ins in Roam and the enlarged Generate / Liked views. The choice survives refreshes; animations do not play when the system requests reduced motion. See [general settings (Chinese)](../dev/issues/general-settings.md).
 
 ## Task records
 
@@ -31,5 +31,5 @@ When files are in use or temporarily cannot be deleted, pending deletions persis
 ## Continue reading
 
 - [Roaming scope, modes, and prefetch](roam.md)
-- [Editing backends and workflows](getting-started.md#接入-comfyui)
-- [Data backup and recovery](backup.md#备份与恢复)
+- [Editing backends and workflows](getting-started.md#connect-comfyui)
+- [Data backup and recovery](backup.md#backup-and-recovery)
