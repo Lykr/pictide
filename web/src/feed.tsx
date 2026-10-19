@@ -1,5 +1,7 @@
 import { t, tr } from './i18n/index.mjs';
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { publishUiState } from "./shared/ui-state.mjs";
+import { uiTarget } from "./shared/ui-targets";
 import { EditorWorkspace } from "./editor";
 import { GeneratedResults } from "./components/generated-results";
 import { JobPageControls } from "./components/page-controls";
@@ -24,7 +26,11 @@ import "./styles/feed.css";
 
 // Mount once; the established controller owns form values and dynamic regions.
 export function FeedShell({ themeError = "" }: { themeError?: string }) {
+  const targets = useMemo(() => Object.fromEntries([
+    "app.navigation", "nav.liked", "roam.pending", "roam.privacy", "roam.privacy.immersive", "roam.start", "roam.image", "roam.like", "roam.next", "api.form", "api.test", "api.save",
+  ].map(name => [name, uiTarget(name === "roam.privacy.immersive" ? "roam.privacy" : name)])), []);
   const [privacyBlur, setPrivacyBlur] = useState(true);
+  useEffect(() => publishUiState({ roamPrivacy: privacyBlur }), [privacyBlur]);
   const [nodeParametersOpen, setNodeParametersOpen] = useState(false);
   const privacyLabel = privacyBlur ? t("关闭毛玻璃，显示图片") : t("开启毛玻璃，模糊图片");
   return <div className={`feed-page${privacyBlur ? " privacy-blurred" : ""}`}>
@@ -41,10 +47,10 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 </header>
 {"\n  "}<div id="app-workspace" className="workspace">
-{"\n    "}<nav className="sidebar" aria-label={t("视图")}>
+{"\n    "}<nav ref={targets["app.navigation"]} className="sidebar" aria-label={t("视图")}>
 <Button className="nav active" data-view="feed" variant="ghost" type="button"><Compass aria-hidden="true" />{t("漫游")}</Button>
 <Button className="nav" data-view="generate" variant="ghost" type="button"><Sparkles aria-hidden="true" />{t("生成")}</Button>
-<Button className="nav" data-view="liked" variant="ghost" type="button"><Heart aria-hidden="true" />{t("喜欢")}</Button>
+<Button className="nav" data-view="liked" ref={targets["nav.liked"]} variant="ghost" type="button"><Heart aria-hidden="true" />{t("喜欢")}</Button>
 <Button className="nav" data-view="prompts" variant="ghost" type="button"><ListFilter aria-hidden="true" />{t("提示词")}</Button>
 <div className="sidebar-foot">
 <Button className="nav" data-view="settings" variant="ghost" type="button"><Settings aria-hidden="true" />{t("设置")}</Button>
@@ -54,11 +60,11 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 {"\n      "}<div className="section-heading">
 <div className="view-heading">
 <h1 id="view-title">{t("漫游")}</h1>
-<span id="roam-loading" className="roam-loading" role="status" hidden><LoaderCircle aria-hidden="true" /><span id="roam-loading-label" className="sr-only">{t("正在生成漫游图片")}</span></span>
+<span id="roam-loading" ref={targets["roam.pending"]} className="roam-loading" role="status" hidden><LoaderCircle aria-hidden="true" /><span id="roam-loading-label" className="sr-only">{t("正在生成漫游图片")}</span></span>
 </div>
 <div className="roam-heading-actions">
 <span id="liked-privacy-controls" hidden />
-<span id="roam-options-controls" className="inline-flex items-center gap-1"><RoamPlaybackButton /><Toggle id="roam-privacy" size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={tr`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={tr`${privacyLabel} · 空格。刷新页面后默认开启。`}>
+<span id="roam-options-controls" className="inline-flex items-center gap-1"><RoamPlaybackButton /><Toggle id="roam-privacy" ref={targets["roam.privacy"]} size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={tr`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={tr`${privacyLabel} · 空格。刷新页面后默认开启。`}>
 {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
 </Toggle><IconButton id="roam-immersive" icon={Maximize} label={t("进入沉浸模式")} aria-controls="image-card" aria-pressed="false" disabled onClick={() => document.dispatchEvent(new Event("pictide:roam-options-close"))} /><RoamOptions /></span>
 </div>
@@ -71,17 +77,17 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <h2 id="empty-title">{t("从第一张图片开始")}</h2>
 <p id="empty-description">{t("连接生图 API，开始生成。")}</p>
 <Button id="empty-settings" className="primary" variant="default" type="button">{t("配置生图 API")}</Button>
-<Button id="empty-generate" variant="default" type="button" hidden>{t("开始生成")}</Button>
+<Button id="empty-generate" ref={targets["roam.start"]} variant="default" type="button" hidden>{t("开始生成")}</Button>
 </div>
 {"\n        "}<RoamAnchors>{(anchorTrigger, anchorPanel) => <Card id="image-card" className="image-card roam-image-card gap-0 py-0" tabIndex={-1} aria-label={t("图片浏览")} hidden>
 <div className="immersive-actions" role="toolbar" aria-label={t("沉浸模式设置")}>
 <RoamPlaybackButton immersive />
-<Toggle id="roam-immersive-privacy" size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={tr`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={tr`${privacyLabel} · 空格`}>
+<Toggle id="roam-immersive-privacy" ref={targets["roam.privacy.immersive"]} size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={tr`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={tr`${privacyLabel} · 空格`}>
 {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
 </Toggle>
 <IconButton id="roam-immersive-exit" icon={Minimize} label={t("退出沉浸模式")} hidden />
 </div>
-<div className="image-stage">
+<div className="image-stage" ref={targets["roam.image"]}>
 <img id="main-image" alt={t("生成的图片")} draggable={false} />
 <div id="image-error" className="image-error" hidden>{t("图片读取失败，请检查服务与文件是否可用。")}</div>
 </div>
@@ -103,9 +109,9 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="image-info"><ImageInfo /></div>
 <div className="image-navigation">
 <IconButton id="previous" icon={ArrowLeft} label={t("上一张较旧图片 · ←")} variant="ghost" type="button" />
-<IconButton id="like" icon={Heart} label={t("喜欢 · ↑")} variant="ghost" type="button" className="feedback" aria-pressed="false" />
+<IconButton id="like" ref={targets["roam.like"]} icon={Heart} label={t("喜欢 · ↑")} variant="ghost" type="button" className="feedback" aria-pressed="false" />
 <IconButton id="dislike" icon={ThumbsDown} label={t("不喜欢 · ↓")} variant="ghost" type="button" className="feedback" aria-pressed="false" />
-<IconButton id="next" icon={ArrowRight} label={t("下一张较新图片 · →")} variant="ghost" type="button" />
+<IconButton id="next" ref={targets["roam.next"]} icon={ArrowRight} label={t("下一张较新图片 · →")} variant="ghost" type="button" />
 </div>
 <div className="image-anchor">
 {anchorTrigger}
@@ -219,7 +225,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <h2>{t("数据位置")}</h2>
 <dl className="data-locations"><div><dt>{t("数据目录")}</dt><dd id="data-directory">{t("读取中…")}</dd></div><div><dt>{t("数据库")}</dt><dd id="database-path">{t("读取中…")}</dd></div></dl>
 </section></section>
-<section id="settings-backend" className="settings-category"><form id="settings-form">
+<section id="settings-backend" className="settings-category"><form id="settings-form" ref={targets["api.form"]}>
 <div className="form-grid">
 <div className="settings-field">
 <div className="settings-field-heading"><Label htmlFor="edit-backend">{t("已有 API")}</Label><IconButton id="delete-backend" icon={Trash2} label={t("删除 API 配置")} size="icon-xs" disabled /></div>
@@ -287,7 +293,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 </fieldset>
 <div id="settings-result" className="notice" role="status" hidden />
-<div className="dialog-footer"><Button id="test-backend" type="button" className="quiet" variant="outline">{t("测试连接")}</Button><Button id="save-backend" type="submit" className="primary" variant="default">{t("保存 API")}</Button></div>
+<div className="dialog-footer"><Button id="test-backend" ref={targets["api.test"]} type="button" className="quiet" variant="outline">{t("测试连接")}</Button><Button id="save-backend" ref={targets["api.save"]} type="submit" className="primary" variant="default">{t("保存 API")}</Button></div>
 </form></section>
 <section id="settings-roam" className="settings-category" hidden><form id="roam-form" className="settings-stack">
 <fieldset id="roam-fields" className="settings-stack">

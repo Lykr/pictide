@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { publishUiState } from "../shared/ui-state.mjs";
+import { uiTarget } from "../shared/ui-targets";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { Anchor, LoaderCircle, LockKeyhole, Plus, Trash2, X } from "lucide-react";
 import { t } from "../i18n/index.mjs";
 import { Button } from "./ui/button";
@@ -21,6 +23,10 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const targets = useMemo(() => ({ trigger: uiTarget("anchors.trigger"), terms: uiTarget("anchors.terms"), clear: uiTarget("anchors.clear"), mobileClear: uiTarget("anchors.clear") }), []);
+  const triggerTarget = useCallback((element: HTMLButtonElement | null) => { triggerRef.current = element; targets.trigger(element); }, [targets]);
+  const previousPins = useRef<string | null>(null);
+  const anchorRevision = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (adding && open) inputRef.current?.focus(); }, [adding, open]);
   useEffect(() => {
@@ -42,6 +48,14 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
   const pinned = new Set(pins);
   const terms: string[] = anchorTerms(positive, pins, settings.preset_base_positive);
   const locked = settings.prompt_mode === "stay";
+  const signature = JSON.stringify(pins);
+  useEffect(() => {
+    if (ready && previousPins.current !== signature) {
+      if (previousPins.current !== null) anchorRevision.current++;
+      previousPins.current = signature;
+    }
+    publishUiState({ anchorOpen: open, anchorCount: pins.length, anchorsEditable: ready && !locked && pending === null, anchorRevision: anchorRevision.current });
+  }, [open, ready, locked, pending, signature]);
   const save = async (text: string | null, addOnly = false) => {
     if (!ready || locked || pending !== null) return false;
     if (addOnly && text !== null && (fixed.has(text) || pinned.has(text))) return true;
@@ -60,7 +74,7 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
     if (text && await save(text, true)) { setQuery(""); setAdding(false); }
   };
   const trigger = <CollapsibleTrigger asChild>
-    <Button ref={triggerRef} variant={open ? "secondary" : "ghost"} size="icon-sm" className="roam-anchor-trigger" aria-label={t("锚点")} aria-pressed={open} data-tooltip={t("锚点")} onClick={() => { if (!open) document.dispatchEvent(new Event("pictide:close-image-info")); }}>
+    <Button ref={triggerTarget} variant={open ? "secondary" : "ghost"} size="icon-sm" className="roam-anchor-trigger" aria-label={t("锚点")} aria-pressed={open} data-tooltip={t("锚点")} onClick={() => { if (!open) document.dispatchEvent(new Event("pictide:close-image-info")); }}>
       <Anchor aria-hidden="true" />{pins.length > 0 && <span className="roam-anchor-count">{pins.length}</span>}
     </Button>
   </CollapsibleTrigger>;
@@ -71,7 +85,7 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
       <span className="font-medium">{t("锚点")}</span><Badge variant="secondary">{pins.length}</Badge>
       <HelpTip text={locked ? t("停泊保持整组提示词，切换漫游方式后可编辑锚点。") : t("点选正向词，让后续图片保留这个元素；修改后清空旧预取。")} />
       <div className="ml-auto flex items-center gap-1">
-        {pins.length > 0 && <Button variant="ghost" size="icon-sm" aria-label={t("清空锚点")} data-tooltip={t("清空锚点")} disabled={!ready || locked || pending !== null} onClick={() => save(null)}>
+        {pins.length > 0 && <Button variant="ghost" size="icon-sm" ref={targets.clear} aria-label={t("清空锚点")} data-tooltip={t("清空锚点")} disabled={!ready || locked || pending !== null} onClick={() => save(null)}>
           {pending === "" ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
         </Button>}
         <Button variant="ghost" size="icon-sm" aria-label={t("收起锚点")} data-tooltip={t("收起锚点")} onClick={() => { setOpen(false); triggerRef.current?.focus({ preventScroll: true }); }}><X aria-hidden="true" /></Button>
@@ -90,8 +104,11 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
         disabled={!ready || locked || pending !== null} onClick={() => { if (query.trim()) void add(); else { setAdding(true); inputRef.current?.focus(); } }}>
         {pending !== null && pending === normalize(query) ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}
       </Button>
+      {pins.length > 0 && <Button ref={targets.mobileClear} className="roam-anchor-mobile-clear" variant="ghost" size="icon-sm" aria-label={t("清空锚点")} data-tooltip={t("清空锚点")} disabled={!ready || locked || pending !== null} onClick={() => save(null)}>
+        {pending === "" ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+      </Button>}
     </div>
-    <div className="roam-anchor-terms">
+    <div ref={targets.terms} className="roam-anchor-terms">
       {terms.map(text => {
         const fromPreset = fixed.has(text), selected = pinned.has(text);
         const label = fromPreset ? t("来自预设") : selected ? t("取消锚点") : t("设为锚点");

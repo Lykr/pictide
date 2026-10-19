@@ -10,6 +10,8 @@ Use Settings to adjust the interface, check generation tasks, and manage the spa
 
 Let the interface language and theme follow your system, or choose your own. You can also turn off image transitions and find your data location here. Changes save automatically.
 
+Choose **Getting started** to revisit the short tour of connecting a service and roaming.
+
 See [Roam](roam.md) to adjust exploration, or [Getting started](getting-started.md) to connect an image service.
 
 ## Task records

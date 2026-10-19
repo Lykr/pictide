@@ -342,6 +342,7 @@ body.pictide-immersive { overflow: hidden; }
 .roam-anchor-count { position: absolute; top: -3px; right: -3px; min-width: 14px; height: 14px; padding-inline: 3px; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); font-size: 10px; line-height: 14px; font-variant-numeric: tabular-nums; }
 .roam-anchors { min-width: 0; min-height: 0; background: var(--card); color: var(--card-foreground); }
 .roam-anchors[data-state=open] { display: flex; flex-direction: column; }
+.roam-anchor-mobile-clear { display: none; }
 .roam-anchor-heading { display: flex; align-items: center; gap: 4px; padding: 8px 8px 0; flex-shrink: 0; }
 .roam-anchors > :not(.roam-anchor-terms) { flex-shrink: 0; }
 .roam-anchor-terms { display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; gap: 6px; padding: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
@@ -380,6 +381,8 @@ body.pictide-immersive { overflow: hidden; }
 @media (max-width: 640px) {
   .roam-anchor-divider, .roam-anchors .roam-anchor-heading { display: none; }
   .roam-anchors .roam-anchor-add { grid-column: 2; grid-row: 1; padding: 0; align-self: start; justify-content: center; }
+  .roam-anchors .roam-anchor-add:not([data-open=true]) { flex-direction: column; }
+  .roam-anchors .roam-anchor-mobile-clear { display: inline-flex; }
   .roam-anchors .roam-anchor-add:not([data-open=true]) input { display: none; }
   .roam-anchors .roam-anchor-terms { grid-column: 1; grid-row: 1; padding: 2px; }
   .feed-page #image-card[data-state=open] > .roam-anchors:has(.roam-anchor-add[data-open=true]) { height: min(156px, 32dvh); grid-template-rows: auto minmax(0, 1fr); }

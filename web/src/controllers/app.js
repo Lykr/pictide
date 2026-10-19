@@ -1,3 +1,4 @@
+import { publishUiState, subscribeUiActions } from '../shared/ui-state.mjs';
 import { t, tr, locale } from '../i18n/index.mjs';
 import { loadTheme } from './theme.mjs';
 import { createButtonFeedback } from './button-feedback.mjs';
@@ -23,6 +24,12 @@ import { createLikedRanking } from './liked-ranking.mjs';
 import { playImageTransition, cancelImageTransition } from './image-transitions.mjs';
 
 let roamImageSwitchPending = false;
+let apiDraftRevision = 0;
+function apiDraftChanged() {
+  apiDraftRevision++;
+  publishUiState({ apiDraftRevision, apiTestedRevision: -1, apiSavedRevision: -1 });
+}
+publishUiState({ ready: false, apiDraftRevision, apiTestedRevision: -1, apiSavedRevision: -1, apiTestPending: false, apiSavePending: false });
 const $ = (id) => document.getElementById(id);
 const localizedMessages = new Map();
 function setStatusText(id, message) {
@@ -103,6 +110,9 @@ const roamPlayback = createRoamPlayback({
 });
 function syncRoamPlayback(artifact = null) {
   const image = $('main-image');
+  publishUiState({ imageId: artifact?.id || null,
+    imageReady: !!artifact && state.currentImage === artifact.id && image.complete && image.naturalWidth > 0 && $('image-error').hidden,
+    imageFeedback: artifact?.feedback ?? null });
   roamPlayback.update({ imageId: artifact?.id || null,
     ready: !!artifact && state.currentImage === artifact.id && image.complete && image.naturalWidth > 0 && $('image-error').hidden,
     active: state.view === 'feed' && roamPageActive && !document.hidden,
@@ -227,6 +237,7 @@ function setView(route, updateUrl = true) {
   pageScroll.save();
   if (view !== state.view) { if (view !== 'feed') roamPlayback.pause(); immersive.leave(); viewRevision++; nextImageWait.cancel(); roamWindowLoading = false; }
   state.view = view;
+  publishUiState({ route: view === 'settings' ? `settings/${section || state.settingsSection}` : view, ...(view !== 'feed' ? { waiting: false } : {}) });
   if (view === 'generate') { clearTimeout(noticeTimer); $('notice').hidden = true; }
   document.dispatchEvent(new Event('pictide:close-image-info'));
   if (view === 'settings' && ['general', 'backend', 'roam', 'history'].includes(section)) state.settingsSection = section;
@@ -262,6 +273,7 @@ function setView(route, updateUrl = true) {
 function setSettingsSection(section, updateUrl = true) {
   if (!['general', 'backend', 'roam', 'history'].includes(section)) section = 'general';
   state.settingsSection = section;
+  if (state.view === 'settings') publishUiState({ route: `settings/${section}` });
   document.querySelectorAll('[data-settings-section]').forEach((button) => {
     const active = button.dataset.settingsSection === section;
     button.classList.toggle('active', active);
@@ -276,6 +288,7 @@ function setSettingsSection(section, updateUrl = true) {
   if (updateUrl) history.replaceState(null, '', `${location.pathname}${location.search}#settings/${section}`);
 }
 function renderBackends() {
+  publishUiState({ backendCount: state.backends.length });
   const selected = $('generate-backend').value;
   $('generate-backend').replaceChildren(...(state.backends.length ? state.backends.map((backend) => option(backend.id, backend.name)) : [translatedOption('', "请先配置生图 API")]));
   if (state.backends.some((backend) => backend.id === selected)) $('generate-backend').value = selected;
@@ -380,6 +393,7 @@ function setComposeBusy(value) {
   $('cancel-pending').disabled = value;
 }
 function renderGalleryLoading() {
+  publishUiState({ imageReady: false });
   syncRoamPlayback();
   $('roam-immersive').disabled = true;
   immersive.leave();
@@ -400,6 +414,7 @@ function renderArtifacts() {
   if (selection.loading) { renderGalleryLoading(); return; }
   const roam = state.view === 'feed';
   const waiting = roam && (!!nextImageWait.current || roamWindowLoading || !!roamSwitch);
+  publishUiState({ waiting });
   $('load-more').hidden = roam || !page.hasMore;
   $('load-more').disabled = state.loadingMore || state.feedbackPending;
   $('load-more').textContent = state.loadingMore ? t("加载中…") : t("更早图片");
@@ -752,7 +767,8 @@ function switchBackendType() {
   $('settings-result').hidden = true;
   updateBackendTypeControls();
 }
-function loadBackend(id) {
+function loadBackend(id, preserveRevision = false) {
+  if (!preserveRevision) apiDraftChanged();
   // Discard stale template responses when a different backend is selected.
   workflowLoadRevision++;
   $('workflow-mode').disabled = false;
@@ -783,6 +799,7 @@ function loadBackend(id) {
   $('delete-backend').disabled = !backend;
   updateBindings(backend?.bindings || {}, backend?.output_nodes || []);
   updateBackendTypeControls();
+  if (!preserveRevision) publishUiState({ apiSavedRevision: backend ? apiDraftRevision : -1 });
 }
 function updateWorkflowControls() {
   const cloud = $('backend-kind').value !== 'comfyui';
@@ -902,6 +919,7 @@ function renderNodeParameters() {
 }
 
 function applyWorkflowDraft(draft, inputOptions = {}) {
+  apiDraftChanged();
   workflowInputOptions = inputOptions;
   $('workflow-json').value = JSON.stringify(draft.workflow, null, 2);
   $('workflow-mode').value = 'custom';
@@ -1130,6 +1148,7 @@ async function bootstrap() {
     await loadWorkflowLibrary();
     loadBackend($('edit-backend').value);
     if (!roamSettingsLoaded) await loadRoamSettings();
+    publishUiState({ ready: true });
   } catch (error) { showNotice(tr`无法读取平台数据：${error.message}`, true); }
 }
 
@@ -1265,16 +1284,26 @@ $('load-models').addEventListener('click', async () => {
   finally { button.disabled = false; }
 });
 $('test-backend').addEventListener('click', async () => {
+  const revision = apiDraftRevision;
+  publishUiState({ apiTestPending: true, apiTestedRevision: -1 });
   const button = $('test-backend'); button.disabled = true; settingsNotice(() => t("正在测试连接…"));
-  try { const draft = draftBackend(); const id = $('edit-backend').value === '__new__' ? 'new' : $('edit-backend').value; const result = await api(`/api/backends/${encodeURIComponent(id)}/check`, { method: 'POST', body: JSON.stringify(draft) }); settingsNotice(result.message || (result.ok ? t("连接成功。") : t("连接失败。")), !result.ok); if (id !== 'new' && result.ok) showBackendAvailability(true); }
+  try {
+    const draft = draftBackend();
+    const id = $('edit-backend').value === '__new__' ? 'new' : $('edit-backend').value;
+    const result = await api(`/api/backends/${encodeURIComponent(id)}/check`, { method: 'POST', body: JSON.stringify(draft) });
+    if (result.ok && revision === apiDraftRevision) publishUiState({ apiTestedRevision: revision });
+    settingsNotice(result.message || (result.ok ? t("连接成功。") : t("连接失败。")), !result.ok);
+    if (id !== 'new' && result.ok) showBackendAvailability(true);
+  }
   catch (error) { settingsNotice(error.message, true); }
-  finally { button.disabled = false; }
+  finally { button.disabled = false; publishUiState({ apiTestPending: false }); }
 });
 $('settings-form').addEventListener('invalid', (event) => {
   if (event.target.closest('#node-parameters')) setNodeParametersExpanded(true);
 }, true);
 $('settings-form').addEventListener('submit', async (event) => {
   event.preventDefault(); if (state.saving) return;
+  const revision = apiDraftRevision; publishUiState({ apiSavePending: true });
   state.saving = true; $('save-backend').disabled = true; $('settings-form').inert = true;
   try {
     const draft = draftBackend({ saveWorkflow: true });
@@ -1286,11 +1315,12 @@ $('settings-form').addEventListener('submit', async (event) => {
     renderBackends(); $('edit-backend').value = backend.id; $('generate-backend').value = backend.id;
     updateGenerationHints();
     await loadWorkflowLibrary(backend.workflow_id ? `saved:${backend.workflow_id}` : 'default');
-    loadBackend(backend.id); renderArtifacts();
+    loadBackend(backend.id, true); renderArtifacts();
+    if (revision === apiDraftRevision) publishUiState({ apiSavedRevision: revision });
     await loadRoamSettings({ preserveDraft: true });
     settingsNotice(() => backend.workflow_name ? tr`生图 API 与工作流「${backend.workflow_name}」已保存。` : t("生图 API 已保存。"));
   } catch (error) { settingsNotice(error.message, true); }
-  finally { state.saving = false; $('save-backend').disabled = false; $('settings-form').inert = false; }
+  finally { state.saving = false; $('save-backend').disabled = false; $('settings-form').inert = false; publishUiState({ apiSavePending: false }); }
 });
 
 $('generate-form').addEventListener('submit', async (event) => {
@@ -1416,14 +1446,14 @@ $('main-image').addEventListener('load', () => {
   if (roamImageSwitchPending) { roamImageSwitchPending = false; playImageTransition($('main-image')); }
   syncRoamPlayback(state.artifacts.find(item => item.id === state.activeId));
 });
-$('main-image').addEventListener('error', () => { roamImageSwitchPending = false; cancelImageTransition($('main-image')); $('image-error').hidden = false; roamPlayback.pause(); });
+$('main-image').addEventListener('error', () => { publishUiState({ imageReady: false }); roamImageSwitchPending = false; cancelImageTransition($('main-image')); $('image-error').hidden = false; roamPlayback.pause(); });
 document.addEventListener('pictide:roam-playback-toggle', () => roamPlayback.toggle());
 document.addEventListener('pictide:roam-playback-interval', event => {
   roamSettings.playback_interval_seconds = event.detail;
   roamPlayback.setInterval(event.detail);
 });
-$('settings-form').addEventListener('input', () => { settingsDirty = true; });
-$('settings-form').addEventListener('change', () => { settingsDirty = true; });
+$('settings-form').addEventListener('input', () => { settingsDirty = true; apiDraftChanged(); });
+$('settings-form').addEventListener('change', event => { settingsDirty = true; if (event.target.id !== 'edit-backend') apiDraftChanged(); });
 document.querySelectorAll('[data-settings-section]').forEach((button) => button.addEventListener('click', () => setSettingsSection(button.dataset.settingsSection)));
 document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
 document.addEventListener('keydown', (event) => {
@@ -1440,6 +1470,7 @@ document.addEventListener('keydown', (event) => {
 });
 window.addEventListener('hashchange', () => setView(location.hash.slice(1) || 'feed', false));
 setView(location.hash.slice(1) || 'feed', false);
+subscribeUiActions((name, value) => { if (name === 'navigate') setView(value); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) roamPlayback.pause(); else { loadRoamSettings({ preserveDraft: true }); refresh(true); } });
 await bootstrap();
 updateRuleControls();

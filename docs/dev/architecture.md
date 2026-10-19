@@ -95,6 +95,12 @@ pictide/
 - The browser manages presentation, input, and drafts through HTTP/SSE, without reading or writing configuration or databases directly. The prompt page is a view in the same frontend, with no additional site or iframe.
 - Store persists tasks, images, feedback, snapshots, and learning state. Feedback learning uses the actual generation snapshot; the current library does not overwrite historical meaning.
 
+## Frontend guide
+
+The first-run guide lives in `web/src/onboarding/`: a generic observable state machine, pure Pictide flow rules, and a state adapter. Business controllers and components publish confirmed facts through `shared/ui-state.mjs` and register semantic element refs through `shared/ui-targets.ts`; they do not import guide steps. The React presentation in `components/onboarding/` measures these elements as layout changes and keeps the guide clear of controls.
+
+The guide observes successful tests, saves, feedback, anchor changes, and actual image loading. Navigation uses the existing UI intent path; generation and mutations remain user actions on normal controls. Only guide progress and necessary image IDs are stored in browser local storage. No backend API, database schema, or runtime dependency is added. See the [guide design and validation](issues/first-run-guide.md).
+
 ## Startup Preparation
 
 Source and portable startup share `PictideApplication.prepare_startup()` in `backend/application.py`. It initializes bundled vocabulary when present, then asks `backend/recommand/resources.py` to verify or download the fixed MiniLM files into the selected runtime data directory. Host starts HTTP/SSE and opens the browser only after preparation succeeds. Failure terminates startup, preserving partial downloads for the next attempt. The encoder reads the prepared local files; offline corpus tools remain outside the startup path. See [Model Preparation](architecture/recommendation.md#model-preparation).

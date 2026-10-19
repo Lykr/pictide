@@ -96,6 +96,12 @@ pictide/
 - 浏览器通过 HTTP/SSE 管理展示、输入和草稿，不直接读写配置或数据库。提示词页是同一前端中的视图，没有额外站点或 iframe。
 - Store 持久化任务、图片、反馈、快照和学习状态。反馈学习依据实际生成快照，不用当前词库覆盖历史语义。
 
+## 前端引导
+
+首次使用引导位于 `web/src/onboarding/`，分为通用可观察状态机、纯 Pictide 步骤规则和状态适配器。业务控制器与组件通过 `shared/ui-state.mjs` 发布已确认事实，通过 `shared/ui-targets.ts` 注册语义化元素引用，不导入引导步骤。`components/onboarding/` 的 React 展示层随布局变化测量这些组件，并避开操作控件。
+
+引导观察测试、保存、反馈、锚点变更的成功结果和图片实际载入状态。导航沿用既有 UI 意图入口，生成与数据修改由用户操作原有控件触发。浏览器本地只保存引导进度和必要图片标识，不新增后端 API、数据库表或运行依赖。详见[引导设计与验证](issues/first-run-guide.md)。
+
 ## 启动准备
 
 源码与便携启动共用 `backend/application.py` 的 `PictideApplication.prepare_startup()`。该入口先初始化存在的随包词库，再通过 `backend/recommand/resources.py` 校验或下载固定 MiniLM 文件到所选运行数据目录。准备成功后，Host 才启动 HTTP/SSE 并打开浏览器；失败终止启动，保留未完成下载供下次重试。编码器只读取准备好的本地文件，离线 corpus 工具继续独立于启动链路。详见[模型准备](architecture/recommendation.zh-CN.md#模型准备)。

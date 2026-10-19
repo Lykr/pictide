@@ -1,0 +1,17 @@
+/* Guide geometry follows registered components; it never changes their layout. */
+.guide-layer { position: fixed; inset: 0; z-index: 900; pointer-events: none; }
+.guide-focus { position: fixed; border: 2px solid var(--primary); border-radius: var(--radius-lg); box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent); pointer-events: none; }
+.guide-card { position: fixed; left: 50%; transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--card); color: var(--card-foreground); box-shadow: 0 8px 32px #0003; pointer-events: auto; }
+.guide-mark { flex-shrink: 0; width: 20px; height: 20px; margin-top: 2px; color: var(--muted-foreground); }
+.guide-content { min-width: 0; flex: 1; }
+.guide-message { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.guide-message p { margin: 0; }
+.guide-message p + p { margin-top: 4px; }
+.guide-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 12px; }
+.guide-actions:empty { display: none; }
+.guide-dismiss { flex-shrink: 0; margin: -4px -4px 0 0; }
+@media (max-width: 640px) {
+  .guide-card { width: calc(100vw - 24px); padding: 12px; gap: 8px; }
+  .guide-actions button, .guide-dismiss { min-height: 44px; }
+  .guide-dismiss { min-width: 44px; }
+}

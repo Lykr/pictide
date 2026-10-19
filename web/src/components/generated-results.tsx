@@ -1,5 +1,7 @@
+import { publishUiState } from "../shared/ui-state.mjs";
+import { uiTarget } from "../shared/ui-targets";
 import { t, tr, messageKey, locale } from "../i18n/index.mjs";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Eye, EyeOff, Heart, ImageIcon, LoaderCircle, RotateCw, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
@@ -27,6 +29,7 @@ function ArtifactImage({ item, label }: { item: GeneratedArtifact; label: string
 
 // Both collections use the same grid/viewer; only their data and actions differ.
 export function GeneratedResults({ collection = "generate" }: { collection?: "generate" | "liked" }) {
+  const targets = useMemo(() => ({ privacy: uiTarget("liked.privacy"), collection: uiTarget("liked.collection") }), []);
   const liked = collection === "liked";
   const prefix = liked ? "liked" : "generated";
   const label = liked ? t("喜欢图片") : t("生成的图片");
@@ -38,12 +41,13 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
     document.addEventListener(`pictide:${prefix}-results`, receive);
     return () => document.removeEventListener(`pictide:${prefix}-results`, receive);
   }, [prefix]);
+  useEffect(() => { if (liked) publishUiState({ likedPrivacy: privacyBlur, likedLoading: state.loading, likedTotal: state.total }); }, [liked, privacyBlur, state.loading, state.total]);
   useEffect(() => { if (!state.visible) setSelectedId(null); }, [state.visible]);
   useEffect(() => { if (liked) setSelectedId(null); }, [liked, state.filterVersion]);
   const busy = state.feedbackPending || state.mutationPending || liked && state.loading;
   const like = (item: GeneratedArtifact, toggle = true) => emit(`${prefix}-feedback`, { id: item.id, toggle });
   const privacyLabel = privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格");
-  const privacyControl = <Toggle size="sm" className="generated-privacy-toggle" data-collection={collection} pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={privacyLabel} aria-keyshortcuts="Space" data-tooltip={privacyLabel}>{privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}</Toggle>;
+  const privacyControl = <Toggle ref={liked ? targets.privacy : undefined} size="sm" className="generated-privacy-toggle" data-collection={collection} pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={privacyLabel} aria-keyshortcuts="Space" data-tooltip={privacyLabel}>{privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}</Toggle>;
   const refreshTooltip = state.refreshedAt
     ? t("刷新偏好评分 · 上次刷新：{time}", { time: new Date(state.refreshedAt).toLocaleString(locale()) })
     : t("刷新偏好评分 · 尚未刷新");
@@ -65,7 +69,7 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
     </div>}
     {state.error && <div className="notice error" role="status">{t(messageKey(state.error))}<Button variant="ghost" size="sm" type="button" disabled={busy || state.loading} onClick={() => emit(`${prefix}-refresh`)}>{t("重试")}</Button></div>}
     {!state.artifacts.length && !state.loading && !state.error && <div className="empty small"><ImageIcon aria-hidden="true" /><p>{liked ? state.tags.length ? t("没有同时包含所选标签的喜欢图片。") : t("喜欢的图片会保存在这里。") : state.pending ? t("正在生成，完成后会显示在这里。") : state.configured ? t("生成图片后，在这里查看结果。") : t("先配置生图 API。")}</p>{!liked && !state.configured && <Button variant="outline" type="button" onClick={() => emit("generated-configure")}>{t("配置生图 API")}</Button>}</div>}
-    <div className={`generated-grid${privacyBlur ? " generated-privacy-blurred" : ""}`} aria-busy={state.loading || state.mutationPending}>{state.artifacts.map(item => <Card key={item.id} className="generated-card gap-0 overflow-hidden py-0">
+    <div ref={liked ? targets.collection : undefined} className={`generated-grid${privacyBlur ? " generated-privacy-blurred" : ""}`} aria-busy={state.loading || state.mutationPending}>{state.artifacts.map(item => <Card key={item.id} className="generated-card gap-0 overflow-hidden py-0">
       <Button type="button" variant="ghost" className="generated-image-button" aria-label={tr`查看${label} · ${seedLabel(item)}`} onClick={() => setSelectedId(item.id)}><ArtifactImage item={item} label={label} /></Button>
       <IconButton icon={Heart} className="generated-card-like" label={item.feedback === 1 ? t("已喜欢，点击撤回") : t("喜欢图片")} aria-pressed={item.feedback === 1} disabled={busy} onClick={() => like(item)} />
     </Card>)}</div>

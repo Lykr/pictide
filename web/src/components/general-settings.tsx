@@ -1,3 +1,5 @@
+import { requestUiAction } from "../shared/ui-state.mjs";
+import { Button } from "./ui/button";
 import { useEffect, useState } from "react";
 import { LoaderCircle, Monitor, Moon, Sun } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
@@ -72,6 +74,7 @@ export function GeneralSettings({ initialError = "" }: { initialError?: string }
         {saving === "effects" ? <LoaderCircle className="size-3.5 animate-spin" aria-label={t("正在保存")} /> : <HelpTip text={t("切换图片时淡入；系统启用减少动态效果时不播放。")} />}
       </Label>
     </div>
+    <div className="settings-field"><Button variant="outline" type="button" className="justify-self-start" onClick={() => requestUiAction("onboarding.restart")}>{t("新手引导")}</Button></div>
     {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
   </div>;
 }

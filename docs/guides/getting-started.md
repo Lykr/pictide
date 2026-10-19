@@ -14,6 +14,8 @@ Connect your local ComfyUI installation, or choose OpenAI Images or Gemini for c
 
 Portable builds and startup checks have passed on Windows, Linux, and macOS. Live cloud image generation remains unverified.
 
+On your first visit, choose **Show me around** for a short tour from connecting a service to exploring images. You can end it anytime and reopen it under **Settings → General → Getting started**.
+
 ## Connect ComfyUI
 
 1. Start ComfyUI with an image generation model installed.
