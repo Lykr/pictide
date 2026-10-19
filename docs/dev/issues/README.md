@@ -46,6 +46,7 @@
 
 ## 任务与基础流程
 
+- [多生图 API 接入（待确认）](generation-api-adapters.md)
 - [生图任务事件通知](task-events.md)
 - [两个在途生图任务](task-window.md)
 - [默认文生图与数据目录统一](default-workflow-data.md)
