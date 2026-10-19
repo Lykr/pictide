@@ -1,97 +1,99 @@
-# 调用和数据流
+# Calls and Data Flow
 
-[架构概览](../architecture.md) · [API 入口](../api.md)
+[简体中文](flows.zh-CN.md)
 
-这里说明现有模块间的调用顺序与数据关联；静态职责以架构概览为准。
+[Architecture Overview](../architecture.md) · [API Entry Point](../api.md)
 
-## 候选、评分与生成
+This page describes the call sequence and data associations between existing modules. The architecture overview defines their static responsibilities.
+
+## Candidates, Scoring, and Generation
 
 ```mermaid
 sequenceDiagram
-    participant App as 应用编排
-    participant Rules as 候选模块
-    participant Rec as 推荐模块
-    participant Jobs as 任务模块
-    App->>Rules: 请求候选模块提供完整提示词组合集合
-    Rules-->>App: 各组合的标识、完整正负提示词及标签快照
-    App->>Rec: 提交完整候选组合集合，请求评分
-    Rec-->>App: 组合标识对应的分数
-    Note over App: 根据评分选择一个完整组合
-    App->>Jobs: 提交生成请求及关联信息
-    Jobs-->>App: 任务状态与产物信息
-    Note over App: 保存图片与实际提示词的关联
-    Note over App: 接收用户反馈，读取对应生成记录
-    Note over App: 反馈及待学习记录落库后返回客户端
-    App->>Rec: 编排后台任务提交反馈及生成时的特征快照
+    participant App as Application orchestration
+    participant Rules as Candidate module
+    participant Rec as Recommendation module
+    participant Jobs as Task module
+    App->>Rules: Request a set of complete prompt combinations
+    Rules-->>App: Combination IDs, complete positive/negative prompts, tag snapshots
+    App->>Rec: Submit complete candidate combinations for scoring
+    Rec-->>App: Scores keyed by combination ID
+    Note over App: Select one complete combination using scores
+    App->>Jobs: Submit generation request and associated metadata
+    Jobs-->>App: Task state and artifact information
+    Note over App: Save the image–actual prompt association
+    Note over App: Receive user feedback and read its generation record
+    Note over App: Persist feedback and pending learning record, then return to client
+    App->>Rec: Background orchestration submits feedback and generation-time feature snapshot
 ```
 
-- 候选模块先根据标签库与规则提供本次请求的全部候选提示词组合，每个候选都是可提交生成的完整正负提示词，包含组合标识、标签快照及版本；共现门槛与连续预算由候选模块处理；共现不足时组合可能短于目标长度。
-- 推荐模块对 App 提供的完整组合评分，返回组合标识与分数，不逐词打分后交回抽取，不新增、修改或删除组合。Thompson Sampling 的探索体现在组合评分中。
-- App 获取候选组合集合，交给推荐模块评分，再根据评分选择一个完整组合并提交任务；不将评分交回候选模块重新组装提示词。任务模块只接收确定的生成请求。推荐不可用时，由 App 在既有合法组合中按默认策略选择。
-- 生成记录保存所选组合及实际标签内容与版本；反馈由 App 关联历史记录后交给推荐模块，不以最新标签库重新解释历史，也不把一次点赞直接视为喜欢全部标签。撤回喜欢不等同于不喜欢。
+- Candidate first provides all candidate prompt combinations for this request using the tag library and rules. Each candidate contains complete positive and negative prompts ready for generation, together with its combination ID, tag snapshot, and version. Candidate handles co-occurrence thresholds and the continuous-change budget; insufficient co-occurrence may produce combinations shorter than the target length.
+- Recommendation scores the complete combinations supplied by App and returns combination IDs and scores. It does not score individual terms for subsequent sampling or add, modify, or remove combinations. Thompson Sampling exploration is reflected in combination scores.
+- App obtains the candidate set, requests recommendation scores, selects a complete combination, and submits a task. It does not return scores to Candidate to rebuild prompts. Task receives only a determined generation request. If recommendation is unavailable, App selects from existing valid combinations using the default policy.
+- Generation records preserve the selected combination, actual tag content, and versions. App associates feedback with the historical record before passing it to Recommendation. The latest tag library does not reinterpret history, and a like does not directly mean that every tag is liked. Withdrawing a like is distinct from a dislike.
 
-## 手动生成批次
+## Manual Generation Batches
 
-App 接收每次数量和生成次数，必要时调用 Candidate 逐轮产生完整文本，再一次校验并保存整批任务。Task 执行确定的生成请求，不重新抽词。每轮内共用提示词；图像种子逐任务独立随机或按序递增。
+App receives the count per round and number of rounds, calls Candidate to produce complete text for each round when needed, then validates and saves the whole batch at once. Task executes determined generation requests without resampling tags. Prompts are shared within a round; image seeds are independently random per task or incremented in sequence.
 
-批次幂等与容量检查在存储事务中执行，不足时整批拒绝；同一 request_id 重试恢复原计划，不再次抽取。新计划最多 100 个待处理任务，旧式无 repetitions/candidate 的提交沿用 10 个入队门槛。具体字段见[任务接口](../reference/api/jobs.md)。
+Batch idempotency and capacity checks run within the storage transaction; insufficient capacity rejects the whole batch. Retrying the same request_id restores the original plan without resampling. A new plan allows at most 100 pending tasks. Legacy submissions without repetitions/candidate retain the 10-task queue threshold. See [Task API](../reference/api/jobs.md) for fields.
 
-## 漫游预取与出图
+## Roam Prefetch and Image Generation
 
 ```mermaid
 sequenceDiagram
-    participant UI as 浏览器
-    participant App as 应用编排
-    participant Store as 存储
-    participant Candidate as 候选
-    participant Rec as 推荐
-    participant Task as 任务
-    participant Gen as 生图适配器
+    participant UI as Browser
+    participant App as Application orchestration
+    participant Store as Storage
+    participant Candidate as Candidate
+    participant Rec as Recommendation
+    participant Task as Task
+    participant Gen as Generation adapter
     UI->>App: ensure(anchor_id, demand)
-    App->>Store: 读取设置、窗口及待完成任务
-    App->>Candidate: 请求完整候选组合
-    Candidate-->>App: 组合池与实际词项快照
-    App->>Rec: 对组合池评分
-    Rec-->>App: 组合分数与均值分
-    App->>Store: 保存选中组合、任务与快照
-    App->>Task: 唤醒任务调度
-    App-->>UI: 当前预取状态
-    Task->>Gen: 订阅事件并提交确定工作流
-    Gen-->>Task: 完成通知，随后查询确认
-    Task->>Store: 保存图片、实际提示词和评分缓存
-    Task->>App: on_change 通知结果变化
-    App-->>UI: 经 Host/SSE 发布变更通知
+    App->>Store: Read settings, window, and pending tasks
+    App->>Candidate: Request complete candidate combinations
+    Candidate-->>App: Combination pool and actual term snapshots
+    App->>Rec: Score the combination pool
+    Rec-->>App: Combination scores and mean scores
+    App->>Store: Save selected combination, task, and snapshot
+    App->>Task: Wake task scheduling
+    App-->>UI: Current prefetch state
+    Task->>Gen: Subscribe to events and submit determined workflow
+    Gen-->>Task: Completion event, followed by query verification
+    Task->>Store: Save image, actual prompts, and score cache
+    Task->>App: on_change notifies result change
+    App-->>UI: Publish change notification through Host/SSE
 ```
 
-浏览器在进入漫游、切图、任务状态更新等入口检查缺口，不另设投喂循环。每次 ensure 最多创建一个任务，最多两个未完成漫游任务，让提示词准备与上一张出图重叠；全应用最多两个任务在后端在途，手动任务优先占用新空位。Task 收到完成事件后核实状态、补位并保存结果；事件不可用时回退轮询。
+The browser checks for gaps when entering roam, switching images, receiving task state updates, and at similar entry points, with no separate feeding loop. Each ensure creates at most one task, with at most two unfinished roam tasks, overlapping prompt preparation with the previous image's generation. At most two tasks across the application can be in flight at the backend; manual tasks have priority for newly available slots. After a completion event, Task verifies state, fills the slot, and saves results. It falls back to polling when events are unavailable.
 
-切换偏好范围、漫游方式或锚点时，App 经 Store 保存设置与预取失效状态，迟到产物隐藏。顺流从实际选中组合继续，停泊复用整组提示词；候选、推荐和任务之间始终不直接交互。
+When the preference scope, roam mode, or anchor changes, App saves settings and prefetch invalidation state through Store; late artifacts are hidden. Flow continues from the actually selected combination; Anchor reuses the full prompt set. Candidate, Recommendation, and Task never interact directly.
 
-当前设置版本失败、状态不确定或取消时暂停预取。保存完整漫游设置可解除暂停；修正并保存当前漫游后端也可恢复。保留历史图片和任务，不自动重提旧失败任务。详情见[漫游指南](../../guides/roam.md)、[预取接口](../reference/api/roam.md)和[事件设计](../issues/task-events.md)。
+A failure, uncertain state, or cancellation in the current settings version pauses prefetch. Saving the complete roam settings clears the pause; correcting and saving the current roam backend can also resume it. Historical images and tasks remain, and old failed tasks are not automatically resubmitted. See the [Roam Guide](../../guides/roam.md), [Prefetch API](../reference/api/roam.md), and [Event Design](../issues/task-events.md).
 
-## 反馈与后台学习
+## Feedback and Background Learning
 
 ```mermaid
 sequenceDiagram
-    participant UI as 浏览器
-    participant App as 应用编排
-    participant Store as 存储
-    participant Worker as App 后台学习任务
-    participant Rec as 推荐
-    UI->>App: 设置喜欢、不喜欢或撤回
-    App->>Store: 同事务保存反馈和待学习记录
-    App-->>UI: 返回已保存图片状态
-    App->>Worker: 唤醒
-    Worker->>Store: 读取待应用反馈及历史快照
-    Worker->>Rec: apply_feedback(组合, 评价, 修订)
-    Rec->>Store: 保存偏好状态及证据
-    Worker->>Store: 执行本次反馈触发的懒清理
+    participant UI as Browser
+    participant App as Application orchestration
+    participant Store as Storage
+    participant Worker as App background learning worker
+    participant Rec as Recommendation
+    UI->>App: Set like, dislike, or withdrawal
+    App->>Store: Save feedback and pending learning record in one transaction
+    App-->>UI: Return saved image state
+    App->>Worker: Wake
+    Worker->>Store: Read unapplied feedback and historical snapshots
+    Worker->>Rec: apply_feedback(combination, rating, revision)
+    Rec->>Store: Save preference state and evidence
+    Worker->>Store: Run lazy cleanup triggered by this feedback
 ```
 
-学习使用当时实际文本、方向与组合关联，不按当前词库重解释历史。未评价是未知，撤回取消原贡献；反馈请求成功表示已保存，不能据此认定推荐已经学习完成。模型暂不可用时记录保留，由后续操作唤醒处理。详情见[后台学习记录](../issues/feedback-background-learning.md)。
+Learning uses the actual text, polarity, and combination associations at generation time, without reinterpreting history using the current library. Unrated remains unknown; withdrawal removes the original contribution. A successful feedback request means the feedback was saved, not that recommendation learning has completed. Records are retained when the model is temporarily unavailable, and later operations wake processing. See the [Background Learning Record](../issues/feedback-background-learning.md).
 
-## 进一步查阅
+## Further Reading
 
-- [生图提交窗口设计](../issues/task-window.md)
-- [存储与图片来源](../reference/storage.md)
-- [推荐内部特征流程](recommendation.md)
+- [Generation Submission Window Design](../issues/task-window.md)
+- [Storage and Image Sources](../reference/storage.md)
+- [Recommendation Feature Flow](recommendation.md)
