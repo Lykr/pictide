@@ -1,25 +1,27 @@
-# 局域网与主屏幕应用
+# LAN Access and Home Screen App
 
-[文档导航](../README.md) · 先完成[本机接入](getting-started.md)
+[简体中文](access.zh-CN.md)
 
-## 局域网访问
+[Documentation](../README.md) · Complete [local setup](getting-started.md) first
 
-按宿主系统完成局域网启动与防火墙配置：
+## LAN access
+
+Follow the LAN startup and firewall instructions for the host operating system:
 
 - [Windows](setup/windows.md#局域网访问)
 - [Linux](setup/linux.md#局域网访问)
 - [macOS](setup/macos.md#局域网访问)
 
-本机通过 `http://127.0.0.1:8189` 使用，其他设备通过电脑的局域网 IP 访问，例如 `http://192.168.50.50:8189`；IP 变化后使用新地址。普通启动默认仅本机访问。
+Use `http://127.0.0.1:8189` on the host computer. Other devices use its LAN IP address, such as `http://192.168.50.50:8189`; use the new address if the IP changes. Normal startup allows local access only.
 
-所有设备需处于可互通的可信局域网，不需开放 ComfyUI 端口；使用其他端口时同步修改防火墙规则，不配置路由器端口转发。
+All devices must be on a trusted LAN that permits communication between them. You do not need to expose the ComfyUI port. If you use a different port, update the firewall rule accordingly; do not configure router port forwarding.
 
-局域网启动监听 IPv4 所有接口，但 HTTP 仅接受本机回环地址或请求实际到达的本机内网 IP，保留同源修改校验。局域网设备共用图库、设置、任务和偏好，没有账号隔离，能够生成、评价及删除图片。只给可信设备开放。
+LAN startup listens on all IPv4 interfaces, but HTTP only accepts the loopback address or the host's private IP address on which the request actually arrived. Same-origin checks for modifications remain enabled. LAN devices share images, settings, tasks, and preferences without account isolation, and can generate, rate, and delete images. Grant access only to trusted devices.
 
-手机使用底部导航，图片大图可左右滑动切换；独立应用模式下，漫游图片上滑提高一级评价、下滑降低一级评价，普通浏览器上下滑动保留页面滚动；沉浸模式提供触屏退出按钮。普通 iPhone 浏览器使用页面滚动并记住各栏目位置；地址栏收起仍由浏览器按内容高度和用户手势决定。主屏幕独立应用模式隐藏顶部品牌栏，保留栏目标题与系统安全区；保持固定外壳，图片和底部操作栏分别布局。普通 HTTP 下复制会尝试浏览器兼容方式，原生全屏不可用时使用页面内沉浸布局。
+Phones use bottom navigation, and enlarged images support horizontal swipes. In standalone app mode, swiping up on a roaming image raises its rating by one level; swiping down lowers it by one level. In a regular browser, vertical swipes retain page scrolling. Immersive mode provides a touch-accessible exit button. A regular iPhone browser uses page scrolling and remembers the position in each section; address-bar collapse still depends on content height and browser handling of user gestures. Home Screen standalone mode hides the top brand bar while retaining section titles and system safe areas, with a fixed shell and separate layouts for images and the bottom action bar. Over plain HTTP, copying attempts a browser-compatible fallback; when native fullscreen is unavailable, an in-page immersive layout is used.
 
-## iPhone 主屏幕应用
+## iPhone Home Screen app
 
-用 Safari 打开电脑的局域网地址 → 分享 → 添加到主屏幕 → 添加。若系统显示“作为 Web App 打开”，保持开启。从主屏幕的 Pictide 图标进入后使用独立窗口，不占用 Safari 地址栏，并复用现有底部导航与安全区布局。曾添加旧快捷方式时，需要移除旧快捷方式后重新添加，才能更新安装时的图标和窗口模式。
+Open the computer's LAN address in Safari → Share → Add to Home Screen → Add. If the system shows “Open as Web App,” leave it enabled. Launch Pictide from its Home Screen icon to use a standalone window without the Safari address bar, reusing the existing bottom navigation and safe-area layout. If you installed an older shortcut, remove it and add it again to update the installation-time icon and window mode.
 
-当前支持主屏幕启动、应用图标、独立窗口与主题颜色；没有 Service Worker 或离线缓存。电脑上的 Pictide 必须运行，手机需能访问该局域网地址；电脑 IP 改变后须使用新地址重新添加。无需 Apple 开发者账号。现代 iOS 可直接从主屏幕以 Web App 打开网页，具体安装入口与行为见 [Apple 使用说明](https://support.apple.com/guide/iphone/open-as-web-app-iphea86e5236/ios) 和 [WebKit 主屏幕应用说明](https://webkit.org/blog/17333/webkit-features-in-safari-26-0/#every-site-can-be-a-web-app-on-ios-and-ipados)。
+Current support includes Home Screen launch, an app icon, a standalone window, and theme colors; there is no Service Worker or offline cache. Pictide must be running on the computer, and the phone must be able to reach its LAN address. If the computer's IP changes, add the app again using the new address. An Apple developer account is not required. Modern iOS can open websites directly as Home Screen web apps; see [Apple's instructions](https://support.apple.com/guide/iphone/open-as-web-app-iphea86e5236/ios) and [WebKit's Home Screen app notes](https://webkit.org/blog/17333/webkit-features-in-safari-26-0/#every-site-can-be-a-web-app-on-ios-and-ipados) for installation and behavior details.

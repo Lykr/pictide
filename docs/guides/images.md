@@ -1,29 +1,31 @@
-# 生成与喜欢
+# Generation and Liked Images
 
-[文档导航](../README.md) · [任务接口](../dev/reference/api/jobs.md) / [图片接口](../dev/reference/api/images.md)
+[简体中文](images.zh-CN.md)
 
-「生成」保存手动或按预设生成的结果，「漫游」展示推荐预取结果，「喜欢」汇集两种来源。
+[Documentation](../README.md) · [Task API](../dev/reference/api/jobs.md) / [Image API](../dev/reference/api/images.md)
 
-## 批量生成与种子
+Generate stores manual and preset-based generation results, Roam displays prefetched recommendations, and Liked brings together liked images from both sources.
 
-「生成」页分别设置「每次数量」与「生成次数」（均为 `1`–`10`，默认 `1`）。例如每次数量 `2`、生成次数 `3`，一次提交创建 3 轮、共 6 个独立任务，沿现有队列顺序执行。开启候选自动生成时，每轮重新抽取一次提示词，并按生成后控制更新候选种子与序列帧；同一轮内共用该轮正负提示词。固定控制保持不变；手动文本或关闭自动抽取时各轮沿用当前文本。标签库和后端配置在提交时冻结，后续编辑不改变已入队任务。
+## Batch generation and seeds
 
-图像种子为 `-1` 时每个任务独立随机；指定种子时跨轮逐张递增，并在种子上限安全回绕，提交成功后输入框显示下一次种子。未绑定种子的工作流仍使用自身设置。全部轮次在后端一次入队，关闭网页或重启应用仍按既有任务恢复机制继续；候选生成失败或剩余队列容量不足时整批拒绝。任务队列最多保留 100 个待处理任务，多次提交共用容量。
+On Generate, set Images per round and Generation rounds separately (both `1`–`10`, default `1`). For example, 2 images per round and 3 rounds create 3 rounds containing 6 independent tasks in one submission, executed in the existing queue order. With automatic candidate generation enabled, each round draws fresh prompts and updates the candidate seed and sequence frame according to the after-generation controls; tasks within the same round share its positive and negative prompts. Fixed controls stay unchanged. Manual text, or disabling automatic drawing, reuses the current text in each round. The tag library and backend configuration are frozen on submission; later edits do not change queued tasks.
 
-数量表示工作流执行次数：默认单图工作流执行 N 次得到 N 张；自定义工作流若每次输出多张，所有输出均会保留，最终图片可能多于 N 张。整批通过容量和幂等检查后一起入队，剩余容量不足时不创建部分任务；网络重试复用原请求 ID 和整批输入。
+With image seed `-1`, each task chooses an independent random seed. With an explicit seed, images increment it one by one across rounds and safely wrap at the seed limit. After successful submission, the input shows the next seed. Workflows without a seed binding continue using their own settings. All rounds enter the backend queue together, and existing task recovery continues them after closing the page or restarting the application. Candidate generation failure or insufficient remaining queue capacity rejects the entire batch. The queue holds at most 100 pending tasks, with capacity shared across submissions.
 
-## 浏览与偏好评分
+The count means workflow executions: a default single-image workflow run N times yields N images. If a custom workflow returns multiple images per run, all outputs are retained and the final image count can exceed N. The entire batch is queued together after capacity and idempotency checks; insufficient capacity creates no partial tasks. Network retries reuse the original request ID and full batch input.
 
-生成结果在「生成」页的独立图片区域浏览和评价，不进入漫游列表或漫游缓冲计数。漫游只展示推荐预取任务的产物；「喜欢」汇集所有来源已喜欢的图片。喜欢页采用与生成页相同的缩略图网格，支持“最新优先／偏好评分”排序；评分排序覆盖全部筛选结果，高分在前、同分按时间、无法评分放最后，每批展示 100 张。进入评分排序或改变筛选时复用缓存，手动刷新才重算当前筛选结果，浏览期间顺序固定；计算复用偏好权重缓存，并对相同提示词组合去重。详见 [评分排序](../dev/issues/liked-score-sort.md)。点击图片打开大图，支持左右切换、图片信息、独立毛玻璃（默认开启，空格切换）和沉浸模式。缩略图悬停或聚焦显示撤回喜欢按钮，撤回仍需二次确认；喜欢页不提供清空生成结果操作。旧版手动生成图片归入生成区，已有图片、提示词和评价保留，继续遵循统一历史清理设置。
+## Browsing and preference scores
 
-## 大图操作与隐私
+Generation results are browsed and rated in a separate image area on Generate, outside the roaming list and roaming buffer count. Roam only shows outputs of recommendation prefetch tasks; Liked includes liked images from every source. Liked uses the same thumbnail grid as Generate, with Newest / Preference score sorting. Score sorting covers all filtered results: higher scores first, ties by time, and unscorable images last, shown in batches of 100. Entering score sorting or changing filters reuses cached scores. Only a manual refresh recomputes the current filtered results, and order stays fixed while browsing. Computation reuses cached preference weights and deduplicates identical prompt combinations. See [score sorting](../dev/issues/liked-score-sort.md). Click an image to open the enlarged view, with previous/next navigation, image information, an independent blur overlay (on by default, toggled with Space), and immersive mode. Hovering or focusing a thumbnail reveals the unlike button; unliking still requires confirmation. Liked does not offer Clear generation results. Older manually generated images are placed in Generate, preserving their images, prompts, and ratings under the shared history cleanup settings.
 
-生成结果采用缩略图网格，悬停或键盘聚焦显示喜欢按钮，触屏直接显示。毛玻璃默认开启，标题旁可切换；网格与点击图片打开的大图面板共享状态，刷新后恢复开启。大图操作栏按「上一张、喜欢、下一张」居中排列，毛玻璃按钮位于右上角关闭按钮左侧，图片信息靠最右，不展示图片删除和下载按钮。大图左右切换图片，↑ 喜欢，空格切换毛玻璃，下方向键不执行操作；也可进入自动隐藏操作栏的沉浸模式，Esc 先退出沉浸，再关闭大图。漫游图片也不展示原图下载按钮，信息面板保留提示词 JSON 下载。
+## Enlarged view controls and privacy
 
-## 清空生成结果
+Generation results use a thumbnail grid. Hovering or keyboard focus reveals a like button; touchscreens show it directly. Blur is on by default and can be toggled beside the title. The grid and enlarged image panel share this state, which resets to on after a page refresh. The enlarged view centers Previous, Like, and Next in its action bar. The blur button is at the top right, left of Close; image information is at the far right. Image deletion and download buttons are not shown. Navigate images left/right, press ↑ to like, or Space to toggle blur; the down arrow does nothing. Immersive mode automatically hides the action bar. Esc exits immersive mode first, then closes the enlarged view. Roaming images also have no original-image download button; the information panel retains prompt JSON download.
 
-标题旁一键清空作用于全部生成结果：未喜欢的图片及同名提示词 JSON 从本地清除，喜欢的图片仅移出生成结果，继续保留在「喜欢」。任务历史、ComfyUI 远端输出和漫游图片保留。操作不能撤回；文件被占用时沿用已有待删除队列重试。新生成的图片继续进入网格。
+## Clear generation results
 
-## 喜欢标签筛选
+The one-click clear action beside the title covers all generation results: unliked images and their same-named prompt JSON are removed locally, while liked images are only removed from generation results and remain in Liked. Task history, remote ComfyUI outputs, and roaming images are retained. This action cannot be undone. Files in use are retried through the existing pending-deletion queue. New generation results continue to appear in the grid.
 
-喜欢页可搜索并多选图片历史正向词项，只展示同时包含全部已选词项的喜欢图片。标签默认字典序升序，排序图标切换为图片数量降序、同数量字典序升序；数量统计全部喜欢图片，同图同词只计一次。详情与接口见 [喜欢页标签筛选](../dev/issues/liked-tag-filter.md)。
+## Tag filters in Liked
+
+On Liked, search and select multiple historical positive prompt terms to show only liked images containing every selected term. Tags default to ascending alphabetical order. The sort icon switches to descending image count, with alphabetical order for equal counts. Counts cover all liked images, counting each term once per image. See [Liked tag filtering](../dev/issues/liked-tag-filter.md) for details and API information.

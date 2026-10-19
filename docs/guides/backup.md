@@ -1,30 +1,32 @@
-# 数据备份与恢复
+# Data Backup and Recovery
 
-[用户文档](../README.md)。本页说明个人数据的位置，以及备份和恢复的方法。
+[简体中文](backup.zh-CN.md)
 
-## 数据位置
+[User documentation](../README.md). This page explains where personal data is stored and how to back it up and restore it.
 
-在「设置 → 通用」查看当前数据目录。便携版默认使用发行目录中的 `data/`，源码版默认使用项目内的 `data/`；移动整个便携目录时，个人数据与程序一起保留。
+## Data location
 
-指定其他数据目录的方法按系统查阅：[Windows](setup/windows.md#端口与数据目录) · [Linux](setup/linux.md#端口与数据目录) · [macOS](setup/macos.md#端口与数据目录)。
+View the current data directory under Settings → General. The portable edition defaults to `data/` inside the release directory; the source edition defaults to `data/` in the project. Moving the entire portable directory keeps your personal data together with the application.
 
-## 备份与恢复
+To choose another data directory, follow the instructions for [Windows](setup/windows.md#端口与数据目录), [Linux](setup/linux.md#端口与数据目录), or [macOS](setup/macos.md#端口与数据目录).
 
-1. 关闭 Pictide，等待程序退出。
-2. 将整个数据目录复制到备份位置，并以日期命名。便携版也可以直接备份整个发行目录，同时保留程序与个人数据。
-3. 恢复时先关闭 Pictide，将当前数据目录另存一份，再用备份替换对应目录。
-4. 启动 Pictide，检查图片、喜欢记录与后端设置。
+## Backup and recovery
 
-整目录备份会保留图片、任务、评价、偏好、提示词预设、后端设置、工作流、词库和推荐模型。备份包含后端 API 密钥，请妥善保管。
+1. Close Pictide and wait for it to exit.
+2. Copy the entire data directory to a backup location named with the date. For the portable edition, you can instead back up the entire release directory to preserve both the application and your personal data.
+3. Before restoring, close Pictide, save another copy of the current data directory, then replace the corresponding directory with the backup.
+4. Start Pictide and check images, likes, and backend settings.
 
-换到其他操作系统时，使用对应系统的便携包或按该系统准备源码环境，再恢复个人数据：`db/`、`images/`、`workflows/`、`history-cleanup.json`，以及词库 `libraries/` 和模型 `models/`。图片、任务和评价使用同一次备份的数据。
+A full directory backup preserves images, tasks, ratings, preferences, prompt presets, backend settings, workflows, tag libraries, and recommendation models. Backups contain backend API keys; store them securely.
 
-## 单独恢复工作流
+When moving to another operating system, use its portable package or prepare a source environment for that system, then restore your personal data: `db/`, `images/`, `workflows/`, `history-cleanup.json`, plus `libraries/` and `models/`. Restore images, tasks, and ratings from the same backup.
 
-工作流更新或删除前的版本保存在数据目录的 `workflows/.backups/`。将需要的版本复制回对应工作流文件，再在「设置 → 后端」重新选择并保存。
+## Restore an individual workflow
 
-## 进一步查阅
+Versions saved before a workflow was updated or deleted are in `workflows/.backups/` under the data directory. Copy the required version back to the corresponding workflow file, then select it again and save under Settings → Backends.
 
-- [添加与切换词库](prompts.md#添加与切换词库)
-- [历史图片清理](settings.md#历史图片清理)
-- [开发者：完整目录结构与职责](../dev/data-layout.md)
+## Further reading
+
+- [Add and switch tag libraries](prompts.md#添加与切换词库)
+- [Historical image cleanup](settings.md#历史图片清理)
+- [Developers: full directory layout and responsibilities](../dev/data-layout.md)

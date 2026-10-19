@@ -1,59 +1,61 @@
-# 安装与接入
+# Installation and Backend Setup
 
-[文档导航](../README.md) · 下一步：[提示词](prompts.md) / [漫游](roam.md)
+[简体中文](getting-started.zh-CN.md)
 
-本页说明便携版与源码版的启动准备和生图后端接入。先准备 ComfyUI 和可用的文生图模型，再启动 Pictide。
+[Documentation](../README.md) · Next: [Prompts](prompts.md) / [Roam](roam.md)
 
-## 启动前准备
+This page covers startup preparation and generation backend setup for the portable and source editions. Prepare ComfyUI and a working text-to-image model before starting Pictide.
 
-便携版随包提供程序、前端、精简词库和离线 MiniLM。解压后运行对应系统的启动入口即可，详见 [Windows](setup/windows.md#便携版本) · [Linux](setup/linux.md#便携版本) · [macOS](setup/macos.md#便携版本)。
+## Before you start
 
-源码版需要 Python 3.10+；新检出的源码还需要先构建前端，Node.js 与 pnpm 版本见[开发环境要求](../dev/development.md#首次准备检出目录)。已准备好前端的目录日常运行不需要 Node.js 服务。
+The portable edition includes the application, frontend, a compact tag library, and offline MiniLM. Extract it and run the startup entry point for your operating system: [Windows](setup/windows.md#便携版本) · [Linux](setup/linux.md#便携版本) · [macOS](setup/macos.md#便携版本).
 
-启动器自动准备所选数据目录下的 Python 环境、依赖与缓存，不下载生图模型、词库或推荐模型。不同系统分别创建运行环境，不直接复用其他系统的 venv。Linux 与 macOS 的脚本流程已做 Bash 冒烟，原生环境安装尚未验证。
+The source edition requires Python 3.10+. A fresh checkout also requires a frontend build; see [development prerequisites](../dev/development.md#首次准备检出目录) for Node.js and pnpm versions. Once the frontend is built, daily use does not require a Node.js service.
 
-## 按系统安装与启动
+The launcher automatically prepares the Python environment, dependencies, and caches inside the selected data directory. It does not download image generation models, tag libraries, or recommendation models. Create a separate runtime environment on each operating system rather than reusing another system's venv. The Linux and macOS script flows have passed Bash smoke checks; installation on their native environments remains unverified.
 
-选择当前系统，沿对应页面完成启动、源码准备、自定义参数与局域网配置：
+## Install and start on your operating system
+
+Choose your system and follow its page for startup, source preparation, custom parameters, and LAN configuration:
 
 - [Windows](setup/windows.md)
 - [Linux](setup/linux.md)
 - [macOS](setup/macos.md)
 
-启动完成后，继续下面的 ComfyUI 接入步骤。应用与 ComfyUI 可分别启动、停止，没有自启动或常驻服务。
+After startup, continue with the ComfyUI setup below. The application and ComfyUI start and stop independently; there is no automatic startup or persistent service.
 
-## 接入 ComfyUI
+## Connect ComfyUI
 
-1. 启动 ComfyUI，打开 Pictide「设置 → 后端」，填写后端名称和实际地址，例如 `http://127.0.0.1:8188`。Desktop 的实际端口可能不同。
-2. 保持“默认文生图”，读取并选择已安装的 checkpoint；留空自动使用列表中第一个模型，无需导入工作流或绑定输入。
-3. 测试连接并保存；完成词库与推荐模型准备后，进入「漫游」点击「开始漫游」，查看首图、表达偏好并切换下一张。需要验证手动文本生图时，也可在「生成」页提交提示词。
+1. Start ComfyUI, open Settings → Backend in Pictide, and enter a backend name and its actual address, such as `http://127.0.0.1:8188`. The Desktop edition may use another port.
+2. Keep “Default text-to-image,” load and select an installed checkpoint. Leave it empty to use the first model in the list automatically. No workflow import or input binding is required.
+3. Test the connection and save. After preparing the tag library and recommendation model, open Roam and click “Start roaming” to view the first image, express a preference, and move to the next image. You can also submit a prompt on Generate to verify manual text-to-image generation.
 
-内置工作流使用 ComfyUI 自带节点，适用于兼容 SD/SDXL 的完整 checkpoint，默认 832×1216、16 步、CFG 2.5、DPM++ 2M / Karras、denoise 1。不会下载模型；Flux 等其他模型架构请使用对应的自定义工作流。
+The built-in workflow uses ComfyUI's standard nodes and supports complete SD/SDXL-compatible checkpoints. Defaults are 832×1216, 16 steps, CFG 2.5, DPM++ 2M / Karras, and denoise 1. Models are not downloaded. Use an appropriate custom workflow for other model architectures such as Flux.
 
-### 自定义工作流
+### Custom workflows
 
-需要自定义流程时，切换“自定义 API 工作流”，导入 **API 格式** JSON，选择正负文本、可选种子和图片输出节点。普通包含 `nodes` 数组的界面工作流不适用。清空自定义工作流会回退默认文生图；已有非空工作流保留为自定义。
+For a custom process, switch to “Custom API workflow,” import **API-format** JSON, and select the positive and negative text inputs, optional seed, and image output nodes. Normal UI workflows containing a `nodes` array are not supported. Clearing the custom workflow returns to default text-to-image; an existing nonempty workflow remains custom.
 
-设置中的「工作流」将名称输入与下拉选择合并：可选默认文生图、已保存工作流或自定义 API 工作流，也可直接输入名称并筛选已有项。选择已有项后修改输入文字就是重命名，保留原 ID；选择自定义项会填写可修改的默认名称，并避免与已有名称重复。点击「保存后端」同时保存模板到 `data/workflows` 并应用到后端，无需单独另存或应用。保存时核对读取的修订号，外部修改冲突会保留草稿并阻止覆盖。新建自定义工作流时，同名同内容复用已有模板，同名不同内容拒绝保存。模板更新前的版本保存在 `data/workflows/.backups`。
+The Workflow control in Settings combines a name input with a dropdown: choose default text-to-image, a saved workflow, or a custom API workflow, or type a name to filter existing entries. Editing the name after selecting an existing entry renames it while preserving its ID. Selecting the custom entry fills in an editable default name that avoids existing names. “Save backend” saves the template to `data/workflows` and applies it to the backend together, without a separate save-as or apply step. Saving checks the revision that was read; conflicts with external edits preserve the draft and prevent overwriting. When creating a custom workflow, the same name and content reuse an existing template, while the same name with different content is rejected. Versions before template updates are stored in `data/workflows/.backups`.
 
-工作流更新应用于本次保存的后端，其他后端保留各自已保存的工作流快照；重新选择工作流并保存可应用最新版。已有任务始终使用提交时的后端配置，不受后续编辑影响。
+Workflow updates apply to the backend being saved. Other backends keep their own saved workflow snapshots; select the workflow again and save to apply the latest version. Existing tasks always use the backend configuration from submission time, unaffected by later edits.
 
-删除工作流会从选择列表移除并保留文件备份，同时解除当前后端对模板的引用；后端中已经应用的节点、绑定和输出快照保留，可以继续生成。删除后端只移除当前可选配置，原配置修订、历史任务、图片和评价保留；已提交任务继续使用原配置执行。删除操作不会清理图片或 ComfyUI 数据，恢复说明见 [数据目录](backup.md)。
+Deleting a workflow removes it from the selection list, keeps a file backup, and clears the current backend's reference to the template. The backend retains its applied node, binding, and output snapshots and can continue generating. Deleting a backend only removes its currently selectable configuration; configuration revisions, historical tasks, images, and ratings are retained. Submitted tasks continue with the original configuration. These deletions do not clean up images or ComfyUI data; see [data recovery](backup.md).
 
-默认文生图的「节点参数」可展开为自定义草稿，支持模型、尺寸、批次数、采样步数、CFG、采样器、调度器和降噪等普通输入；连线保持不变。API 工作流 JSON 默认折叠，展开后可编辑或导入 API JSON，普通参数编辑与 JSON 使用同一草稿。
+The default text-to-image Node parameters can be expanded into a custom draft. Ordinary inputs such as model, dimensions, batch count, sampling steps, CFG, sampler, scheduler, and denoise can be edited while connections stay unchanged. API workflow JSON is collapsed by default; expand it to edit or import API JSON. Parameter editing and JSON editing share the same draft.
 
-### 提示词与图片记录
+### Prompts and image records
 
-导入前请将工作流中的随机提示词生成节点替换为固定文本输入。平台把最终文本注入绑定的输入，工作流应将这些文本直接送入文本编码器，并保持输出提示词记录使用同一文本来源。不要在下游再次随机或改写文本，否则记录无法准确代表编码器实际输入。
+Before import, replace random prompt generation nodes in the workflow with fixed text inputs. Pictide injects the final text into the bound inputs. The workflow should send that text directly to the text encoder and use the same text source for output prompt records. Do not randomize or rewrite text downstream, as the record would no longer accurately represent the encoder's actual input.
 
-ComfyUI 只执行生图 API，不再安装提示词生成、预览或提示词保存节点。工作流使用原生 PreviewImage / SaveImage 等图像输出，图片及对应的正负提示词 JSON 由 Pictide 保存。旧工作流如含已移除的 RulePrompt 节点，需要替换为原生文本输入和图像输出后再导入。
+ComfyUI only executes the generation API; prompt generation, preview, and prompt-saving nodes are no longer installed. Workflows use native image outputs such as PreviewImage / SaveImage, while Pictide saves the images and corresponding positive/negative prompt JSON. If an old workflow contains removed RulePrompt nodes, replace them with native text inputs and image outputs before importing.
 
-### 任务执行与检查
+### Task execution and checks
 
-多个后端可分别保存。修改某个后端的地址或工作流后，旧任务继续使用提交时的后端配置，防止任务和图片指向错误的服务。新任务先订阅 ComfyUI 结束事件，再提交生图；全应用最多两个任务在途，通常一个出图、一个在 ComfyUI 排队；收到通知后通过 HTTP 核实，先补入下一项，再保存图片。通知不可用时自动回到轮询，详见 [任务事件通知](../dev/issues/task-events.md) 和 [提交窗口](../dev/issues/task-window.md)。生成完成后，Feed 将图片复制到 `data/images`，并保存同名 JSON，仅包含实际提交的正负提示词；不保存配置或额外 TXT。已保存图片可以在 ComfyUI 关闭后浏览。升级前的历史图片首次访问时补存，需要对应后端图片仍可读取。ComfyUI 自己的 output/temp 文件仍由 ComfyUI 管理。
+Multiple backends can be saved separately. After editing a backend address or workflow, old tasks continue using the backend configuration from submission time so that tasks and images reference the correct service. New tasks subscribe to ComfyUI completion events before submitting generation. At most two tasks are in flight across the application, usually one generating and one queued in ComfyUI. On notification, Pictide verifies completion over HTTP, submits the next item, then saves images. If notifications are unavailable, it automatically falls back to polling; see [task event notifications](../dev/issues/task-events.md) and the [submission window](../dev/issues/task-window.md). After generation, Feed copies images into `data/images` and saves a same-named JSON containing only the positive and negative prompts actually submitted; no configuration or additional TXT is saved. Saved images remain browsable after ComfyUI closes. Images from before the upgrade are copied on first access, which requires them to remain readable from the corresponding backend. ComfyUI manages its own output/temp files.
 
-测试连接执行只读预检，能发现常见的缺模型、缺输入图、连接或枚举错误；不提交生图，也不替代 ComfyUI 自定义节点的正式校验。HTTP 400 会展示可识别的节点及输入原因。
+Connection testing performs a read-only preflight that detects common missing models, missing input images, connection problems, and invalid enumerated values. It does not submit generation or replace formal validation by ComfyUI custom nodes. HTTP 400 errors show identifiable node and input causes.
 
-## 从源码开始
+## Start from source
 
-新检出仓库没有依赖、词库、推荐模型或前端构建产物。先按[开发流程](../dev/development.md#首次准备检出目录)安装和构建；词库导入见[提示词指南](prompts.md#数据准备)，推荐模型准备见[推荐模块](../dev/architecture/recommendation.md#模型准备)。数据路径和备份见[数据目录](backup.md)。
+A fresh checkout contains no dependencies, tag library, recommendation model, or frontend build output. Install and build using the [development workflow](../dev/development.md#首次准备检出目录); see the [prompts guide](prompts.md#数据准备) for library import and the [recommendation module](../dev/architecture/recommendation.md#模型准备) for model preparation. See [data backup](backup.md) for paths and backups.
