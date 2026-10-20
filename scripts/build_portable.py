@@ -232,8 +232,9 @@ def build(output_dir=None, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
             shutil.copyfile(ROOT / 'web/src/THIRD_PARTY_NOTICES.md', notices / 'frontend.md')
             (notices / 'MiniLM.txt').write_text('Model: sentence-transformers/all-MiniLM-L6-v2\nONNX export: Qdrant/all-MiniLM-L6-v2-onnx\nLicense: Apache-2.0\nONNX SHA-256: ' + manifest['model_sha256'] + '\nhttps://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx\n', encoding='utf-8')
             if sys.platform == 'darwin':
-                # PyInstaller signs its libraries; only the replacement launcher and outer bundle change.
-                for target in (package / 'Contents/MacOS/Pictide', package):
+                # The original engine's signature seals the previous bundle plist.
+                # Re-sign it after the plist/entry changes, before sealing the app.
+                for target in (package / 'Contents/MacOS/PictideService', package / 'Contents/MacOS/Pictide', package):
                     subprocess.run(['/usr/bin/codesign', '--force', '--sign', '-', str(target)], check=True)
                 subprocess.run(['/usr/bin/codesign', '--verify', '--deep', '--strict', str(package)], check=True)
             archive = working / f'pictide-{__version__}-{sys.platform}-{platform.machine().lower()}.zip'

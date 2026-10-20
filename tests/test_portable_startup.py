@@ -159,9 +159,10 @@ class PortableResourcesSmoke(unittest.TestCase):
                     self.assertEqual(info['CFBundleShortVersionString'], __version__)
                     self.assertFalse(any(name.endswith('start.command') for name in names))
                     signing = [command for command in commands if command[0] == '/usr/bin/codesign']
-                    self.assertEqual(len(signing), 3)
-                    self.assertTrue(Path(signing[0][-1]).as_posix().endswith('Contents/MacOS/Pictide'))
-                    self.assertTrue(signing[1][-1].endswith('Pictide.app'))
+                    self.assertEqual(len(signing), 4)
+                    self.assertTrue(Path(signing[0][-1]).as_posix().endswith('Contents/MacOS/PictideService'))
+                    self.assertTrue(Path(signing[1][-1]).as_posix().endswith('Contents/MacOS/Pictide'))
+                    self.assertTrue(signing[2][-1].endswith('Pictide.app'))
                 else:
                     self.assertIn('Pictide/start.sh', names)
                     self.assertIn('Pictide/data/runtime/pictide/Pictide', names)
