@@ -301,11 +301,20 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
                 await self.backend.submit({"positive": "a", "negative": "b", "seed": 1}, "req")
             self.assertEqual(raised.exception.uncertain, uncertain)
             self.assertNotIn("secret-test-key", str(raised.exception))
-        with patch.object(self.session, "request", side_effect=aiohttp.ClientConnectionError("secret-test-key")):
-            with self.assertRaises(BackendError) as raised:
-                await self.backend.submit({"positive": "a", "negative": "b", "seed": 1}, "req")
-            self.assertTrue(raised.exception.uncertain)
-            self.assertNotIn("secret-test-key", str(raised.exception))
+        for error in (aiohttp.ClientConnectionError("secret-test-key"), TimeoutError("secret-test-key")):
+            with self.subTest(error=type(error).__name__), patch.object(self.session, "request", side_effect=error):
+                with self.assertRaises(BackendError) as raised:
+                    await self.backend.submit({"positive": "a", "negative": "b", "seed": 1}, "req")
+                self.assertTrue(raised.exception.uncertain)
+                self.assertNotIn("secret-test-key", str(raised.exception))
+
+    async def test_connection_refused_is_definitive_submission_failure(self):
+        await self.runner.cleanup()
+        with self.assertRaises(BackendError) as raised:
+            await self.backend.submit({"positive": "landscape", "negative": "text", "seed": 1}, "offline")
+        self.assertFalse(raised.exception.uncertain)
+        self.assertNotIn("secret-test-key", str(raised.exception))
+        self.assertEqual(self.submissions, [])
 
     async def test_inspect_states_and_output_filter(self):
         self.assertEqual((await self.backend.inspect("job"))["state"], "unknown")

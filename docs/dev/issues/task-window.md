@@ -1,5 +1,7 @@
 # 两个在途生图任务（已确认、已实现）
 
+后续断连与不确定任务的名额释放修正见[漫游队列的断连恢复](roam-queue-recovery.md)；下文保留初始设计与验证记录。
+
 ## 架构
 
 沿用 Application → Task → GenerationBackend / Store；候选和推荐不参与调度。Task 将当前单任务改为全应用最多两个在途任务的提交窗口，不按后端数量倍增。复用现有 ComfyUI 队列、事件订阅和 HTTP 核对；不增加线程、服务、HTTP API、前端选项或依赖。

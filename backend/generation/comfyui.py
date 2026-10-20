@@ -310,6 +310,9 @@ class ComfyBackend:
                 if not isinstance(value, dict):
                     raise BackendError("ComfyUI returned an unexpected response", uncertain=uncertain)
                 return value
+        except aiohttp.ClientConnectorError:
+            # No HTTP request was sent when establishing the connection failed.
+            raise BackendError("Cannot connect to ComfyUI; check the backend address and server", uncertain=False) from None
         except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
             raise BackendError("Cannot reach ComfyUI; check the backend address and server", uncertain=uncertain) from None
 

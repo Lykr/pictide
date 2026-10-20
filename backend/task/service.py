@@ -133,9 +133,11 @@ class JobService:
 
     async def reconcile_unknown(self):
         unknown = {job["id"]: job for job in await self.database(self.repository.unknown_jobs)}
+        pending = await self.database(self.repository.dispatch_jobs)
+        pending_ids = {job["id"] for job in pending if job["backend_pending"]}
         # A cancelled uncertain submission still occupies a slot and may acquire
         # its prompt id later. Keep its cancellation while reconciling identity.
-        for job in await self.database(self.repository.dispatch_jobs):
+        for job in pending:
             if job["backend_pending"] and not job["backend_prompt_id"]:
                 unknown[job["id"]] = job
         self._has_unknown = bool(unknown)
@@ -158,6 +160,13 @@ class JobService:
                             await self.database(self.repository.finish_dispatch, job["id"])
                     else:
                         await self.database(self.repository.update_job, job["id"], "running", error=None)
+                elif job["id"] in pending_ids:
+                    # Successful queue/history checks found no remote work. Keep
+                    # the uncertain record for late recovery, without blocking
+                    # unrelated jobs or ever resubmitting this operation.
+                    await self.database(self.repository.finish_dispatch, job["id"])
+                    await self._release_backend(job["id"])
+                    log.info("Released unconfirmed backend slot after remote lookup: job_id=%s", job["id"])
             except BackendError:
                 # An uncertain submission is never automatically submitted again.
                 continue

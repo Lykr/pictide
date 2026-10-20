@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from backend.generation.base import BackendError
 from backend.paths import DataPaths
@@ -211,6 +211,64 @@ class TaskWindowSmoke(unittest.IsolatedAsyncioTestCase):
             gate.set()
             await check
         await self.completed(second)
+
+    async def test_restart_releases_two_missing_unknown_jobs_without_resubmitting(self):
+        old = [self.create('old-first', roam=True), self.create('old-second', roam=True)]
+        for job in old:
+            self.repo.claim_job(job['id'])
+            self.repo.update_job(job['id'], 'unknown', error='Connection lost during submission')
+        self.create('new-first', roam=True)
+        self.create('new-second', roam=True)
+        await self.worker.start()
+        await self.submitted('new-first')
+        await self.submitted('new-second')
+        await self.worker.stop()
+        self.assertEqual(self.engine.requests, ['new-first', 'new-second'])
+        self.assertEqual([self.repo.job(job['id'])['status'] for job in old], ['unknown', 'unknown'])
+        self.assertEqual({job['request_id'] for job in self.repo.dispatch_jobs()}, {'new-first', 'new-second'})
+        await self.worker.start()
+        with self.assertRaises(asyncio.TimeoutError):
+            await asyncio.wait_for(self.engine.submitted.get(), .1)
+        self.assertEqual(self.engine.requests, ['new-first', 'new-second'])
+
+    async def test_definitive_submission_failure_frees_slot_for_next_job(self):
+        first = self.create('offline')
+        self.create('second')
+        third = self.create('third')
+        submit = EventBackend.submit
+        async def connect_failure(backend, job, request_id):
+            if request_id == 'offline':
+                raise BackendError('Connection refused', uncertain=False)
+            return await submit(backend, job, request_id)
+        with patch.object(EventBackend, 'submit', connect_failure):
+            await self.worker.tick()
+            await self.worker.tick()
+        self.assertEqual(self.repo.job(first['id'])['status'], 'failed')
+        self.assertEqual(self.repo.job(third['id'])['status'], 'running')
+        self.assertEqual(self.engine.requests, ['second', 'third'])
+
+    async def test_unknown_lookup_failure_holds_slot_then_absence_releases_for_late_recovery(self):
+        first = self.create('uncertain')
+        self.create('second')
+        self.create('third')
+        self.engine.uncertain.add('uncertain')
+        await self.worker.tick()
+        self.engine.pending.discard('uncertain')
+        with patch.object(EventBackend, 'reconcile', AsyncMock(side_effect=BackendError('Backend offline'))):
+            await self.worker.reconcile_unknown()
+        await self.worker.tick()
+        self.assertEqual(self.engine.requests, ['uncertain', 'second'])
+        await self.worker.reconcile_unknown()
+        await self.worker.tick()
+        self.assertEqual(self.engine.requests, ['uncertain', 'second', 'third'])
+        self.assertEqual(self.repo.job(first['id'])['status'], 'unknown')
+        self.assertEqual(self.repo.artifacts(), [])
+        self.engine.reconciled.add('uncertain')
+        await self.worker.reconcile_unknown()
+        await self.worker.tick()
+        self.assertEqual(self.repo.job(first['id'])['status'], 'completed')
+        self.assertEqual([a['job_id'] for a in self.repo.artifacts()], [first['id']])
+        self.assertEqual(self.engine.requests, ['uncertain', 'second', 'third'])
 
     async def test_refill_failure_does_not_lose_already_finished_result(self):
         first = self.create('first')
