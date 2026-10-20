@@ -1,5 +1,6 @@
 """Windows preparation decisions and ownership of a local ComfyUI service."""
 import asyncio
+import codecs
 from contextlib import contextmanager
 import json
 import logging
@@ -9,6 +10,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from urllib.request import ProxyHandler, build_opener
 
@@ -18,7 +20,9 @@ log = logging.getLogger('backend.local_generation')
 
 
 def announce(english, chinese):
-    print(chinese if system_language() == 'zh-CN' else english, flush=True)
+    message = chinese if system_language() == 'zh-CN' else english
+    log.info('%s', message)
+    print(message, flush=True)
 
 
 def read_state(paths):
@@ -226,10 +230,47 @@ def external_runtime_dlls():
         kernel.SetDllDirectoryW(previous.value or None)
 
 
+class _ManagedOutput:
+    """Drain one owned process into a bounded, independently rotating log."""
+    def __init__(self, pipe, target):
+        from .runtime_logging import make_log_handler
+
+        self.pipe = pipe
+        self.logger = logging.Logger('backend.comfyui', level=logging.INFO)
+        self.logger.propagate = False
+        self.handler = make_log_handler(target)
+        self.logger.addHandler(self.handler)
+        self.thread = threading.Thread(target=self._read, name='pictide-comfyui-output', daemon=True)
+        self.thread.start()
+
+    def _read(self):
+        decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
+        try:
+            # ComfyUI may print progress with carriage returns or very long lines.
+            # Limit each read so even output without newlines stays bounded.
+            while chunk := self.pipe.readline(16 * 1024):
+                message = decoder.decode(chunk).rstrip('\r\n')
+                if message:
+                    self.logger.info('%s', message)
+            trailing = decoder.decode(b'', final=True)
+            if trailing:
+                self.logger.info('%s', trailing)
+        except (OSError, ValueError):
+            log.exception('Could not read managed ComfyUI output')
+        finally:
+            self.pipe.close()
+            self.logger.removeHandler(self.handler)
+            self.handler.close()
+
+    def close(self):
+        # The owning process is stopped before joining; drain its final output.
+        self.thread.join()
+
+
 class ManagedComfy:
     def __init__(self, paths, state):
         self.paths, self.state = paths, dict(state)
-        self.process = self.job = self.stream = None
+        self.process = self.job = self.output = None
         self.url = None
 
     def start(self):
@@ -258,15 +299,18 @@ class ManagedComfy:
         for key in ('PYTHONHOME', 'PYTHONPATH', 'VIRTUAL_ENV', '_PYI_APPLICATION_HOME_DIR',
                     '_PYI_ARCHIVE_FILE', '_PYI_PARENT_PROCESS_LEVEL', '_PYI_SPLASH_IPC'):
             environment.pop(key, None)
-        self.stream = (self.paths.logs / 'comfyui.log').open('a', encoding='utf-8')
+        environment['PYTHONIOENCODING'] = 'utf-8'
+        environment['PYTHONUNBUFFERED'] = '1'
         announce('Starting local ComfyUI…', '正在启动本地 ComfyUI…')
         try:
             with external_runtime_dlls():
                 self.process = subprocess.Popen(command, cwd=install, env=environment, stdin=subprocess.DEVNULL,
-                                                stdout=self.stream, stderr=subprocess.STDOUT,
+                                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                                 creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
             if sys.platform == 'win32':
                 self.job = _WindowsJob(self.process)
+            self.output = _ManagedOutput(self.process.stdout, self.paths.logs / 'comfyui.log')
+            log.info('Managed ComfyUI started, pid=%s, address=%s', self.process.pid, self.url)
             opener = build_opener(ProxyHandler({}))
             deadline = time.monotonic() + 120
             last = time.monotonic()
@@ -303,9 +347,14 @@ class ManagedComfy:
             except subprocess.TimeoutExpired:
                 self.process.kill()
                 self.process.wait()
-        if self.stream is not None:
-            self.stream.close()
-            self.stream = None
+        if self.output is not None:
+            self.output.close()
+            self.output = None
+        elif self.process is not None and self.process.stdout is not None:
+            self.process.stdout.close()
+        if self.process is not None:
+            log.info('Managed ComfyUI exited, pid=%s, exit_code=%s', self.process.pid, self.process.returncode)
+            self.process = None
 
     async def configure(self, application, session):
         """Use existing configuration contracts before bootstrap becomes reachable."""
