@@ -20,6 +20,8 @@ All devices share images, settings, and preferences, and can generate and delete
 
 Open the LAN address in Safari, then choose Share → Add to Home Screen → Add. Leave “Open as Web App” enabled if shown. The Home Screen icon opens Pictide in its own window.
 
+When you switch away from the standalone app, blur turns back on for Roam, Generate, and Liked, including open images. Reveal images again when you return.
+
 The app still needs a connection to the computer running Pictide. If the computer's IP changes, add it again using the new address.
 
 After an interface update, fully close Pictide in the iOS app switcher and reopen it from the Home Screen. Regular updates do not require reinstallation. To update an installation-time icon or window mode, remove the old shortcut and add it again.

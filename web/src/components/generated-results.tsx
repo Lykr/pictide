@@ -1,3 +1,4 @@
+import { usePrivacyBlur } from "../shared/use-privacy-blur";
 import { publishUiState } from "../shared/ui-state.mjs";
 import { uiTarget } from "../shared/ui-targets";
 import { t, tr, messageKey, locale } from "../i18n/index.mjs";
@@ -35,7 +36,7 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
   const label = liked ? t("喜欢图片") : t("生成的图片");
   const [state, setState] = useState(initial);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [privacyBlur, setPrivacyBlur] = useState(true);
+  const [privacyBlur, setPrivacyBlur] = usePrivacyBlur();
   useEffect(() => {
     const receive = (event: Event) => setState({ ...initial, ...(event as CustomEvent<ResultState>).detail });
     document.addEventListener(`pictide:${prefix}-results`, receive);
