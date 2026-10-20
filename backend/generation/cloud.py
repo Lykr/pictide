@@ -9,7 +9,7 @@ from urllib.parse import quote, urlsplit, urlunsplit
 import aiohttp
 
 from .base import BackendError, CompletedGeneration
-from ..network import proxy_for_url
+from ..network import proxy_for_url, tls_context
 
 MAX_IMAGE_BYTES = 32 * 1024 * 1024
 MAX_RESPONSE_BYTES = 48 * 1024 * 1024
@@ -235,7 +235,7 @@ class CloudBackend:
         _url(url, "image URL")
         try:
             # Separate session: provider API credentials never reach image hosts.
-            async with aiohttp.ClientSession() as download:
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=tls_context())) as download:
                 async with download.get(url, proxy=proxy_for_url(url), allow_redirects=False,
                                         timeout=aiohttp.ClientTimeout(total=60)) as response:
                     if response.status != 200:

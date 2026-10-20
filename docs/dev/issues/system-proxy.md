@@ -42,3 +42,14 @@ sequenceDiagram
 
 - 按用户已确认的规则实现，不修改系统代理设置，不新增 GUI 或依赖；PAC 脚本与 SOCKS 解析不在本次范围。
 - 使用本机模拟代理、服务和 WebSocket 验证路由及凭据隔离，不调用真实云端生图或 GPU；Mac 验证不改变系统代理配置。
+
+
+## macOS 系统证书修复（2026-10-20）
+
+用户确认优先修复 Mac 首次 MiniLM 下载的 CA 问题，沿用既有网络工具边界。
+
+- 实机确认：冻结 Python 的 OpenSSL 默认 CA 路径指向构建机器的 `/Library/Frameworks/Python.framework/Versions/3.12/etc/openssl/cert.pem`，目标 Mac 上该文件不存在。已有模型的热启动成功，缺少 MiniLM `config.json` 的真实 HTTPS 下载失败；仅在测试进程指定包内 certifi 后下载成功，确认故障在证书信任源。
+- `network.tls_context()` 在 macOS 使用固定版本 `truststore==0.10.5`，由系统 Security.framework 验证证书链与主机名；依赖只在 macOS 安装。同步下载、Host 生图会话（含 ComfyUI WebSocket）和隔离的云端图片下载共用此上下文。Windows/Linux 沿用 Python 默认上下文。
+- 不使用全局 SSL 注入，不额外载入 certifi 根证书，不修改系统证书或代理设置。旧的补充 certifi 方案保持未集成。
+- 验证重点：可信 MiniLM HTTPS 下载、陌生自签名证书拒绝、代理路由与凭据隔离。最终安装包由 GitHub Actions 构建，再在用户 Mac 的独立目录运行；该 Mac 不承担构建工作。
+- 实机验证结果在完成后补充；尚未创建版本标签或发布 Release。

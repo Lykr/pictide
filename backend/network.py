@@ -1,7 +1,20 @@
-"""System HTTP(S) proxies for external traffic; local services stay direct."""
+"""Application TLS and system proxies; local services stay direct."""
+from functools import lru_cache
 from ipaddress import ip_address
+import ssl
+import sys
 from urllib.parse import urlsplit
-from urllib.request import ProxyHandler, build_opener, getproxies, proxy_bypass
+from urllib.request import HTTPSHandler, ProxyHandler, build_opener, getproxies, proxy_bypass
+
+
+@lru_cache(maxsize=1)
+def tls_context():
+    if sys.platform == 'darwin':
+        # Frozen Python's OpenSSL CA paths belong to the build machine.
+        # Security.framework verifies against the user's macOS trust settings.
+        import truststore
+        return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    return ssl.create_default_context()
 
 
 def proxy_for_url(url):
@@ -42,4 +55,4 @@ class _SystemProxyHandler(ProxyHandler):
 
 def open_url(request, *, timeout):
     # Redirects create a new request and run this handler for the new host too.
-    return build_opener(_SystemProxyHandler()).open(request, timeout=timeout)
+    return build_opener(_SystemProxyHandler(), HTTPSHandler(context=tls_context())).open(request, timeout=timeout)

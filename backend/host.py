@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from aiohttp import ClientSession, ClientTimeout, web
+from aiohttp import ClientSession, ClientTimeout, TCPConnector, web
 
 from .application import PictideApplication
 from .candidate import CandidateService
@@ -35,6 +35,7 @@ from .store.workflow_library import WorkflowLibrary, MAX_BYTES
 from .task import JobService
 from . import __version__
 from .runtime_logging import capture_exceptions
+from .network import tls_context
 
 STATIC = Path(__file__).resolve().parent.parent / "web" / "dist"
 APPLICATION = web.AppKey("application", PictideApplication)
@@ -307,7 +308,8 @@ async def events(request):
 
 
 async def lifecycle(app):
-    async with ClientSession(timeout=ClientTimeout(total=25), trust_env=False) as session:
+    async with ClientSession(timeout=ClientTimeout(total=25), trust_env=False,
+                             connector=TCPConnector(ssl=tls_context())) as session:
         managed = app.get(LOCAL_GENERATION)
         try:
             if managed is not None:

@@ -124,7 +124,7 @@ macOS `.app` 使用从 `scripts/macos_launcher.swift` 编译的轻量系统 AppK
 
 ## 对外网络请求
 
-资源下载与生图适配器共用 `backend/network.py`：`proxy_for_url()` 为 aiohttp 请求和 ComfyUI WebSocket 选择 HTTP(S) 代理，`open_url()` 为同步下载及每个跳转目标应用相同规则。代理发现与绕过沿用 Python 标准库，环境变量优先，其次是平台支持的系统配置。回环、非全局 IP、无点主机名及 `.localhost`、`.local`、`.lan` 始终直连；其他内网域名使用系统绕过列表或 `NO_PROXY`，分类不额外查询 DNS。PAC 脚本与 SOCKS 代理不在解析范围。本机启动探测保持直连，TLS 校验保持开启，云端图片独立下载会话继续隔离 API 凭据。用户说明见[网络代理](../guides/getting-started.zh-CN.md#网络代理)。
+资源下载与生图适配器共用 `backend/network.py`：`proxy_for_url()` 为 aiohttp 请求和 ComfyUI WebSocket 选择 HTTP(S) 代理，`open_url()` 为同步下载及每个跳转目标应用相同规则。代理发现与绕过沿用 Python 标准库，环境变量优先，其次是平台支持的系统配置。回环、非全局 IP、无点主机名及 `.localhost`、`.local`、`.lan` 始终直连；其他内网域名使用系统绕过列表或 `NO_PROXY`，分类不额外查询 DNS。PAC 脚本与 SOCKS 代理不在解析范围。共享 `tls_context()` 在 macOS 上通过 `truststore` 使用系统证书信任，为资源下载和生图会话提供 TLS 上下文；Windows 和 Linux 沿用 Python 默认信任配置。不注入全局 SSL 替换、不修改系统证书。本机启动探测保持直连，TLS 校验保持开启，云端图片独立下载会话继续隔离 API 凭据。用户说明见[网络代理](../guides/getting-started.zh-CN.md#网络代理)。
 
 ## 继续阅读
 

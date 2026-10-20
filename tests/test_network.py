@@ -2,6 +2,11 @@
 import asyncio
 import base64
 import os
+from pathlib import Path
+import ssl
+import subprocess
+import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 from urllib.request import Request
@@ -10,12 +15,56 @@ import aiohttp
 from aiohttp import web
 from aiohttp.test_utils import TestServer
 
-from backend.network import open_url, proxy_for_url
+from backend.network import open_url, proxy_for_url, tls_context
 from backend.generation import create_backend
 from backend.generation.comfyui import ComfyBackend
 from test_backend import config as comfy_config
 
 PNG = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=')
+
+
+class SystemTrustSmoke(unittest.TestCase):
+    def test_tls_context_keeps_certificate_and_hostname_verification(self):
+        original = ssl.SSLContext
+        tls_context.cache_clear()
+        context = tls_context()
+        self.assertIs(context, tls_context())
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(context.check_hostname)
+        self.assertIs(ssl.SSLContext, original)
+        if sys.platform == 'darwin':
+            import truststore
+            self.assertIsInstance(context, truststore.SSLContext)
+
+
+@unittest.skipUnless(sys.platform == 'darwin', 'macOS native certificate verification')
+class MacTLSRejectionSmoke(unittest.IsolatedAsyncioTestCase):
+    async def test_untrusted_server_is_rejected_by_sync_and_async_downloads(self):
+        with tempfile.TemporaryDirectory() as directory:
+            certificate, key = Path(directory) / 'cert.pem', Path(directory) / 'key.pem'
+            subprocess.run(['/usr/bin/openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
+                            '-keyout', str(key), '-out', str(certificate), '-days', '1',
+                            '-subj', '/CN=localhost'], check=True, capture_output=True)
+            server_tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            server_tls.load_cert_chain(certificate, key)
+            app = web.Application()
+            async def response(request):
+                return web.Response(text='untrusted')
+            app.router.add_get('/', response)
+            server = TestServer(app, scheme='https')
+            await server.start_server(ssl=server_tls)
+            try:
+                def download():
+                    with open_url(str(server.make_url('/')), timeout=5) as response:
+                        return response.read()
+                with self.assertRaises(OSError) as failure:
+                    await asyncio.to_thread(download)
+                self.assertIsInstance(failure.exception.reason, ssl.SSLCertVerificationError)
+                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=tls_context())) as client:
+                    with self.assertRaises(aiohttp.ClientConnectorCertificateError):
+                        await client.get(server.make_url('/'))
+            finally:
+                await server.close()
 
 
 class ProxyRulesSmoke(unittest.TestCase):

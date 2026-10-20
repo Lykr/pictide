@@ -58,7 +58,7 @@ Once a request starts, local cancellation cannot guarantee remote cancellation o
 
 ## Network proxy
 
-Internet downloads and image services automatically follow your system's HTTP(S) proxy settings or proxy environment variables. Localhost, private IP addresses, and local hostnames connect directly. To bypass a proxy for a custom internal domain, add it to your proxy exceptions or `NO_PROXY`. With no proxy configured, connections are direct. Pictide does not change your system settings.
+Internet downloads and image services automatically follow your system's HTTP(S) proxy settings or proxy environment variables. Localhost, private IP addresses, and local hostnames connect directly. To bypass a proxy for a custom internal domain, add it to your proxy exceptions or `NO_PROXY`. With no proxy configured, connections are direct. Pictide does not change your system settings. On macOS, HTTPS connections use the system certificate trust settings.
 
 ## Recommendation dependency preparation
 
