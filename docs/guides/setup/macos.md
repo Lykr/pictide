@@ -10,7 +10,9 @@ These steps describe the new `.app` package built from the current source; it ha
 
 Extract the ZIP matching your Mac's chip (Apple Silicon or Intel), drag `Pictide.app` into Applications, and open it. A small preparation window shows the first [recommendation dependency download](../getting-started.md#recommendation-dependency-preparation). Your browser opens when ready. Next, [connect an image service](../getting-started.md) and start roaming.
 
-Closing the browser keeps Pictide running. Its menu bar icon shows service status and addresses, and lets you reopen Pictide, view logs, or quit. Messages follow the system language: Simplified Chinese or English.
+If preparation fails, choose **Try again** to continue with the files already downloaded. **View logs** provides details when needed.
+
+Closing the browser keeps Pictide running. Use its menu bar icon to reopen Pictide, copy an access address, open your data folder, view logs, or quit. It shows preparation and service status, including unexpected stops. Messages follow the system language: Simplified Chinese or English.
 
 The app is not Developer ID signed or notarized. If macOS blocks the first launch, follow Apple's [Open Anyway instructions](https://support.apple.com/en-us/102445) in System Settings → Privacy & Security after trying to open it. Pictide does not change your security settings.
 

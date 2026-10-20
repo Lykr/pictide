@@ -51,7 +51,7 @@ pictide/
   backend/
     host.py                    HTTP API, SSE, static assets, startup, and shutdown
     desktop.py                 Windows desktop session, single-instance lock, and tray lifecycle
-    desktop_launcher.py        Windows progress launcher and desktop-worker parent lifetime
+    desktop_launcher.py        Desktop port reservation, Windows progress launcher, and worker parent lifetime
     windows_tray.py            Native Windows notification area and owned-console handling
     windows_setup_ui.py        Standard-library first-run choices and download progress
     windows_hardware.py        Read-only Windows adapter/VRAM and installed-RAM detection

@@ -449,6 +449,7 @@ def main(argv=None):
     url_host = "[::1]" if host == "::1" else "127.0.0.1" if host == "0.0.0.0" else host
     url = f"http://{url_host}:{args.port}"
     desktop = None
+    worker_socket = None
     if desktop_requested:
         from .desktop import DesktopSession, announce
         desktop = DesktopSession(paths, url)
@@ -459,8 +460,16 @@ def main(argv=None):
             desktop.reserve(host, args.port)
             announce('starting')
             announce('data_directory', directory=paths.root)
+        if sys.platform == 'darwin' and args.desktop_worker:
+            from .desktop_launcher import reserve_desktop_socket
+            worker_socket = reserve_desktop_socket(host, args.port)
         PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
         app = create_app(paths.root, allow_lan=host == "0.0.0.0")
+        if worker_socket is not None:
+            async def notify_worker_ready(app):
+                from .desktop_launcher import notify_launcher
+                notify_launcher('ready')
+            app.on_startup.append(notify_worker_ready)
         if sys.platform == 'win32':
             from .local_generation_session import ManagedComfy, read_state
             local_state = read_state(paths)
@@ -479,6 +488,8 @@ def main(argv=None):
             app.on_shutdown.append(stop_browser)
         if desktop is not None:
             web.run_app(app, sock=desktop.socket, access_log=None, print=None)
+        elif worker_socket is not None:
+            web.run_app(app, sock=worker_socket, access_log=None, print=None)
         else:
             web.run_app(app, host=host, port=args.port, access_log=None)
     except Exception as error:
@@ -492,6 +503,8 @@ def main(argv=None):
                 pass
         raise SystemExit(1) from None
     finally:
+        if worker_socket is not None:
+            worker_socket.close()
         if desktop is not None:
             desktop.close()
 

@@ -6,6 +6,8 @@ Windows 提供根目录 EXE，macOS 提供标准 `.app` 与原生菜单栏入口
 
 状态：实现完成，Windows 实际包与桌面生命周期验证通过；macOS 原生编译及桌面验证待在 Mac 上完成。本次尚未发布。
 
+后续启动状态、失败重试及菜单栏完善见[macOS 启动与菜单栏完善](macos-desktop-polish.md)，原生验证状态在该记录单独维护。
+
 ## 架构
 
 ```mermaid

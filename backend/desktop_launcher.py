@@ -1,5 +1,6 @@
 """Keep startup progress visible while the desktop service owns no console."""
 import os
+import socket
 from pathlib import Path
 import subprocess
 import sys
@@ -8,6 +9,24 @@ import time
 from .desktop_text import translate
 
 STATUS_ENV = 'PICTIDE_DESKTOP_STATUS'
+
+
+def reserve_desktop_socket(host, port):
+    """Own the listening address before dependency preparation begins."""
+    server = socket.socket(socket.AF_INET6 if host == '::1' else socket.AF_INET)
+    try:
+        if os.name != 'nt':
+            # Match asyncio's Unix restart behavior after browser/SSE TIME_WAIT.
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind((host, port))
+        if os.name != 'nt':
+            # Reuse-address must not let two preparing launchers reserve one port.
+            # No HTTP responses are served until the application is initialized.
+            server.listen(socket.SOMAXCONN)
+    except BaseException:
+        server.close()
+        raise
+    return server
 
 
 def watch_desktop_parent():

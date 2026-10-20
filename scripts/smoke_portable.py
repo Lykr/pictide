@@ -55,6 +55,7 @@ def unpack(archive, directory):
             result = subprocess.run([str(entry), '--help'], capture_output=True, text=True, timeout=30, check=True)
             if '--data-dir' not in result.stdout:
                 raise RuntimeError('App entry did not delegate command-line help: ' + str(entry))
+        subprocess.run([str(launcher), '--launcher-self-test'], capture_output=True, text=True, timeout=30, check=True)
         return executable
     links = []
     with zipfile.ZipFile(archive) as bundle:
@@ -129,7 +130,7 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
             executable = unpack(archive, directory / 'unpacked')
             report['checks'].append('archive entries and native executable permissions')
             if sys.platform == 'darwin':
-                report['checks'].append('macOS ditto roundtrip, internal framework links, code signatures and both entry help commands')
+                report['checks'].append('macOS ditto roundtrip, framework links, signatures, both entry help commands and native launcher self-test')
             internal = executable.parent.parent / 'Frameworks' if sys.platform == 'darwin' else executable.parent / '_internal'
             manifest = json.loads((internal / 'resources/manifest.json').read_text(encoding='utf-8'))
             catalog = json.loads((internal / 'backend/recommand/model.json').read_text(encoding='utf-8'))
@@ -171,9 +172,15 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
             # The explicit data directory wins over inherited development settings.
             environment['PICTIDE_DATA_DIR'] = environment['PICTIDE_WEB_DATA_DIR'] = str(data)
             environment.pop('HF_HUB_OFFLINE', None)
+            command = [str(executable), '--cli', '--data-dir', str(data), '--host', '127.0.0.1',
+                       '--port', str(port), '--no-browser']
+            if sys.platform == 'darwin':
+                command.append('--desktop-worker')
+                environment['PICTIDE_DESKTOP_PARENT_PIPE'] = '1'
+                environment['PICTIDE_DESKTOP_STATUS'] = str(directory / 'worker.status')
             with log_path.open('wb') as log:
-                process = subprocess.Popen([str(executable), '--cli', '--data-dir', str(data), '--host', '127.0.0.1',
-                                            '--port', str(port), '--no-browser'], cwd=executable.parent,
+                process = subprocess.Popen(command, cwd=executable.parent,
+                                           stdin=subprocess.PIPE if sys.platform == 'darwin' else None,
                                            stdout=log, stderr=subprocess.STDOUT, env=environment,
                                            start_new_session=os.name != 'nt',
                                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
@@ -182,6 +189,9 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
                     if process.poll() is not None:
                         raise RuntimeError('Portable process exited before becoming ready')
                     try:
+                        if sys.platform == 'darwin' and (not (directory / 'worker.status').exists()
+                                or (directory / 'worker.status').read_text() != 'ready'):
+                            raise ConnectionError('Desktop worker is still preparing')
                         bootstrap = get('/api/bootstrap')
                         break
                     except (URLError, TimeoutError, ConnectionError):
@@ -190,6 +200,10 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
                         time.sleep(0.3)
                 if bootstrap['name'] != 'Pictide' or Path(bootstrap['data_directory']).resolve() != data.resolve():
                     raise RuntimeError('Unexpected bootstrap or data directory')
+                if sys.platform == 'darwin':
+                    if (directory / 'worker.status').read_text() != 'ready':
+                        raise RuntimeError('Desktop worker did not report startup readiness')
+                    report['checks'].append('macOS desktop worker reserved-port startup and readiness notification')
                 if bootstrap['jobs'] or bootstrap['artifacts'] or bootstrap['backends']:
                     raise RuntimeError('Fresh portable data must not contain personal records or backend credentials')
                 report['version'] = bootstrap['version']
@@ -222,12 +236,19 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
                         raise RuntimeError('Initialized vocabulary failed integrity check')
                 report['vocabulary'] = dataset
                 report['checks'].append('initialized vocabulary selection and SQLite integrity')
+                if sys.platform == 'darwin':
+                    process.stdin.close()
+                    if process.wait(timeout=15) != 0:
+                        raise RuntimeError('Desktop worker did not stop cleanly after its owner pipe closed')
+                    report['checks'].append('macOS owner-pipe closure stops the desktop worker cleanly')
                 report['passed'] = True
         except Exception as error:
             failure = error
             report['error'] = str(error)
         finally:
             if process is not None:
+                if process.stdin is not None and not process.stdin.closed:
+                    process.stdin.close()
                 stop(process)
             if not report['passed'] and log_path.exists():
                 report['startup_log_tail'] = log_path.read_text(encoding='utf-8', errors='replace')[-16000:]

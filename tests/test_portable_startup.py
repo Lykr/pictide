@@ -194,7 +194,8 @@ class PortableResourcesSmoke(unittest.TestCase):
                 self.assertEqual(unpack(Path('mac.zip'), destination), native / 'PictideService')
             commands = [call.args[0] for call in run.call_args_list]
             self.assertEqual(commands[0], ['/usr/bin/ditto', '-x', '-k', 'mac.zip', str(destination)])
-            self.assertEqual(commands[-2:], [[str(native / 'PictideService'), '--help'], [str(native / 'Pictide'), '--help']])
+            self.assertEqual(commands[-3:], [[str(native / 'PictideService'), '--help'], [str(native / 'Pictide'), '--help'],
+                                            [str(native / 'Pictide'), '--launcher-self-test']])
 
     def test_failed_build_preserves_final_archives_and_writes_failure_report(self):
         with tempfile.TemporaryDirectory() as directory:

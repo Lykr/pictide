@@ -23,12 +23,59 @@ let chinese = Locale.preferredLanguages.first.map {
 } ?? false
 func text(_ english: String, _ simplified: String) -> String { chinese ? simplified : english }
 
-func option(_ name: String) -> String? {
-    for (index, argument) in arguments.enumerated().reversed() {
-        if argument == name, index + 1 < arguments.count { return arguments[index + 1] }
+func option(_ name: String, in values: [String] = arguments) -> String? {
+    for (index, argument) in values.enumerated().reversed() {
+        if argument == name, index + 1 < values.count { return values[index + 1] }
         if argument.hasPrefix(name + "=") { return String(argument.dropFirst(name.count + 1)) }
     }
     return nil
+}
+
+func localAddress(for values: [String] = arguments) throws -> URL {
+    let host = option("--host", in: values) ?? "127.0.0.1"
+    let port = option("--port", in: values) ?? "8189"
+    guard ["127.0.0.1", "localhost", "::1", "0.0.0.0"].contains(host) else {
+        throw NSError(domain: "Pictide", code: 1, userInfo: [NSLocalizedDescriptionKey: text("Invalid host.", "访问地址无效。")])
+    }
+    let listening = values.contains("--lan") ? "0.0.0.0" : host
+    let local = listening == "::1" ? "[::1]" : listening == "0.0.0.0" ? "127.0.0.1" : listening
+    guard let number = Int(port), (1...65535).contains(number), let url = URL(string: "http://\(local):\(number)") else {
+        throw NSError(domain: "Pictide", code: 1, userInfo: [NSLocalizedDescriptionKey: text("Invalid port.", "端口无效。")])
+    }
+    return url
+}
+
+func preparationPercent(_ line: String) -> Double? {
+    guard line.contains("MiniLM"), let range = line.range(of: #"\d+(?:\.\d+)?%"#, options: .regularExpression),
+          let percent = Double(line[range].dropLast()) else { return nil }
+    return min(100, max(0, percent))
+}
+
+func menuIcon(_ source: NSImage) -> NSImage? {
+    // Derive a high-resolution alpha mask from the website's white brand glyph.
+    // Its dark rounded background stays in the app icon, outside the menu bar.
+    guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 72, pixelsHigh: 72,
+        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+        colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+        let context = NSGraphicsContext(bitmapImageRep: bitmap), let pixels = bitmap.bitmapData else { return nil }
+    memset(pixels, 0, bitmap.bytesPerRow * bitmap.pixelsHigh)
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = context
+    source.draw(in: NSRect(x: 0, y: 0, width: 72, height: 72))
+    NSGraphicsContext.restoreGraphicsState()
+    for y in 0..<72 {
+        for x in 0..<72 {
+            let offset = y * bitmap.bytesPerRow + x * 4
+            let white = min(Int(pixels[offset]), min(Int(pixels[offset + 1]), Int(pixels[offset + 2])))
+            let alpha = max(0, white - 32) * 255 / 223 * Int(pixels[offset + 3]) / 255
+            pixels[offset] = 0; pixels[offset + 1] = 0; pixels[offset + 2] = 0
+            pixels[offset + 3] = UInt8(min(255, alpha))
+        }
+    }
+    bitmap.size = NSSize(width: 18, height: 18)
+    let image = NSImage(size: bitmap.size)
+    image.addRepresentation(bitmap); image.isTemplate = true
+    return image
 }
 
 final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -40,6 +87,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var parentPipe: Pipe?
     var writer: FileHandle?
     var reader: FileHandle?
+    var readiness: URL?
     var lock: Int32 = -1
     var timer: Timer?
     var signalSource: DispatchSourceSignal?
@@ -51,9 +99,13 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var statusItem: NSStatusItem!
     var statusLine: NSMenuItem!
     var openItem: NSMenuItem!
+    var retryItem: NSMenuItem!
+    var addressItems: [NSMenuItem] = []
     var window: NSWindow!
     var label: NSTextField!
+    var detail: NSTextField!
     var progress: NSProgressIndicator!
+    var retryButton: NSButton!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let environment = ProcessInfo.processInfo.environment
@@ -68,23 +120,14 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
             try files.createDirectory(at: data.appendingPathComponent("tmp"), withIntermediateDirectories: true)
             try files.createDirectory(at: data.appendingPathComponent("logs"), withIntermediateDirectories: true)
             let lockPath = data.appendingPathComponent("tmp/desktop.lock").path
-            lock = Darwin.open(lockPath, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+            lock = Darwin.open(lockPath, O_CREAT | O_RDWR | O_CLOEXEC, S_IRUSR | S_IWUSR)
             guard lock >= 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
             if flock(lock, LOCK_EX | LOCK_NB) != 0 {
                 Darwin.close(lock); lock = -1
                 reopenExisting()
                 return
             }
-            let host = option("--host") ?? "127.0.0.1"
-            let port = option("--port") ?? "8189"
-            guard ["127.0.0.1", "localhost", "::1", "0.0.0.0"].contains(host) else {
-                throw NSError(domain: "Pictide", code: 1, userInfo: [NSLocalizedDescriptionKey: text("Invalid host.", "访问地址无效。")])
-            }
-            let local = host == "::1" ? "[::1]" : host == "0.0.0.0" || arguments.contains("--lan") ? "127.0.0.1" : host
-            guard let number = Int(port), (1...65535).contains(number), let url = URL(string: "http://\(local):\(port)") else {
-                throw NSError(domain: "Pictide", code: 1, userInfo: [NSLocalizedDescriptionKey: text("Invalid port.", "端口无效。")])
-            }
-            address = url
+            address = try localAddress()
             try writeInfo()
             try startService()
             signal(SIGTERM, SIG_IGN)
@@ -98,15 +141,19 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let icon = Bundle.main.url(forResource: "desktop", withExtension: "png"), let image = NSImage(contentsOf: icon) {
             image.size = NSSize(width: 18, height: 18)
-            statusItem.button?.image = image
+            statusItem.button?.image = menuIcon(image) ?? image
         } else { statusItem.button?.title = "P" }
         statusItem.button?.toolTip = "Pictide"
         let menu = NSMenu()
         statusLine = NSMenuItem(title: text("Preparing Pictide…", "正在准备 Pictide…"), action: nil, keyEquivalent: "")
         menu.addItem(statusLine)
         menu.addItem(.separator())
-        openItem = NSMenuItem(title: text("Open Pictide", "打开 Pictide"), action: #selector(openWeb), keyEquivalent: "")
+        openItem = NSMenuItem(title: text("Show preparation", "查看准备进度"), action: #selector(openWeb), keyEquivalent: "")
         openItem.target = self; menu.addItem(openItem)
+        retryItem = NSMenuItem(title: text("Retry startup", "重试启动"), action: #selector(retry), keyEquivalent: "")
+        retryItem.target = self; retryItem.isHidden = true; menu.addItem(retryItem)
+        let folder = NSMenuItem(title: text("Open data folder", "打开数据目录"), action: #selector(openData), keyEquivalent: "")
+        folder.target = self; menu.addItem(folder)
         let logs = NSMenuItem(title: text("View logs", "查看日志"), action: #selector(openLogs), keyEquivalent: "")
         logs.target = self; menu.addItem(logs)
         menu.addItem(.separator())
@@ -116,21 +163,29 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func makeWindow() {
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 180),
+        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 224),
                           styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Pictide"; window.delegate = self; window.isReleasedWhenClosed = false
         window.center()
-        label = NSTextField(wrappingLabelWithString: text("Preparing Pictide…", "正在准备 Pictide…"))
-        label.frame = NSRect(x: 24, y: 85, width: 392, height: 70)
+        label = NSTextField(wrappingLabelWithString: text("Getting Pictide ready", "正在准备 Pictide"))
+        label.font = .systemFont(ofSize: 17, weight: .semibold)
+        label.frame = NSRect(x: 24, y: 172, width: 432, height: 28)
         window.contentView?.addSubview(label)
-        progress = NSProgressIndicator(frame: NSRect(x: 24, y: 64, width: 392, height: 16))
+        detail = NSTextField(wrappingLabelWithString: text("Your browser will open when everything is ready.", "准备完成后将自动打开浏览器。"))
+        detail.textColor = .secondaryLabelColor
+        detail.frame = NSRect(x: 24, y: 94, width: 432, height: 66)
+        window.contentView?.addSubview(detail)
+        progress = NSProgressIndicator(frame: NSRect(x: 24, y: 72, width: 432, height: 16))
         progress.style = .bar; progress.isIndeterminate = true; progress.startAnimation(nil)
         window.contentView?.addSubview(progress)
         let logs = NSButton(title: text("View logs", "查看日志"), target: self, action: #selector(openLogs))
-        logs.bezelStyle = .rounded; logs.frame = NSRect(x: 240, y: 16, width: 92, height: 32)
+        logs.bezelStyle = .rounded; logs.frame = NSRect(x: 256, y: 20, width: 108, height: 32)
         window.contentView?.addSubview(logs)
+        retryButton = NSButton(title: text("Try again", "重试"), target: self, action: #selector(retry))
+        retryButton.bezelStyle = .rounded; retryButton.frame = NSRect(x: 140, y: 20, width: 108, height: 32)
+        retryButton.isHidden = true; window.contentView?.addSubview(retryButton)
         let cancel = NSButton(title: text("Quit", "退出"), target: self, action: #selector(quit))
-        cancel.bezelStyle = .rounded; cancel.frame = NSRect(x: 340, y: 16, width: 76, height: 32)
+        cancel.bezelStyle = .rounded; cancel.frame = NSRect(x: 372, y: 20, width: 84, height: 32)
         window.contentView?.addSubview(cancel)
     }
 
@@ -140,6 +195,9 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func startService() throws {
+        closeStreams()
+        removeReadiness()
+        readiness = data.appendingPathComponent("tmp/macos-startup-\(UUID().uuidString).status")
         let log = data.appendingPathComponent("logs/desktop-startup.log")
         if !files.fileExists(atPath: log.path) { files.createFile(atPath: log.path, contents: nil) }
         writer = try FileHandle(forWritingTo: log); writer?.seekToEndOfFile()
@@ -151,12 +209,18 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         environment["PICTIDE_DESKTOP_LANGUAGE"] = chinese ? "zh-CN" : "en"
         environment["PICTIDE_DESKTOP_PARENT_PIPE"] = "1"
         environment["PYTHONUNBUFFERED"] = "1"
+        environment["PICTIDE_DESKTOP_STATUS"] = readiness!.path
         process.environment = environment
         process.currentDirectoryURL = data
         parentPipe = Pipe()
         process.standardInput = parentPipe
         process.standardOutput = writer; process.standardError = writer
-        process.terminationHandler = { [weak self] _ in DispatchQueue.main.async { self?.serviceExited() } }
+        process.terminationHandler = { [weak self] process in
+            DispatchQueue.main.async {
+                guard self?.child === process else { return }
+                self?.serviceExited()
+            }
+        }
         child = process
         try process.run()
         // The worker must only hold the read end, and this parent only the write end.
@@ -165,16 +229,24 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func readOutput() {
-        if let bytes = try? reader?.read(upToCount: 65536), !bytes.isEmpty {
+        guard let reader = reader else { return }
+        let offset = reader.offsetInFile
+        let end = reader.seekToEndOfFile()
+        reader.seek(toFileOffset: max(offset, end > 65536 ? end - 65536 : 0))
+        if let bytes = try? reader.read(upToCount: 65536), !bytes.isEmpty {
             let output = String(decoding: bytes, as: UTF8.self)
             if let line = output.split(whereSeparator: \.isNewline).last {
                 lastOutput = String(line.suffix(1000))
                 if !ready && !failed {
-                    label.stringValue = lastOutput
-                    if let range = lastOutput.range(of: #"\d+(?:\.\d+)?%"#, options: .regularExpression), lastOutput.contains("MiniLM") {
+                    detail.stringValue = String(lastOutput.suffix(300))
+                    if let percent = preparationPercent(lastOutput) {
+                        label.stringValue = text("Preparing recommendation dependency", "正在准备推荐依赖")
                         progress.isIndeterminate = false
-                        progress.doubleValue = Double(lastOutput[range].dropLast()) ?? 0
-                    } else { progress.isIndeterminate = true; progress.startAnimation(nil) }
+                        progress.doubleValue = percent
+                    } else {
+                        label.stringValue = text("Getting Pictide ready", "正在准备 Pictide")
+                        progress.isIndeterminate = true; progress.startAnimation(nil)
+                    }
                 }
             }
         }
@@ -183,9 +255,12 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func tick() {
         readOutput()
         guard !ready && !probing && !failed && !stopping && child?.isRunning == true else { return }
+        guard let status = readiness, (try? String(contentsOf: status, encoding: .utf8)) == "ready" else { return }
+        let current = child
         probing = true
         check(address) { [weak self] valid in
             guard let self = self else { return }
+            guard self.child === current else { return }
             self.probing = false
             if valid && !self.stopping && !self.failed { self.becameReady() }
         }
@@ -221,11 +296,15 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.orderOut(nil)
         timer?.invalidate(); timer = nil
         statusLine.title = text("Pictide is running", "Pictide 正在运行")
+        statusItem.button?.toolTip = statusLine.title
+        openItem.title = text("Open Pictide", "打开 Pictide")
+        removeReadiness()
         if let menu = statusItem.menu {
-            menu.insertItem(NSMenuItem(title: address.absoluteString, action: nil, keyEquivalent: ""), at: 1)
+            addAddress(text("Local", "本机") + ": " + address.absoluteString, value: address.absoluteString, to: menu)
             if arguments.contains("--lan") || option("--host") == "0.0.0.0" {
                 for local in lanAddresses() {
-                    menu.insertItem(NSMenuItem(title: text("LAN", "局域网") + ": http://\(local):\(address.port ?? 8189)", action: nil, keyEquivalent: ""), at: 2)
+                    let url = "http://\(local):\(address.port ?? 8189)"
+                    addAddress(text("LAN", "局域网") + ": " + url, value: url, to: menu)
                 }
             }
         }
@@ -257,10 +336,18 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func showFailure(_ message: String) {
-        failed = true
+        failed = true; ready = false; probing = false
+        timer?.invalidate(); timer = nil
+        removeReadiness(); clearAddresses()
+        if lock >= 0 && address != nil { try? writeInfo() }
         progress.stopAnimation(nil); progress.isHidden = true
-        label.stringValue = text("Pictide could not start.\n", "Pictide 启动失败。\n") + message
-        statusLine.title = text("Pictide could not start", "Pictide 启动失败")
+        label.stringValue = text("Pictide needs your attention", "Pictide 暂时无法继续")
+        detail.stringValue = String(message.suffix(500))
+        statusLine.title = text("Pictide is not running", "Pictide 未运行")
+        statusItem.button?.toolTip = statusLine.title
+        openItem.title = text("Show startup error", "查看启动错误")
+        retryButton.isHidden = false; retryButton.isEnabled = child?.isRunning != true && address != nil
+        retryItem.isHidden = address == nil
         showProgress()
         if child?.isRunning == true { child?.terminate() }
     }
@@ -268,22 +355,77 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func serviceExited() {
         timer?.invalidate(); timer = nil
         readOutput()
-        if stopping { NSApplication.shared.terminate(nil) }
-        else if !failed { showFailure(lastOutput.isEmpty ? text("View logs for details.", "请查看日志了解详情。") : lastOutput) }
+        if stopping { NSApplication.shared.reply(toApplicationShouldTerminate: true) }
+        else if !failed {
+            let code = child?.terminationStatus ?? -1
+            let summary = text("The background service stopped (exit \(code)).", "后台服务已停止（退出码 \(code)）。")
+            showFailure(summary + "\n" + (lastOutput.isEmpty ? text("View logs for details.", "请查看日志了解详情。") : lastOutput))
+        }
+        retryButton.isEnabled = address != nil
+    }
+
+    func addAddress(_ title: String, value: String, to menu: NSMenu) {
+        let item = NSMenuItem(title: title, action: #selector(copyAddress(_:)), keyEquivalent: "")
+        item.target = self; item.representedObject = value
+        item.toolTip = text("Copy address", "复制地址")
+        menu.insertItem(item, at: 1 + addressItems.count); addressItems.append(item)
+    }
+
+    func clearAddresses() {
+        for item in addressItems { statusItem.menu?.removeItem(item) }
+        addressItems.removeAll()
+    }
+
+    func removeReadiness() {
+        if let status = readiness { try? files.removeItem(at: status) }
+        readiness = nil
+    }
+
+    func closeStreams() {
+        parentPipe?.fileHandleForWriting.closeFile(); parentPipe = nil
+        writer?.closeFile(); writer = nil
+        reader?.closeFile(); reader = nil
+    }
+
+    @objc func copyAddress(_ sender: NSMenuItem) {
+        guard let address = sender.representedObject as? String else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(address, forType: .string)
+    }
+
+    @objc func retry() {
+        guard failed && !stopping && child?.isRunning != true && address != nil && lock >= 0 else { return }
+        failed = false; ready = false; probing = false; lastOutput = ""
+        retryButton.isHidden = true; retryItem.isHidden = true
+        progress.isHidden = false; progress.isIndeterminate = true; progress.startAnimation(nil)
+        label.stringValue = text("Getting Pictide ready", "正在准备 Pictide")
+        detail.stringValue = text("Continuing preparation. Downloaded files will be reused.", "继续准备，已下载的文件会保留使用。")
+        statusLine.title = text("Preparing Pictide…", "正在准备 Pictide…")
+        statusItem.button?.toolTip = statusLine.title
+        openItem.title = text("Show preparation", "查看准备进度")
+        showProgress()
+        do { try writeInfo(); try startService() } catch { showFailure(error.localizedDescription) }
     }
 
     @objc func openWeb() { if ready { NSWorkspace.shared.open(address) } else { showProgress() } }
     @objc func openLogs() { if let data = data { NSWorkspace.shared.open(data.appendingPathComponent("logs")) } }
-    @objc func quit() {
-        guard !stopping else { return }
-        stopping = true; timer?.invalidate(); timer = nil
-        statusLine.title = text("Stopping Pictide…", "正在退出 Pictide…")
-        if child?.isRunning == true { child?.terminate() }
-        else { NSApplication.shared.terminate(nil) }
-    }
+    @objc func openData() { if let data = data { NSWorkspace.shared.open(data) } }
+    @objc func quit() { NSApplication.shared.terminate(nil) }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        if child?.isRunning == true { quit(); return .terminateCancel }
+        if child?.isRunning == true {
+            if !stopping {
+                stopping = true; timer?.invalidate(); timer = nil
+                ready = false; clearAddresses(); removeReadiness()
+                try? writeInfo()
+                statusLine.title = text("Stopping Pictide…", "正在退出 Pictide…")
+                statusItem.button?.toolTip = statusLine.title
+                label.stringValue = statusLine.title
+                detail.stringValue = text("Finishing background work…", "正在结束后台任务…")
+                child?.terminate()
+            }
+            return .terminateLater
+        }
         return .terminateNow
     }
 
@@ -292,13 +434,12 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         timer?.invalidate()
-        parentPipe?.fileHandleForWriting.closeFile()
-        if child?.isRunning == true { child?.terminate(); child?.waitUntilExit() }
+        if child?.isRunning == true { child?.terminate() }
+        removeReadiness(); closeStreams()
         if lock >= 0 {
             try? files.removeItem(at: info)
             flock(lock, LOCK_UN); Darwin.close(lock); lock = -1
         }
-        writer?.closeFile(); reader?.closeFile()
         NSStatusBar.system.removeStatusItem(statusItem)
     }
 }
@@ -319,6 +460,34 @@ func lanAddresses() -> [String] {
         }
     }
     return addresses.sorted()
+}
+
+// Native CI checks run without opening a window or starting the Python service.
+if arguments == ["--launcher-self-test"] {
+    func require(_ valid: Bool, _ message: String) throws {
+        if !valid { throw NSError(domain: "Pictide self-test", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
+    }
+    do {
+        try require(try localAddress(for: []).absoluteString == "http://127.0.0.1:8189", "default address")
+        try require(try localAddress(for: ["--host", "::1", "--lan"]).host == "127.0.0.1", "LAN overrides IPv6")
+        try require(try localAddress(for: ["--host=0.0.0.0", "--port=8191"]).port == 8191, "port option")
+        try require(option("--port", in: ["--port=8189", "--port", "8192"]) == "8192", "last option wins")
+        try require((try? localAddress(for: ["--port=0"])) == nil, "invalid port")
+        try require(preparationPercent("MiniLM model.onnx: 42%") == 42, "download progress")
+        try require(preparationPercent("MiniLM verified") == nil, "verification stage")
+        guard let icon = Bundle.main.url(forResource: "desktop", withExtension: "png"),
+              let source = NSImage(contentsOf: icon), let image = menuIcon(source),
+              let bitmap = image.representations.first as? NSBitmapImageRep, let pixels = bitmap.bitmapData else {
+            throw NSError(domain: "Pictide self-test", code: 1, userInfo: [NSLocalizedDescriptionKey: "menu icon"])
+        }
+        try require(image.isTemplate && pixels[3] == 0, "transparent menu icon")
+        try require((0..<72).contains { y in (0..<72).contains { x in pixels[y * bitmap.bytesPerRow + x * 4 + 3] > 0 } }, "visible menu glyph")
+        print("{\"passed\":true,\"checks\":9}")
+        exit(0)
+    } catch {
+        fputs("Pictide launcher self-test failed: \(error.localizedDescription)\n", stderr)
+        exit(1)
+    }
 }
 
 let application = NSApplication.shared

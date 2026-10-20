@@ -52,7 +52,7 @@ pictide/
   backend/
     host.py                    HTTP API、SSE、静态资源、启动与关闭
     desktop.py                 Windows 桌面会话、单实例锁与托盘生命周期
-    desktop_launcher.py        Windows 进度启动器与桌面服务父进程存活监视
+    desktop_launcher.py        桌面端口预占、Windows 进度启动器与服务父进程存活监视
     windows_tray.py            Windows 原生托盘与自有启动终端管理
     windows_setup_ui.py        标准库首次准备选择与下载进度
     windows_hardware.py        只读 Windows 显卡、独立显存与装机内存检测

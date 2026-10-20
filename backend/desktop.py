@@ -51,8 +51,8 @@ class DesktopSession:
     def reserve(self, host, port):
         # Reserve the actual port before preparing resources, without listening.
         # Readiness can then only come from this desktop session's HTTP server.
-        self.socket = socket.socket(socket.AF_INET6 if host == '::1' else socket.AF_INET)
-        self.socket.bind((host, port))
+        from .desktop_launcher import reserve_desktop_socket
+        self.socket = reserve_desktop_socket(host, port)
 
     def _write_info(self, ready):
         partial = self.info.with_suffix('.json.part')
