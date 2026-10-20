@@ -20,7 +20,6 @@ export type GeneratedViewerProps = {
   activeId: string | null;
   onActiveChange: (id: string | null) => void;
   privacyBlur: boolean;
-  privacyCovered?: boolean;
   onPrivacyChange: (value: boolean) => void;
   busy: boolean;
   onLike: (item: GeneratedArtifact, toggle?: boolean) => void;
@@ -33,7 +32,7 @@ export type GeneratedViewerProps = {
 };
 const artifactPath = (item: GeneratedArtifact, kind: string) => `/api/artifacts/${encodeURIComponent(item.id)}/${kind}`;
 
-function ViewerImage({ item, privacyBlur, privacyCovered, label, onNavigate, busy, transition }: { item: GeneratedArtifact; privacyBlur: boolean; privacyCovered?: boolean; label: string; onNavigate: (direction: string) => void; busy: boolean; transition: boolean }) {
+function ViewerImage({ item, privacyBlur, label, onNavigate, busy, transition }: { item: GeneratedArtifact; privacyBlur: boolean; label: string; onNavigate: (direction: string) => void; busy: boolean; transition: boolean }) {
   const [status, setStatus] = useState("loading");
   const stageRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -50,7 +49,7 @@ function ViewerImage({ item, privacyBlur, privacyCovered, label, onNavigate, bus
       enabled: () => !latest.current.busy,
     });
   }, []);
-  return <div ref={stageRef} className="generated-viewer-stage" data-privacy-blur={privacyBlur} data-privacy-covered={privacyCovered}>
+  return <div ref={stageRef} className="generated-viewer-stage" data-privacy-blur={privacyBlur}>
     <img ref={imageRef} src={artifactPath(item, "image")} alt={label} draggable={false} onLoad={event => {
       setStatus("ready");
       if (transition) playImageTransition(event.currentTarget);
@@ -149,7 +148,7 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
       </Toggle>
       <IconButton ref={exitRef} icon={Minimize} label={t("退出沉浸模式")} hidden={!immersive} />
     </div>
-    <ViewerImage key={item.id} item={item} transition={imageChange.current.transition} privacyBlur={privacyBlur} privacyCovered={props.privacyCovered} label={props.imageLabel ?? t("生成的图片")} onNavigate={navigate} busy={busy || infoOpen} />
+    <ViewerImage key={item.id} item={item} transition={imageChange.current.transition} privacyBlur={privacyBlur} label={props.imageLabel ?? t("生成的图片")} onNavigate={navigate} busy={busy || infoOpen} />
     {waitingOlder && loadingMore && <div className="generated-viewer-paging" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("正在加载更早图片")}</span></div>}
     {error && <div className="generated-viewer-error" role="alert">{error}</div>}
     <div ref={toolbarRef} className="generated-viewer-toolbar" aria-label={t("图片操作")}>

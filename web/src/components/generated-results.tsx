@@ -1,4 +1,3 @@
-import { usePrivacyBlur } from "../shared/use-privacy-blur";
 import { publishUiState } from "../shared/ui-state.mjs";
 import { uiTarget } from "../shared/ui-targets";
 import { t, tr, messageKey, locale } from "../i18n/index.mjs";
@@ -36,7 +35,7 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
   const label = liked ? t("喜欢图片") : t("生成的图片");
   const [state, setState] = useState(initial);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [privacyBlur, setPrivacyBlur, privacyCovered] = usePrivacyBlur();
+  const [privacyBlur, setPrivacyBlur] = useState(true);
   useEffect(() => {
     const receive = (event: Event) => setState({ ...initial, ...(event as CustomEvent<ResultState>).detail });
     document.addEventListener(`pictide:${prefix}-results`, receive);
@@ -70,11 +69,11 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
     </div>}
     {state.error && <div className="notice error" role="status">{t(messageKey(state.error))}<Button variant="ghost" size="sm" type="button" disabled={busy || state.loading} onClick={() => emit(`${prefix}-refresh`)}>{t("重试")}</Button></div>}
     {!state.artifacts.length && !state.loading && !state.error && <div className="empty small"><ImageIcon aria-hidden="true" /><p>{liked ? state.tags.length ? t("没有同时包含所选标签的喜欢图片。") : t("喜欢的图片会保存在这里。") : state.pending ? t("正在生成，完成后会显示在这里。") : state.configured ? t("生成图片后，在这里查看结果。") : t("先配置生图 API。")}</p>{!liked && !state.configured && <Button variant="outline" type="button" onClick={() => emit("generated-configure")}>{t("配置生图 API")}</Button>}</div>}
-    <div ref={liked ? targets.collection : undefined} className={`generated-grid${privacyBlur ? " generated-privacy-blurred" : ""}${privacyCovered ? " generated-privacy-covered" : ""}`} aria-busy={state.loading || state.mutationPending}>{state.artifacts.map(item => <Card key={item.id} className="generated-card gap-0 overflow-hidden py-0">
+    <div ref={liked ? targets.collection : undefined} className={`generated-grid${privacyBlur ? " generated-privacy-blurred" : ""}`} aria-busy={state.loading || state.mutationPending}>{state.artifacts.map(item => <Card key={item.id} className="generated-card gap-0 overflow-hidden py-0">
       <Button type="button" variant="ghost" className="generated-image-button" aria-label={tr`查看${label} · ${seedLabel(item)}`} onClick={() => setSelectedId(item.id)}><ArtifactImage item={item} label={label} /></Button>
       <IconButton icon={Heart} className="generated-card-like" label={item.feedback === 1 ? t("已喜欢，点击撤回") : t("喜欢图片")} aria-pressed={item.feedback === 1} disabled={busy} onClick={() => like(item)} />
     </Card>)}</div>
     {state.hasMore && <div className="load-more-row"><Button variant="outline" type="button" disabled={state.loading || busy} onClick={() => emit(`${prefix}-more`)} data-tooltip={tr`已加载 ${state.artifacts.length} / ${state.total} 张图片`}>{state.loading ? t("加载中…") : liked && state.sort === "score" ? t("加载更多") : t("更早图片")}</Button></div>}
-    <GeneratedViewer imageLabel={label} confirmUnlike={liked} items={state.artifacts} activeId={state.visible ? selectedId : null} onActiveChange={setSelectedId} privacyBlur={privacyBlur} privacyCovered={privacyCovered} onPrivacyChange={setPrivacyBlur} busy={busy} onLike={like} hasMore={state.hasMore} loadingMore={state.loading} onMore={() => emit(`${prefix}-more`)} error={state.error} />
+    <GeneratedViewer imageLabel={label} confirmUnlike={liked} items={state.artifacts} activeId={state.visible ? selectedId : null} onActiveChange={setSelectedId} privacyBlur={privacyBlur} onPrivacyChange={setPrivacyBlur} busy={busy} onLike={like} hasMore={state.hasMore} loadingMore={state.loading} onMore={() => emit(`${prefix}-more`)} error={state.error} />
   </section>;
 }
