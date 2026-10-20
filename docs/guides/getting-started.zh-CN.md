@@ -26,7 +26,21 @@
 
 ### 自定义工作流
 
-使用 Flux 等其他模型或自己的流程时，选择「自定义 API 工作流」，导入 ComfyUI 导出的 **API 格式 JSON**，指定正负提示词输入和图片输出节点，再保存。普通界面工作流 JSON 不能直接使用。
+使用 Anima、Flux 等其他模型或自己的流程时，选择「自定义 API 工作流」，导入 ComfyUI 导出的 **API 格式 JSON**，指定正负提示词输入和图片输出节点，再保存。普通界面工作流 JSON 不能直接使用。
+
+### 推荐使用的生图模型
+
+想生成动漫和插画，推荐 [Anima Turbo v1.1](https://huggingface.co/circlestone-labs/Anima)。它支持 Danbooru 标签，只需 ComfyUI 内置节点。下载以下三个文件，合计约 **5.63 GB**，放入 ComfyUI 模型目录下对应的文件夹：
+
+| 文件夹 | 文件 |
+| --- | --- |
+| `diffusion_models/` | [anima-turbo-v1.1.safetensors](https://huggingface.co/circlestone-labs/Anima/resolve/f973fc41ec7545364ac9776c2440285f43ff2a30/split_files/diffusion_models/anima-turbo-v1.1.safetensors) |
+| `text_encoders/` | [qwen_3_06b_base.safetensors](https://huggingface.co/circlestone-labs/Anima/resolve/f973fc41ec7545364ac9776c2440285f43ff2a30/split_files/text_encoders/qwen_3_06b_base.safetensors) |
+| `vae/` | [qwen_image_vae.safetensors](https://huggingface.co/circlestone-labs/Anima/resolve/f973fc41ec7545364ac9776c2440285f43ff2a30/split_files/vae/qwen_image_vae.safetensors) |
+
+在「自定义 API 工作流」导入 [Anima Turbo API 工作流](../assets/workflows/anima-turbo-v1.1.api.json)，正向绑定 `11 → text`，负向绑定 `12 → text`，种子绑定 `19 → seed`，图片输出选择 `1 · Save Image`。默认参数为 **1024×1024、10 步、CFG 1、Euler / simple**；CFG 1 下负向提示词不参与引导。
+
+模型采用[非商业许可](https://huggingface.co/circlestone-labs/Anima#license)，生成图片可商用。Windows 自动安装流程仍在设计中，目前按以上步骤手动准备。
 
 ## 接入 OpenAI Images 或 Gemini
 

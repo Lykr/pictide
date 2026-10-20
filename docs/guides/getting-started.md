@@ -26,7 +26,21 @@ The default workflow supports complete SD/SDXL checkpoints. Open Roam, choose �
 
 ### Custom workflows
 
-For other models such as Flux, or your own process, choose “Custom API workflow.” Import **API-format JSON** exported from ComfyUI, select positive and negative prompt inputs and image output nodes, then save. Regular UI workflow JSON cannot be used directly.
+For other models such as Anima or Flux, or your own process, choose “Custom API workflow.” Import **API-format JSON** exported from ComfyUI, select positive and negative prompt inputs and image output nodes, then save. Regular UI workflow JSON cannot be used directly.
+
+### Recommended image generation model
+
+For anime and illustrations, we recommend [Anima Turbo v1.1](https://huggingface.co/circlestone-labs/Anima). It supports Danbooru tags and uses ComfyUI's built-in nodes. Download these three files, about **5.63 GB** in total, into the matching folders under your ComfyUI models directory:
+
+| Folder | File |
+| --- | --- |
+| `diffusion_models/` | [anima-turbo-v1.1.safetensors](https://huggingface.co/circlestone-labs/Anima/resolve/f973fc41ec7545364ac9776c2440285f43ff2a30/split_files/diffusion_models/anima-turbo-v1.1.safetensors) |
+| `text_encoders/` | [qwen_3_06b_base.safetensors](https://huggingface.co/circlestone-labs/Anima/resolve/f973fc41ec7545364ac9776c2440285f43ff2a30/split_files/text_encoders/qwen_3_06b_base.safetensors) |
+| `vae/` | [qwen_image_vae.safetensors](https://huggingface.co/circlestone-labs/Anima/resolve/f973fc41ec7545364ac9776c2440285f43ff2a30/split_files/vae/qwen_image_vae.safetensors) |
+
+Import the [Anima Turbo API workflow](../assets/workflows/anima-turbo-v1.1.api.json) through “Custom API workflow.” Bind positive text to `11 → text`, negative text to `12 → text`, and the seed to `19 → seed`; select `1 · Save Image` as the image output. The workflow uses **1024×1024, 10 steps, CFG 1, Euler / simple**. Negative prompts have no effect at CFG 1.
+
+The model has a [non-commercial license](https://huggingface.co/circlestone-labs/Anima#license); generated images may be used commercially. The Windows automatic installation flow is still being designed; use the manual steps above for now.
 
 ## Connect OpenAI Images or Gemini
 
