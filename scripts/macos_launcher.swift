@@ -355,6 +355,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func serviceExited() {
         timer?.invalidate(); timer = nil
         readOutput()
+        removeReadiness()
         if stopping { NSApplication.shared.reply(toApplicationShouldTerminate: true) }
         else if !failed {
             let code = child?.terminationStatus ?? -1
@@ -378,7 +379,8 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func removeReadiness() {
         if let status = readiness { try? files.removeItem(at: status) }
-        readiness = nil
+        // Keep the path until the next launch: a stopping worker may still write
+        // its startup marker before it observes SIGTERM, so clean it again on exit.
     }
 
     func closeStreams() {
