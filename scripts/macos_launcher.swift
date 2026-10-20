@@ -52,6 +52,29 @@ func preparationPercent(_ line: String) -> Double? {
     return min(100, max(0, percent))
 }
 
+func retainStartupLogs(in directory: URL) {
+    let files = FileManager.default
+    let logs = (try? files.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey])) ?? []
+    let startup = logs.filter {
+        $0.lastPathComponent.hasPrefix("macos-startup-") && $0.pathExtension == "log"
+            && (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+    }.sorted {
+        let left = (try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+        let right = (try? $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+        return left == right ? $0.lastPathComponent > $1.lastPathComponent : left > right
+    }
+    for log in startup.dropFirst(3) { try? files.removeItem(at: log) }
+}
+
+func lastLogLine(at path: URL) -> String? {
+    guard let handle = try? FileHandle(forReadingFrom: path) else { return nil }
+    defer { handle.closeFile() }
+    let end = handle.seekToEndOfFile()
+    handle.seek(toFileOffset: end > 65536 ? end - 65536 : 0)
+    guard let bytes = try? handle.read(upToCount: 65536), !bytes.isEmpty else { return nil }
+    return String(decoding: bytes, as: UTF8.self).split(whereSeparator: \.isNewline).last.map { String($0.suffix(1000)) }
+}
+
 func onLauncherRunLoop(_ action: @escaping () -> Void) {
     // terminateLater runs a modal loop inside terminate(_:). A main dispatch
     // callback can be waiting for that same call to return, so deliver process
@@ -96,6 +119,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var parentPipe: Pipe?
     var writer: FileHandle?
     var reader: FileHandle?
+    var startupOutput: URL?
     var readiness: URL?
     var lock: Int32 = -1
     var timer: Timer?
@@ -207,10 +231,14 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         closeStreams()
         removeReadiness()
         readiness = data.appendingPathComponent("tmp/macos-startup-\(UUID().uuidString).status")
-        let log = data.appendingPathComponent("logs/desktop-startup.log")
-        if !files.fileExists(atPath: log.path) { files.createFile(atPath: log.path, contents: nil) }
-        writer = try FileHandle(forWritingTo: log); writer?.seekToEndOfFile()
-        reader = try FileHandle(forReadingFrom: log); reader?.seekToEndOfFile()
+        let log = data.appendingPathComponent("tmp/macos-startup-\(UUID().uuidString).log")
+        startupOutput = log
+        guard files.createFile(atPath: log.path, contents: nil) else {
+            throw NSError(domain: "Pictide", code: 1, userInfo: [NSLocalizedDescriptionKey: text("Could not create startup output.", "无法创建启动输出文件。")])
+        }
+        retainStartupLogs(in: log.deletingLastPathComponent())
+        writer = try FileHandle(forWritingTo: log)
+        reader = try FileHandle(forReadingFrom: log)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: engine)
         process.arguments = arguments.filter { $0 != "--desktop" } + ["--desktop-worker", "--cli", "--no-browser", "--data-dir", data.path]
@@ -302,6 +330,12 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard child?.isRunning == true else { return }
         ready = true
         do { try writeInfo() } catch { showFailure(error.localizedDescription); return }
+        // The ready marker is written after the worker redirects stdout/stderr.
+        // Keep its stdin owner pipe open for the entire service lifetime.
+        readOutput()
+        closeOutput()
+        if let log = startupOutput { try? files.removeItem(at: log) }
+        startupOutput = nil
         window.orderOut(nil)
         timer?.invalidate(); timer = nil
         statusLine.title = text("Pictide is running", "Pictide 正在运行")
@@ -359,11 +393,15 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         retryItem.isHidden = address == nil
         showProgress()
         if child?.isRunning == true { child?.terminate() }
+        else { closeOutput() }
     }
 
     func serviceExited() {
         timer?.invalidate(); timer = nil
         readOutput()
+        if ready { lastOutput = lastLogLine(at: data.appendingPathComponent("logs/pictide.log")) ?? "" }
+        closeStreams()
+        retainStartupLogs(in: data.appendingPathComponent("tmp"))
         removeReadiness()
         if stopping { NSApplication.shared.reply(toApplicationShouldTerminate: true) }
         else if !failed {
@@ -394,6 +432,10 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func closeStreams() {
         parentPipe?.fileHandleForWriting.closeFile(); parentPipe = nil
+        closeOutput()
+    }
+
+    func closeOutput() {
         writer?.closeFile(); writer = nil
         reader?.closeFile(); reader = nil
     }
@@ -419,7 +461,13 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc func openWeb() { if ready { NSWorkspace.shared.open(address) } else { showProgress() } }
-    @objc func openLogs() { if let data = data { NSWorkspace.shared.open(data.appendingPathComponent("logs")) } }
+    @objc func openLogs() {
+        guard let data = data else { return }
+        let log = data.appendingPathComponent("logs/pictide.log")
+        if files.fileExists(atPath: log.path) { NSWorkspace.shared.open(log) }
+        else if let output = startupOutput, files.fileExists(atPath: output.path) { NSWorkspace.shared.open(output) }
+        else { NSWorkspace.shared.open(data.appendingPathComponent("logs")) }
+    }
     @objc func openData() { if let data = data { NSWorkspace.shared.open(data) } }
     @objc func quit() { NSApplication.shared.terminate(nil) }
 
@@ -500,7 +548,35 @@ if arguments == ["--launcher-self-test"] {
         }
         try require(image.isTemplate && pixels[3] == 0, "transparent menu icon")
         try require((0..<72).contains { y in (0..<72).contains { x in pixels[y * bitmap.bytesPerRow + x * 4 + 3] > 0 } }, "visible menu glyph")
-        print("{\"passed\":true,\"checks\":10}")
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("pictide-launcher-test-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        for index in 0..<5 {
+            let log = temporary.appendingPathComponent("macos-startup-\(index).log")
+            try Data("startup \(index)".utf8).write(to: log)
+            try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: Double(index))], ofItemAtPath: log.path)
+        }
+        let historical = temporary.appendingPathComponent("desktop-startup.log")
+        try Data("historical".utf8).write(to: historical)
+        retainStartupLogs(in: temporary)
+        let remaining = try FileManager.default.contentsOfDirectory(atPath: temporary.path).sorted()
+        try require(remaining == ["desktop-startup.log", "macos-startup-2.log", "macos-startup-3.log", "macos-startup-4.log"], "bounded startup failures preserve historical logs")
+        let log = temporary.appendingPathComponent("pictide.log")
+        try Data((String(repeating: "old output\n", count: 10000) + "latest failure\n").utf8).write(to: log)
+        try require(lastLogLine(at: log) == "latest failure", "bounded runtime log tail")
+        let output = temporary.appendingPathComponent("output.log")
+        try Data().write(to: output)
+        let owner = Launcher()
+        owner.parentPipe = Pipe()
+        let ownerDescriptor = owner.parentPipe!.fileHandleForWriting.fileDescriptor
+        owner.writer = try FileHandle(forWritingTo: output)
+        owner.reader = try FileHandle(forReadingFrom: output)
+        owner.closeOutput()
+        try require(owner.writer == nil && owner.reader == nil && fcntl(ownerDescriptor, F_GETFD) >= 0, "output closure keeps worker owner pipe open")
+        owner.parentPipe?.fileHandleForReading.closeFile()
+        owner.closeStreams()
+        try FileManager.default.removeItem(at: temporary)
+        print("{\"passed\":true,\"checks\":13}")
         exit(0)
     } catch {
         fputs("Pictide launcher self-test failed: \(error.localizedDescription)\n", stderr)
