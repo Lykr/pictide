@@ -56,6 +56,8 @@ def copy_licenses(destination):
     """Keep licenses and versions for installed runtime dependencies."""
     from packaging.requirements import Requirement
     todo = ['aiohttp', 'fastembed', 'numpy']
+    if sys.platform == 'darwin':
+        todo.append('truststore')
     seen = set()
     versions = {}
     while todo:

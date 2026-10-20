@@ -49,6 +49,11 @@ def unpack(archive, directory):
             raise RuntimeError('App bundle is missing its Python framework or library link')
         subprocess.run(['/usr/bin/codesign', '--verify', '--deep', '--strict', str(package)], check=True)
         subprocess.run(['/usr/bin/codesign', '--verify', str(framework)], check=True)
+        licenses = package / 'Contents/Resources/licenses'
+        if json.loads((licenses / 'versions.json').read_text())['truststore'] != '0.10.5':
+            raise RuntimeError('Missing or unexpected macOS truststore dependency')
+        if not (licenses / 'truststore/LICENSE').is_file():
+            raise RuntimeError('Missing truststore license')
         for entry in (executable, launcher):
             if not entry.is_file() or not os.access(entry, os.X_OK):
                 raise RuntimeError('Missing executable app entry: ' + str(entry))
