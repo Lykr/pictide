@@ -28,6 +28,7 @@ class WindowsSetupUISmoke(unittest.TestCase):
     def run_choices(self, answers, install, *, language='en'):
         output = io.StringIO()
         with patch('backend.windows_setup_ui._console_mode') as mode, \
+                patch('backend.windows_setup_ui.detect_gpu_profile', return_value='nvidia'), \
                 patch('builtins.input', side_effect=answers), \
                 patch('sys.stdout', output):
             mode.return_value.__enter__.return_value = False

@@ -84,7 +84,7 @@ def prepare_windows_setup(paths, *, force=False):
                       (paths.database.exists() and Repository(paths.database).backends())):
         return True
     from .local_generation import prepare_local_comfy, profile_catalog, recipe_catalog
-    from .windows_setup_ui import detect_gpu_profile, run_setup
+    from .windows_setup_ui import run_setup
     with setup_lock(paths) as claimed:
         if not claimed:
             announce('Local setup is already open. Continue in that window.',
@@ -94,9 +94,6 @@ def prepare_windows_setup(paths, *, force=False):
         if not force and read_state(paths) is not None:
             return True
         profiles = profile_catalog()
-        detected = detect_gpu_profile()
-        if detected in profiles:
-            profiles = {detected: profiles[detected], **profiles}
         choice = run_setup(profiles, recipe_catalog(),
                            lambda profile, recipe, progress: prepare_local_comfy(paths, profile, recipe, progress),
                            data_directory=str(paths.root))

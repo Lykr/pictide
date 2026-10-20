@@ -56,8 +56,8 @@ flowchart TD
 
 选择本地安装后：
 
-1. 检测显卡并展示官方对应便携包，允许调整 NVIDIA / AMD / Intel / CPU 路径；CPU 明示为慢速选项，型号支持沿用 ComfyUI 官方要求。
-2. 推荐“ComfyUI + Anima Turbo v1.1”，允许只安装 ComfyUI；展示将下载的全部内容、总下载体积、模型许可、安装位置与磁盘空间需求，由用户选择开始或返回。
+1. 「准备本地生图环境」先展示检测到的显卡品牌，默认提供「使用推荐环境」，通过「选择其他环境」再展开完整列表；识别失败时直接进入手动选择。环境列表只显示适用硬件和用途，不混排下载体积。NVIDIA 标准环境使用 CUDA 13.0，兼容环境使用 CUDA 12.6，可在遇到 CUDA 或驱动兼容问题时尝试；CPU 明示为慢速选项，型号支持沿用 ComfyUI 官方要求。
+2. 「选择生图模型」默认推荐 Anima Turbo v1.1，跳过项为「暂不下载模型，仅安装 ComfyUI」；模型选项明确标记「模型下载」。最终确认页分别展示环境下载、模型下载与预计合计，说明下载体积与显存要求不同，解压安装后需更多磁盘空间；同时展示模型许可、安装位置与磁盘空间需求，由用户选择开始或返回。
 3. 显示“下载 → 校验 → 解压 → 启动”阶段，以及当前文件、已下载大小、速度和进度；支持取消、失败重试与后续启动续传。
 4. 安装推荐模型时自动保存并选中默认工作流，显示“本地生图已就绪”并进入网页。用户选择「带我看看」后，直接引导点击「开始漫游」生成第一张图片，无需填写地址、测试、导入或绑定工作流；生成页也已选好该模型。仅安装 ComfyUI 时显示“ComfyUI 已就绪”，给出本机地址并说明仍需添加模型。
 
@@ -143,9 +143,10 @@ sequenceDiagram
 - 网页复用已有 `backendCount > 0 → roam-start` 规则；接入发生在 HTTP/bootstrap 前。未完成模型准备、只安装环境及无配置的跳过路径继续使用生图 API 配置引导。
 - 首次空图库在 bootstrap 后等待用户点击「开始漫游」；`app.js` 的预取入口仅在已有 `activeId` 或显式 `nextImageWait` 时激活，避免引导前自动生成首图。首图之后沿用既有预取数量，用户的 `prefetch_count` 保持原值。
 - 官方 NVIDIA ComfyUI `v0.42.1` 归档完成真实下载及全量 SHA256 校验；隔离 TUI 编号输入路径完成安装约 **88.8 秒**。三个模型文件复用已有下载后重新全量哈希校验；该耗时不包含重新下载模型。
-- 最终 ZIP 内冻结的 `Pictide.exe` 默认桌面启动约 **57.38 秒**，完成受管 ComfyUI 启动、只读预检、默认 API/工作流保存并选中。真实浏览器验证 `invite → roam-start → roam-pending`，没有进入设置页，首次点击前没有生成请求。该界面验证拦截生图请求，真实 GPU 出图另通过 Pictide `/api/jobs` 完成。
+- 首次完整链路验收的 ZIP 内冻结 `Pictide.exe` 默认桌面启动约 **57.38 秒**，完成受管 ComfyUI 启动、只读预检、默认 API/工作流保存并选中。真实浏览器验证 `invite → roam-start → roam-pending`，没有进入设置页，首次点击前没有生成请求。该界面验证拦截生图请求，真实 GPU 出图另通过 Pictide `/api/jobs` 完成。
 - 新受管环境生成一张 **832×1248、10 步、CFG 1、Euler / simple** 的中性风景图，ComfyUI 执行 **18.01 秒（含冷模型加载）**；PIL 尺寸检查与目视检查通过。
 - 托盘退出验证确认 Pictide worker 退出、桌面实例记录清理、自有 ComfyUI 端口关闭；原有 8188/8189 应用保持运行。
-- 最终 Windows ZIP 为 **69,175,935 字节**，比改造前增加 **35,423 字节**，SHA256 为 `c83c91f2761751cf026be1dfe3eb07fec4f65c54b719f880b19dc0f29bc9bd06`；未捆绑 ComfyUI 或生图模型。AMD、Intel 和 CPU 尚未对应硬件实测。本次未创建新 tag、Release 或触发 GitHub Actions。
+- 首次完整链路验收的 Windows ZIP 为 **69,175,935 字节**，比改造前增加 **35,423 字节**，SHA256 为 `c83c91f2761751cf026be1dfe3eb07fec4f65c54b719f880b19dc0f29bc9bd06`；未捆绑 ComfyUI 或生图模型。AMD、Intel 和 CPU 尚未对应硬件实测。本次未创建新 tag、Release 或触发 GitHub Actions。
+- 后续整理环境和模型选择：中英文的推荐 NVIDIA/AMD、手动 CUDA 12.6、识别失败后选择 CPU 路径完成无下载交互冒烟，4 项 TUI 检查通过。更新的 Windows ZIP 重新完成类型检查、构建与隔离 CLI 启动冒烟，体积 **69,177,684 字节**，SHA256 为 `d2d487e33f676e6b74631391c3d059eb7542701e8b63b33d5290e2faa0e23052`；本次仅调整选择交互和说明，未重复执行 GPU 出图。
 
 参考：[ComfyUI Windows 便携版](https://docs.comfy.org/installation/comfyui_portable_windows)、[官方 v0.42.1 资源](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.42.1)、[7-Zip 官方独立工具](https://github.com/ip7z/7zip/releases/tag/26.04)、[Anima 官方模型说明](https://huggingface.co/circlestone-labs/Anima)、[Anima 模型许可](https://huggingface.co/circlestone-labs/Anima/blob/main/LICENSE.md)。

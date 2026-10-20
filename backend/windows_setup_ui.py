@@ -16,10 +16,23 @@ _TEXT = {
         'local': 'Set up local ComfyUI for me', 'later': 'Set up later',
         'keys': 'Up / Down: select   Enter: continue   Esc: back',
         'number': 'Choose a number (Enter / 0: back): ',
-        'gpu': 'Choose your graphics hardware',
-        'model': 'Choose what to prepare', 'only': 'ComfyUI only — add a model later',
+        'gpu': 'Prepare local image generation',
+        'detected': 'Detected: {name}. Pictide can prepare the matching ComfyUI environment.',
+        'use_detected': 'Use the recommended environment ({name})',
+        'choose_other': 'Choose another environment',
+        'gpu_manual': 'Choose a local generation environment',
+        'gpu_help': 'Choose your graphics card brand, or CPU if you are not using a supported graphics card.',
+        'gpu_unknown': 'Your graphics card could not be identified automatically.',
+        'compatibility': 'NVIDIA standard uses CUDA 13.0; compatibility uses CUDA 12.6. Try compatibility if you encounter CUDA or driver compatibility problems.',
+        'profile_nvidia': 'NVIDIA (standard)',
+        'profile_nvidia-cu126': 'NVIDIA (compatibility · CUDA 12.6)',
+        'profile_amd': 'AMD', 'profile_intel': 'Intel', 'profile_cpu': 'CPU (slow)',
+        'model': 'Choose an image generation model', 'only': 'Skip model download — install ComfyUI only',
         'recommended': 'Recommended', 'review': 'Ready to download',
-        'download': 'Download', 'data': 'Data directory', 'environment': 'ComfyUI location',
+        'download': 'Total download', 'environment_download': 'Environment download',
+        'model_download': 'Model download',
+        'download_help': 'Download sizes are not VRAM requirements. Installation needs more disk space after extraction.',
+        'data': 'Data directory', 'environment': 'ComfyUI location',
         'model_location': 'Model location', 'license': 'Model license',
         'license_note': 'Model use: non-commercial. Generated images may be used commercially.',
         'space': 'Reserve about {size} of free disk space.',
@@ -39,9 +52,22 @@ _TEXT = {
         'external': '我已有生图 API', 'local': '帮我安装本地 ComfyUI', 'later': '稍后配置',
         'keys': '↑ ↓ 选择 · Enter 继续 · Esc 返回',
         'number': '输入选项编号（Enter / 0 返回）：',
-        'gpu': '选择你的显卡', 'model': '选择要准备的内容',
-        'only': '只安装 ComfyUI，稍后添加模型', 'recommended': '推荐',
-        'review': '准备下载', 'download': '下载体积', 'data': '数据目录',
+        'gpu': '准备本地生图环境',
+        'detected': '检测到 {name}，可以为你准备对应的 ComfyUI 运行环境。',
+        'use_detected': '使用推荐环境（{name}）', 'choose_other': '选择其他环境',
+        'gpu_manual': '选择本地生图环境',
+        'gpu_help': '按显卡品牌选择；没有可用显卡时，可以使用 CPU。',
+        'gpu_unknown': '未能自动识别显卡，请手动选择。',
+        'compatibility': 'NVIDIA 标准环境使用 CUDA 13.0；兼容环境使用 CUDA 12.6，遇到 CUDA 或驱动兼容问题时可尝试。',
+        'profile_nvidia': 'NVIDIA（标准环境）',
+        'profile_nvidia-cu126': 'NVIDIA（兼容环境 · CUDA 12.6）',
+        'profile_amd': 'AMD', 'profile_intel': 'Intel', 'profile_cpu': 'CPU（速度较慢）',
+        'model': '选择生图模型',
+        'only': '暂不下载模型，仅安装 ComfyUI', 'recommended': '推荐',
+        'review': '准备下载', 'download': '预计下载合计',
+        'environment_download': '环境下载', 'model_download': '模型下载',
+        'download_help': '这里是下载体积，不是显存要求；解压安装后会占用更多磁盘空间。',
+        'data': '数据目录',
         'environment': 'ComfyUI 位置', 'model_location': '模型位置', 'license': '模型许可',
         'license_note': '模型限非商业用途；生成图片可商用。',
         'space': '请预留约 {size} 可用磁盘空间。',
@@ -225,8 +251,30 @@ def _catalog_size(entry):
     return sum(item.get('size', 0) for item in entry.get('files', ()))
 
 
+def _choose_profile(console, profiles, detected):
+    text = console.text
+    if detected:
+        name = profiles[detected]['name']
+        choice = console.choose(text['gpu'], [text['use_detected'].format(name=name), text['choose_other']],
+                                [text['detected'].format(name=name)])
+        if choice is None:
+            return None
+        if choice == 0:
+            return detected
+    details = [text['gpu_help'], text['compatibility']]
+    if not detected:
+        details.insert(0, text['gpu_unknown'])
+    identifiers = list(profiles)
+    index = console.choose(text['gpu_manual'], [
+        text.get('profile_' + key, entry['name']) for key, entry in profiles.items()], details)
+    return identifiers[index] if index is not None else None
+
+
 def _run(console, profiles, recipes, install, data_directory):
     text = console.text
+    detected = detect_gpu_profile()
+    if detected not in profiles:
+        detected = None
     while True:
         mode = console.choose(text['title'], [text['external'], text['local'], text['later']],
                               [text['question']])
@@ -234,16 +282,13 @@ def _run(console, profiles, recipes, install, data_directory):
             return None
         if mode != 1:
             return {'mode': 'external' if mode == 0 else 'later'}
-        profile_ids = list(profiles)
-        profile_index = console.choose(text['gpu'], [
-            f'{entry["name"]} · {_size(_catalog_size(entry))}' for entry in profiles.values()])
-        if profile_index is None:
+        profile_id = _choose_profile(console, profiles, detected)
+        if profile_id is None:
             continue
-        profile_id = profile_ids[profile_index]
         profile = profiles[profile_id]
         recipe_ids = list(recipes)
         model = console.choose(text['model'], [
-            f'{entry["name"]} · {_size(_catalog_size(entry))}'
+            f'{entry["name"]} · {text["model_download"]}: {_size(_catalog_size(entry))}'
             + (f' · {text["recommended"]}' if index == 0 else '')
             for index, entry in enumerate(recipes.values())] + [text['only']])
         if model is None:
@@ -253,9 +298,14 @@ def _run(console, profiles, recipes, install, data_directory):
         size = _catalog_size(profile) + _catalog_size(recipe)
         required_space = profile.get('required_space', _catalog_size(profile) * 4) + _catalog_size(recipe)
         directory = Path(data_directory)
-        details = [profile['name'] + (' + ' + recipe['name'] if recipe else ''),
+        details = [text.get('profile_' + profile_id, profile['name']) + (' + ' + recipe['name'] if recipe else ''),
+                   f'{text["environment_download"]}: {_size(_catalog_size(profile))}']
+        if recipe:
+            details.append(f'{text["model_download"]}: {_size(_catalog_size(recipe))}')
+        details.extend([
                    f'{text["download"]}: {_size(size)}',
-                   f'{text["environment"]}: {directory / "runtime" / "comfyui"}']
+                   text['download_help'], '',
+                   f'{text["environment"]}: {directory / "runtime" / "comfyui"}'])
         if recipe:
             details.append(f'{text["model_location"]}: {directory / "models" / "generation"}')
         if recipe.get('license_name'):
