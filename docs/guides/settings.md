@@ -8,7 +8,7 @@ Use Settings to adjust the interface, check generation tasks, and manage the spa
 
 ## General settings
 
-Let the interface language and theme follow your system, or choose your own. You can also turn off image transitions and find your data location here. Changes save automatically.
+Let the interface language and theme follow your system, or choose your own. You can also turn off image transitions and check the path to your data directory here. Changes save automatically.
 
 Choose **Start tour** in the Getting started row to revisit connecting a service and roaming.
 

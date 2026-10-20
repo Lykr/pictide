@@ -39,7 +39,7 @@ function setStatusText(id, message) {
   $(id).textContent = text;
   return text;
 }
-const state = { backends: [], jobs: [], artifacts: [], view: 'feed', activeId: null, databasePath: '', polling: false, saving: false, currentImage: null, feedbackPending: false, feedbackRevision: 0 };
+const state = { backends: [], jobs: [], artifacts: [], view: 'feed', activeId: null, polling: false, saving: false, currentImage: null, feedbackPending: false, feedbackRevision: 0 };
 const galleryCursors = createGalleryCursors();
 const pageScroll = createPageScroll();
 const nextImageWait = createNextImageWait();
@@ -1121,7 +1121,7 @@ $('roam-form').addEventListener('submit', async event => {
 });
 async function bootstrap() {
   try {
-    const data = await api('/api/bootstrap'); state.backends = data.backends || []; state.jobs = data.jobs || []; state.artifacts = data.artifacts || []; state.artifactRevision = data.artifact_revision ?? 0; state.databasePath = data.database_path || ''; state.dataDirectory = data.data_directory || '';
+    const data = await api('/api/bootstrap'); state.backends = data.backends || []; state.jobs = data.jobs || []; state.artifacts = data.artifacts || []; state.artifactRevision = data.artifact_revision ?? 0; state.dataDirectory = data.data_directory || '';
     galleryCursors.restore(data.roam_view || {});
     if (data.artifact_page?.anchor_id !== undefined && galleryCursors.get('feed') && !state.artifacts.some(item => item.id === galleryCursors.get('feed'))) selectImage(data.artifact_page.anchor_id, 'feed');
     state.pages.feed.loaded = true; state.pages.feed.total = data.counts?.roam ?? state.artifacts.length; state.pages.feed.hasMore = data.artifact_page?.has_more ?? state.pages.feed.total > state.artifacts.length; state.pages.feed.hasNewer = !!data.artifact_page?.has_newer; state.pages.feed.cursor = data.artifact_page?.next_cursor ?? state.artifacts.at(-1)?.id ?? null; state.pages.liked.total = data.counts?.liked ?? 0; state.pages.generate.total = data.counts?.generate ?? 0;
@@ -1130,7 +1130,6 @@ async function bootstrap() {
     if (data.roam_settings) await applyRoamSettings(data.roam_settings, Object.keys(roamFields));
     if (viewingHistory()) jobPager.load();
     $('data-directory').textContent = state.dataDirectory || t("服务尚未返回数据目录");
-    $('database-path').textContent = state.databasePath || t("服务尚未返回数据库路径");
     await loadWorkflowLibrary();
     loadBackend($('edit-backend').value);
     if (!roamSettingsLoaded) await loadRoamSettings();
@@ -1505,7 +1504,6 @@ document.addEventListener('pictide:language-changed', () => queueMicrotask(() =>
   for (const item of document.querySelectorAll('option[data-i18n-key]')) item.textContent = t(item.dataset.i18nKey);
   updateGenerationHints();
   $('data-directory').textContent = state.dataDirectory || t('服务尚未返回数据目录');
-  $('database-path').textContent = state.databasePath || t('服务尚未返回数据库路径');
   for (const [id, message] of localizedMessages) if ($(id)) $(id).textContent = message();
   jobsSignature = '';
   renderJobPage(jobPager.state);

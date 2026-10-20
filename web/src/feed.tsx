@@ -213,10 +213,9 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <Button data-settings-section="history" variant="ghost" type="button"><History aria-hidden="true" />{t("历史")}</Button>
 </nav>
 <div className="settings-content">
-<section id="settings-general" className="settings-category"><GeneralSettings initialError={themeError} /><section className="settings-data-section" aria-label={t("数据位置")}>
-<h2>{t("数据位置")}</h2>
-<dl className="data-locations"><div><dt>{t("数据目录")}</dt><dd id="data-directory">{t("读取中…")}</dd></div><div><dt>{t("数据库")}</dt><dd id="database-path">{t("读取中…")}</dd></div></dl>
-</section></section>
+<section id="settings-general" className="settings-category"><GeneralSettings initialError={themeError} />
+<dl className="settings-data-location general-setting-row"><dt>{t("数据位置")}</dt><dd id="data-directory">{t("读取中…")}</dd></dl>
+</section>
 <section id="settings-backend" className="settings-category"><form id="settings-form" ref={targets["api.form"]}>
 <div className="form-grid">
 <div className="settings-field">
