@@ -49,7 +49,7 @@ sequenceDiagram
 - 构建在修改入口与 plist 后依次重新签名 Python 服务、新原生入口和外层 `.app`，然后执行深度严格校验；不通过校验不产出最终 ZIP。原先 PyInstaller 已签名的运行库保持原有处理。
 - 三平台模拟打包冒烟同步验证签名顺序；实际结果以重新运行的原生 Actions 为准。
 
-## 原生 CI 结果（2026-10-20）
+## 首轮原生 CI 结果（2026-10-20）
 
 - [Intel 构建与冒烟](https://github.com/Lykr/pictide/actions/runs/39399278570)通过，源码提交为 `a578287c7460b0035151bb1999df071bf7f721e4`。
 - 原生 Swift/AppKit 编译、完整 bundle 签名、系统归档/解压、framework 加载和启动器自检通过。
@@ -68,3 +68,14 @@ sequenceDiagram
 - 第二轮包（`5568f95`）通过原生 CI 与实机启动；Python 服务退出时不再出现缓冲锁错误，但原生入口仍停在等待退出阶段。
 - AppKit 的 [terminateLater](https://developer.apple.com/documentation/appkit/nsapplication/terminatereply/terminatelater) 会运行模态 run loop。SIGTERM 的主 dispatch 回调调用 `terminate` 后，服务退出处理再次排入同一主 dispatch 队列，无法及时执行退出回复。
 - 服务退出回调改为投递到主 run loop 的默认与模态模式，并唤醒 run loop，继续沿用 `terminateLater` / `reply` 的正常收尾。启动器自检补充模态模式下处理进程退出的检查。
+
+## 最终验证（2026-10-20）
+
+- [最终 Intel Actions 构建](https://github.com/Lykr/pictide/actions/runs/39402269159)全部通过，源码为 `b058b9fef1d5d89287710e42f6c6868af48cb0dc`，包含 10 项原生启动器自检、首次 MiniLM 下载和包启动冒烟。
+- 同一 ZIP 经 SHA-256 核对后，在用户 Intel Mac / macOS 15.7.9 上通过系统解压、签名、framework 加载、原生自检、独立数据初始化与 HTTP/前端资源检查。实机使用经校验的已有 MiniLM，不重复下载。
+- 真实 AppKit 入口成功启动、打开网页；同数据目录重复启动退出码为 0，服务进程保持同一个。对原生入口发送 SIGTERM，经过其正常退出处理后入口退出码为 0，服务退出、端口关闭，实例文件与就绪标记均清除。
+- 独立端口被占用时，在依赖准备前退出服务，原生入口保留失败状态；没有模型文件或运行数据库产生，退出失败窗口后没有自有进程残留。最终测试没有使用强制结束进程。
+- 未验证：Apple Silicon 包、Finder 首次下载隔离/Gatekeeper 流程、菜单明暗外观、按钮点击与失败后手动重试；未配置生图后端或提交 GPU 任务。旧 v0.4.0 包的加载错误原因仍未查明，不将新包成功等同于旧包故障已定位。
+- 浏览器 Automation 未获授权，保留系统权限；测试网页需用户手动关闭。其他应用、个人运行数据和系统设置保持原状。
+
+最终包 `releases/pictide-0.4.0-darwin-x86_64.zip`：72,464,727 字节，SHA-256 为 `6e2ce5fb4f4e912e03630903cc9e4cffd49aef1ab8ffdda697c207fb30a1e11d`。报告与证据保存在 `dev/verification/macos-native-20261020/actions-39402269159/`；Mac 中的同一包位于本次隔离验证目录，未安装到「应用程序」。本次未打标签或发布 Release。

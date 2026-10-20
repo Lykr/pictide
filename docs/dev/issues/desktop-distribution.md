@@ -4,7 +4,7 @@
 
 Windows 提供根目录 EXE，macOS 提供标准 `.app` 与原生菜单栏入口，沿用浏览器界面、首次依赖准备和现有服务。
 
-状态：实现完成，Windows 实际包与桌面生命周期验证通过；macOS 原生编译及桌面验证待在 Mac 上完成。本次尚未发布。
+状态：实现完成，Windows 实际包与桌面生命周期验证通过；macOS Intel 原生 Actions 构建与实机启动/生命周期验证通过，Apple Silicon 与手动界面验证范围见[原生验证记录](macos-native-validation.md)。本次尚未发布。
 
 后续启动状态、失败重试及菜单栏完善见[macOS 启动与菜单栏完善](macos-desktop-polish.md)，原生验证状态在该记录单独维护。
 
@@ -84,10 +84,10 @@ sequenceDiagram
 
 - `scripts/portable_entry.py` 将 Windows 根目录 EXE 默认接入现有桌面启动器；`--cli` 和 `--no-browser` 保留终端/无界面路径。`backend/paths.py` 按发行平台选择默认数据目录，显式参数和环境变量继续优先。
 - `scripts/macos_launcher.swift` 在主线程运行 AppKit；CLI 通过 `execv` 委托给 `PictideService`。桌面入口展示已有准备日志及下载百分比，校验 HTTP 所属数据目录后打开网页；就绪后停止准备计时器。服务的 stdin 管道随父入口关闭而结束，`backend/desktop_launcher.py` 的监视线程据此停止自己的服务，避免留下孤立实例。
-- macOS 构建生成标准 bundle、图标、菜单栏/高清声明及 ad-hoc 签名，使用 `ditto` 归档。原生冒烟会用系统工具解压，检查 framework、内部链接、签名、两个可执行入口的 `--help`，再验证隔离 HTTP；这些检查已接入后续标签构建，当前未执行远端 Actions。
+- macOS 构建生成标准 bundle、图标、菜单栏/高清声明及 ad-hoc 签名，使用 `ditto` 归档。原生冒烟会用系统工具解压，检查 framework、内部链接、签名、两个可执行入口的 `--help`，再验证隔离 HTTP；这些检查已接入标签构建与仅手动触发的 macOS 验证工作流。
 - 10 项针对性 Python 冒烟通过：覆盖三平台模拟打包、资源和个人数据保留、失败原子保留旧包、数据目录选择、Windows 既有进程协议及真实 stdin 管道关闭退出。模拟 macOS 构建通过不代表 AppKit 原生编译通过。
 - 实际 Windows 构建完成，前端类型检查和构建通过；ZIP 未引入额外 GUI 运行时或模型权重。隔离启动冒烟使用已有、经哈希校验的 MiniLM（本次为 warm startup），验证 HTTP、前端资源、词库初始化及 SQLite 完整性，未提交生图任务。
 - 实际 EXE 未传 `--desktop` 或 `--data-dir`，验证默认旁置 `data/`、准备进程退出、服务控制台窗口句柄为 0、192 DPI 的 PMv2 托盘、重复启动复用、托盘正常退出与占用端口失败。所有验证进程已经停止；主应用与 ComfyUI 保持运行。
-- 本机为 Windows，macOS 仅完成代码静态审查与打包调用模拟；ARM64/Intel 原生编译、Finder 首次打开、准备窗口、菜单和退出仍待 Mac 验证。不将旧版本 Python 加载错误标记为已解决。
+- 后续 Intel `.app` 通过 Actions 原生构建，并在用户 macOS 15.7.9 实机验证启动、重复启动、退出清理及端口冲突处理；Apple Silicon、Finder 首次下载安全流程和菜单视觉仍待验证。构建、退出修复与实测材料统一见[原生验证记录](macos-native-validation.md)。不将旧版本 Python 加载错误标记为已查明。
 
 验证材料保存在 `dev/verification/desktop-distribution-20261020/`，本地最终 Windows 包位于 `releases/pictide-0.4.0-win32-amd64.zip`。

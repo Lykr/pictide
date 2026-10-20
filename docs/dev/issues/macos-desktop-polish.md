@@ -55,7 +55,7 @@ sequenceDiagram
 - 菜单提供打开网页或准备状态、重试、数据目录、日志和退出；地址只在服务就绪时显示。
 - 正确处理 `--lan` 覆盖 `--host ::1` 后的本机地址；退出与异步就绪响应不能重新打开网页。
 - 不接入 Developer ID 或公证，不修改系统设置；保留用户数据与所有外部生图服务。
-- 本机为 Windows，执行少数 Python 生命周期与三平台模拟打包冒烟；将原生启动器自检加入现有 macOS 包冒烟。没有 Mac 原生编译或桌面结果时明确记录未验证，不触发额外 Actions 或版本发布。
+- 本机为 Windows，执行少数 Python 生命周期与三平台模拟打包冒烟；将原生启动器自检加入现有 macOS 包冒烟。后续按用户要求改由 Actions 构建，再在用户 Mac 运行验证，见[原生验证记录](macos-native-validation.md)。
 
 参考：[NSImage 模板图像](https://developer.apple.com/documentation/appkit/nsimage/istemplate)。
 
@@ -65,8 +65,9 @@ sequenceDiagram
 - 菜单栏以网站图标生成透明单色模板，采用 72 像素图像对应 18 点尺寸；新增数据目录入口与点击复制访问地址。简体中文和英文继续跟随系统语言。
 - Host 复用桌面端口预占函数与就绪通知；macOS 入口为每次启动创建独立临时标记，收到标记后才检查 HTTP 与数据目录。退出使用 AppKit 异步终止回复，等待自己的服务完成生命周期收尾；父管道继续保护入口异常退出的情况。
 - 2026-10-20 Windows 定向回归：9 项通过，1 项 Unix 地址复用测试因平台跳过。覆盖端口冲突在依赖准备前失败、就绪标记写入顺序与 socket 关闭、真实父进程管道退出、Windows 原有进度与托盘回退、三平台模拟构建及 macOS 原生归档/冒烟调用。
-- `smoke_portable.py` 的 macOS 路径新增原生启动器自检（地址参数、进度解析、透明图标），并以桌面 worker 模式验证就绪标记及关闭父管道后的正常退出。它们只随原有标签构建运行，本次没有触发 Actions 或发布。
-- 未验证：Swift/AppKit 原生编译、上述原生自检、Apple Silicon/Intel `.app` 实际启动，以及 Finder 首次打开、明暗菜单栏、下载失败重试和桌面退出。本机为 Windows，没有可用 Mac 编译环境；模拟结果不代表上述检查已通过。本次未生成 macOS 发行包。
+- `smoke_portable.py` 的 macOS 路径新增原生启动器自检（地址参数、进度解析、透明图标及模态退出回调），并以桌面 worker 模式验证就绪标记及关闭父管道后的正常退出。它们随标签构建或手动 macOS 验证构建运行。
+- Intel 原生 Actions 构建与用户 macOS 15.7.9 实机验证通过：签名、系统解压、运行库、HTTP、真实 AppKit 启动、重复启动复用、正常退出清理及准备前端口冲突处理。验证中修复了 Python stdin 缓冲锁与 AppKit 模态退出回调两个收尾问题，详情与最终包校验和统一见[原生验证记录](macos-native-validation.md#最终验证2026-10-20)。
+- 未验证：Apple Silicon 新 `.app`、Finder 首次下载安全流程、明暗菜单栏视觉与失败后手动重试；本次未发布 Release。
 - 本次没有修改前端，没有重启正在运行的 Windows Pictide 或外部 ComfyUI，没有读写用户运行数据库。
 
 本地验证日志位于 `dev/verification/macos-desktop-polish-20261020/tests.log`。

@@ -6,7 +6,7 @@
 
 ## Portable edition
 
-These steps describe the new `.app` package built from the current source; it has not yet been released or verified on a Mac desktop. Existing releases keep their original launchers.
+These steps describe the new `.app` package built from the current source; it has not yet been released. Existing releases keep their original launchers.
 
 Extract the ZIP matching your Mac's chip (Apple Silicon or Intel), drag `Pictide.app` into Applications, and open it. A small preparation window shows the first [recommendation dependency download](../getting-started.md#recommendation-dependency-preparation). Your browser opens when ready. Next, [connect an image service](../getting-started.md) and start roaming.
 
