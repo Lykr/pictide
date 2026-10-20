@@ -52,4 +52,12 @@ sequenceDiagram
 - `network.tls_context()` 在 macOS 使用固定版本 `truststore==0.10.5`，由系统 Security.framework 验证证书链与主机名；依赖只在 macOS 安装。同步下载、Host 生图会话（含 ComfyUI WebSocket）和隔离的云端图片下载共用此上下文。Windows/Linux 沿用 Python 默认上下文。
 - 不使用全局 SSL 注入，不额外载入 certifi 根证书，不修改系统证书或代理设置。旧的补充 certifi 方案保持未集成。
 - 验证重点：可信 MiniLM HTTPS 下载、陌生自签名证书拒绝、代理路由与凭据隔离。最终安装包由 GitHub Actions 构建，再在用户 Mac 的独立目录运行；该 Mac 不承担构建工作。
-- 实机验证结果在完成后补充；尚未创建版本标签或发布 Release。
+### 验证结果
+
+- Windows 本地网络冒烟 6 项通过，macOS 专项 1 项按平台跳过；受影响的 Mac 归档模拟检查通过。
+- [最终 Intel Actions 构建](https://github.com/Lykr/pictide/actions/runs/39419529286)通过，构建源码为 `511f458705b21d559cc889bac7f62e9efbcbef89`。macOS 自签名证书拒绝检查、原生构建、包签名、依赖许可和首次 MiniLM 下载及启动冒烟均通过。后续提交仅补充模拟样例和本验证记录，不改变包内运行代码。
+- 同一 ZIP 在用户 Intel Mac / macOS 15.8.1 校验 SHA-256 后通过系统解压、签名、运行库加载、启动器自检和独立数据启动检查。
+- 包内服务入口成功复现并修复缺少 `config.json` 的原故障；进一步在空模型目录通过现有系统 HTTP(S) 代理下载全部 5 个文件，共 91,102,036 字节，逐一通过大小与 SHA-256 校验后启动 HTTP，完整准备约 217 秒。测试移除 `SSL_CERT_FILE` / `SSL_CERT_DIR`，未额外载入 CA 文件。
+- 包内生图客户端拒绝不可信自签名 HTTPS 服务；模拟云端检查、生成、图片下载的代理路由与 API 凭据隔离通过。未调用真实生图服务或 GPU。
+- 所有自有服务和模拟端口已关闭；系统证书、代理配置及个人数据保持原状。本轮覆盖 Intel 包，Apple Silicon 尚未进行本次专项实机验证；未创建版本标签或发布 Release。
+- 实机报告保存在 `dev/verification/macos-system-trust-20261020/`。本地最终包为 `releases/pictide-0.4.0-darwin-x86_64.zip`，72,545,506 字节，SHA-256 为 `3c34f4584096d9f7054a4c9a0ec2d98b2695a375037d96816a6932359a69ec6f`；原本地 Mac 包已备份至该验证目录的 `previous-release/`。
