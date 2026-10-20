@@ -42,6 +42,9 @@ class DesktopSession:
             msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError:
             stream.close()
+            # The existing owner keeps sole ownership of the rotating file.
+            from .runtime_logging import close_application_log
+            close_application_log()
             self._open_existing()
             return False
         self._lock = stream
