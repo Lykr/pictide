@@ -20,6 +20,7 @@
 
 - [数据处理工具](corpus.zh-CN.md)：可配置处理、输入输出结构与[预构建发行词库](corpus.zh-CN.md#预构建词库)。
 - [开发流程](development.md)：开始任务 → 准备环境 → 验证 → 集成发布。
+- [分组冒烟检查](testing.zh-CN.md)：核心业务、界面、词库与浏览器分组，以及发版门禁。
 - [GitHub Actions 发版](development.md#github-actions-发版)：准备锁定资源，推送版本标签，构建各平台便携包。
 - [页面设计规范](design-system.md)：术语、视觉、组件、布局和交互。
 - [Web 代码入口](web.zh-CN.md)：页面、控制器和共享组件。

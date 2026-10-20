@@ -81,7 +81,9 @@ class CooccurrenceIntegrationSmoke(unittest.IsolatedAsyncioTestCase):
                 application.recommendation = policy
                 application._recommendation_error = None
                 application.recommendation_store = None
-                await client.put("/api/settings/roam",json={"prefetch_count":1,"backend_id":"local","preset_id":preset["id"]})
+                response = await client.put("/api/settings/roam",json={"prefetch_count":1,"backend_id":"local","preset_id":preset["id"],"candidate_count":4})
+                self.assertEqual(response.status,200,await response.text())
+                self.assertEqual((await response.json())["candidate_count"],4)
                 response = await client.post("/api/roam/ensure",json={"anchor_id":None})
                 self.assertEqual(response.status,200,await response.text())
                 roam = await response.json()

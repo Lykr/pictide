@@ -1,0 +1,50 @@
+# Focused smoke checks
+
+[简体中文](testing.zh-CN.md)
+
+Use a small group for the behavior you changed. The shared entry point works from any directory and does not discover or run the full suite:
+
+```shell
+python scripts/check.py core
+python scripts/check.py ui
+python scripts/check.py corpus
+python scripts/check.py browser
+```
+
+Run commands from the repository root, or pass an absolute path to `scripts/check.py`. Add `--list` to inspect a group without running it. A failed check returns a nonzero exit code.
+
+Use Python 3.12 to match release CI.
+
+| Group | Checks | Requirements |
+| --- | --- | --- |
+| `core` (default) | Six HTTP/storage smokes: preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests | Application Python dependencies |
+| `ui` | Six Node test files: tour state and placement, button feedback, notifications, theme/language races, API key editing | Node.js |
+| `corpus` | Three offline smokes: post filtering, stale/corrupt prebuilt rejection, vocabulary editions | Python environment with `corpus/requirements.txt` |
+| `browser` | Three real-page flows: notifications without layout shifts, retry inside a modal, mobile tour with a saved anchor edit | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
+
+`ui` and `browser` also have frontend shortcuts: `pnpm --dir web test` and `pnpm --dir web run test:browser`. The shared Python entry point passes its own interpreter to the browser fixture; the frontend shortcut uses `python` on `PATH`.
+
+## Browser preparation
+
+After preparing the [development environment](development.md#首次准备检出目录), build an isolated frontend and install Chromium:
+
+```shell
+pnpm --dir web run typecheck
+pnpm --dir web run build --out-dir ../dev/verification/browser/dist
+pnpm --dir web exec playwright install chromium
+python scripts/check.py browser
+```
+
+Alternatively, use an already installed Edge with `python scripts/check.py browser --channel msedge`. On Linux CI, Playwright installs browser system dependencies on the runner with `playwright install --with-deps chromium`.
+
+Each browser worker starts its own local HTTP service on an available port, uses temporary data under `dev/verification/browser/`, and closes the service and removes that data afterward. Generation uses a fake backend, a tiny neutral vocabulary and a deterministic test encoder; it downloads no models and submits no GPU or paid API requests. These checks verify application behavior, not real model compatibility or image quality.
+
+Failures retain screenshots, traces and a JSON report in `dev/verification/browser/`. Inspect a trace with `pnpm --dir web exec playwright show-trace TRACE_PATH`. The browser runner has no automatic retries.
+
+## Release checks
+
+The tag-triggered release workflow runs `core`, `ui` and `browser` once before the four native builds. The offline `corpus` group remains available separately when data processing changes. Each native build retains its own extracted-package startup smoke.
+
+Ordinary branch pushes do not trigger Actions. This update applies to subsequent version tags; it does not rebuild v0.5.0.
+
+The group lists live in `scripts/check.py` and `web/scripts/test.mjs`. Keep them focused on user-visible outcomes and durable data behavior. Run individual existing tests when a change needs more specific coverage. Playwright setup and browser options follow the [official documentation](https://playwright.dev/docs/browsers).

@@ -14,6 +14,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -59,6 +60,40 @@ jobs:
           assert all(report['identity'].get(key) == value for key, value in vocabulary_inputs(Path('corpus/profiles/compact.json')).items()), 'Prebuilt vocabulary is stale for this source/profile'
           assert report['fingerprint'] == lock['fingerprint'] == fingerprint(report['identity'])
           assert report['file'] == next(item for item in lock['files'] if item['path'] == 'vocabulary.sqlite3')
+      - name: Install application dependencies for core smokes
+        run: python -m pip install --no-cache-dir -r backend/requirements.txt
+      - name: Check core business behavior before native builds
+        run: python scripts/check.py core
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install the pinned frontend tools
+        shell: python
+        run: |
+          import json, shutil, subprocess
+          from pathlib import Path
+          manager = json.loads(Path('web/package.json').read_text())['packageManager']
+          assert manager.startswith('pnpm@')
+          subprocess.run([shutil.which('npm'), 'install', '--global', manager], check=True)
+          subprocess.run(['pnpm', '--dir', 'web', 'install', '--frozen-lockfile'], check=True)
+      - name: Check UI logic and compile the isolated browser frontend
+        run: |
+          python scripts/check.py ui
+          pnpm --dir web run typecheck
+          pnpm --dir web run build --out-dir ../dev/verification/browser/dist
+      - name: Prepare the smoke browser
+        run: pnpm --dir web exec playwright install --with-deps chromium
+      - name: Check browser interactions with isolated data and a fake image service
+        run: python scripts/check.py browser
+      - name: Preserve browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-smoke-diagnostics
+          path: dev/verification/browser/
+          if-no-files-found: ignore
+          retention-days: 1
 
   build:
     needs: validate
