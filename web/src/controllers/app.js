@@ -138,7 +138,7 @@ bindTouchNavigation(document.querySelector('#image-card .image-stage'), {
   enabled: () => state.view === 'feed' && !!state.currentImage && !state.feedbackPending && !document.querySelector('[role=dialog][data-state=open],[role=alertdialog],[data-slot=popover-content][data-state=open]'),
 });
 const refillRoam = createRefillCoordinator({
-  active: () => galleryCursors.ready && roamPageActive && roamSettingsLoaded && !roamSwitch && !anchorPrefetchDeferred && !roamBlocked && (roamSettings.prefetch_count > 0 || !!nextImageWait.current) && state.view === 'feed' && !document.hidden,
+  active: () => galleryCursors.ready && roamPageActive && roamSettingsLoaded && !roamSwitch && !anchorPrefetchDeferred && !roamBlocked && (!!state.activeId || !!nextImageWait.current) && (roamSettings.prefetch_count > 0 || !!nextImageWait.current) && state.view === 'feed' && !document.hidden,
   version: () => `${roamVersion}:${nextImageWait.current?.token || 0}`,
   anchor: () => state.activeId || null,
   request: anchor_id => api('/api/roam/ensure', { method: 'POST', body: JSON.stringify({ anchor_id, demand: !!nextImageWait.current }) }),

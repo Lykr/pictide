@@ -8,13 +8,15 @@
 
 ## 启动前准备
 
-下载并解压便携包，按系统启动：[Windows](setup/windows.zh-CN.md#便携版本) · [Linux](setup/linux.zh-CN.md#便携版本) · [macOS](setup/macos.zh-CN.md#便携版本)。便携包已带好运行环境和词库；首次启动还需下载下方的推荐依赖。浏览器打开后，在「设置 → 生图 API」接入服务。
+下载并解压便携包，按系统启动：[Windows](setup/windows.zh-CN.md#便携版本) · [Linux](setup/linux.zh-CN.md#便携版本) · [macOS](setup/macos.zh-CN.md#便携版本)。便携包已带好运行环境和词库；首次启动还需下载下方的推荐依赖。
 
-已有本地 ComfyUI 就连接它；希望使用云端模型，可以选择 OpenAI Images 或 Gemini。Pictide 不自带生图模型。使用 ComfyUI 时，需要分别启动两个应用。
+Windows 准备引导可下载 ComfyUI 与推荐的 Anima 模型，自动接入默认工作流；当前源码新构建包的步骤见 [Windows 指南](setup/windows.zh-CN.md#便携版本)。生图模型按需下载，发行包保持轻量。
+
+已有本地 ComfyUI，或希望使用 OpenAI Images、Gemini 云端服务时，在「设置 → 生图 API」接入。独立安装的 ComfyUI 需自行启动；由 Pictide 准备的版本会随 Pictide 启停。
 
 旧版 Windows、Linux 和 macOS 便携包已通过原生构建与启动检查。新桌面分发方式见各平台指南，Mac 桌面体验仍待实机验证；云端服务真实出图尚待验证。
 
-首次进入时，选择「带我看看」，跟着简短引导接入服务、探索图片。随时可以结束，也能在「设置 → 通用 → 新手引导」重新开始。
+首次进入时，选择「带我看看」。已完成本地准备就直接引导点击「开始漫游」；还没接入服务时先引导配置。随时可以结束，也能在「设置 → 通用 → 新手引导」重新开始。
 
 ## 接入 ComfyUI
 
@@ -26,11 +28,11 @@
 
 ### 自定义工作流
 
-使用 Anima、Flux 等其他模型或自己的流程时，选择「自定义 API 工作流」，导入 ComfyUI 导出的 **API 格式 JSON**，指定正负提示词输入和图片输出节点，再保存。普通界面工作流 JSON 不能直接使用。
+手动接入 Anima、Flux 等模型或自己的流程时，选择「自定义 API 工作流」，导入 ComfyUI 导出的 **API 格式 JSON**，指定正负提示词输入和图片输出节点，再保存。普通界面工作流 JSON 不能直接使用。通过 Pictide 准备的推荐模型已带好默认工作流与绑定。
 
 ### 推荐使用的生图模型
 
-想生成动漫和插画，推荐 [Anima Turbo v1.1](https://huggingface.co/circlestone-labs/Anima)。它支持 Danbooru 标签，只需 ComfyUI 内置节点。下载以下三个文件，合计约 **5.63 GB**，放入 ComfyUI 模型目录下对应的文件夹：
+想生成动漫和插画，推荐 [Anima Turbo v1.1](https://huggingface.co/circlestone-labs/Anima)。它支持 Danbooru 标签，只需 ComfyUI 内置节点。Windows 本地准备会处理这些文件和工作流；手动安装时，下载以下三个文件，合计约 **5.63 GB**，放入 ComfyUI 模型目录下对应的文件夹：
 
 | 文件夹 | 文件 |
 | --- | --- |
@@ -40,7 +42,7 @@
 
 在「自定义 API 工作流」导入 [Anima Turbo API 工作流](../assets/workflows/anima-turbo-v1.1.api.json)，正向绑定 `11 → text`，负向绑定 `12 → text`，种子绑定 `19 → seed`，图片输出选择 `1 · Save Image`。默认参数为 **832×1248（2:3 竖图）、10 步、CFG 1、Euler / simple**；CFG 1 下负向提示词不参与引导。
 
-模型采用[非商业许可](https://huggingface.co/circlestone-labs/Anima#license)，生成图片可商用。Windows 自动安装流程仍在设计中，目前按以上步骤手动准备。
+模型采用[非商业许可](https://huggingface.co/circlestone-labs/Anima#license)，生成图片可商用。
 
 ## 接入 OpenAI Images 或 Gemini
 

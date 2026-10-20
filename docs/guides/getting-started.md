@@ -8,13 +8,15 @@ Connect an image generation service and start exploring, without writing prompts
 
 ## Before you start
 
-Download and extract a portable package, then follow the startup steps for [Windows](setup/windows.md#portable-edition), [Linux](setup/linux.md#portable-edition), or [macOS](setup/macos.md#portable-edition). It includes the runtime and tag library; the recommendation dependency below downloads on first launch. Once the browser opens, connect a service under Settings → Image API.
+Download and extract a portable package, then follow the startup steps for [Windows](setup/windows.md#portable-edition), [Linux](setup/linux.md#portable-edition), or [macOS](setup/macos.md#portable-edition). It includes the runtime and tag library; the recommendation dependency below downloads on first launch.
 
-Connect your local ComfyUI installation, or choose OpenAI Images or Gemini for cloud generation. Pictide does not include an image generation model. When using ComfyUI, start both applications separately.
+Windows preparation can download ComfyUI and the recommended Anima model, then connect its default workflow automatically; see the [Windows guide](setup/windows.md#portable-edition) for packages built from the current source. Packages keep image generation models as optional downloads.
+
+For an existing local ComfyUI installation or an OpenAI Images or Gemini cloud service, connect it under Settings → Image API. Start an independently installed ComfyUI yourself; Pictide starts and stops the copy it prepares for you.
 
 Previous portable packages passed native builds and startup checks on Windows, Linux, and macOS. The new desktop packaging is described in the platform guides; Mac desktop behavior still needs verification. Live cloud image generation remains unverified.
 
-On your first visit, choose **Show me around** for a short tour from connecting a service to exploring images. You can end it anytime and reopen it under **Settings → General → Getting started**.
+On your first visit, choose **Show me around**. With local generation already prepared, the tour starts at **Start roaming**; otherwise it helps you connect a service first. You can end it anytime and reopen it under **Settings → General → Getting started**.
 
 ## Connect ComfyUI
 
@@ -26,11 +28,11 @@ The default workflow supports complete SD/SDXL checkpoints. Open Roam, choose �
 
 ### Custom workflows
 
-For other models such as Anima or Flux, or your own process, choose “Custom API workflow.” Import **API-format JSON** exported from ComfyUI, select positive and negative prompt inputs and image output nodes, then save. Regular UI workflow JSON cannot be used directly.
+When manually connecting models such as Anima or Flux, or your own process, choose “Custom API workflow.” Import **API-format JSON** exported from ComfyUI, select positive and negative prompt inputs and image output nodes, then save. Regular UI workflow JSON cannot be used directly. Models prepared through Pictide already include their default workflow and bindings.
 
 ### Recommended image generation model
 
-For anime and illustrations, we recommend [Anima Turbo v1.1](https://huggingface.co/circlestone-labs/Anima). It supports Danbooru tags and uses ComfyUI's built-in nodes. Download these three files, about **5.63 GB** in total, into the matching folders under your ComfyUI models directory:
+For anime and illustrations, we recommend [Anima Turbo v1.1](https://huggingface.co/circlestone-labs/Anima). It supports Danbooru tags and uses ComfyUI's built-in nodes. Windows local preparation handles the following files and workflow for you. For manual setup, download these three files, about **5.63 GB** in total, into the matching folders under your ComfyUI models directory:
 
 | Folder | File |
 | --- | --- |
@@ -40,7 +42,7 @@ For anime and illustrations, we recommend [Anima Turbo v1.1](https://huggingface
 
 Import the [Anima Turbo API workflow](../assets/workflows/anima-turbo-v1.1.api.json) through “Custom API workflow.” Bind positive text to `11 → text`, negative text to `12 → text`, and the seed to `19 → seed`; select `1 · Save Image` as the image output. The workflow uses **832×1248 (2:3 portrait), 10 steps, CFG 1, Euler / simple**. Negative prompts have no effect at CFG 1.
 
-The model has a [non-commercial license](https://huggingface.co/circlestone-labs/Anima#license); generated images may be used commercially. The Windows automatic installation flow is still being designed; use the manual steps above for now.
+The model has a [non-commercial license](https://huggingface.co/circlestone-labs/Anima#license); generated images may be used commercially.
 
 ## Connect OpenAI Images or Gemini
 

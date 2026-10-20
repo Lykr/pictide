@@ -53,6 +53,9 @@ class PortableResourcesSmoke(unittest.TestCase):
             catalog = repo / 'backend/recommand/model.json'
             catalog.parent.mkdir(parents=True)
             catalog.write_text(json.dumps(model_catalog()), encoding='utf-8')
+            workflow = repo / 'docs/assets/workflows/anima-turbo-v1.1.api.json'
+            workflow.parent.mkdir(parents=True)
+            shutil.copyfile(Path(__file__).resolve().parents[1] / 'docs/assets/workflows/anima-turbo-v1.1.api.json', workflow)
             provenance = {'fixture': True, 'dataset_revision': 'pinned-v1'}
             resources = PreparedResources(library, provenance)
             dataset, cache = (root / name for name in ('datasets', 'cache'))
@@ -138,6 +141,8 @@ class PortableResourcesSmoke(unittest.TestCase):
                 self.assertEqual(manifest['model'], model_catalog())
                 self.assertEqual([item['path'] for item in manifest['files']], ['libraries/neutral.sqlite3'])
                 self.assertIn(internal + 'backend/recommand/model.json', archive.namelist())
+                bundled_workflow = json.loads(archive.read(internal + 'backend/workflows/anima-turbo-v1.1.api.json'))
+                self.assertEqual(bundled_workflow['28']['inputs'], dict(width=832, height=1248, batch_size=1))
                 self.assertIn(seed + 'libraries/neutral.sqlite3', archive.namelist())
                 names = archive.namelist()
                 if target_platform == 'win32':

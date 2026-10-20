@@ -34,6 +34,7 @@ from .task import JobService
 
 STATIC = Path(__file__).resolve().parent.parent / "web" / "dist"
 APPLICATION = web.AppKey("application", PictideApplication)
+LOCAL_GENERATION = web.AppKey("local_generation", object)
 ALLOW_LAN = web.AppKey("allow_lan", bool)
 CSP = "default-src 'self'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
 
@@ -303,11 +304,19 @@ async def events(request):
 
 async def lifecycle(app):
     async with ClientSession(timeout=ClientTimeout(total=25), trust_env=False) as session:
-        await app[APPLICATION].start(session)
+        managed = app.get(LOCAL_GENERATION)
         try:
-            yield
+            if managed is not None:
+                await asyncio.to_thread(managed.start)
+                await managed.configure(app[APPLICATION], session)
+            await app[APPLICATION].start(session)
+            try:
+                yield
+            finally:
+                await app[APPLICATION].stop()
         finally:
-            await app[APPLICATION].stop()
+            if managed is not None:
+                await asyncio.to_thread(managed.close)
 
 
 async def shutdown(app):
@@ -399,10 +408,13 @@ def main(argv=None):
     parser.add_argument("--no-browser", action="store_true", help="Keep the browser closed")
     parser.add_argument("--desktop", action="store_true", help="Use the Windows desktop tray")
     parser.add_argument("--cli", action="store_true", help="Keep the terminal and disable desktop integration")
+    parser.add_argument("--setup", action="store_true", help="Open Windows local generation setup")
     parser.add_argument("--desktop-worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     frozen = getattr(sys, "frozen", False)
     paths = DataPaths(args.data_dir).configure_runtime()
+    if args.setup and sys.platform != 'win32':
+        parser.error('--setup is available on Windows')
     desktop_requested = args.desktop and sys.platform == 'win32' and not (args.cli or args.no_browser)
     if args.desktop_worker:
         if sys.platform == 'darwin' and os.environ.get('PICTIDE_DESKTOP_PARENT_PIPE') == '1':
@@ -412,6 +424,17 @@ def main(argv=None):
         for stream in (sys.stdout, sys.stderr):
             if stream is not None:
                 stream.reconfigure(encoding='utf-8', errors='replace')
+    if sys.platform == 'win32' and not args.desktop_worker and (args.setup or desktop_requested):
+        from .local_generation_session import prepare_windows_setup
+        try:
+            if not prepare_windows_setup(paths, force=args.setup):
+                return
+        except (OSError, ValueError, RuntimeError) as error:
+            print(str(error), file=sys.stderr, flush=True)
+            if sys.stdin and sys.stdin.isatty():
+                from .desktop_text import translate
+                input(translate('close_prompt'))
+            raise SystemExit(1) from None
     if desktop_requested and not args.desktop_worker:
         from .desktop_launcher import launch_desktop
         if launch_desktop(sys.argv[1:] if argv is None else argv, paths):
@@ -432,6 +455,11 @@ def main(argv=None):
             announce('data_directory', directory=paths.root)
         PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
         app = create_app(paths.root, allow_lan=host == "0.0.0.0")
+        if sys.platform == 'win32':
+            from .local_generation_session import ManagedComfy, read_state
+            local_state = read_state(paths)
+            if local_state and local_state.get('mode') == 'managed':
+                app[LOCAL_GENERATION] = ManagedComfy(paths, local_state)
         if (desktop is not None or frozen) and not (args.no_browser or args.cli):
             browser_task = None
             async def launch_browser(app):
