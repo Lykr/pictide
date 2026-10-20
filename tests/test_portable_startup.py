@@ -186,6 +186,10 @@ class PortableResourcesSmoke(unittest.TestCase):
             native.mkdir(parents=True)
             frameworks = package / 'Contents/Frameworks'
             (frameworks / 'Python.framework').mkdir(parents=True)
+            licenses = package / 'Contents/Resources/licenses'
+            (licenses / 'truststore').mkdir(parents=True)
+            (licenses / 'versions.json').write_text(json.dumps({'truststore': '0.10.5'}))
+            (licenses / 'truststore/LICENSE').write_text('license fixture')
             for entry in (native / 'Pictide', native / 'PictideService', frameworks / 'Python'):
                 entry.write_bytes(b'native fixture')
                 entry.chmod(0o755)
