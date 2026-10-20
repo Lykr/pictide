@@ -6,21 +6,36 @@
 
 ## Portable edition
 
-The steps below apply to packages built from the current source. Existing releases keep their original launchers.
+These steps describe the new portable package. Existing releases keep their included launchers.
 
-Extract the Windows portable package and double-click `Pictide.exe`. On first launch, confirm the data location or choose another folder before downloads begin. The current path is selected by default, and Pictide remembers your choice. Then a short terminal guide lets you connect an existing image API, prepare local ComfyUI, or configure it later. Local preparation shows your detected graphics card and recommends an environment, with other environments available through manual selection. It offers ComfyUI with **Anima Turbo v1.1**, or ComfyUI alone. Before downloading, review the estimated download size, required disk space, and model license. Downloads resume after an interruption.
+1. Extract the package and double-click `Pictide.exe`.
+2. On first launch, confirm where to save your data and follow the setup guide. Need an image service? Choose **ComfyUI + Anima Turbo v1.1** to install one.
+3. Wait for preparation to finish. Your browser opens automatically; follow the in-app tour to start roaming.
 
-With the recommended model installed, its default workflow is connected automatically. Once the browser opens, choose **Show me around**, then **Start roaming** to generate your first image. Generate is also ready to use. If you chose an existing service, later setup, or ComfyUI alone, follow the [image service connection steps](../getting-started.md) as needed.
+Installing the recommended model also connects the service and its default workflow. To use an existing service, see [image service setup](../getting-started.md).
 
-Each model lists its hardware requirements before download. Anima Turbo currently requires an **8 GB dedicated VRAM / 16 GB RAM** capacity tier for automatic setup. If requirements are unmet or cannot be detected, the model download is blocked; you can still prepare ComfyUI alone or connect an existing image service.
+Pictide keeps running in the system tray after you close the browser. Right-click its tray icon to reopen it, view logs, or exit. Exiting also stops any ComfyUI process started by Pictide.
 
-The temporary window shows download and startup progress, including the first [recommendation dependency download](../getting-started.md#recommendation-dependency-preparation). When ready, it closes and Pictide runs through the system tray. Startup failures remain visible. NVIDIA installation and image generation have been verified; AMD, Intel, and CPU options have not been tested on their corresponding hardware. CPU generation can be slow.
+<details>
+<summary>Local installation requirements and data location</summary>
 
-Closing the browser keeps Pictide running. Use its tray menu to reopen Pictide, open `logs/pictide.log`, or exit. Exiting also stops the ComfyUI process started by Pictide. Startup messages and the tray menu follow your system language, with Simplified Chinese and English supported. Personal data and downloaded local generation resources stay in your selected data folder, which defaults to `data/` beside the program. An external folder remains when you delete the program folder.
+Setup checks your hardware and shows the estimated size and model license before downloading. Automatic Anima Turbo setup requires an **8 GB dedicated VRAM / 16 GB RAM** capacity tier. If requirements are unmet or cannot be detected, you can connect an existing image service. NVIDIA installation and image generation have been verified; AMD, Intel, and CPU options have not been tested on their corresponding hardware.
 
-Keep `Pictide.exe` and its `_internal/` folder together. To run in a terminal instead, run `.\Pictide.exe --cli`; press Ctrl+C to stop.
+Images, preferences, and downloaded generation resources stay in the folder selected on first launch, defaulting to `data/` beside the program. Choose a folder outside the program directory to keep your data when deleting the program.
 
-To run the preparation guide again, exit Pictide, open PowerShell in the portable package directory, and run `.\Pictide.exe --setup`. You can confirm or change the data location here. Data in the previous folder stays there; it is not moved automatically. Existing API connections in the selected folder are preserved. Terminal (`--cli`) and no-browser startup skip interactive preparation unless you explicitly pass `--setup`.
+</details>
+
+<details>
+<summary>Run setup again or use a terminal</summary>
+
+Keep `Pictide.exe` and `_internal/` together. Open PowerShell in the portable package directory:
+
+- To run setup again, exit Pictide and run `.\Pictide.exe --setup`. If you choose another data folder, existing data stays in the previous location and is not moved automatically.
+- To run in a terminal, use `.\Pictide.exe --cli` and press Ctrl+C to stop.
+
+`--cli` and `--no-browser` skip the preparation guide by default; add `--setup` when needed.
+
+</details>
 
 ## LAN access
 
