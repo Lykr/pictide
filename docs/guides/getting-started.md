@@ -38,7 +38,7 @@ For anime and illustrations, we recommend [Anima Turbo v1.1](https://huggingface
 | `text_encoders/` | [qwen_3_06b_base.safetensors](https://huggingface.co/circlestone-labs/Anima/resolve/f973fc41ec7545364ac9776c2440285f43ff2a30/split_files/text_encoders/qwen_3_06b_base.safetensors) |
 | `vae/` | [qwen_image_vae.safetensors](https://huggingface.co/circlestone-labs/Anima/resolve/f973fc41ec7545364ac9776c2440285f43ff2a30/split_files/vae/qwen_image_vae.safetensors) |
 
-Import the [Anima Turbo API workflow](../assets/workflows/anima-turbo-v1.1.api.json) through “Custom API workflow.” Bind positive text to `11 → text`, negative text to `12 → text`, and the seed to `19 → seed`; select `1 · Save Image` as the image output. The workflow uses **1024×1024, 10 steps, CFG 1, Euler / simple**. Negative prompts have no effect at CFG 1.
+Import the [Anima Turbo API workflow](../assets/workflows/anima-turbo-v1.1.api.json) through “Custom API workflow.” Bind positive text to `11 → text`, negative text to `12 → text`, and the seed to `19 → seed`; select `1 · Save Image` as the image output. The workflow uses **832×1248 (2:3 portrait), 10 steps, CFG 1, Euler / simple**. Negative prompts have no effect at CFG 1.
 
 The model has a [non-commercial license](https://huggingface.co/circlestone-labs/Anima#license); generated images may be used commercially. The Windows automatic installation flow is still being designed; use the manual steps above for now.
 

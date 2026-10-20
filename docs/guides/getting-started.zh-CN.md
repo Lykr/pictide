@@ -38,7 +38,7 @@
 | `text_encoders/` | [qwen_3_06b_base.safetensors](https://huggingface.co/circlestone-labs/Anima/resolve/f973fc41ec7545364ac9776c2440285f43ff2a30/split_files/text_encoders/qwen_3_06b_base.safetensors) |
 | `vae/` | [qwen_image_vae.safetensors](https://huggingface.co/circlestone-labs/Anima/resolve/f973fc41ec7545364ac9776c2440285f43ff2a30/split_files/vae/qwen_image_vae.safetensors) |
 
-在「自定义 API 工作流」导入 [Anima Turbo API 工作流](../assets/workflows/anima-turbo-v1.1.api.json)，正向绑定 `11 → text`，负向绑定 `12 → text`，种子绑定 `19 → seed`，图片输出选择 `1 · Save Image`。默认参数为 **1024×1024、10 步、CFG 1、Euler / simple**；CFG 1 下负向提示词不参与引导。
+在「自定义 API 工作流」导入 [Anima Turbo API 工作流](../assets/workflows/anima-turbo-v1.1.api.json)，正向绑定 `11 → text`，负向绑定 `12 → text`，种子绑定 `19 → seed`，图片输出选择 `1 · Save Image`。默认参数为 **832×1248（2:3 竖图）、10 步、CFG 1、Euler / simple**；CFG 1 下负向提示词不参与引导。
 
 模型采用[非商业许可](https://huggingface.co/circlestone-labs/Anima#license)，生成图片可商用。Windows 自动安装流程仍在设计中，目前按以上步骤手动准备。
 

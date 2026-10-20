@@ -85,11 +85,11 @@ Anima Turbo v1.1 使用官方 `circlestone-labs/Anima` 仓库的固定提交 `f9
 | 文本编码器 | `qwen_3_06b_base.safetensors` | 1,192,135,096 字节 |
 | VAE | `qwen_image_vae.safetensors` | 253,806,246 字节 |
 
-默认工作流使用 **1024×1024、10 步、CFG 1、Euler / simple**，只需 ComfyUI 内置节点；正向、负向、种子和图片输出继续使用现有绑定接口。CFG 1 下负向提示词不参与引导，界面与指南说明这一点。工作流参考文件位于 [Anima Turbo API 工作流](../../assets/workflows/anima-turbo-v1.1.api.json)。
+默认工作流使用 **832×1248（2:3 竖图）、10 步、CFG 1、Euler / simple**，只需 ComfyUI 内置节点；正向、负向、种子和图片输出继续使用现有绑定接口。CFG 1 下负向提示词不参与引导，界面与指南说明这一点。工作流参考文件位于 [Anima Turbo API 工作流](../../assets/workflows/anima-turbo-v1.1.api.json)。
 
 模型沿用 CircleStone Labs 非商业许可；生成图片可商用。TUI 下载确认页提供简短说明与模型许可链接，Pictide 原创源码继续使用 Apache-2.0。模型不随应用发行包分发，未来将其接入付费产品前需另行确认商业授权。
 
-现有本机 ComfyUI 上已验证这三个官方文件的 SHA256 和工作流：RTX 4070 Ti 生成一张 1024×1024 图片，从提交到完成约 8.05 秒。这是单次工作流验证，不代表首次安装耗时或新受管环境的验证结果。
+现有本机 ComfyUI 上已验证这三个官方文件的 SHA256 和工作流：RTX 4070 Ti 生成一张 1024×1024 图片，从提交到完成约 8.05 秒。之后按用户选择将默认尺寸调整为 832×1248，尚未实测该尺寸耗时。此前单次工作流验证不代表首次安装耗时或新受管环境的验证结果。
 
 ## 调用和数据流
 
@@ -130,7 +130,7 @@ sequenceDiagram
 - NVIDIA / AMD / Intel 的官方包约 1.45–2.02 GB，实际界面展示所选资源的精确大小。选择当前 NVIDIA 标准包与 Anima 时，总下载约 7.65 GB，另有 MiniLM 原有约 91 MB 首次下载。解压后的磁盘占用另行预检并说明。
 - 使用标准库绘制 TUI，应用进程内设置终端模式；不修改系统终端、注册表、PATH、开机启动、防火墙或显卡驱动，不需要管理员权限。
 - 现有前端业务与候选、推荐、任务模块不增加安装职责；本地准备通过现有 ComfyUI 适配器接入，不增加生图 API 协议或业务 HTTP 端点。
-- 验证使用独立 worktree、数据目录和端口；少量冒烟覆盖分支选择、资源校验/续传、模型注册接口、已有 API 保留及子进程收尾。本机 NVIDIA 做一次真实官方包安装与启动验证，可将已经下载并校验的三个 Anima 文件复制到隔离模型目录；在新受管环境验证一张 1024×1024、10 步的中性场景图片，并检查 Pictide 工作流绑定与图片保存。AMD/Intel 硬件运行情况单列为未验证。
+- 验证使用独立 worktree、数据目录和端口；少量冒烟覆盖分支选择、资源校验/续传、模型注册接口、已有 API 保留及子进程收尾。本机 NVIDIA 做一次真实官方包安装与启动验证，可将已经下载并校验的三个 Anima 文件复制到隔离模型目录；在新受管环境验证一张 832×1248、10 步的中性场景图片，并检查 Pictide 工作流绑定与图片保存。AMD/Intel 硬件运行情况单列为未验证。
 - 本次不发布版本标签，不触发 GitHub Actions；通过本地构建与新用户入口冒烟后交付 Windows 最终 ZIP，并同步相应中英使用与架构文档。
 
 参考：[ComfyUI Windows 便携版](https://docs.comfy.org/installation/comfyui_portable_windows)、[官方 v0.42.1 资源](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.42.1)、[7-Zip 官方独立工具](https://github.com/ip7z/7zip/releases/tag/26.04)、[Anima 官方模型说明](https://huggingface.co/circlestone-labs/Anima)、[Anima 模型许可](https://huggingface.co/circlestone-labs/Anima/blob/main/LICENSE.md)。
