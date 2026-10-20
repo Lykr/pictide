@@ -1,17 +1,22 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { flushSync } from "react-dom";
+import "../styles/privacy.css";
 
 /** Installed apps return with images covered until the user reveals them again. */
 export function usePrivacyBlur() {
-  const [privacyBlur, setPrivacyBlur] = useState(true);
+  const [privacy, setPrivacy] = useState({ blurred: true, covered: false });
+  const setPrivacyBlur = useCallback((blurred: boolean) => {
+    setPrivacy({ blurred, covered: false });
+  }, []);
   useEffect(() => {
     const displayMode = window.matchMedia("(display-mode: standalone)");
     // Keep installation identity when immersive mode changes the display mode.
     const installed = displayMode.matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
     const cover = () => {
       if (installed || displayMode.matches) {
-        // Commit before suspension; React must not defer this until the app returns.
-        flushSync(() => setPrivacyBlur(true));
+        // Hide original pixels without waiting for a new GPU blur surface.
+        // The OS still controls when it snapshots or paints the suspended page.
+        flushSync(() => setPrivacy({ blurred: true, covered: true }));
       }
     };
     document.addEventListener("visibilitychange", cover);
@@ -23,5 +28,5 @@ export function usePrivacyBlur() {
       window.removeEventListener("pagehide", cover);
     };
   }, []);
-  return [privacyBlur, setPrivacyBlur] as const;
+  return [privacy.blurred, setPrivacyBlur, privacy.covered] as const;
 }

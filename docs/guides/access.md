@@ -20,7 +20,7 @@ All devices share images, settings, and preferences, and can generate and delete
 
 Open the LAN address in Safari, then choose Share → Add to Home Screen → Add. Leave “Open as Web App” enabled if shown. The Home Screen icon opens Pictide in its own window.
 
-When you switch away from the standalone app, blur turns back on for Roam, Generate, and Liked, including open images. Reveal images again when you return.
+When you switch away from the standalone app, image areas in Roam, Generate, and Liked, including open images, switch immediately to a solid cover. Use the blur button to reveal them when you return. iOS controls app-switcher snapshots; this web-based cover cannot guarantee that an earlier clear snapshot is replaced.
 
 The app still needs a connection to the computer running Pictide. If the computer's IP changes, add it again using the new address.
 

@@ -1,0 +1,10 @@
+/* Image stages already have an opaque theme background. Keep it on return
+   until the user reveals images through the existing privacy control. */
+.privacy-covered .image-stage img,
+.generated-privacy-covered .generated-thumbnail img,
+.generated-viewer-stage[data-privacy-covered="true"] img {
+  visibility: hidden;
+  filter: none !important;
+  transition: none !important;
+  animation: none !important;
+}

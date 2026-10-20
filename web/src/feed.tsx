@@ -30,11 +30,11 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
   const targets = useMemo(() => Object.fromEntries([
     "app.navigation", "nav.liked", "roam.pending", "roam.privacy", "roam.privacy.immersive", "roam.start", "roam.image", "roam.like", "roam.next", "api.form", "api.test", "api.save",
   ].map(name => [name, uiTarget(name === "roam.privacy.immersive" ? "roam.privacy" : name)])), []);
-  const [privacyBlur, setPrivacyBlur] = usePrivacyBlur();
+  const [privacyBlur, setPrivacyBlur, privacyCovered] = usePrivacyBlur();
   useEffect(() => publishUiState({ roamPrivacy: privacyBlur }), [privacyBlur]);
   const [nodeParametersOpen, setNodeParametersOpen] = useState(false);
   const privacyLabel = privacyBlur ? t("关闭毛玻璃，显示图片") : t("开启毛玻璃，模糊图片");
-  return <div className={`feed-page${privacyBlur ? " privacy-blurred" : ""}`}>
+  return <div className={`feed-page${privacyBlur ? " privacy-blurred" : ""}${privacyCovered ? " privacy-covered" : ""}`}>
 {"\n  "}<header className="topbar">
 <a className="brand" href="/" aria-label={t("Pictide 图片工作台")}>
 <span className="brand-mark" aria-hidden="true"><img src={`${import.meta.env.BASE_URL}icons/pictide.svg?v=wave-v1`} alt="" /></span>
