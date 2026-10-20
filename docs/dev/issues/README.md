@@ -49,6 +49,7 @@
 - [图片切换动效](image-transitions.md)
 - [沉浸模式加载与浮层](immersive-panels.md)
 - [macOS 启动与菜单栏完善](macos-desktop-polish.md)
+- [macOS Actions 构建与实机验证](macos-native-validation.md)
 - [喜欢页标签筛选](liked-tag-filter.md)
 - [Pictide 图标](brand-icon.md)
 
