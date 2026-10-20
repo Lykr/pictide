@@ -3,7 +3,7 @@ import io
 import unittest
 from unittest.mock import Mock, patch
 
-from backend.windows_setup_ui import _profile_from_device_ids, run_setup
+from backend.windows_setup_ui import run_setup
 
 
 PROFILES = {'nvidia': {'name': 'NVIDIA', 'size': 2_000_000_000}}
@@ -12,28 +12,22 @@ RECIPES = {'anima': {
     'license_name': 'CircleStone Labs Non-Commercial',
     'license_url': 'https://huggingface.co/circlestone-labs/Anima/blob/main/LICENSE.md',
     'noncommercial': True,
+    'hardware': {'min_vram_gib': 8, 'min_ram_gib': 16, 'profiles': ('nvidia', 'nvidia-cu126', 'amd', 'intel')},
 }}
+HARDWARE = {'gpus': [{'profile': 'nvidia', 'name': 'NVIDIA GeForce RTX 4070 Ti',
+                      'vram_bytes': 12 * 1024 ** 3}], 'ram_bytes': 32 * 1024 ** 3}
 
 
 class WindowsSetupUISmoke(unittest.TestCase):
-    def test_gpu_vendor_priority_and_unknown_devices(self):
-        self.assertEqual(_profile_from_device_ids([
-            r'PCI\VEN_8086&DEV_A780', r'PCI\VEN_10de&DEV_2782']), 'nvidia')
-        self.assertEqual(_profile_from_device_ids([
-            r'PCI\VEN_8086&DEV_A780', r'PCI\VEN_1002&DEV_747E']), 'amd')
-        self.assertEqual(_profile_from_device_ids([r'PCI\VEN_8086&DEV_A780']), 'intel')
-        self.assertIsNone(_profile_from_device_ids([
-            r'ROOT\BasicDisplay', r'PCI\VEN_1414&DEV_008C', 'unknown']))
-
-    def run_choices(self, answers, install, *, language='en'):
+    def run_choices(self, answers, install, *, language='en', hardware=HARDWARE,
+                    profiles=PROFILES, recipes=RECIPES):
         output = io.StringIO()
         with patch('backend.windows_setup_ui._console_mode') as mode, \
-                patch('backend.windows_setup_ui.detect_gpu', return_value={
-                    'profile': 'nvidia', 'name': 'NVIDIA GeForce RTX 4070 Ti'}), \
+                patch('backend.windows_setup_ui.detect_hardware', return_value=hardware), \
                 patch('builtins.input', side_effect=answers), \
                 patch('sys.stdout', output):
             mode.return_value.__enter__.return_value = False
-            result = run_setup(PROFILES, RECIPES, install,
+            result = run_setup(profiles, recipes, install,
                                data_directory='C:/Pictide/data', language=language)
         return result, output.getvalue()
 
@@ -76,6 +70,42 @@ class WindowsSetupUISmoke(unittest.TestCase):
         self.assertIsNone(result)
         self.assertIn('已取消准备，下次可以继续。', output)
         self.assertNotIn('文件已就绪', output)
+
+    def test_insufficient_or_unknown_hardware_never_calls_installer(self):
+        cases = [
+            ({'gpus': [dict(HARDWARE['gpus'][0], vram_bytes=4 * 1024 ** 3)], 'ram_bytes': HARDWARE['ram_bytes']}, 'VRAM'),
+            ({'gpus': HARDWARE['gpus'], 'ram_bytes': 8 * 1024 ** 3}, 'RAM'),
+            ({'gpus': [dict(HARDWARE['gpus'][0], vram_bytes=None)], 'ram_bytes': HARDWARE['ram_bytes']}, 'unknown'),
+            ({'gpus': [], 'ram_bytes': None}, 'matching'),
+            ({'gpus': [dict(HARDWARE['gpus'][0], vram_bytes=4 * 1024 ** 3)] * 2,
+              'ram_bytes': HARDWARE['ram_bytes']}, 'VRAM'),
+            ({'gpus': [dict(HARDWARE['gpus'][0], vram_bytes=size * 1024 ** 3) for size in (6,12)],
+              'ram_bytes': HARDWARE['ram_bytes']}, 'VRAM'),
+        ]
+        for hardware, message in cases:
+            with self.subTest(hardware=hardware):
+                install = Mock()
+                result, output = self.run_choices(['2','1','1','1','0','3'], install, hardware=hardware)
+                self.assertEqual(result, {'mode': 'later'})
+                self.assertIn(message, output)
+                install.assert_not_called()
+
+    def test_manual_environment_cannot_bypass_matching_card(self):
+        install = Mock()
+        profiles = dict(PROFILES, amd={'name':'AMD','size':1})
+        result, output = self.run_choices(['2','2','2','1','1','0','3'], install, profiles=profiles)
+        self.assertEqual(result, {'mode':'later'})
+        self.assertIn('No graphics card matching', output)
+        install.assert_not_called()
+
+    def test_each_model_uses_its_own_requirements(self):
+        recipes = dict(RECIPES, larger=dict(RECIPES['anima'], name='Larger model',
+                       hardware=dict(RECIPES['anima']['hardware'], min_vram_gib=16)))
+        install = Mock(return_value={'mode':'managed'})
+        _, output = self.run_choices(['2','1','2','1','1','1'], install, recipes=recipes)
+        install.assert_called_once()
+        self.assertEqual(install.call_args.args[:2], ('nvidia','anima'))
+        self.assertIn('requires 16 GB', output)
 
 
 if __name__ == '__main__':

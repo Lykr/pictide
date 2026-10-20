@@ -12,6 +12,8 @@ Extract the Windows portable package and double-click `Pictide.exe`. On first la
 
 With the recommended model installed, its default workflow is connected automatically. Once the browser opens, choose **Show me around**, then **Start roaming** to generate your first image. Generate is also ready to use. If you chose an existing service, later setup, or ComfyUI alone, follow the [image service connection steps](../getting-started.md) as needed.
 
+Each model lists its hardware requirements before download. Anima Turbo currently requires an **8 GB dedicated VRAM / 16 GB RAM** capacity tier for automatic setup. If requirements are unmet or cannot be detected, the model download is blocked; you can still prepare ComfyUI alone or connect an existing image service.
+
 The temporary window shows download and startup progress, including the first [recommendation dependency download](../getting-started.md#recommendation-dependency-preparation). When ready, it closes and Pictide runs through the system tray. Startup failures remain visible. NVIDIA installation and image generation have been verified; AMD, Intel, and CPU options have not been tested on their corresponding hardware. CPU generation can be slow.
 
 Closing the browser keeps Pictide running. Use its tray menu to reopen Pictide, view logs, or exit. Exiting also stops the ComfyUI process started by Pictide. Startup messages and the tray menu follow your system language, with Simplified Chinese and English supported. Personal data and downloaded local generation resources stay in the package's `data/` directory.

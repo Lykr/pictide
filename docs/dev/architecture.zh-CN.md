@@ -55,7 +55,8 @@ pictide/
     desktop_launcher.py        Windows 进度启动器与桌面服务父进程存活监视
     windows_tray.py            Windows 原生托盘与自有启动终端管理
     windows_setup_ui.py        标准库首次准备选择与下载进度
-    local_generation.py        固定 ComfyUI 资源、模型配方与本地安装
+    windows_hardware.py        只读 Windows 显卡、独立显存与装机内存检测
+    local_generation.py        固定资源、模型配方、硬件准入与本地安装
     local_generation_session.py 准备状态/锁、受管 ComfyUI 与自动接入
     desktop_text.py            跟随系统语言的启动与托盘文案
     application.py             生成、候选、评价、清理等应用编排
@@ -108,6 +109,8 @@ pictide/
 引导观察测试、保存、反馈、锚点变更的成功结果和图片实际载入状态。新引导在 bootstrap 已有生图 API 时从 `roam-start` 开始，否则先配置 API。Windows 本地准备在 HTTP/bootstrap 前保存并选择完整模型工作流，复用这一规则，不增加安装专用引导 API 或标记。导航沿用既有 UI 意图入口，生成与数据修改由用户操作原有控件触发。浏览器本地只保存引导进度和必要图片标识。详见[引导设计与验证](issues/first-run-guide.md)。
 
 ## 启动准备
+
+每个默认本地模型必须声明独立显存、物理内存和支持环境。Windows TUI 在要求不满足或无法确认时阻止模型选择，安装器在下载该模型环境的资源前再次检查。DXGI 按单卡读取独立显存，共享内存和不同卡的容量不相加；未绑定执行卡时，对同品牌显卡按最小容量保守检查。详见[默认模型硬件要求](issues/model-hardware-requirements.md)。
 
 源码与便携启动共用 `backend/application.py` 的 `PictideApplication.prepare_startup()`。该入口先初始化存在的随包词库，再通过 `backend/recommand/resources.py` 校验或下载固定 MiniLM 文件到所选运行数据目录。准备成功后，Host 才启动 HTTP/SSE 并打开浏览器；失败终止启动，保留未完成下载供下次重试。编码器只读取准备好的本地文件，离线 corpus 工具继续独立于启动链路。详见[推荐依赖准备](architecture/recommendation.zh-CN.md#推荐依赖准备)。
 

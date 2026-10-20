@@ -32,12 +32,12 @@ flowchart TD
 | Host | 判断当前是否已有生图 API、是否完成准备；在自己的生命周期内启动及回收受管 ComfyUI。TUI 不直接操作业务数据库。现有 `--cli`、`--no-browser` 与自动化冒烟默认保持非交互；显式 `--setup` 可重新打开引导。 |
 | 本地准备器 | `prepare_local_comfy(paths, profile_id, recipe_id_or_None, progress)`。下载固定版本的官方 Windows 便携包及按需使用的独立解压工具，校验 SHA256，在临时目录解压成功后安装并返回安装状态；不依赖用户安装 Python、Git 或 7-Zip。 |
 | 资源清单 | 固定 URL、版本、文件大小、SHA256 与目标相对路径。随源码提交，小体积发行包按需下载 ComfyUI。运行时不追踪浮动 `latest`。 |
-| 模型扩展 | 每个 `ModelRecipe` 必须包含 `id`、名称、模型文件清单、完整默认 API 工作流及正负提示词、种子、图片输出绑定；`connection(base_url)` 生成现有 ComfyUI API 配置。首个配方为 Anima Turbo v1.1，默认推荐并允许用户只安装 ComfyUI。后续推荐模型沿用同一契约，安装完成即可生成，无需用户补工作流。 |
+| 模型扩展 | 每个 `ModelRecipe` 必须包含 `id`、名称、模型文件清单、硬件要求、完整默认 API 工作流及正负提示词、种子、图片输出绑定；`connection(base_url)` 生成现有 ComfyUI API 配置。首个配方为 Anima Turbo v1.1，默认推荐并允许用户只安装 ComfyUI。后续推荐模型沿用同一契约，安装完成即可生成，无需用户补工作流。 |
 | 受管进程 | `ManagedComfy.start() -> base_url` 与 `close()`。使用便携 Python 直接运行 ComfyUI，默认只监听本机空闲端口，禁止自动打开 ComfyUI 网页；日志存入所选数据目录。退出 Pictide 时仅回收本次启动的受管子进程。 |
 | 生图 API 配置 | 选择推荐模型时，由 Host 在提供 HTTP/bootstrap 前复用 `PictideApplication.save_backend` 保存并选择已安装模型的完整生图配置，让漫游与生成页立即可用。只安装 ComfyUI 时保留现有网页配置流程，TUI 展示本地地址并说明仍需准备模型。已有 API 与用户修改保留，显式重新准备不覆盖其他连接。 |
 | 网页引导 | 沿用 `web/src/onboarding/pictide-flow.mjs` 的 `newProgress`：bootstrap 已有生图 API 时从 `roam-start` 开始，直接聚焦「开始漫游」，等待用户点击生成第一张。已有 API、稍后配置或仅安装 ComfyUI 的用户，按实际配置状态进入现有引导；不增加 HTTP 引导标记、数据库字段或安装器到前端的专用通道。 |
 
-源码分工：`backend/windows_setup_ui.py` 负责标准库终端展示；`backend/local_generation.py` 维护固定资源、模型配方与安装；`backend/local_generation_session.py` 负责准备状态、同数据目录准备锁、受管进程与自动接入，Host 组合现有应用生命周期。显卡读取使用 `EnumDisplayDevicesW`，接入前复用现有 `check_backend` 做只读检查。默认工作流以 `docs/assets/workflows/anima-turbo-v1.1.api.json` 为维护源，构建时加入随包工作流资源。
+源码分工：`backend/windows_setup_ui.py` 负责标准库终端展示；`backend/windows_hardware.py` 读取 DXGI 独立显存和装机内存；`backend/local_generation.py` 维护固定资源、模型配方、硬件准入与安装；`backend/local_generation_session.py` 负责准备状态、同数据目录准备锁、受管进程与自动接入，Host 组合现有应用生命周期。接入前复用现有 `check_backend` 做只读检查。默认工作流以 `docs/assets/workflows/anima-turbo-v1.1.api.json` 为维护源，构建时加入随包工作流资源。
 
 ### TUI 交互
 
@@ -57,7 +57,7 @@ flowchart TD
 选择本地安装后：
 
 1. 「准备本地生图环境」先展示检测到的显卡型号，默认提供「使用推荐环境」，通过「选择其他环境」再展开完整列表；识别失败时直接进入手动选择。环境列表只显示适用硬件和用途，不混排下载体积。NVIDIA 标准环境使用 CUDA 13.0，兼容环境使用 CUDA 12.6，可在遇到 CUDA 或驱动兼容问题时尝试；CPU 明示为慢速选项，型号支持沿用 ComfyUI 官方要求。
-2. 「选择生图模型」默认推荐 Anima Turbo v1.1，跳过项为「暂不下载模型，仅安装 ComfyUI」；模型选项明确标记「模型下载」。最终确认页只展示一个预计下载体积，同时展示模型许可、安装位置与磁盘空间需求，由用户选择开始或返回。当前读取显卡型号及品牌，不读取显存或按显存筛选模型；安装时检查磁盘空间，接入前检查模型文件和工作流，均不代表已验证显存足够。
+2. 「选择生图模型」显示设备容量及每个模型的要求，仅满足硬件要求的模型可继续；不足、未知或环境不匹配时显示原因并返回选择。跳过项为「暂不下载模型，仅安装 ComfyUI」。最终确认页只展示一个预计下载体积，同时展示模型许可、安装位置与磁盘空间需求，由用户选择开始或返回。安装器在任何下载前再次检查；门槛、容量规则与验证范围统一见[默认模型硬件要求](model-hardware-requirements.md)。
 3. 显示“下载 → 校验 → 解压 → 启动”阶段，以及当前文件、已下载大小、速度和进度；支持取消、失败重试与后续启动续传。
 4. 安装推荐模型时自动保存并选中默认工作流，显示“本地生图已就绪”并进入网页。用户选择「带我看看」后，直接引导点击「开始漫游」生成第一张图片，无需填写地址、测试、导入或绑定工作流；生成页也已选好该模型。仅安装 ComfyUI 时显示“ComfyUI 已就绪”，给出本机地址并说明仍需添加模型。
 
@@ -149,5 +149,6 @@ sequenceDiagram
 - 首次完整链路验收的 Windows ZIP 为 **69,175,935 字节**，比改造前增加 **35,423 字节**，SHA256 为 `c83c91f2761751cf026be1dfe3eb07fec4f65c54b719f880b19dc0f29bc9bd06`；未捆绑 ComfyUI 或生图模型。AMD、Intel 和 CPU 尚未对应硬件实测。本次未创建新 tag、Release 或触发 GitHub Actions。
 - 后续整理环境和模型选择：中英文的推荐 NVIDIA/AMD、手动 CUDA 12.6、识别失败后选择 CPU 路径完成无下载交互冒烟，4 项 TUI 检查通过。更新的 Windows ZIP 重新完成类型检查、构建与隔离 CLI 启动冒烟，体积 **69,177,684 字节**，SHA256 为 `d2d487e33f676e6b74631391c3d059eb7542701e8b63b33d5290e2faa0e23052`；本次仅调整选择交互和说明，未重复执行 GPU 出图。
 - 进一步显示完整显卡型号、简化下载确认页为一个预计体积；本机只读识别到 `NVIDIA GeForce RTX 4070 Ti`，4 项 TUI 检查与中英四条无下载交互路径通过。重新构建及隔离启动冒烟通过，当前 Windows ZIP 为 **69,176,971 字节**，SHA256 为 `ee6731282f52c998cdcbdd2bc87334645fef6ec86544f4663a71e3ba511e6498`。本次未增加显存检测或模型硬件门槛。
+- 随后增加每个默认模型的强制硬件要求，TUI 和安装器均在下载前检查。显存/内存不足、未知或所选环境不匹配时阻止下载；实现、阈值与当前包验证统一见[默认模型硬件检查](model-hardware-requirements.md)。
 
 参考：[ComfyUI Windows 便携版](https://docs.comfy.org/installation/comfyui_portable_windows)、[官方 v0.42.1 资源](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.42.1)、[7-Zip 官方独立工具](https://github.com/ip7z/7zip/releases/tag/26.04)、[Anima 官方模型说明](https://huggingface.co/circlestone-labs/Anima)、[Anima 模型许可](https://huggingface.co/circlestone-labs/Anima/blob/main/LICENSE.md)。

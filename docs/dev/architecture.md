@@ -54,7 +54,8 @@ pictide/
     desktop_launcher.py        Windows progress launcher and desktop-worker parent lifetime
     windows_tray.py            Native Windows notification area and owned-console handling
     windows_setup_ui.py        Standard-library first-run choices and download progress
-    local_generation.py        Pinned ComfyUI resources, model recipes, and local installation
+    windows_hardware.py        Read-only Windows adapter/VRAM and installed-RAM detection
+    local_generation.py        Pinned resources, model recipes, hardware gates, and installation
     local_generation_session.py Setup state/lock, owned ComfyUI process, and automatic connection
     desktop_text.py            System-language startup and tray messages
     application.py             Application orchestration: generation, candidates, feedback, cleanup
@@ -107,6 +108,8 @@ The first-run guide lives in `web/src/onboarding/`: a generic observable state m
 The guide observes successful tests, saves, feedback, anchor changes, and actual image loading. A new tour starts at `roam-start` when bootstrap contains an image API; otherwise it starts with API configuration. Windows local preparation uses this existing rule by saving and selecting its complete model workflow before HTTP/bootstrap, without an installation-specific onboarding API or marker. Navigation uses the existing UI intent path; generation and mutations remain user actions on normal controls. Only guide progress and necessary image IDs are stored in browser local storage. See the [guide design and validation](issues/first-run-guide.md).
 
 ## Startup Preparation
+
+Every default local model declares required dedicated VRAM, physical RAM and supported environments. The Windows TUI blocks model selection when requirements are unmet or unknown; the installer rechecks before downloading any resources for that model. DXGI supplies per-adapter dedicated VRAM; shared memory and capacities from different cards are not combined. Without an execution-card binding, matching cards are checked conservatively using the smallest capacity. See [model hardware requirements (Chinese)](issues/model-hardware-requirements.md).
 
 Source and portable startup share `PictideApplication.prepare_startup()` in `backend/application.py`. It initializes bundled vocabulary when present, then asks `backend/recommand/resources.py` to verify or download the fixed MiniLM files into the selected runtime data directory. Host starts HTTP/SSE and opens the browser only after preparation succeeds. Failure terminates startup, preserving partial downloads for the next attempt. The encoder reads the prepared local files; offline corpus tools remain outside the startup path. See [Recommendation Dependency Preparation](architecture/recommendation.md#recommendation-dependency-preparation).
 

@@ -92,6 +92,11 @@ class LocalGenerationSmoke(unittest.TestCase):
         self.assertEqual(config['bindings']['positive'], {'node_id': '11', 'input': 'text'})
         self.assertEqual(config['output_nodes'], ['1'])
         self.assertTrue(local.recipe_catalog()['anima-turbo-v1-1']['noncommercial'])
+        self.assertEqual(local.recipe_catalog()['anima-turbo-v1-1']['hardware']['min_vram_gib'], 8)
+        missing = replace(local.RECIPES['anima-turbo-v1-1'], hardware=None)
+        with patch.object(local, 'RECIPES', {'missing': missing}):
+            with self.assertRaisesRegex(ValueError, 'hardware requirements'):
+                local.recipe_catalog()
         invalid = replace(local.RECIPES['anima-turbo-v1-1'], workflow_file='')
         with patch.object(local, 'RECIPES', {'incomplete': invalid}):
             with self.assertRaisesRegex(ValueError, 'Incomplete model recipe'):
@@ -112,23 +117,38 @@ class LocalGenerationSmoke(unittest.TestCase):
             extracted.append(package)
 
         recipe = replace(local.RECIPES['anima-turbo-v1-1'], files=(self.resource,))
-        with patch.object(local, 'PROFILES', {'fixture': ('Fixture', self.resource)}), \
+        with patch.object(local, 'PROFILES', {'nvidia': ('Fixture', self.resource)}), \
                 patch.object(local, 'EXTRACTOR', self.resource), \
                 patch.object(local, 'RECIPES', {'fixture': recipe}), \
+                patch('backend.windows_hardware.detect_hardware', return_value={
+                    'gpus': [{'profile':'nvidia','vram_bytes':12 * 1024 ** 3}], 'ram_bytes':32 * 1024 ** 3}), \
                 patch.object(local, '_extract', side_effect=extract):
-            result = local.prepare_local_comfy(paths, 'fixture', 'fixture')
+            result = local.prepare_local_comfy(paths, 'nvidia', 'fixture')
             self.assertEqual(result['mode'], 'managed')
             self.assertEqual(len(extracted), 1)
             self.assertTrue((paths.runtime / 'comfyui/pictide-install.json').is_file())
             model = paths.models / 'generation' / self.resource.path
             self.assertEqual(model.read_bytes(), self.payload)
             with patch.object(local, 'urlopen', side_effect=AssertionError('must reuse')):
-                local.prepare_local_comfy(paths, 'fixture', 'fixture')
+                local.prepare_local_comfy(paths, 'nvidia', 'fixture')
             self.assertEqual(len(extracted), 1)
             model.write_bytes(b'user replacement')
             with self.assertRaises(FileExistsError):
-                local.prepare_local_comfy(paths, 'fixture', 'fixture')
+                local.prepare_local_comfy(paths, 'nvidia', 'fixture')
             self.assertEqual(model.read_bytes(), b'user replacement')
+
+    def test_installer_rechecks_before_any_download_and_handles_capacity_tiers(self):
+        paths = DataPaths(self.root / 'blocked').ensure()
+        with patch('backend.windows_hardware.detect_hardware', return_value={'gpus': [], 'ram_bytes': None}), \
+                patch.object(local, 'download_resource') as download:
+            with self.assertRaisesRegex(ValueError, 'hardware requirements not met'):
+                local.prepare_local_comfy(paths, 'nvidia', 'anima-turbo-v1-1')
+            download.assert_not_called()
+            self.assertFalse((paths.runtime / 'comfyui').exists())
+        self.assertEqual(local.capacity_gib(int(7.8 * 1024 ** 3)), 8)
+        self.assertEqual(local.capacity_gib(int(7.49 * 1024 ** 3)), 7)
+        self.assertEqual(local.capacity_gib(0), 0)
+        self.assertIsNone(local.capacity_gib(None))
 
 
 if __name__ == '__main__':

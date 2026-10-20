@@ -1,5 +1,5 @@
 """Pinned Windows ComfyUI preparation and complete model/workflow recipes."""
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import copy
 import hashlib
 import json
@@ -48,6 +48,46 @@ EXTRACTOR = Resource('7zr-26.04.exe', 'https://github.com/ip7z/7zip/releases/dow
 
 
 @dataclass(frozen=True)
+class HardwareRequirements:
+    min_vram_gib: int
+    min_ram_gib: int
+    profiles: tuple[str, ...]
+
+    def __post_init__(self):
+        if (type(self.min_vram_gib) is not int or self.min_vram_gib <= 0 or
+                type(self.min_ram_gib) is not int or self.min_ram_gib <= 0 or
+                not self.profiles or any(profile not in PROFILES for profile in self.profiles)):
+            raise ValueError('Model hardware requirements must specify VRAM, RAM and supported environments')
+
+
+def capacity_gib(value):
+    # DXGI excludes some driver-reserved memory; use nominal capacity tiers with
+    # at most 512 MiB rounding. Never include shared memory or combine adapters.
+    return int((value + 512 * 1024 ** 2) // 1024 ** 3) if value is not None else None
+
+
+def hardware_issues(requirements, hardware, profile_id):
+    """Fail closed before download; return structured reasons for the TUI."""
+    from .windows_hardware import select_gpu
+    if not requirements:
+        return [{'code': 'requirements_missing'}]
+    if profile_id not in requirements['profiles']:
+        return [{'code': 'environment'}]
+    issues = []
+    gpu = select_gpu(hardware, profile_id)
+    if gpu is None:
+        issues.append({'code': 'gpu_missing'})
+    else:
+        actual = capacity_gib(gpu.get('vram_bytes'))
+        if actual is None or actual < requirements['min_vram_gib']:
+            issues.append({'code': 'vram', 'required': requirements['min_vram_gib'], 'actual': actual})
+    actual = capacity_gib(hardware.get('ram_bytes'))
+    if actual is None or actual < requirements['min_ram_gib']:
+        issues.append({'code': 'ram', 'required': requirements['min_ram_gib'], 'actual': actual})
+    return issues
+
+
+@dataclass(frozen=True)
 class ModelRecipe:
     """A recommended model is installable only with its complete API workflow."""
     id: str
@@ -58,9 +98,12 @@ class ModelRecipe:
     output_nodes: tuple[str, ...]
     license_name: str
     license_url: str
+    hardware: HardwareRequirements
     noncommercial: bool = False
 
     def connection(self, base_url):
+        if not isinstance(self.hardware, HardwareRequirements):
+            raise ValueError(f'Missing model hardware requirements: {self.id}')
         if not self.files or not self.workflow_file or not self.output_nodes:
             raise ValueError(f'Incomplete model recipe: {self.id}')
         # The same canonical workflow is copied by the portable builder, not duplicated.
@@ -92,7 +135,8 @@ RECIPES = {
          'negative': {'node_id': '12', 'input': 'text'},
          'seed': {'node_id': '19', 'input': 'seed'}}, ('1',),
         'CircleStone Labs Non-Commercial License',
-        'https://huggingface.co/circlestone-labs/Anima/blob/main/LICENSE.md', True),
+        'https://huggingface.co/circlestone-labs/Anima/blob/main/LICENSE.md',
+        HardwareRequirements(8, 16, ('nvidia', 'nvidia-cu126', 'amd', 'intel')), True),
 }
 
 
@@ -108,6 +152,7 @@ def recipe_catalog():
         recipe.connection('http://127.0.0.1:8188')
         result[key] = dict(name=recipe.name, size=sum(item.size for item in recipe.files),
                            license_name=recipe.license_name, license_url=recipe.license_url,
+                           hardware=asdict(recipe.hardware),
                            noncommercial=recipe.noncommercial)
     return result
 
@@ -235,6 +280,10 @@ def prepare_local_comfy(paths, profile_id, recipe_id_or_None, progress=lambda ev
     recipe = RECIPES[recipe_id_or_None] if recipe_id_or_None else None
     if recipe:
         recipe.connection('http://127.0.0.1:8188')
+        from .windows_hardware import detect_hardware
+        issues = hardware_issues(asdict(recipe.hardware), detect_hardware(), profile_id)
+        if issues:
+            raise ValueError('Model hardware requirements not met: ' + ', '.join(item['code'] for item in issues))
     paths.ensure()
     downloads = paths.cache / 'downloads'
     install = paths.runtime / 'comfyui'

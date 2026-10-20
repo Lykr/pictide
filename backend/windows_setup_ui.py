@@ -2,11 +2,12 @@
 from contextlib import contextmanager
 import os
 from pathlib import Path
-import re
 import sys
 import time
 
 from backend.desktop_text import system_language
+from backend.local_generation import capacity_gib, hardware_issues
+from backend.windows_hardware import detect_hardware, select_gpu
 
 
 _TEXT = {
@@ -31,7 +32,18 @@ _TEXT = {
         'recommended': 'Recommended', 'review': 'Ready to download',
         'download': 'Estimated download',
         'model_download': 'Model download',
-        'data': 'Data directory', 'environment': 'ComfyUI location',
+        'hardware_required': 'needs {vram} GB VRAM / {ram} GB RAM',
+        'hardware_current': 'Detected: {vram} VRAM / {ram} RAM',
+        'unknown_memory': 'unknown', 'hardware_blocked': 'hardware requirements not met',
+        'hardware_title': 'This computer does not meet the model requirements',
+        'requirements_missing': 'This model has no hardware requirements defined and cannot be downloaded.',
+        'environment': 'ComfyUI location',
+        'hardware_environment': 'This model does not support the selected environment.',
+        'hardware_gpu_missing': 'No graphics card matching the selected environment could be confirmed.',
+        'hardware_vram': 'VRAM: requires {required} GB; detected {actual}.',
+        'hardware_ram': 'RAM: requires {required} GB; detected {actual}.',
+        'hardware_alternative': 'Choose another model, or skip the model download.',
+        'data': 'Data directory',
         'model_location': 'Model location', 'license': 'Model license',
         'license_note': 'Model use: non-commercial. Generated images may be used commercially.',
         'space': 'Reserve about {size} of free disk space.',
@@ -65,6 +77,16 @@ _TEXT = {
         'only': '暂不下载模型，仅安装 ComfyUI', 'recommended': '推荐',
         'review': '准备下载', 'download': '预计下载体积',
         'model_download': '模型下载',
+        'hardware_required': '需 {vram} GB 显存 / {ram} GB 内存',
+        'hardware_current': '已检测：显存 {vram} / 内存 {ram}',
+        'unknown_memory': '未能读取', 'hardware_blocked': '不满足硬件要求',
+        'hardware_title': '这台电脑暂不满足模型要求',
+        'requirements_missing': '此模型尚未配置硬件要求，暂不能下载。',
+        'hardware_environment': '此模型不支持所选运行环境。',
+        'hardware_gpu_missing': '未能确认与所选环境匹配的显卡。',
+        'hardware_vram': '显存要求：至少 {required} GB；当前：{actual}。',
+        'hardware_ram': '内存要求：至少 {required} GB；当前：{actual}。',
+        'hardware_alternative': '可以选择其他模型，或暂不下载模型。',
         'data': '数据目录',
         'environment': 'ComfyUI 位置', 'model_location': '模型位置', 'license': '模型许可',
         'license_note': '模型限非商业用途；生成图片可商用。',
@@ -86,54 +108,6 @@ def _size(value):
         if amount < 1000 or unit == 'TB':
             return f'{amount:.2f} {unit}' if unit != 'B' else f'{amount:.0f} B'
         amount /= 1000
-
-
-def _profile_from_device_ids(device_ids):
-    vendors = set()
-    for device_id in device_ids:
-        if not device_id.upper().startswith('PCI\\'):
-            continue
-        vendor = re.search(r'\\VEN_([0-9A-F]{4})(?:&|$)', device_id.upper())
-        if vendor:
-            vendors.add(vendor.group(1))
-    return next((profile for vendor, profile in (
-        ('10DE', 'nvidia'), ('1002', 'amd'), ('8086', 'intel')) if vendor in vendors), None)
-
-
-def detect_gpu() -> dict | None:
-    """Read a Windows adapter's name and PCI vendor for an environment suggestion."""
-    if os.name != 'nt':
-        return None
-    import ctypes
-    from ctypes import wintypes
-
-    class DisplayDevice(ctypes.Structure):
-        _fields_ = [('cb', wintypes.DWORD), ('DeviceName', wintypes.WCHAR * 32),
-                    ('DeviceString', wintypes.WCHAR * 128), ('StateFlags', wintypes.DWORD),
-                    ('DeviceID', wintypes.WCHAR * 128), ('DeviceKey', wintypes.WCHAR * 128)]
-
-    try:
-        enum = ctypes.WinDLL('user32', use_last_error=True).EnumDisplayDevicesW
-        enum.argtypes = [wintypes.LPCWSTR, wintypes.DWORD,
-                         ctypes.POINTER(DisplayDevice), wintypes.DWORD]
-        enum.restype = wintypes.BOOL
-        devices = []
-        index = 0
-        while True:
-            device = DisplayDevice()
-            device.cb = ctypes.sizeof(device)
-            if not enum(None, index, ctypes.byref(device), 0):
-                break
-            devices.append((device.DeviceID, device.DeviceString))
-            index += 1
-        profile = _profile_from_device_ids([identifier for identifier, _ in devices])
-        if profile:
-            name = next(name for identifier, name in devices
-                        if _profile_from_device_ids([identifier]) == profile)
-            return {'profile': profile, 'name': name or profile.upper()}
-        return None
-    except (AttributeError, OSError):
-        return None
 
 
 @contextmanager
@@ -254,6 +228,58 @@ def _catalog_size(entry):
     return sum(item.get('size', 0) for item in entry.get('files', ()))
 
 
+def _memory(value, text):
+    capacity = capacity_gib(value)
+    return f'{capacity} GB' if capacity is not None else text['unknown_memory']
+
+
+def _hardware_messages(issues, text):
+    lines = []
+    for issue in issues:
+        key = issue['code']
+        if key in {'vram', 'ram'}:
+            actual = issue['actual']
+            lines.append(text['hardware_' + key].format(required=issue['required'],
+                         actual=f'{actual} GB' if actual is not None else text['unknown_memory']))
+        else:
+            lines.append(text[key if key == 'requirements_missing' else 'hardware_' + key])
+    return [*lines, '', text['hardware_alternative']]
+
+
+def _choose_model(console, recipes, hardware, profile_id):
+    text = console.text
+    gpu = select_gpu(hardware, profile_id)
+    current = text['hardware_current'].format(
+        vram=_memory(gpu.get('vram_bytes') if gpu else None, text),
+        ram=_memory(hardware.get('ram_bytes'), text))
+    identifiers = list(recipes)
+    while True:
+        options = []
+        for index, entry in enumerate(recipes.values()):
+            required = entry.get('hardware')
+            label = f'{entry["name"]} · {text["model_download"]}: {_size(_catalog_size(entry))}'
+            if required:
+                label += ' · ' + text['hardware_required'].format(
+                    vram=required['min_vram_gib'], ram=required['min_ram_gib'])
+            issues = hardware_issues(required, hardware, profile_id)
+            if issues:
+                label += ' · ' + text['hardware_blocked']
+            elif index == 0:
+                label += ' · ' + text['recommended']
+            options.append(label)
+        model = console.choose(text['model'], options + [text['only']], [current])
+        if model is None:
+            return False, None
+        if model == len(identifiers):
+            return True, None
+        recipe_id = identifiers[model]
+        issues = hardware_issues(recipes[recipe_id].get('hardware'), hardware, profile_id)
+        if issues:
+            console.choose(text['hardware_title'], [text['back']], _hardware_messages(issues, text))
+            continue
+        return True, recipe_id
+
+
 def _choose_profile(console, profiles, detected):
     text = console.text
     if detected:
@@ -276,7 +302,8 @@ def _choose_profile(console, profiles, detected):
 
 def _run(console, profiles, recipes, install, data_directory):
     text = console.text
-    detected = detect_gpu()
+    hardware = detect_hardware()
+    detected = select_gpu(hardware)
     if detected and detected['profile'] not in profiles:
         detected = None
     while True:
@@ -290,14 +317,9 @@ def _run(console, profiles, recipes, install, data_directory):
         if profile_id is None:
             continue
         profile = profiles[profile_id]
-        recipe_ids = list(recipes)
-        model = console.choose(text['model'], [
-            f'{entry["name"]} · {text["model_download"]}: {_size(_catalog_size(entry))}'
-            + (f' · {text["recommended"]}' if index == 0 else '')
-            for index, entry in enumerate(recipes.values())] + [text['only']])
-        if model is None:
+        selected, recipe_id = _choose_model(console, recipes, hardware, profile_id)
+        if not selected:
             continue
-        recipe_id = recipe_ids[model] if model < len(recipe_ids) else None
         recipe = recipes.get(recipe_id, {})
         size = _catalog_size(profile) + _catalog_size(recipe)
         required_space = profile.get('required_space', _catalog_size(profile) * 4) + _catalog_size(recipe)
@@ -334,8 +356,8 @@ def run_setup(profiles: dict, recipes: dict, install, *, data_directory: str,
               language: str | None = None) -> dict | None:
     """Ask for local/external setup; the caller owns installation and persistence.
 
-    Catalog entries are plain dictionaries with name/size; recipes may additionally
-    provide license_name, license_url and noncommercial. ``install`` receives the
+    Catalog entries contain name/size; model recipes require hardware requirements
+    and may provide license_name, license_url and noncommercial. ``install`` receives the
     selected IDs and a synchronous progress callback. Esc cancels at progress
     boundaries by raising KeyboardInterrupt, leaving resumable files to installer.
     """
