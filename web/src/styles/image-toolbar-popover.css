@@ -1,0 +1,29 @@
+.image-card.immersive .image-toolbar-popover[data-slot=popover-content] {
+  width: min(480px, calc(100vw - 24px));
+  max-width: var(--radix-popover-content-available-width);
+  max-height: min(640px, var(--radix-popover-content-available-height));
+  background: var(--immersive-surface);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px #0002;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transform-origin: center bottom;
+}
+.image-card.immersive .image-toolbar-popover[data-state=open] {
+  animation: image-toolbar-panel-expand 200ms cubic-bezier(.2, .8, .2, 1);
+}
+.image-card.immersive .image-toolbar-popover[data-state=closed] {
+  animation: image-toolbar-panel-collapse 160ms ease-in both;
+}
+@keyframes image-toolbar-panel-expand {
+  from { opacity: 0; transform: translateY(12px); clip-path: inset(100% 0 0); }
+  to { opacity: 1; transform: translateY(0); clip-path: inset(-24px); }
+}
+@keyframes image-toolbar-panel-collapse {
+  from { opacity: 1; transform: translateY(0); clip-path: inset(-24px); }
+  to { opacity: 0; transform: translateY(12px); clip-path: inset(100% 0 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .image-card.immersive .image-toolbar-popover[data-slot=popover-content] { animation: none; }
+}

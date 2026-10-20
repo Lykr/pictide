@@ -7,7 +7,8 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Popover, PopoverTrigger } from "./ui/popover";
+import { ImageToolbarPopover } from "./image-toolbar-popover";
 import { HelpTip } from "./actions";
 import { anchorTerms } from "../controllers/roam-anchors.mjs";
 
@@ -120,13 +121,13 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
     </div>
     {error && <p role="alert" className="px-2 pb-2 text-sm text-destructive">{error}</p>}
   </>;
-  const panel = immersive ? <PopoverContent container={document.getElementById("image-card") ?? undefined}
-    className="roam-anchors roam-anchor-popover" align="end" side="top" sideOffset={12} collisionPadding={12} aria-label={t("锚点")}
+  const panel = immersive ? <ImageToolbarPopover immersive triggerRef={triggerRef}
+    className="roam-anchors roam-anchor-popover" aria-label={t("锚点")}
     onInteractOutside={event => {
       const target = event.target instanceof Element ? event.target : null;
       // Keep editing while navigating/rating images from the same toolbar.
       if (target?.closest(".image-toolbar") && !target.closest(".image-info")) event.preventDefault();
-    }}>{content}</PopoverContent> : <>
+    }}>{content}</ImageToolbarPopover> : <>
     {open && <AnchorDivider />}
     <CollapsibleContent className="roam-anchors" role="region" aria-label={t("锚点")}>{content}</CollapsibleContent>
   </>;
