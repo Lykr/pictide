@@ -4,6 +4,7 @@ data/
 /releases/
 .runtime/
 .worktrees/
+/TODOs.md
 
 # Python environments, packages and caches.
 .venv/
