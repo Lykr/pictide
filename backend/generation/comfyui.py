@@ -10,6 +10,7 @@ from urllib.parse import quote, unquote, urlsplit, urlunsplit
 import aiohttp
 
 from .base import BackendError
+from ..network import proxy_for_url
 
 MAX_JSON_BYTES = 8 * 1024 * 1024
 MAX_IMAGE_BYTES = 32 * 1024 * 1024
@@ -172,7 +173,8 @@ class ComfyBackend:
             # Bound the handshake, not the lifetime of a connected stream.
             ws = await asyncio.wait_for(self.session.ws_connect(
                 self.config["base_url"] + "/ws", params={"clientId": self._events_client_id},
-                headers=self._headers(), heartbeat=30, max_msg_size=MAX_JSON_BYTES,
+                headers=self._headers(), proxy=proxy_for_url(self.config["base_url"]),
+                heartbeat=30, max_msg_size=MAX_JSON_BYTES,
                 timeout=aiohttp.ClientWSTimeout(ws_close=1)), timeout=1)
         except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
             self._events_notify = None
@@ -278,7 +280,7 @@ class ComfyBackend:
     async def _json(self, method, path, *, payload=None, params=None, uncertain=False, allow_empty=False):
         try:
             async with self.session.request(method, self.config["base_url"] + path, json=payload, params=params,
-                                            headers=self._headers(), allow_redirects=False,
+                                            headers=self._headers(), proxy=proxy_for_url(self.config["base_url"]), allow_redirects=False,
                                             timeout=aiohttp.ClientTimeout(total=30)) as response:
                 if response.status >= 500:
                     raise BackendError(f"ComfyUI returned HTTP {response.status}", uncertain=uncertain)
@@ -423,7 +425,7 @@ class ComfyBackend:
     async def _image_exists(self, descriptor):
         try:
             async with self.session.head(self.config["base_url"] + "/view", params=descriptor,
-                                         headers=self._headers(), allow_redirects=False,
+                                         headers=self._headers(), proxy=proxy_for_url(self.config["base_url"]), allow_redirects=False,
                                          timeout=aiohttp.ClientTimeout(total=15)) as response:
                 if response.status == 404:
                     return False
@@ -558,7 +560,7 @@ class ComfyBackend:
         descriptor = _safe_descriptor(output)
         try:
             async with self.session.get(self.config["base_url"] + "/view", params=descriptor,
-                                        headers=self._headers(), allow_redirects=False,
+                                        headers=self._headers(), proxy=proxy_for_url(self.config["base_url"]), allow_redirects=False,
                                         timeout=aiohttp.ClientTimeout(total=30)) as response:
                 if response.status != 200:
                     raise BackendError(f"ComfyUI image unavailable (HTTP {response.status})")

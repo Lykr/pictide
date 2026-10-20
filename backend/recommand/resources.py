@@ -6,9 +6,10 @@ import os
 from pathlib import Path
 import shutil
 import time
-from urllib.request import Request, urlopen
+from urllib.request import Request
 
 from ..desktop_text import translate
+from ..network import open_url as urlopen
 
 
 def model_catalog():

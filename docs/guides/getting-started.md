@@ -56,6 +56,10 @@ Images, likes, and preferences stay local. Prompts and generation options go to 
 
 Once a request starts, local cancellation cannot guarantee remote cancellation or prevent charges. If a request times out or its result is uncertain, check your provider's activity before retrying.
 
+## Network proxy
+
+Internet downloads and image services automatically follow your system's HTTP(S) proxy settings or proxy environment variables. Localhost, private IP addresses, and local hostnames connect directly. To bypass a proxy for a custom internal domain, add it to your proxy exceptions or `NO_PROXY`. With no proxy configured, connections are direct. Pictide does not change your system settings.
+
 ## Recommendation dependency preparation
 
 First launch downloads MiniLM, a recommendation dependency (about **91 MB**). Keep the launcher window open until downloading and verification finish; the application opens afterward. If downloading fails, restore connectivity and restart to resume. Completed downloads are reused offline.

@@ -63,6 +63,7 @@ pictide/
     domain.py                  公共输入校验及错误
     paths.py                   数据路径与本进程运行环境
     runtime_logging.py         有界日志、异常记录与启动输出收尾
+    network.py                 共享系统代理选择与同步资源下载
     candidate/                 只读共现词库、预设、连续变化预算与离线导入
     recommand/                 组合特征、MiniLM、贝叶斯评分与学习；沿用目录拼写
     task/                      调度、恢复、取消与结果关联
@@ -120,6 +121,10 @@ Windows 首次本地生图准备已实现，当前 NVIDIA 便携环境已验证�
 Windows 启动入口选择 `--desktop`：临时进度进程以 `CREATE_NO_WINDOW` 启动服务、转发启动输出，托盘注册成功后退出，兼容由 Windows Terminal 承载的启动终端。`backend/desktop.py` 在准备资源前取得数据目录锁并预留 HTTP 端口，HTTP 就绪后注册原生托盘并打开浏览器。启动失败时保留错误信息，托盘不可用时回退到原终端。托盘线程使用 Per-Monitor V2 DPI 感知，按任务栏 DPI 加载图标，不修改系统设置。托盘只负责打开网页、应用日志和请求 Host 正常退出，不承载业务状态。启动进度和托盘文案按系统显示语言使用简体中文或英文。`--cli` 与 `--no-browser` 保留终端模式；Linux 沿用既有终端入口。详见[桌面生命周期设计](issues/desktop-launcher.md)。
 
 macOS `.app` 使用从 `scripts/macos_launcher.swift` 编译的轻量系统 AppKit 入口。`Contents/MacOS/Pictide` 负责准备窗口、菜单栏、数据目录会话锁和服务子进程；`PictideService` 以 `--cli --no-browser` 运行现有 Host。准备输出更新窗口，HTTP 就绪后打开浏览器；退出时向自己拥有的服务发送正常停止信号并等待结束。CLI 参数委托引擎处理，不新增业务 API 或 GUI 运行时。`backend/paths.py` 将 macOS 包的默认数据目录解析到用户的 Application Support，显式路径与环境变量继续优先。Windows 包通过最外层的 `Pictide.exe` 直接使用既有桌面生命周期。详见[桌面分发设计与验证状态](issues/desktop-distribution.md)。
+
+## 对外网络请求
+
+资源下载与生图适配器共用 `backend/network.py`：`proxy_for_url()` 为 aiohttp 请求和 ComfyUI WebSocket 选择 HTTP(S) 代理，`open_url()` 为同步下载及每个跳转目标应用相同规则。代理发现与绕过沿用 Python 标准库，环境变量优先，其次是平台支持的系统配置。回环、非全局 IP、无点主机名及 `.localhost`、`.local`、`.lan` 始终直连；其他内网域名使用系统绕过列表或 `NO_PROXY`，分类不额外查询 DNS。PAC 脚本与 SOCKS 代理不在解析范围。本机启动探测保持直连，TLS 校验保持开启，云端图片独立下载会话继续隔离 API 凭据。用户说明见[网络代理](../guides/getting-started.zh-CN.md#网络代理)。
 
 ## 继续阅读
 

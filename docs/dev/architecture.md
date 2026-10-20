@@ -62,6 +62,7 @@ pictide/
     domain.py                  Shared input validation and errors
     paths.py                   Data paths and this process's runtime environment
     runtime_logging.py         Bounded logs, exception capture, and startup output cleanup
+    network.py                 Shared system proxy selection and synchronous resource transport
     candidate/                 Read-only co-occurrence libraries, presets, continuous-change budget, offline import
     recommand/                 Combination features, MiniLM, Bayesian scoring and learning; existing spelling retained
     task/                      Scheduling, recovery, cancellation, and result association
@@ -119,6 +120,10 @@ Windows first-run local generation preparation is implemented and verified with 
 Windows launchers select `--desktop`: a temporary progress process starts the service with `CREATE_NO_WINDOW`, relays startup output and exits after tray registration. This also closes startup terminals hosted by Windows Terminal. `backend/desktop.py` owns a data-directory lock and reserves the HTTP port before resource preparation. Once HTTP is ready, it registers the native tray and opens the browser. A failed startup stays visible; unavailable tray support falls back to the original terminal. The tray thread uses Per-Monitor V2 DPI awareness and loads the icon at the taskbar's DPI, without changing system settings. The tray requests normal Host shutdown or opens the browser/application log; it owns no business state. Startup progress and tray messages follow the system display language, using Simplified Chinese or English. `--cli` and `--no-browser` keep terminal operation; Linux retains its terminal launcher. See the [desktop lifecycle design](issues/desktop-launcher.md).
 
 The macOS `.app` uses a small native launcher compiled from `scripts/macos_launcher.swift` with system AppKit. `Contents/MacOS/Pictide` owns the preparation window, menu bar, data-directory session lock, and child process; `PictideService` runs the existing Host with `--cli --no-browser`. Preparation output updates the window, and HTTP readiness gates opening the browser. Quitting sends a normal stop signal to the owned service and waits for it to exit. CLI arguments delegate to the engine. No additional business API or GUI runtime is introduced. `backend/paths.py` resolves the bundled macOS default to the user’s Application Support directory; explicit paths and environment variables retain precedence. Windows packages expose the existing desktop lifecycle directly through their top-level `Pictide.exe`. See the [desktop distribution design and verification status (Chinese)](issues/desktop-distribution.md).
+
+## Outbound Network Requests
+
+Resource downloads and generation adapters share `backend/network.py`: `proxy_for_url()` selects the HTTP(S) proxy for aiohttp requests and ComfyUI WebSocket connections; `open_url()` applies the same rule to synchronous downloads and each redirect target. Proxy discovery and exceptions use Python's standard library (environment variables first, then supported platform settings). Loopback, non-global IP addresses, single-label hosts, and `.localhost`, `.local`, or `.lan` names stay direct. Other internal domains use the system bypass list or `NO_PROXY`; classification adds no DNS lookups. PAC scripts and SOCKS proxies are not evaluated. Local startup probes remain direct, TLS verification stays enabled, and the separate cloud image download session keeps API credentials isolated. User-facing behavior is described under [Network proxy](../guides/getting-started.md#network-proxy).
 
 ## Further Reading
 

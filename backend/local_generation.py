@@ -12,7 +12,9 @@ import sys
 import tempfile
 import time
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
-from urllib.request import Request, urlopen
+from urllib.request import Request
+
+from .network import open_url as urlopen
 
 
 COMFY_VERSION = 'v0.42.1'

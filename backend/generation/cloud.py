@@ -9,6 +9,7 @@ from urllib.parse import quote, urlsplit, urlunsplit
 import aiohttp
 
 from .base import BackendError, CompletedGeneration
+from ..network import proxy_for_url
 
 MAX_IMAGE_BYTES = 32 * 1024 * 1024
 MAX_RESPONSE_BYTES = 48 * 1024 * 1024
@@ -101,8 +102,9 @@ class CloudBackend:
 
     async def _json(self, method, path, payload=None):
         submitted = method == "POST"
+        url = self.config["base_url"] + path
         try:
-            async with self.session.request(method, self.config["base_url"] + path,
+            async with self.session.request(method, url, proxy=proxy_for_url(url),
                                             json=payload, headers=self._headers(), allow_redirects=False,
                                             timeout=aiohttp.ClientTimeout(total=300 if submitted else 30)) as response:
                 if not 200 <= response.status < 300:
@@ -234,7 +236,8 @@ class CloudBackend:
         try:
             # Separate session: provider API credentials never reach image hosts.
             async with aiohttp.ClientSession() as download:
-                async with download.get(url, allow_redirects=False, timeout=aiohttp.ClientTimeout(total=60)) as response:
+                async with download.get(url, proxy=proxy_for_url(url), allow_redirects=False,
+                                        timeout=aiohttp.ClientTimeout(total=60)) as response:
                     if response.status != 200:
                         raise BackendError(f"Generated image download returned HTTP {response.status}")
                     mime = response.headers.get("Content-Type", "").split(";", 1)[0].lower()

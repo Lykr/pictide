@@ -41,6 +41,7 @@
 - [桌面启动与托盘退出（设计）](desktop-launcher.md)
 - [Windows 与 macOS 桌面分发](desktop-distribution.md)
 - [运行日志整理](runtime-logging.md)
+- [对外请求跟随系统代理](system-proxy.md)
 - [Windows 首次本地生图准备 TUI](windows-first-run-tui.md)
 - [首次启动确认数据保存位置](setup-data-directory.md)
 - [默认模型的下载前硬件检查](model-hardware-requirements.md)

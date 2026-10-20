@@ -58,7 +58,7 @@ jobs:
       - name: Check desktop lifecycle
         env:
           PYTHONPATH: tests:.
-        run: python -m unittest -v test_desktop_launcher test_runtime_logging test_managed_output_logging test_job_logging
+        run: python -m unittest -v test_desktop_launcher test_runtime_logging test_managed_output_logging test_job_logging test_network
       - name: Build the native app
         run: python scripts/build_portable.py --prebuilt-library dev/cache/prebuilt
       - name: Check the extracted app
