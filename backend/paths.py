@@ -2,7 +2,6 @@
 from dataclasses import dataclass
 import logging
 import json
-from logging.handlers import RotatingFileHandler
 import os
 from pathlib import Path
 import sys
@@ -125,16 +124,15 @@ class DataPaths:
         owned = [handler for handler in logger.handlers
                  if getattr(handler, "_pictide_runtime_handler", False)]
         if not any(Path(handler.baseFilename) == target for handler in owned):
-            handler = RotatingFileHandler(target, maxBytes=1024 * 1024,
-                                          backupCount=3, encoding="utf-8")
-            handler._pictide_runtime_handler = True
-            handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+            from .runtime_logging import make_log_handler
+            handler = make_log_handler(target)
             for previous in owned:
                 logger.removeHandler(previous)
                 previous.close()
             logger.addHandler(handler)
-        if logger.level == logging.NOTSET:
-            logger.setLevel(logging.INFO)
+        level = os.environ.get('PICTIDE_LOG_LEVEL')
+        if level or logger.level == logging.NOTSET:
+            logger.setLevel(logging.DEBUG if level and level.upper() == 'DEBUG' else logging.INFO)
         return self
 
 

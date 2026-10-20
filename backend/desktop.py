@@ -119,7 +119,7 @@ class DesktopSession:
             self._tray = WindowsTray(self._icon(), 'Pictide — ' + translate('ready'),
                                      {name: translate(name) for name in ('open', 'logs', 'exit')},
                                      lambda: background(lambda: webbrowser.open(self.url)),
-                                     lambda: background(lambda: os.startfile(self.paths.logs)),
+                                     lambda: background(lambda: os.startfile(self.paths.logs / 'pictide.log')),
                                      lambda: loop.call_soon_threadsafe(stop))
             available = await asyncio.to_thread(self._tray.start)
         except (OSError, ValueError, RuntimeError):

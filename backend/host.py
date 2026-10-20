@@ -8,7 +8,9 @@ import json
 import math
 import logging
 import os
+import socket
 import tempfile
+import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -31,6 +33,8 @@ from .store.history_settings import HistorySettings
 from .store.roam_settings import RoamSettings
 from .store.workflow_library import WorkflowLibrary, MAX_BYTES
 from .task import JobService
+from . import __version__
+from .runtime_logging import capture_exceptions
 
 STATIC = Path(__file__).resolve().parent.parent / "web" / "dist"
 APPLICATION = web.AppKey("application", PictideApplication)
@@ -400,6 +404,11 @@ async def open_browser_when_ready(url, on_ready=None):
 
 
 def main(argv=None):
+    with capture_exceptions():
+        return _main(argv)
+
+
+def _main(argv=None):
     parser = argparse.ArgumentParser(description="Pictide")
     parser.add_argument("--host", default="127.0.0.1", choices=["127.0.0.1", "localhost", "::1", "0.0.0.0"])
     parser.add_argument("--port", type=int, default=8189)
@@ -436,6 +445,7 @@ def main(argv=None):
             if not prepare_windows_setup(paths, force=args.setup):
                 return
     except (OSError, ValueError, RuntimeError) as error:
+        logging.getLogger('backend').exception('Runtime preparation failed')
         print(str(error), file=sys.stderr, flush=True)
         if sys.stdin and sys.stdin.isatty():
             from .desktop_text import translate
@@ -445,11 +455,15 @@ def main(argv=None):
         from .desktop_launcher import launch_desktop
         if launch_desktop(sys.argv[1:] if argv is None else argv, paths):
             return
+        # The worker released its tray-less session; this terminal now owns logs.
+        paths.configure_runtime()
     host = "0.0.0.0" if args.lan else args.host
     url_host = "[::1]" if host == "::1" else "127.0.0.1" if host == "0.0.0.0" else host
     url = f"http://{url_host}:{args.port}"
     desktop = None
     worker_socket = None
+    started = time.monotonic()
+    logger = logging.getLogger('backend')
     if desktop_requested:
         from .desktop import DesktopSession, announce
         desktop = DesktopSession(paths, url)
@@ -457,6 +471,10 @@ def main(argv=None):
         if desktop is not None:
             if not desktop.claim():
                 return
+        logger.info('Starting Pictide version=%s pid=%s data_directory=%s host=%s port=%s mode=%s',
+                    __version__, os.getpid(), paths.root, host, args.port,
+                    'desktop-worker' if args.desktop_worker else 'desktop' if desktop else 'cli')
+        if desktop is not None:
             desktop.reserve(host, args.port)
             announce('starting')
             announce('data_directory', directory=paths.root)
@@ -465,6 +483,18 @@ def main(argv=None):
             worker_socket = reserve_desktop_socket(host, args.port)
         PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
         app = create_app(paths.root, allow_lan=host == "0.0.0.0")
+        async def log_ready(app):
+            addresses = []
+            if host == '0.0.0.0':
+                try:
+                    addresses = [f'http://{address}:{args.port}' for address in
+                                 sorted(set(socket.gethostbyname_ex(socket.gethostname())[2]))
+                                 if not address.startswith('127.') and address != '0.0.0.0']
+                except OSError:
+                    logger.warning('Could not discover LAN addresses', exc_info=True)
+            logger.info('Pictide ready local=%s lan=%s startup_seconds=%.3f', url,
+                        ','.join(addresses) or '-', time.monotonic() - started)
+        app.on_startup.append(log_ready)
         if worker_socket is not None:
             async def notify_worker_ready(app):
                 from .desktop_launcher import notify_launcher
@@ -507,6 +537,7 @@ def main(argv=None):
             worker_socket.close()
         if desktop is not None:
             desktop.close()
+        logger.info('Pictide stopped elapsed_seconds=%.3f', time.monotonic() - started)
 
 
 if __name__ == "__main__":

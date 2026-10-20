@@ -1,5 +1,6 @@
 """Keep startup progress visible while the desktop service owns no console."""
 import os
+import codecs
 import socket
 from pathlib import Path
 import subprocess
@@ -7,6 +8,7 @@ import sys
 import time
 
 from .desktop_text import translate
+from .runtime_logging import LOG_MAX_BYTES, close_application_log, finish_desktop_output, trim_startup_logs
 
 STATUS_ENV = 'PICTIDE_DESKTOP_STATUS'
 
@@ -50,9 +52,28 @@ def watch_desktop_parent():
 def notify_launcher(status):
     destination = os.environ.get(STATUS_ENV)
     if destination:
+        if status == 'ready':
+            finish_desktop_output()
         Path(destination).write_text(status, encoding='utf-8')
         return True
     return False
+
+
+def read_startup_output(pipe):
+    """Read only available bytes, including when a venv launcher keeps the pipe open."""
+    import ctypes
+    import msvcrt
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.PeekNamedPipe.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong,
+                                    ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong), ctypes.c_void_p]
+    available = ctypes.c_ulong()
+    handle = msvcrt.get_osfhandle(pipe.fileno())
+    if not kernel.PeekNamedPipe(handle, None, 0, None, ctypes.byref(available), None):
+        error = ctypes.get_last_error()
+        if error == 109:  # The child closed the pipe.
+            return b''
+        raise ctypes.WinError(error)
+    return os.read(pipe.fileno(), min(available.value, 65536)) if available.value else b''
 
 
 def launch_desktop(arguments, paths):
@@ -63,28 +84,40 @@ def launch_desktop(arguments, paths):
     """
     name = f'desktop-startup-{time.time_ns()}'
     status = paths.tmp / (name + '.status')
-    output = paths.tmp / (name + '.log')
+    output = paths.tmp / f'desktop-output-{time.time_ns()}.log'
+    trim_startup_logs(paths.tmp)
     command = [sys.executable]
     if not getattr(sys, 'frozen', False):
         command += ['-m', 'backend.host']
     command += [*arguments, '--data-dir', str(paths.root), '--desktop-worker']
     environment = dict(os.environ, **{STATUS_ENV: str(status)})
-    with output.open('w', encoding='utf-8') as stream:
-        process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=stream,
-                                   stderr=subprocess.STDOUT, env=environment,
-                                   creationflags=subprocess.CREATE_NO_WINDOW)
+    close_application_log()
+    process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT, env=environment,
+                               creationflags=subprocess.CREATE_NO_WINDOW)
+    succeeded = False
     try:
-        with output.open(encoding='utf-8', errors='replace') as progress:
+        with output.open('wb') as capture:
+            decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
+            def drain():
+                chunk = read_startup_output(process.stdout)
+                if chunk:
+                    if capture.tell() + len(chunk) > LOG_MAX_BYTES:
+                        capture.seek(0); capture.truncate()
+                    capture.write(chunk); capture.flush()
+                    print(decoder.decode(chunk), end='', flush=True)
+                return chunk
             while True:
-                text = progress.read()
-                if text:
-                    print(text, end='', flush=True)
+                drain()
                 state = status.read_text(encoding='utf-8') if status.exists() else ''
                 if state == 'ready':
+                    succeeded = True
                     return True
                 if process.poll() is not None:
-                    print(progress.read(), end='', flush=True)
+                    while drain():
+                        pass
                     if state == 'console':
+                        succeeded = True
                         return False
                     if process.returncode:
                         if sys.stdin is not None and sys.stdin.isatty():
@@ -93,6 +126,7 @@ def launch_desktop(arguments, paths):
                             except EOFError:
                                 pass
                         raise SystemExit(process.returncode)
+                    succeeded = True
                     return True
                 time.sleep(0.1)
     except BaseException:
@@ -101,4 +135,8 @@ def launch_desktop(arguments, paths):
             process.wait()
         raise
     finally:
+        process.stdout.close()
         status.unlink(missing_ok=True)
+        if succeeded:
+            output.unlink(missing_ok=True)
+        trim_startup_logs(paths.tmp)

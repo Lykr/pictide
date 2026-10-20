@@ -24,6 +24,7 @@ flowchart LR
 - ComfyUI 的 stdout/stderr 通过所属进程的读取线程写入独立轮换日志，结束时排空并释放文件；外部 ComfyUI 不创建该日志。
 - 桌面 worker 在就绪前沿用原启动输出和状态通知；就绪通知前调用 `finish_desktop_output()` 将原始 stdout/stderr 转向空输出，释放临时输出文件。运行异常由 Python 日志处理。父启动进程在创建 worker 前释放自身的应用日志句柄，避免父子轮换冲突。
 - macOS 启动输出改到 `tmp/macos-startup-<UUID>.log`；成功后关闭父进程持有的输出文件并删除，失败仅保留最近 3 份。运行后异常摘要读取 `logs/pictide.log` 的尾部。Windows 使用同样的临时兜底策略。
+- Windows 由启动器读取 worker 输出管道并写入 `tmp/desktop-output-*.log`，限制单份 1 MiB；避免虚拟环境转发进程继承并长期占用日志文件。成功删除本次文件，失败最多保留 3 份；旧命名的历史材料保持原样。
 
 ## 调用和数据流
 

@@ -119,7 +119,8 @@ class DesktopLauncherSmoke(unittest.TestCase):
                 return process
             process = Mock()
             process.poll.return_value = None
-            with patch('backend.desktop_launcher.subprocess.Popen', side_effect=start):
+            with patch('backend.desktop_launcher.subprocess.Popen', side_effect=start), \
+                    patch('backend.desktop_launcher.read_startup_output', return_value=b''):
                 self.assertTrue(launch_desktop(['--desktop', '--data-dir=old-data'],
                                               SimpleNamespace(tmp=Path(directory), root=Path(directory))))
             process.terminate.assert_not_called()
@@ -133,6 +134,7 @@ class DesktopLauncherSmoke(unittest.TestCase):
                     Path(options['env'][STATUS_ENV]).write_text(status, encoding='utf-8')
                     return process
                 with patch('backend.desktop_launcher.subprocess.Popen', side_effect=start), \
+                        patch('backend.desktop_launcher.read_startup_output', return_value=b''), \
                         patch('backend.desktop_launcher.sys.stdin', None):
                     if status == 'console':
                         self.assertFalse(launch_desktop(['--desktop'], SimpleNamespace(tmp=Path(directory), root=Path(directory))))

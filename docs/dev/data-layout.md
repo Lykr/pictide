@@ -32,10 +32,17 @@ The following paths are relative to the selected data directory:
 | `cache/` | Regenerable runtime caches for Python, pip, and related tools |
 | `cache/downloads/` | Local generation installation archives and resumable partial downloads; model weights belong under `models/generation/` |
 | `tmp/` | Runtime temporary files |
-| `logs/` | Runtime logs |
+| `logs/pictide.log` | Startup, application events, image tasks, and exceptions |
+| `logs/comfyui.log` | Output from ComfyUI started by Pictide; absent when using an external service |
 | `backups/` | Data backups |
 
 See the [Prompt Guide](../guides/prompts.md#add-and-switch-libraries) for adding and selecting libraries. MiniLM is a recommendation runtime resource stored separately under models; routine cache cleanup preserves it. Source and portable startup download missing files and verify the fixed catalog before serving the application; valid files are reused offline. See [startup preparation](../guides/getting-started.md#recommendation-dependency-preparation). The program serves compiled frontend assets. In the source tree, web/node_modules points to dev/runtime/frontend/node_modules at the project root.
+
+## Runtime Logging
+
+Both logs use UTF-8 and rotate at 1 MiB, retaining three backups (`.1` through `.3`) per log. The default level is INFO; set `PICTIDE_LOG_LEVEL=DEBUG` before startup for debug messages. HTTP access logging stays disabled. Task events include identifiers, backend, elapsed time, and failures with tracebacks; full prompts, API credentials, and request bodies are not intentionally logged.
+
+The tray and menu bar **View logs** action opens `logs/pictide.log`. Startup progress is also written there. Desktop launchers keep a temporary raw capture under `tmp/` only until startup succeeds; failed captures retain the latest three per platform. Historical logs using older names are preserved. Development validation output belongs in `dev/verification/`.
 
 ## Development Materials
 

@@ -16,7 +16,7 @@ Each model lists its hardware requirements before download. Anima Turbo currentl
 
 The temporary window shows download and startup progress, including the first [recommendation dependency download](../getting-started.md#recommendation-dependency-preparation). When ready, it closes and Pictide runs through the system tray. Startup failures remain visible. NVIDIA installation and image generation have been verified; AMD, Intel, and CPU options have not been tested on their corresponding hardware. CPU generation can be slow.
 
-Closing the browser keeps Pictide running. Use its tray menu to reopen Pictide, view logs, or exit. Exiting also stops the ComfyUI process started by Pictide. Startup messages and the tray menu follow your system language, with Simplified Chinese and English supported. Personal data and downloaded local generation resources stay in your selected data folder, which defaults to `data/` beside the program. An external folder remains when you delete the program folder.
+Closing the browser keeps Pictide running. Use its tray menu to reopen Pictide, open `logs/pictide.log`, or exit. Exiting also stops the ComfyUI process started by Pictide. Startup messages and the tray menu follow your system language, with Simplified Chinese and English supported. Personal data and downloaded local generation resources stay in your selected data folder, which defaults to `data/` beside the program. An external folder remains when you delete the program folder.
 
 Keep `Pictide.exe` and its `_internal/` folder together. To run in a terminal instead, run `.\Pictide.exe --cli`; press Ctrl+C to stop.
 

@@ -1,6 +1,7 @@
 """Dependency-free first-run console choices and installation progress."""
 from contextlib import contextmanager
 import os
+import logging
 from pathlib import Path
 import sys
 import time
@@ -154,6 +155,8 @@ class _Console:
         self.interactive = interactive
         self.last_progress = 0.0
         self.last_phase = None
+        self.last_log_progress = 0.0
+        self.last_log_phase = None
 
     def show(self, heading, lines=()):
         if self.interactive:
@@ -208,6 +211,10 @@ class _Console:
         total = event.get('total', 0) or 0
         interval = 0.2 if self.interactive else 5.0
         phase_key = (phase, name)
+        if phase_key != self.last_log_phase or now - self.last_log_progress >= 5 or (total and downloaded >= total):
+            logging.getLogger('backend.local_generation').info('Local preparation phase=%s resource=%s received=%s total=%s',
+                                                             phase, name, downloaded, total)
+            self.last_log_phase, self.last_log_progress = phase_key, now
         if phase_key == self.last_phase and now - self.last_progress < interval:
             if not total or downloaded < total:
                 return
@@ -390,6 +397,8 @@ def _run(console, profiles, recipes, install):
             try:
                 result = install(profile_id, recipe_id, console.progress)
             except Exception as error:
+                logging.getLogger('backend.local_generation').exception('Local preparation failed profile=%s recipe=%s',
+                                                                      profile_id, recipe_id or '-')
                 retry = console.choose(text['failed'], [text['retry'], text['back']], [str(error)])
                 if retry == 0:
                     continue
@@ -413,5 +422,6 @@ def run_setup(profiles: dict, recipes: dict, install, *, language: str | None = 
         try:
             return _run(console, profiles, recipes, install)
         except (EOFError, KeyboardInterrupt):
+            logging.getLogger('backend.local_generation').info('Local preparation cancelled')
             console.show(text['cancelled'])
             return None

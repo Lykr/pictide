@@ -32,10 +32,17 @@ Windows 可交互入口在应用初始化和下载前确认数据位置，并在
 | `cache/` | Python、pip 等运行缓存，可重新生成 |
 | `cache/downloads/` | 本地生图安装归档与可续传的下载分段；模型权重放入 `models/generation/` |
 | `tmp/` | 运行临时文件 |
-| `logs/` | 运行日志 |
+| `logs/pictide.log` | 启动、应用事件、生图任务与异常 |
+| `logs/comfyui.log` | Pictide 启动的 ComfyUI 输出；使用外部服务时不产生 |
 | `backups/` | 数据备份 |
 
 词库添加与选择见[提示词指南](../guides/prompts.zh-CN.md#添加与切换词库)。MiniLM 是推荐运行所需资源，独立放在 models，日常缓存清理保留该目录。源码与便携启动在提供页面前按固定清单补齐、校验文件，有效文件离线复用，详见[启动准备](../guides/getting-started.zh-CN.md#推荐依赖准备)。前端构建成品由程序提供，源码中的 web/node_modules 指向根目录 dev/runtime/frontend/node_modules。
+
+## 运行日志
+
+两类日志使用 UTF-8，单份达到 1 MiB 后轮换，各保留三份备份（`.1` 至 `.3`）。默认 INFO；启动前设置 `PICTIDE_LOG_LEVEL=DEBUG` 可启用调试消息。HTTP 访问日志保持关闭。任务事件包含标识、生图后端、耗时及带调用栈的失败信息；不主动记录完整提示词、API 凭据与请求正文。
+
+托盘与菜单栏「查看日志」直接打开 `logs/pictide.log`，启动进度也写入其中。桌面启动器在 `tmp/` 中保留临时原始输出，启动成功后删除；失败时各平台仅保留最近三份。旧命名的历史日志保持原样。开发验证输出放入 `dev/verification/`。
 
 ## 开发材料
 

@@ -102,6 +102,7 @@ class DataPathsTests(unittest.TestCase):
                      patch.object(sys, "pycache_prefix", sys.pycache_prefix), \
                      patch("backend.paths.logging.getLogger", return_value=logger):
                     first = DataPaths(Path(directory) / "one").configure_runtime()
+                    logger.info("old destination")
                     previous = logger.handlers[0]
                     second = DataPaths(Path(directory) / "two").configure_runtime()
                     self.assertEqual(len(logger.handlers), 1)
