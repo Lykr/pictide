@@ -56,6 +56,7 @@
 - [多生图 API 接入（待确认）](generation-api-adapters.md)
 - [生图任务事件通知](task-events.md)
 - [两个在途生图任务](task-window.md)
+- [漫游队列的断连恢复](roam-queue-recovery.md)
 - [默认文生图与数据目录统一](default-workflow-data.md)
 
 ## 项目与部署历史
