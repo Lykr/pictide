@@ -69,6 +69,8 @@ git push origin v0.4.0
 
 工作流只在推送 `v*` 版本标签时触发；日常分支与 commit 推送使用本地验证。资源 Release 保存固定词库，应用 Release 保存用户下载的便携包；Actions cache 只用于加速，资源可用性由资源锁和 Release 保证。
 
+需要在 Mac 实机验证当前源码时，可手动运行 `.github/workflows/macos-validation.yml` 并选择 Intel 或 Apple Silicon。它复用发行构建与隔离冒烟，只保存 ZIP、校验和、源码版本和报告到保留 7 天的 Actions artifact，不创建 Release；日常推送不会触发。将同一 ZIP 传到目标 Mac、核对 SHA-256 后运行，详见 [macOS 实机验证](issues/macos-native-validation.md)。
+
 ## 验证与提交
 
 遵循 [项目协作约定](../../AGENTS.md#验证与发布) 的概念验证原则，只选少数冒烟场景确认本次主要路径，不运行完整回归。后端改动可针对具体接口或用例验证；前端改动执行类型检查和构建，再检查受影响的页面交互与资源加载。复用已有测试时只运行相关的少数用例，不以整套测试数量作为交付目标。

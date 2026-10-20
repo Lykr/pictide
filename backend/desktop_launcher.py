@@ -34,8 +34,14 @@ def watch_desktop_parent():
     import signal
     import threading
 
+    descriptor = sys.stdin.fileno()
+
     def watch():
-        sys.stdin.buffer.read()
+        # A buffered stdin read holds Python's IO lock while the parent is alive.
+        # Normal service shutdown must not wait for that daemon thread or abort
+        # when the interpreter closes stdin. Read the inherited OS pipe directly.
+        while os.read(descriptor, 4096):
+            pass
         os.kill(os.getpid(), signal.SIGTERM)
 
     threading.Thread(target=watch, name='desktop-parent', daemon=True).start()

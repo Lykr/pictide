@@ -48,3 +48,17 @@ sequenceDiagram
 - 首次原生 Actions 构建在整包签名检查失败：`PictideService` 的原签名仍封存修改前的 bundle `Info.plist`。
 - 构建在修改入口与 plist 后依次重新签名 Python 服务、新原生入口和外层 `.app`，然后执行深度严格校验；不通过校验不产出最终 ZIP。原先 PyInstaller 已签名的运行库保持原有处理。
 - 三平台模拟打包冒烟同步验证签名顺序；实际结果以重新运行的原生 Actions 为准。
+
+## 原生 CI 结果（2026-10-20）
+
+- [Intel 构建与冒烟](https://github.com/Lykr/pictide/actions/runs/39399278570)通过，源码提交为 `a578287c7460b0035151bb1999df071bf7f721e4`。
+- 原生 Swift/AppKit 编译、完整 bundle 签名、系统归档/解压、framework 加载和启动器自检通过。
+- 包冒烟在独立目录完成首次 MiniLM 下载、词库初始化、SQLite 完整性、HTTP/前端资源、桌面 worker 就绪与父管道关闭后退出；未配置生图后端或提交 GPU 任务。
+- 产物由仅手动触发的验证工作流保存，未创建版本标签或 Release。
+
+## 首轮实机检查与退出修正
+
+- 同一 ZIP 在用户 Intel Mac（macOS 15.7.9）通过校验和、系统解压、完整签名、Python/framework 加载、原生入口自检与隔离 HTTP 检查；原生 AppKit 入口也成功就绪、打开网页，重复启动复用已有服务。
+- 正常退出时发现服务的父管道监视线程持有 `sys.stdin.buffer` 的锁，Python 解释器关闭 stdin 时触发 `_enter_buffered_busy`，原生入口也未在验证时限内退出。
+- 监视线程改为从现有 stdin 文件描述符调用 `os.read`，保持同一 EOF → SIGTERM 机制，避免持有 Python 缓冲 IO 锁；新增父管道仍打开时服务正常退出的真实进程冒烟。
+- 修复包继续由 Actions 构建后传回 Mac 验证。测试未更改系统设置；浏览器 Automation 未获授权，不申请授权或修改权限。

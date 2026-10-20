@@ -75,6 +75,20 @@ class DesktopSocketSmoke(unittest.TestCase):
 
 
 class DesktopParentPipeSmoke(unittest.TestCase):
+    def test_worker_can_exit_cleanly_while_parent_keeps_pipe_open(self):
+        process = subprocess.Popen([sys.executable, '-c',
+            'import time; from backend.desktop_launcher import watch_desktop_parent; '
+            'watch_desktop_parent(); print("watching", flush=True); time.sleep(0.2)'],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            self.assertEqual(process.stdout.readline().strip(), b'watching')
+            self.assertEqual(process.wait(timeout=5), 0, process.stderr.read().decode())
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=5)
+            process.stdin.close(); process.stdout.close(); process.stderr.close()
+
     def test_worker_exits_when_owning_launcher_closes_pipe(self):
         # Exercise an actual inherited stdin pipe; no app data or HTTP server.
         process = subprocess.Popen([sys.executable, '-c',
