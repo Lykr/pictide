@@ -8,6 +8,7 @@ import { JobPageControls } from "./components/page-controls";
 import { GeneralSettings } from "./components/general-settings";
 import { PreferenceActions } from "./components/preference-actions";
 import { ImageInfo } from "./components/image-info";
+import { RoamImmersiveLoading } from "./components/immersive-loading";
 import { RoamAnchors } from "./components/roam-anchors";
 import { RoamPlaybackButton, RoamOptions, RoamSettingsChoices } from "./components/roam-playback";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, FolderOpen, Heart, History, Image, ListFilter, LoaderCircle, Maximize, Minimize, RefreshCw, Settings, Settings2, Compass, SlidersHorizontal, Sparkles, CircleSlash, Trash2, Download, ThumbsDown, ChevronRight } from "lucide-react";
@@ -80,6 +81,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <Button id="empty-generate" ref={targets["roam.start"]} variant="default" type="button" hidden>{t("开始生成")}</Button>
 </div>
 {"\n        "}<RoamAnchors>{(anchorTrigger, anchorPanel) => <Card id="image-card" className="image-card roam-image-card gap-0 py-0" tabIndex={-1} aria-label={t("图片浏览")} hidden>
+<RoamImmersiveLoading />
 <div className="immersive-actions" role="toolbar" aria-label={t("沉浸模式设置")}>
 <RoamPlaybackButton immersive />
 <Toggle id="roam-immersive-privacy" ref={targets["roam.privacy.immersive"]} size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={tr`${privacyLabel} · 空格`} aria-keyshortcuts="Space" aria-controls="image-card" data-tooltip={tr`${privacyLabel} · 空格`}>

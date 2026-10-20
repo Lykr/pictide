@@ -32,6 +32,6 @@ After editing, move to the next image to continue in the new direction. Anchors 
 
 Turn on autoplay for relaxed browsing and adjust each image's display time in Roam options. Playback waits if generation is unfinished. Liking an image pauses on it; moving to the next resumes playback. Leaving Roam pauses playback.
 
-Use ← / → to browse and ↑ / ↓ to move between Disliked, Unrated, and Liked. Immersive mode fills the screen with the image. Blur changes only the display; the original stays clear.
+Use ← / → to browse and ↑ / ↓ to move between Disliked, Unrated, and Liked. Immersive mode fills the screen with the image, with a loading ring at the top left while waiting. Open Anchors in a floating panel to guide the next images. Blur changes only the display; the original stays clear.
 
 Roam remembers where you left off. Like images you want to keep; older unliked images are handled according to your [cleanup settings](settings.md).

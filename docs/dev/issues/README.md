@@ -47,6 +47,7 @@
 - [跟随系统主题](system-theme.md)
 - [简体中文与英文国际化](i18n.md)
 - [图片切换动效](image-transitions.md)
+- [沉浸模式加载与浮层](immersive-panels.md)
 - [喜欢页标签筛选](liked-tag-filter.md)
 - [Pictide 图标](brand-icon.md)
 

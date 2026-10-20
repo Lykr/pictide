@@ -1,0 +1,20 @@
+.immersive-loading { display: none; }
+.image-card.immersive .immersive-loading {
+  position: absolute;
+  z-index: 4;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--card-foreground);
+  pointer-events: none;
+}
+.immersive-loading svg { width: 18px; height: 18px; animation: immersive-loading-spin 1s linear infinite; }
+.generated-viewer.immersive .generated-viewer-loading[data-loading="true"],
+.generated-viewer.immersive .generated-viewer-paging { display: none; }
+@keyframes immersive-loading-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .immersive-loading svg { animation: none; } }

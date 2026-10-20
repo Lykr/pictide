@@ -1,12 +1,13 @@
-import { publishUiState } from "../shared/ui-state.mjs";
+import { getUiState, publishUiState, subscribeUiState } from "../shared/ui-state.mjs";
 import { uiTarget } from "../shared/ui-targets";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactElement, type ReactNode } from "react";
 import { Anchor, LoaderCircle, LockKeyhole, Plus, Trash2, X } from "lucide-react";
 import { t } from "../i18n/index.mjs";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { HelpTip } from "./actions";
 import { anchorTerms } from "../controllers/roam-anchors.mjs";
 
@@ -14,6 +15,8 @@ type AnchorSettings = { pinned_positive: string[]; preset_base_positive: string[
 const normalize = (text: string) => text.trim().replaceAll("_", " ");
 
 export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel: ReactNode) => ReactElement }) {
+  const facts = useSyncExternalStore(subscribeUiState, getUiState) as Record<string, unknown>;
+  const immersive = facts.roamImmersive === true;
   const [settings, setSettings] = useState<AnchorSettings>({ pinned_positive: [], preset_base_positive: [], prompt_mode: "random" });
   const [positive, setPositive] = useState("");
   const [query, setQuery] = useState("");
@@ -73,14 +76,11 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
     const text = normalize(query);
     if (text && await save(text, true)) { setQuery(""); setAdding(false); }
   };
-  const trigger = <CollapsibleTrigger asChild>
-    <Button ref={triggerTarget} variant={open ? "secondary" : "ghost"} size="icon-sm" className="roam-anchor-trigger" aria-label={t("锚点")} aria-pressed={open} data-tooltip={t("锚点")} onClick={() => { if (!open) document.dispatchEvent(new Event("pictide:close-image-info")); }}>
+  const triggerButton = <Button ref={triggerTarget} variant={open ? "secondary" : "ghost"} size="icon-sm" className="roam-anchor-trigger" aria-label={t("锚点")} aria-pressed={open} data-tooltip={t("锚点")} onClick={() => { if (!open) document.dispatchEvent(new Event("pictide:close-image-info")); }}>
       <Anchor aria-hidden="true" />{pins.length > 0 && <span className="roam-anchor-count">{pins.length}</span>}
-    </Button>
-  </CollapsibleTrigger>;
-  const panel = <>
-    {open && <AnchorDivider />}
-    <CollapsibleContent className="roam-anchors" role="region" aria-label={t("锚点")}>
+    </Button>;
+  const trigger = immersive ? <PopoverTrigger asChild>{triggerButton}</PopoverTrigger> : <CollapsibleTrigger asChild>{triggerButton}</CollapsibleTrigger>;
+  const content = <>
     <div className="roam-anchor-heading">
       <span className="font-medium">{t("锚点")}</span><Badge variant="secondary">{pins.length}</Badge>
       <HelpTip text={locked ? t("停泊保持整组提示词，切换漫游方式后可编辑锚点。") : t("点选正向词，让后续图片保留这个元素；修改后清空旧预取。")} />
@@ -119,8 +119,20 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
       })}
     </div>
     {error && <p role="alert" className="px-2 pb-2 text-sm text-destructive">{error}</p>}
-  </CollapsibleContent></>;
-  return <Collapsible open={open} onOpenChange={setOpen} asChild>{children(trigger, panel)}</Collapsible>;
+  </>;
+  const panel = immersive ? <PopoverContent container={document.getElementById("image-card") ?? undefined}
+    className="roam-anchors roam-anchor-popover" align="end" side="top" sideOffset={12} collisionPadding={12} aria-label={t("锚点")}
+    onInteractOutside={event => {
+      const target = event.target instanceof Element ? event.target : null;
+      // Keep editing while navigating/rating images from the same toolbar.
+      if (target?.closest(".image-toolbar") && !target.closest(".image-info")) event.preventDefault();
+    }}>{content}</PopoverContent> : <>
+    {open && <AnchorDivider />}
+    <CollapsibleContent className="roam-anchors" role="region" aria-label={t("锚点")}>{content}</CollapsibleContent>
+  </>;
+  return <Popover open={immersive && open} onOpenChange={next => { if (immersive) setOpen(next); }}>
+    <Collapsible open={!immersive && open} onOpenChange={setOpen} asChild>{children(trigger, panel)}</Collapsible>
+  </Popover>;
 }
 
 function AnchorDivider() {

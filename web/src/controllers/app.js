@@ -111,6 +111,7 @@ const roamPlayback = createRoamPlayback({
 function syncRoamPlayback(artifact = null) {
   const image = $('main-image');
   publishUiState({ imageId: artifact?.id || null,
+    imageLoading: !!artifact && state.currentImage === artifact.id && !image.complete && $('image-error').hidden,
     imageReady: !!artifact && state.currentImage === artifact.id && image.complete && image.naturalWidth > 0 && $('image-error').hidden,
     imageFeedback: artifact?.feedback ?? null });
   roamPlayback.update({ imageId: artifact?.id || null,
@@ -129,7 +130,7 @@ const immersive = createImmersiveViewer({
   card: $('image-card'), toolbar: document.querySelector('.image-toolbar'),
   entry: $('roam-immersive'), focusReturn: $('roam-options'), exit: $('roam-immersive-exit'),
   eligible: () => state.view === 'feed' && !$('image-card').hidden && !!state.currentImage,
-  changed: () => { clearFeedbackMotion(); document.dispatchEvent(new Event('pictide:roam-options-close')); },
+  changed: active => { publishUiState({ roamImmersive: active }); clearFeedbackMotion(); document.dispatchEvent(new Event('pictide:roam-options-close')); },
 });
 bindTouchNavigation(document.querySelector('#image-card .image-stage'), {
   navigate: direction => moveImage(direction),
@@ -393,7 +394,7 @@ function setComposeBusy(value) {
   $('cancel-pending').disabled = value;
 }
 function renderGalleryLoading() {
-  publishUiState({ imageReady: false });
+  publishUiState({ imageReady: false, imageLoading: false });
   syncRoamPlayback();
   $('roam-immersive').disabled = true;
   immersive.leave();
@@ -1446,7 +1447,7 @@ $('main-image').addEventListener('load', () => {
   if (roamImageSwitchPending) { roamImageSwitchPending = false; playImageTransition($('main-image')); }
   syncRoamPlayback(state.artifacts.find(item => item.id === state.activeId));
 });
-$('main-image').addEventListener('error', () => { publishUiState({ imageReady: false }); roamImageSwitchPending = false; cancelImageTransition($('main-image')); $('image-error').hidden = false; roamPlayback.pause(); });
+$('main-image').addEventListener('error', () => { publishUiState({ imageReady: false, imageLoading: false }); roamImageSwitchPending = false; cancelImageTransition($('main-image')); $('image-error').hidden = false; roamPlayback.pause(); });
 document.addEventListener('pictide:roam-playback-toggle', () => roamPlayback.toggle());
 document.addEventListener('pictide:roam-playback-interval', event => {
   roamSettings.playback_interval_seconds = event.detail;

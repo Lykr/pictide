@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 import { Toggle } from "./ui/toggle";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { ImagePromptDetails } from "./image-prompt-details";
+import { ImmersiveLoading } from "./immersive-loading";
 import { createImmersiveViewer } from "../controllers/immersive-controls.mjs";
 import { bindTouchNavigation } from "../controllers/touch-navigation.mjs";
 import { generatedNeighbour, generatedReplacement, generatedShortcut } from "../controllers/generated-viewer-controls.mjs";
@@ -32,7 +33,7 @@ export type GeneratedViewerProps = {
 };
 const artifactPath = (item: GeneratedArtifact, kind: string) => `/api/artifacts/${encodeURIComponent(item.id)}/${kind}`;
 
-function ViewerImage({ item, privacyBlur, label, onNavigate, busy, transition }: { item: GeneratedArtifact; privacyBlur: boolean; label: string; onNavigate: (direction: string) => void; busy: boolean; transition: boolean }) {
+function ViewerImage({ item, privacyBlur, label, onNavigate, busy, transition, paging }: { item: GeneratedArtifact; privacyBlur: boolean; label: string; onNavigate: (direction: string) => void; busy: boolean; transition: boolean; paging: boolean }) {
   const [status, setStatus] = useState("loading");
   const stageRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -50,11 +51,12 @@ function ViewerImage({ item, privacyBlur, label, onNavigate, busy, transition }:
     });
   }, []);
   return <div ref={stageRef} className="generated-viewer-stage" data-privacy-blur={privacyBlur}>
+    <ImmersiveLoading loading={status === "loading" || paging} />
     <img ref={imageRef} src={artifactPath(item, "image")} alt={label} draggable={false} onLoad={event => {
       setStatus("ready");
       if (transition) playImageTransition(event.currentTarget);
     }} onError={() => setStatus("error")} />
-    {status !== "ready" && <div className="generated-viewer-loading" role="status">{status === "loading" ? <><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("图片加载中")}</span></> : t("图片已清理或读取失败")}</div>}
+    {status !== "ready" && <div className="generated-viewer-loading" data-loading={status === "loading"} role="status">{status === "loading" ? <><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("图片加载中")}</span></> : t("图片已清理或读取失败")}</div>}
   </div>;
 }
 
@@ -148,7 +150,7 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
       </Toggle>
       <IconButton ref={exitRef} icon={Minimize} label={t("退出沉浸模式")} hidden={!immersive} />
     </div>
-    <ViewerImage key={item.id} item={item} transition={imageChange.current.transition} privacyBlur={privacyBlur} label={props.imageLabel ?? t("生成的图片")} onNavigate={navigate} busy={busy || infoOpen} />
+    <ViewerImage key={item.id} item={item} transition={imageChange.current.transition} privacyBlur={privacyBlur} label={props.imageLabel ?? t("生成的图片")} onNavigate={navigate} busy={busy || infoOpen} paging={!!waitingOlder && loadingMore} />
     {waitingOlder && loadingMore && <div className="generated-viewer-paging" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("正在加载更早图片")}</span></div>}
     {error && <div className="generated-viewer-error" role="alert">{error}</div>}
     <div ref={toolbarRef} className="generated-viewer-toolbar" aria-label={t("图片操作")}>

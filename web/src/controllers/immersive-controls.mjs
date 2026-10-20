@@ -20,7 +20,8 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
   let active = false, mode = null, revision = 0, hovered = false, keyboard = false, shortcutInput = false;
   let restoreInert = [], touchGesture = null, installed = false;
   const toolbars = [...new Set([toolbar, exit?.parentElement].filter(Boolean))];
-  const anchorsOpen = () => !!card.matches?.('.roam-image-card[data-state=open]');
+  const anchorPopoverOpen = () => !!card.querySelector?.('.roam-anchor-popover[data-state=open]');
+  const anchorsOpen = () => !!card.matches?.('.roam-image-card[data-state=open]') || anchorPopoverOpen();
   const imageInfoOpen = () => !!card.querySelector?.('.image-info-popover[data-state=open]');
   const inControls = node => toolbars.some(bar => bar.contains(node)) || ['.roam-anchors', '.roam-anchor-divider', '.image-info-popover'].some(selector => card.querySelector?.(selector)?.contains(node));
   const controls = createAutoHideControls({
@@ -75,7 +76,7 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
   const focus = () => { if (!shortcutInput) controls.wake(); };
   const key = event => {
     keyboard = true;
-    if (imageInfoOpen()) return;
+    if (imageInfoOpen() || anchorPopoverOpen()) return;
     if (event.key !== 'Escape' && event.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])')) return;
     if (event.key === 'Escape') { event.preventDefault(); leave(); }
     else if (event.key === 'Tab') {
