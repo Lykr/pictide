@@ -72,7 +72,20 @@ func lastLogLine(at path: URL) -> String? {
     let end = handle.seekToEndOfFile()
     handle.seek(toFileOffset: end > 65536 ? end - 65536 : 0)
     guard let bytes = try? handle.read(upToCount: 65536), !bytes.isEmpty else { return nil }
-    return String(decoding: bytes, as: UTF8.self).split(whereSeparator: \.isNewline).last.map { String($0.suffix(1000)) }
+    let lines = String(decoding: bytes, as: UTF8.self).split(whereSeparator: \.isNewline).map(String.init)
+    let record = #"^\d{4}-\d{2}-\d{2} \S+ (DEBUG|INFO|WARNING|ERROR|CRITICAL) pid="#
+    let error = #"^\d{4}-\d{2}-\d{2} \S+ (ERROR|CRITICAL) pid="#
+    if let start = lines.lastIndex(where: { $0.range(of: error, options: .regularExpression) != nil }) {
+        // A normal shutdown record can follow the exception. Keep the latest
+        // error and its traceback tail rather than replacing it with that record.
+        let end = lines.indices.dropFirst(start + 1).first {
+            lines[$0].range(of: record, options: .regularExpression) != nil
+        } ?? lines.endIndex
+        let headline = String(lines[start].suffix(400))
+        let cause = lines[end - 1].trimmingCharacters(in: .whitespaces)
+        return end > start + 1 ? headline + "\n" + String(cause.suffix(600)) : headline
+    }
+    return lines.last.map { String($0.suffix(1000)) }
 }
 
 func onLauncherRunLoop(_ action: @escaping () -> Void) {
@@ -564,6 +577,9 @@ if arguments == ["--launcher-self-test"] {
         let log = temporary.appendingPathComponent("pictide.log")
         try Data((String(repeating: "old output\n", count: 10000) + "latest failure\n").utf8).write(to: log)
         try require(lastLogLine(at: log) == "latest failure", "bounded runtime log tail")
+        let error = "2026-10-20 12:00:00,000 ERROR pid=42 backend: Unhandled application exception"
+        try Data((error + "\nTraceback (most recent call last):\n  File \"host.py\", line 1, in main\n    run()\nRuntimeError: model download failed\n2026-10-20 12:00:01,000 WARNING pid=42 backend: Closing service\n2026-10-20 12:00:02,000 INFO pid=42 backend: Pictide stopped\n").utf8).write(to: log)
+        try require(lastLogLine(at: log) == error + "\nRuntimeError: model download failed", "shutdown records preserve the latest error cause")
         let output = temporary.appendingPathComponent("output.log")
         try Data().write(to: output)
         let owner = Launcher()
@@ -576,7 +592,7 @@ if arguments == ["--launcher-self-test"] {
         owner.parentPipe?.fileHandleForReading.closeFile()
         owner.closeStreams()
         try FileManager.default.removeItem(at: temporary)
-        print("{\"passed\":true,\"checks\":13}")
+        print("{\"passed\":true,\"checks\":14}")
         exit(0)
     } catch {
         fputs("Pictide launcher self-test failed: \(error.localizedDescription)\n", stderr)
