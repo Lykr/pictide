@@ -23,13 +23,10 @@ Prioritize changes that help people discover images they enjoy or guide explorat
 - [GitHub Actions releases (Chinese)](development.md#github-actions-发版): prepare locked resources, then push a version tag to build native portable packages.
 - [UI design system (Chinese)](design-system.md): terminology, visuals, components, layout, and interactions.
 - [Web code entry points](web.md): pages, controllers, and shared components.
-- [Design template (Chinese)](design-template.md): use when proposing a change before implementation.
-
-## Requirements and feature records
-
-The [issue index (Chinese)](issues/README.md) groups design decisions and verification records by candidates, recommendations, roaming, UI, and tasks. These records retain their historical context. Current usage belongs in guides, HTTP contracts in the API reference, and responsibilities in architecture documentation.
 
 ## Documentation maintenance
+
+Developer navigation lists only core documentation for understanding, developing, and maintaining the current application. Keep issue records, change proposals, and historical verification reports out of these navigation lists; current instructions belong in the relevant topic documentation.
 
 User guides start with the need they serve and the shortest path to trying it. Explain only the core workflow and consequences users need to understand; let the interface support exploration of secondary controls. Keep algorithms, exhaustive option lists, edge cases, and implementation history in developer documentation rather than repeating a feature specification in the guides.
 
