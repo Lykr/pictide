@@ -10,7 +10,7 @@
 
 下载并解压便携包，按系统启动：[Windows](setup/windows.zh-CN.md#便携版本) · [Linux](setup/linux.zh-CN.md#便携版本) · [macOS](setup/macos.zh-CN.md#便携版本)。便携包已带好运行环境和词库；首次启动还需下载下方的推荐依赖。
 
-Windows 准备引导可下载 ComfyUI 与推荐的 Anima 模型，自动接入默认工作流；当前源码新构建包的步骤见 [Windows 指南](setup/windows.zh-CN.md#便携版本)。生图模型按需下载，发行包保持轻量。
+Windows 准备引导可下载 ComfyUI 与推荐的 Anima 模型，自动接入默认工作流；步骤见 [Windows 指南](setup/windows.zh-CN.md#便携版本)。生图模型按需下载，发行包保持轻量。
 
 已有本地 ComfyUI，或希望使用 OpenAI Images、Gemini 云端服务时，在「设置 → 生图 API」接入。独立安装的 ComfyUI 需自行启动；由 Pictide 准备的版本会随 Pictide 启停。
 

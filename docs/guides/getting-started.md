@@ -10,7 +10,7 @@ Connect an image generation service and start exploring, without writing prompts
 
 Download and extract a portable package, then follow the startup steps for [Windows](setup/windows.md#portable-edition), [Linux](setup/linux.md#portable-edition), or [macOS](setup/macos.md#portable-edition). It includes the runtime and tag library; the recommendation dependency below downloads on first launch.
 
-Windows preparation can download ComfyUI and the recommended Anima model, then connect its default workflow automatically; see the [Windows guide](setup/windows.md#portable-edition) for packages built from the current source. Packages keep image generation models as optional downloads.
+Windows preparation can download ComfyUI and the recommended Anima model, then connect its default workflow automatically; see the [Windows guide](setup/windows.md#portable-edition). Packages keep image generation models as optional downloads.
 
 For an existing local ComfyUI installation or an OpenAI Images or Gemini cloud service, connect it under Settings → Image API. Start an independently installed ComfyUI yourself; Pictide starts and stops the copy it prepares for you.
 

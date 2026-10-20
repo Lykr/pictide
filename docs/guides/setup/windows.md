@@ -6,7 +6,7 @@
 
 ## Portable edition
 
-These steps describe the new portable package. Existing releases keep their included launchers.
+These steps apply to v0.5.0 and later.
 
 1. Extract the package and double-click `Pictide.exe`.
 2. On first launch, confirm where to save your data and follow the setup guide. Need an image service? Choose **ComfyUI + Anima Turbo v1.1** to install one.
