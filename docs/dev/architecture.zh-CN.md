@@ -114,7 +114,7 @@ pictide/
 
 源码与便携启动共用 `backend/application.py` 的 `PictideApplication.prepare_startup()`。该入口先初始化存在的随包词库，再通过 `backend/recommand/resources.py` 校验或下载固定 MiniLM 文件到所选运行数据目录。准备成功后，Host 才启动 HTTP/SSE 并打开浏览器；失败终止启动，保留未完成下载供下次重试。编码器只读取准备好的本地文件，离线 corpus 工具继续独立于启动链路。详见[推荐依赖准备](architecture/recommendation.zh-CN.md#推荐依赖准备)。
 
-Windows 首次本地生图准备已实现，当前 NVIDIA 便携环境已验证；AMD、Intel 与 CPU 具有配置和模拟检查，尚未对应硬件实测。可交互桌面入口提供已有 API、本地 ComfyUI 准备与稍后配置；`--setup` 显式重开，CLI 和无浏览器启动默认不提问。标准库 TUI 选择固定版本的官方 Windows 便携环境及可选模型配方，确认下载后展示下载、校验、解压和启动进度。每个推荐配方携带全部模型文件、完整默认 API 工作流与提示词/种子/输出绑定。准备好模型后，Host 启动自己拥有的 ComfyUI 子进程，通过既有应用接口保存并选择连接，再提供 HTTP/bootstrap，漫游和生成页可直接使用。已有配置保留，仅安装环境时继续手动配置流程。Host 负责子进程退出；安装器不操作业务数据库，不改变候选、推荐、任务或生图协议。详见 [Windows 准备设计与验证记录](issues/windows-first-run-tui.md)。
+Windows 首次本地生图准备已实现，当前 NVIDIA 便携环境已验证；AMD、Intel 与 CPU 具有配置和模拟检查，尚未对应硬件实测。可交互桌面入口在运行目录初始化前确认数据位置，在 Windows 程序旁记住目录指针，并显式传给隐藏 worker；随后提供已有 API、本地 ComfyUI 准备与稍后配置，见[目录选择设计](issues/setup-data-directory.md)；`--setup` 显式重开，CLI 和无浏览器启动默认不提问。标准库 TUI 选择固定版本的官方 Windows 便携环境及可选模型配方，确认下载后展示下载、校验、解压和启动进度。每个推荐配方携带全部模型文件、完整默认 API 工作流与提示词/种子/输出绑定。准备好模型后，Host 启动自己拥有的 ComfyUI 子进程，通过既有应用接口保存并选择连接，再提供 HTTP/bootstrap，漫游和生成页可直接使用。已有配置保留，仅安装环境时继续手动配置流程。Host 负责子进程退出；安装器不操作业务数据库，不改变候选、推荐、任务或生图协议。详见 [Windows 准备设计与验证记录](issues/windows-first-run-tui.md)。
 
 Windows 启动入口选择 `--desktop`：临时进度进程以 `CREATE_NO_WINDOW` 启动服务、转发启动输出，托盘注册成功后退出，兼容由 Windows Terminal 承载的启动终端。`backend/desktop.py` 在准备资源前取得数据目录锁并预留 HTTP 端口，HTTP 就绪后注册原生托盘并打开浏览器。启动失败时保留错误信息，托盘不可用时回退到原终端。托盘线程使用 Per-Monitor V2 DPI 感知，按任务栏 DPI 加载图标，不修改系统设置。托盘只负责打开网页、日志目录和请求 Host 正常退出，不承载业务状态。启动进度和托盘文案按系统显示语言使用简体中文或英文。`--cli` 与 `--no-browser` 保留终端模式；Linux 沿用既有终端入口。详见[桌面生命周期设计](issues/desktop-launcher.md)。
 

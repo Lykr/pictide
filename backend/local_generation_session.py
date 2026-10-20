@@ -8,6 +8,7 @@ from pathlib import Path
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from urllib.request import ProxyHandler, build_opener
 
@@ -67,6 +68,45 @@ def desktop_busy(paths):
     return False
 
 
+def prepare_windows_data_directory(paths, *, force=False):
+    """Confirm the resolved data root before runtime setup creates files there."""
+    if desktop_busy(paths):
+        if force:
+            announce('Exit Pictide from the tray before running --setup.',
+                     '请先从托盘退出 Pictide，再运行 --setup。')
+            return None
+        return paths
+    if not (sys.stdin and sys.stdin.isatty()):
+        if force:
+            raise RuntimeError('--setup requires an interactive terminal')
+        return paths
+    from .paths import DataPaths, remember_data_directory, saved_data_directory
+    from .windows_setup_ui import choose_data_directory
+    if not force and saved_data_directory() == paths.root:
+        return paths
+    current, error = paths.root, None
+    while True:
+        selected = choose_data_directory(str(current), error=error)
+        if selected is None:
+            return None
+        chosen = DataPaths(selected)
+        if force and desktop_busy(chosen):
+            error = ('请先从托盘退出此目录的 Pictide。' if system_language() == 'zh-CN'
+                     else 'Exit Pictide for this directory from the tray first.')
+            current = chosen.root
+            continue
+        try:
+            chosen.ensure()
+            with tempfile.NamedTemporaryFile(prefix='pictide-write-check-', dir=chosen.tmp):
+                pass
+            remember_data_directory(chosen.root)
+        except OSError as failure:
+            error = str(failure)
+            current = chosen.root
+            continue
+        return chosen
+
+
 def prepare_windows_setup(paths, *, force=False):
     """Prompt only in the interactive progress process, never its hidden worker."""
     if desktop_busy(paths):
@@ -95,8 +135,7 @@ def prepare_windows_setup(paths, *, force=False):
             return True
         profiles = profile_catalog()
         choice = run_setup(profiles, recipe_catalog(),
-                           lambda profile, recipe, progress: prepare_local_comfy(paths, profile, recipe, progress),
-                           data_directory=str(paths.root))
+                           lambda profile, recipe, progress: prepare_local_comfy(paths, profile, recipe, progress))
         if choice is None:
             return False
         previous = read_state(paths) or {}

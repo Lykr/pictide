@@ -187,7 +187,9 @@ def build(output_dir=None, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
                 launcher_name = 'Pictide.exe'
                 desktop_help = ('Startup progress appears while preparing dependencies, then Pictide stays in the system tray.\n'
                                 'Use the tray menu to reopen Pictide, view logs or exit. Closing the browser keeps Pictide running.\n'
-                                'Run Pictide.exe --cli to use terminal mode; press Ctrl+C to stop.\nData stays in data/ beside Pictide.exe.\n')
+                                'Run Pictide.exe --cli to use terminal mode; press Ctrl+C to stop.\n'
+                                'First launch confirms your data folder (default: data/ beside Pictide.exe) and remembers it.\n'
+                                'Run Pictide.exe --setup to choose again; existing data stays in its previous folder.\n')
             elif sys.platform == 'darwin':
                 package = runtime / 'Pictide.app'
                 documents = package / 'Contents/Resources'

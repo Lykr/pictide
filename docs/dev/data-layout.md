@@ -6,7 +6,9 @@
 
 ## Data Location
 
-The data directory is selected in this order: startup argument → PICTIDE_DATA_DIR → legacy PICTIDE_WEB_DATA_DIR → default data. Source deployments default to `data/` inside the project. Windows and Linux packages default to `data/` beside the program; the macOS app defaults to `~/Library/Application Support/Pictide/`, outside its bundle. Replacing the macOS app preserves personal data; moving a Windows or Linux portable directory includes its data.
+The data directory is selected in this order: startup argument → PICTIDE_DATA_DIR → legacy PICTIDE_WEB_DATA_DIR → remembered Windows location → default data. Source deployments default to `data/` inside the project. Windows and Linux packages default to `data/` beside the program; the macOS app defaults to `~/Library/Application Support/Pictide/`, outside its bundle. Replacing the macOS app preserves personal data; moving a Windows or Linux portable directory includes data stored inside it. External Windows data stays at its selected location.
+
+The Windows interactive launcher confirms the data location before application initialization or downloads and remembers it in `pictide.local.json` beside the executable (in the project root for source startup). This launcher file contains only the directory pointer; all runtime content stays under the selected root. Paths inside the program directory are stored relatively; external paths are absolute. `--setup` reopens the choice. Changing the location leaves previous data in place without migration. Explicit arguments and environment variables retain precedence. Source bootstrapping prepares its Python environment before the application guide.
 
 For custom directories, follow your platform's guide: [Windows](../guides/setup/windows.md#port-and-data-directory) · [Linux](../guides/setup/linux.md#port-and-data-directory) · [macOS](../guides/setup/macos.md#port-and-data-directory). Relative paths resolve from the working directory where the command is run.
 

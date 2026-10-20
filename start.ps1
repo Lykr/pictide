@@ -9,6 +9,18 @@ $projectPath = $PSScriptRoot
 $selectedDataDir = $DataDir
 if (-not $selectedDataDir) { $selectedDataDir = $env:PICTIDE_DATA_DIR }
 if (-not $selectedDataDir) { $selectedDataDir = $env:PICTIDE_WEB_DATA_DIR }
+if (-not $selectedDataDir) {
+    $settingsPath = Join-Path $projectPath 'pictide.local.json'
+    if (Test-Path -LiteralPath $settingsPath) {
+        $savedDirectory = (Get-Content -LiteralPath $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json).data_directory
+        if (-not ($savedDirectory -is [string]) -or -not $savedDirectory.Trim()) {
+            throw "Invalid data directory in $settingsPath"
+        }
+        $selectedDataDir = if ([System.IO.Path]::IsPathRooted($savedDirectory)) {
+            $savedDirectory
+        } else { Join-Path $projectPath $savedDirectory }
+    }
+}
 if (-not $selectedDataDir) { $selectedDataDir = Join-Path $projectPath 'data' }
 $dataRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($selectedDataDir)
 $runtimePath = Join-Path $dataRoot 'runtime'

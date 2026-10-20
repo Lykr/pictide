@@ -1,9 +1,11 @@
 """First-run choices, resumable retries and cancellation without downloads."""
 import io
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from backend.windows_setup_ui import run_setup
+from backend.windows_setup_ui import choose_data_directory, run_setup
 
 
 PROFILES = {'nvidia': {'name': 'NVIDIA', 'size': 2_000_000_000}}
@@ -27,9 +29,41 @@ class WindowsSetupUISmoke(unittest.TestCase):
                 patch('builtins.input', side_effect=answers), \
                 patch('sys.stdout', output):
             mode.return_value.__enter__.return_value = False
-            result = run_setup(profiles, recipes, install,
-                               data_directory='C:/Pictide/data', language=language)
+            result = run_setup(profiles, recipes, install, language=language)
         return result, output.getvalue()
+
+    def test_directory_default_back_and_cancel_do_not_create_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            current = Path(temporary) / 'data'
+            for answers, expected in [(['1'], str(current)), (['2', '', '1'], str(current)),
+                                      (['0'], None), (['\x1b'], None), ([KeyboardInterrupt], None)]:
+                with self.subTest(answers=answers), \
+                        patch('backend.windows_setup_ui._console_mode') as mode, \
+                        patch('builtins.input', side_effect=answers), \
+                        patch('sys.stdout', io.StringIO()) as output:
+                    mode.return_value.__enter__.return_value = False
+                    self.assertEqual(choose_data_directory(current, language='en'), expected)
+                    self.assertIn('Data location', output.getvalue())
+                    self.assertNotIn('will not be moved', output.getvalue())
+            self.assertEqual(list(Path(temporary).iterdir()), [])
+
+    def test_directory_retry_rejects_relative_and_confirms_quoted_new_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            current = Path(temporary) / 'data'
+            selected = Path(temporary) / 'new data'
+            with patch('backend.windows_setup_ui._console_mode') as mode, \
+                    patch('backend.windows_setup_ui.system_language', return_value='zh-CN'), \
+                    patch('builtins.input', side_effect=['2', 'relative/data', '2', f'"{selected}"', '1']), \
+                    patch('sys.stdout', io.StringIO()) as output:
+                mode.return_value.__enter__.return_value = False
+                self.assertEqual(choose_data_directory(current, error='目录不可写'), str(selected))
+            displayed = output.getvalue()
+            self.assertIn('数据保存位置', displayed)
+            self.assertIn('目录不可写', displayed)
+            self.assertIn('请输入绝对目录路径。', displayed)
+            self.assertIn(str(selected), displayed)
+            self.assertEqual(displayed.count('原目录的数据会保留在原处，不会自动迁移。'), 1)
+            self.assertEqual(list(Path(temporary).iterdir()), [])
 
     def test_external_and_later_never_install(self):
         install = Mock()
@@ -58,6 +92,9 @@ class WindowsSetupUISmoke(unittest.TestCase):
         self.assertIn('7.63 GB', output)
         self.assertIn(RECIPES['anima']['license_url'], output)
         self.assertIn('Model use: non-commercial', output)
+        self.assertNotIn('ComfyUI location', output)
+        self.assertNotIn('Model location', output)
+        self.assertNotIn('Data directory', output)
         self.assertIn('50%', output)
         self.assertIn('Verifying', output)
 

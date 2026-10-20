@@ -28,7 +28,7 @@ flowchart TD
 
 | 组成 | 接口与职责 |
 | --- | --- |
-| Windows 入口 / TUI | 会话入口 `prepare_windows_setup(paths, *, force=False)` 决定是否引导；`run_setup(profiles, recipes, install, *, data_directory)` 在可交互的 Windows 启动终端中提问、选择、显示下载与解压进度，返回准备结果；完成后交回现有桌面启动器。系统语言为简体中文时使用中文，其余使用英文。 |
+| Windows 入口 / TUI | 会话入口 `prepare_windows_setup(paths, *, force=False)` 决定是否引导；`run_setup(profiles, recipes, install, *, language=None)` 在可交互的 Windows 启动终端中提问、选择、显示下载与解压进度，返回准备结果；完成后交回现有桌面启动器。系统语言为简体中文时使用中文，其余使用英文。 |
 | Host | 判断当前是否已有生图 API、是否完成准备；在自己的生命周期内启动及回收受管 ComfyUI。TUI 不直接操作业务数据库。现有 `--cli`、`--no-browser` 与自动化冒烟默认保持非交互；显式 `--setup` 可重新打开引导。 |
 | 本地准备器 | `prepare_local_comfy(paths, profile_id, recipe_id_or_None, progress)`。下载固定版本的官方 Windows 便携包及按需使用的独立解压工具，校验 SHA256，在临时目录解压成功后安装并返回安装状态；不依赖用户安装 Python、Git 或 7-Zip。 |
 | 资源清单 | 固定 URL、版本、文件大小、SHA256 与目标相对路径。随源码提交，小体积发行包按需下载 ComfyUI。运行时不追踪浮动 `latest`。 |
@@ -41,7 +41,7 @@ flowchart TD
 
 ### TUI 交互
 
-首次没有准备记录、也没有已配置 API 时，显示：
+应用初始化前先[确认数据保存位置](setup-data-directory.md)。所选目录没有准备记录、也没有已配置 API 时，显示：
 
 ```text
 欢迎使用 Pictide

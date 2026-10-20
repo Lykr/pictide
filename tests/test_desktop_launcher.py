@@ -36,13 +36,15 @@ class DesktopLauncherSmoke(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             def start(command, **options):
                 self.assertIn('--desktop-worker', command)
+                self.assertEqual(command[-3:], ['--data-dir', directory, '--desktop-worker'])
                 self.assertEqual(options['creationflags'], 0x08000000)
                 Path(options['env'][STATUS_ENV]).write_text('ready', encoding='utf-8')
                 return process
             process = Mock()
             process.poll.return_value = None
             with patch('backend.desktop_launcher.subprocess.Popen', side_effect=start):
-                self.assertTrue(launch_desktop(['--desktop'], SimpleNamespace(tmp=Path(directory))))
+                self.assertTrue(launch_desktop(['--desktop', '--data-dir=old-data'],
+                                              SimpleNamespace(tmp=Path(directory), root=Path(directory))))
             process.terminate.assert_not_called()
 
     def test_failed_or_unavailable_tray_does_not_silently_leave_a_worker(self):
@@ -56,10 +58,10 @@ class DesktopLauncherSmoke(unittest.TestCase):
                 with patch('backend.desktop_launcher.subprocess.Popen', side_effect=start), \
                         patch('backend.desktop_launcher.sys.stdin', None):
                     if status == 'console':
-                        self.assertFalse(launch_desktop(['--desktop'], SimpleNamespace(tmp=Path(directory))))
+                        self.assertFalse(launch_desktop(['--desktop'], SimpleNamespace(tmp=Path(directory), root=Path(directory))))
                     else:
                         with self.assertRaises(SystemExit) as result:
-                            launch_desktop(['--desktop'], SimpleNamespace(tmp=Path(directory)))
+                            launch_desktop(['--desktop'], SimpleNamespace(tmp=Path(directory), root=Path(directory)))
                         self.assertEqual(result.exception.code, 1)
 
 

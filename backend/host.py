@@ -412,7 +412,6 @@ def main(argv=None):
     parser.add_argument("--desktop-worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     frozen = getattr(sys, "frozen", False)
-    paths = DataPaths(args.data_dir).configure_runtime()
     if args.setup and sys.platform != 'win32':
         parser.error('--setup is available on Windows')
     desktop_requested = args.desktop and sys.platform == 'win32' and not (args.cli or args.no_browser)
@@ -424,17 +423,24 @@ def main(argv=None):
         for stream in (sys.stdout, sys.stderr):
             if stream is not None:
                 stream.reconfigure(encoding='utf-8', errors='replace')
-    if sys.platform == 'win32' and not args.desktop_worker and (args.setup or desktop_requested):
-        from .local_generation_session import prepare_windows_setup
-        try:
+    interactive_setup = sys.platform == 'win32' and not args.desktop_worker and (args.setup or desktop_requested)
+    try:
+        paths = DataPaths(args.data_dir)
+        if interactive_setup:
+            from .local_generation_session import prepare_windows_data_directory, prepare_windows_setup
+            paths = prepare_windows_data_directory(paths, force=args.setup)
+            if paths is None:
+                return
+        paths.configure_runtime()
+        if interactive_setup:
             if not prepare_windows_setup(paths, force=args.setup):
                 return
-        except (OSError, ValueError, RuntimeError) as error:
-            print(str(error), file=sys.stderr, flush=True)
-            if sys.stdin and sys.stdin.isatty():
-                from .desktop_text import translate
-                input(translate('close_prompt'))
-            raise SystemExit(1) from None
+    except (OSError, ValueError, RuntimeError) as error:
+        print(str(error), file=sys.stderr, flush=True)
+        if sys.stdin and sys.stdin.isatty():
+            from .desktop_text import translate
+            input(translate('close_prompt'))
+        raise SystemExit(1) from None
     if desktop_requested and not args.desktop_worker:
         from .desktop_launcher import launch_desktop
         if launch_desktop(sys.argv[1:] if argv is None else argv, paths):

@@ -42,7 +42,7 @@ def launch_desktop(arguments, paths):
     command = [sys.executable]
     if not getattr(sys, 'frozen', False):
         command += ['-m', 'backend.host']
-    command += [*arguments, '--desktop-worker']
+    command += [*arguments, '--data-dir', str(paths.root), '--desktop-worker']
     environment = dict(os.environ, **{STATUS_ENV: str(status)})
     with output.open('w', encoding='utf-8') as stream:
         process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=stream,

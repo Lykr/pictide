@@ -17,6 +17,12 @@ _TEXT = {
         'local': 'Set up local ComfyUI for me', 'later': 'Set up later',
         'keys': 'Up / Down: select   Enter: continue   Esc: back',
         'number': 'Choose a number (Enter / 0: back): ',
+        'data_location': 'Data location',
+        'data_purpose': 'Models, images and preferences will be saved here.',
+        'use_directory': 'Use this directory', 'other_directory': 'Specify another directory',
+        'directory_prompt': 'Enter the full directory path (Enter: back): ',
+        'directory_absolute': 'Enter an absolute directory path.',
+        'directory_kept': 'Data in the previous directory stays there; it will not be moved automatically.',
         'gpu': 'Prepare local image generation',
         'detected': 'You are using a {name} graphics card. Pictide can prepare the matching ComfyUI environment for you.',
         'use_detected': 'Use the recommended environment ({name})',
@@ -37,14 +43,12 @@ _TEXT = {
         'unknown_memory': 'unknown', 'hardware_blocked': 'hardware requirements not met',
         'hardware_title': 'This computer does not meet the model requirements',
         'requirements_missing': 'This model has no hardware requirements defined and cannot be downloaded.',
-        'environment': 'ComfyUI location',
         'hardware_environment': 'This model does not support the selected environment.',
         'hardware_gpu_missing': 'No graphics card matching the selected environment could be confirmed.',
         'hardware_vram': 'VRAM: requires {required} GB; detected {actual}.',
         'hardware_ram': 'RAM: requires {required} GB; detected {actual}.',
         'hardware_alternative': 'Choose another model, or skip the model download.',
-        'data': 'Data directory',
-        'model_location': 'Model location', 'license': 'Model license',
+        'license': 'Model license',
         'license_note': 'Model use: non-commercial. Generated images may be used commercially.',
         'space': 'Reserve about {size} of free disk space.',
         'start': 'Download and prepare', 'back': 'Back',
@@ -63,6 +67,12 @@ _TEXT = {
         'external': '我已有生图 API', 'local': '帮我安装本地 ComfyUI', 'later': '稍后配置',
         'keys': '↑ ↓ 选择 · Enter 继续 · Esc 返回',
         'number': '输入选项编号（Enter / 0 返回）：',
+        'data_location': '数据保存位置',
+        'data_purpose': '模型、图片和偏好都会保存在这里。',
+        'use_directory': '使用此目录', 'other_directory': '指定其他目录',
+        'directory_prompt': '输入完整目录路径（Enter 返回）：',
+        'directory_absolute': '请输入绝对目录路径。',
+        'directory_kept': '原目录的数据会保留在原处，不会自动迁移。',
         'gpu': '准备本地生图环境',
         'detected': '检测到你正在使用 {name} 显卡，可以为你准备对应的 ComfyUI 运行环境。',
         'use_detected': '使用推荐环境（{name}）', 'choose_other': '选择其他环境',
@@ -87,8 +97,7 @@ _TEXT = {
         'hardware_vram': '显存要求：至少 {required} GB；当前：{actual}。',
         'hardware_ram': '内存要求：至少 {required} GB；当前：{actual}。',
         'hardware_alternative': '可以选择其他模型，或暂不下载模型。',
-        'data': '数据目录',
-        'environment': 'ComfyUI 位置', 'model_location': '模型位置', 'license': '模型许可',
+        'license': '模型许可',
         'license_note': '模型限非商业用途；生成图片可商用。',
         'space': '请预留约 {size} 可用磁盘空间。',
         'start': '下载并准备', 'back': '返回', 'preparing': '正在准备本地生图',
@@ -161,7 +170,7 @@ class _Console:
                 print(f'  {index}. {label}')
             while True:
                 answer = input('\n  ' + self.text['number']).strip()
-                if not answer or answer == '0':
+                if not answer or answer in ('0', '\x1b'):
                     return None
                 if answer.isdigit() and 1 <= int(answer) <= len(options):
                     return int(answer) - 1
@@ -300,7 +309,48 @@ def _choose_profile(console, profiles, detected):
     return identifiers[index] if index is not None else None
 
 
-def _run(console, profiles, recipes, install, data_directory):
+def choose_data_directory(current_directory, *, language=None, error=None) -> str | None:
+    """Confirm an absolute data path without creating files or saving settings.
+
+    The caller supplies the currently resolved directory and validates/persists the
+    returned selection. Esc, EOF and Ctrl+C return ``None``.
+    """
+    selected_language = language or system_language()
+    text = _TEXT['zh-CN' if selected_language == 'zh-CN' else 'en']
+    original = directory = Path(current_directory).expanduser().absolute()
+    with _console_mode() as interactive:
+        console = _Console(text, interactive)
+        try:
+            while True:
+                details = [text['data_purpose'], str(directory)]
+                if directory != original:
+                    details.append(text['directory_kept'])
+                if error:
+                    details.append(str(error))
+                choice = console.choose(text['data_location'],
+                                        [text['use_directory'], text['other_directory']], details)
+                if choice is None:
+                    return None
+                if choice == 0:
+                    return str(directory)
+                answer = input('  ' + text['directory_prompt']).strip()
+                if answer == '\x1b':
+                    return None
+                if not answer:
+                    continue
+                if len(answer) >= 2 and answer[0] == answer[-1] and answer[0] in ('"', "'"):
+                    answer = answer[1:-1]
+                candidate = Path(os.path.expandvars(answer)).expanduser()
+                if not candidate.is_absolute():
+                    error = text['directory_absolute']
+                    continue
+                directory = candidate.absolute()
+                error = None
+        except (EOFError, KeyboardInterrupt):
+            return None
+
+
+def _run(console, profiles, recipes, install):
     text = console.text
     hardware = detect_hardware()
     detected = select_gpu(hardware)
@@ -323,12 +373,8 @@ def _run(console, profiles, recipes, install, data_directory):
         recipe = recipes.get(recipe_id, {})
         size = _catalog_size(profile) + _catalog_size(recipe)
         required_space = profile.get('required_space', _catalog_size(profile) * 4) + _catalog_size(recipe)
-        directory = Path(data_directory)
         details = [text.get('profile_' + profile_id, profile['name']) + (' + ' + recipe['name'] if recipe else ''),
-                   f'{text["download"]}: {_size(size)}',
-                   f'{text["environment"]}: {directory / "runtime" / "comfyui"}']
-        if recipe:
-            details.append(f'{text["model_location"]}: {directory / "models" / "generation"}')
+                   f'{text["download"]}: {_size(size)}']
         if recipe.get('license_name'):
             details.append(f'{text["license"]}: {recipe["license_name"]}')
         if recipe.get('noncommercial'):
@@ -352,8 +398,7 @@ def _run(console, profiles, recipes, install, data_directory):
             return result
 
 
-def run_setup(profiles: dict, recipes: dict, install, *, data_directory: str,
-              language: str | None = None) -> dict | None:
+def run_setup(profiles: dict, recipes: dict, install, *, language: str | None = None) -> dict | None:
     """Ask for local/external setup; the caller owns installation and persistence.
 
     Catalog entries contain name/size; model recipes require hardware requirements
@@ -366,7 +411,7 @@ def run_setup(profiles: dict, recipes: dict, install, *, data_directory: str,
     with _console_mode() as interactive:
         console = _Console(text, interactive)
         try:
-            return _run(console, profiles, recipes, install, data_directory)
+            return _run(console, profiles, recipes, install)
         except (EOFError, KeyboardInterrupt):
             console.show(text['cancelled'])
             return None

@@ -6,7 +6,9 @@
 
 ## 数据位置
 
-数据目录按「启动参数 → PICTIDE_DATA_DIR → 旧 PICTIDE_WEB_DATA_DIR → 默认 data」选择。源码版默认使用项目内 `data/`。Windows 和 Linux 发行包默认使用程序旁的 `data/`；macOS 应用默认使用包外的 `~/Library/Application Support/Pictide/`。替换 macOS 应用保留个人数据，移动 Windows 或 Linux 整个便携目录会同时带走数据。
+数据目录按「启动参数 → PICTIDE_DATA_DIR → 旧 PICTIDE_WEB_DATA_DIR → Windows 记住的位置 → 默认 data」选择。源码版默认使用项目内 `data/`。Windows 和 Linux 发行包默认使用程序旁的 `data/`；macOS 应用默认使用包外的 `~/Library/Application Support/Pictide/`。替换 macOS 应用保留个人数据，移动 Windows 或 Linux 整个便携目录会同时带走包内数据；Windows 外部数据目录保持在所选位置。
+
+Windows 可交互入口在应用初始化和下载前确认数据位置，并在程序旁（源码启动时为项目根目录）的 `pictide.local.json` 记住选择。该启动文件只保存目录指针，运行内容仍统一放在所选目录。程序内部路径相对保存，外部路径绝对保存。`--setup` 可重新选择；更换目录保留原数据，不自动迁移。显式参数和环境变量继续优先。源码启动会先准备 Python 环境，再进入应用引导。
 
 自定义目录按系统查阅：[Windows](../guides/setup/windows.zh-CN.md#端口与数据目录) · [Linux](../guides/setup/linux.zh-CN.md#端口与数据目录) · [macOS](../guides/setup/macos.zh-CN.md#端口与数据目录)。相对路径按运行命令时所在目录解析。
 

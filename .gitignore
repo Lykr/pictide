@@ -4,6 +4,8 @@ data/
 /releases/
 .runtime/
 .worktrees/
+/pictide.local.json
+/pictide.local.json.part
 /TODOs.md
 
 # Python environments, packages and caches.

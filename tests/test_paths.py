@@ -1,3 +1,4 @@
+import json
 import logging
 from logging.handlers import RotatingFileHandler
 import os
@@ -7,10 +8,32 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from backend.paths import DataPaths, ROOT, configure_runtime
+from backend.paths import DataPaths, ROOT, configure_runtime, remember_data_directory, saved_data_directory
 
 
 class DataPathsTests(unittest.TestCase):
+    def test_remembered_location_is_portable_and_explicit_overrides_win(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ):
+            program = Path(directory) / 'program'
+            program.mkdir()
+            settings = program / 'pictide.local.json'
+            os.environ.pop('PICTIDE_DATA_DIR', None)
+            os.environ.pop('PICTIDE_WEB_DATA_DIR', None)
+            with patch('backend.paths.launcher_settings_path', return_value=settings):
+                remember_data_directory(program / 'data')
+                self.assertEqual(json.loads(settings.read_text())['data_directory'], 'data')
+                self.assertEqual(DataPaths().root, program / 'data')
+                external = Path(directory) / 'external'
+                remember_data_directory(external)
+                self.assertEqual(saved_data_directory(), external)
+                os.environ['PICTIDE_WEB_DATA_DIR'] = str(program / 'legacy')
+                self.assertEqual(DataPaths().root, program / 'legacy')
+                os.environ['PICTIDE_DATA_DIR'] = str(program / 'environment')
+                self.assertEqual(DataPaths().root, program / 'environment')
+                self.assertEqual(DataPaths(program / 'explicit').root, program / 'explicit')
+                self.assertFalse(external.exists())
+                self.assertFalse((program / 'data').exists())
+
     def test_default_and_override_precedence(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("PICTIDE_DATA_DIR", None)

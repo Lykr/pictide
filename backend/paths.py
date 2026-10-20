@@ -1,6 +1,7 @@
 """Keep application data, runtime files and caches under one chosen directory."""
 from dataclasses import dataclass
 import logging
+import json
 from logging.handlers import RotatingFileHandler
 import os
 from pathlib import Path
@@ -9,6 +10,38 @@ import tempfile
 
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def launcher_settings_path():
+    if sys.platform != 'win32':
+        return None
+    directory = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else ROOT
+    return directory / 'pictide.local.json'
+
+
+def saved_data_directory():
+    settings = launcher_settings_path()
+    if settings is None or not settings.exists():
+        return None
+    document = json.loads(settings.read_text(encoding='utf-8'))
+    selected = document.get('data_directory') if isinstance(document, dict) else None
+    if not isinstance(selected, str) or not selected.strip():
+        raise ValueError(f'Invalid data directory in {settings}')
+    return (settings.parent / Path(selected).expanduser()).resolve()
+
+
+def remember_data_directory(directory):
+    settings = launcher_settings_path()
+    if settings is None:
+        raise RuntimeError('Remembered data locations are available on Windows')
+    selected = Path(directory).resolve()
+    try:
+        selected = selected.relative_to(settings.parent)
+    except ValueError:
+        pass
+    temporary = settings.with_suffix('.json.part')
+    temporary.write_text(json.dumps({'data_directory': str(selected)}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    temporary.replace(settings)
 
 
 @dataclass(frozen=True, init=False)
@@ -25,7 +58,8 @@ class DataPaths:
                 default = executable.parent / 'data'
             else:
                 default = executable.parents[2]
-        selected = data_dir if data_dir is not None else os.environ.get("PICTIDE_DATA_DIR") or os.environ.get("PICTIDE_WEB_DATA_DIR") or default
+        selected = data_dir if data_dir is not None else (os.environ.get("PICTIDE_DATA_DIR") or
+                   os.environ.get("PICTIDE_WEB_DATA_DIR") or saved_data_directory() or default)
         object.__setattr__(self, "root", Path(selected).expanduser().resolve())
 
     @property
