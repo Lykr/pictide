@@ -1,6 +1,6 @@
 # Linux Installation and Startup
 
-[简体中文](linux.zh-CN.md)
+[简体中文](../../zh-CN/guides/setup/linux.md)
 
 [Installation and Image API setup](../getting-started.md) · [User documentation](../../README.md)
 
@@ -36,6 +36,6 @@ To use another port or data location:
 
 ## Prepare from source
 
-Follow [Linux source preparation (Chinese)](../../dev/setup/linux.md#从源码准备) to install prerequisites and build the frontend, then run `bash start.sh` in the project directory. LAN, port, and data directory options are the same as above.
+Follow [Linux source preparation (Chinese)](../../zh-CN/dev/setup/linux.md#从源码准备) to install prerequisites and build the frontend, then run `bash start.sh` in the project directory. LAN, port, and data directory options are the same as above.
 
-The launcher requires Python 3.10+. On Debian / Ubuntu, install the matching `python3-venv` package if venv is missing. See the [development guide (Chinese)](../../dev/setup/linux.md#构建便携包) to build a release package.
+The launcher requires Python 3.10+. On Debian / Ubuntu, install the matching `python3-venv` package if venv is missing. See the [development guide (Chinese)](../../zh-CN/dev/setup/linux.md#构建便携包) to build a release package.

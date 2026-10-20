@@ -1,6 +1,6 @@
 # macOS Installation and Startup
 
-[简体中文](macos.zh-CN.md)
+[简体中文](../../zh-CN/guides/setup/macos.md)
 
 [Installation and Image API setup](../getting-started.md) · [User documentation](../../README.md)
 
@@ -40,6 +40,6 @@ For terminal operation, add `--cli`; press Ctrl+C to stop.
 
 ## Prepare from source
 
-Follow [macOS source preparation (Chinese)](../../dev/setup/macos.md#从源码准备) to install prerequisites and build the frontend, then run `./start.command` in the project directory. Source startup keeps its terminal and uses the project's `data/`; use `--lan`, `--port`, or `--data-dir` as needed.
+Follow [macOS source preparation (Chinese)](../../zh-CN/dev/setup/macos.md#从源码准备) to install prerequisites and build the frontend, then run `./start.command` in the project directory. Source startup keeps its terminal and uses the project's `data/`; use `--lan`, `--port`, or `--data-dir` as needed.
 
-Source startup requires Python 3.10+. If the source launch scripts lack executable permissions, run `chmod +x start.sh start.command` in the project directory. See the [development guide (Chinese)](../../dev/setup/macos.md#构建便携包) to build a release package.
+Source startup requires Python 3.10+. If the source launch scripts lack executable permissions, run `chmod +x start.sh start.command` in the project directory. See the [development guide (Chinese)](../../zh-CN/dev/setup/macos.md#构建便携包) to build a release package.

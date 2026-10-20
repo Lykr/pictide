@@ -1,6 +1,6 @@
 # General and History Settings
 
-[简体中文](settings.zh-CN.md)
+[简体中文](../../../zh-CN/dev/reference/api/settings.md)
 
 [API index](../../api.md) · [Common conventions and errors](../../api.md#general-conventions)
 

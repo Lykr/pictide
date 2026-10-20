@@ -1,6 +1,6 @@
 # Settings and Cleanup
 
-[简体中文](settings.zh-CN.md)
+[简体中文](../zh-CN/guides/settings.md)
 
 [Documentation](../README.md)
 

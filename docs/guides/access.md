@@ -1,6 +1,6 @@
 # LAN Access and Home Screen App
 
-[简体中文](access.zh-CN.md)
+[简体中文](../zh-CN/guides/access.md)
 
 [User documentation](../README.md)
 

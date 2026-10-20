@@ -1,6 +1,6 @@
 # Corpus Processing
 
-[简体中文](corpus.zh-CN.md)
+[简体中文](../zh-CN/dev/corpus.md)
 
 [Developer documentation](README.md) · [Source and dependencies](../../corpus/README.md) · [Runtime storage](reference/storage.md#candidate-data)
 
@@ -23,7 +23,7 @@ Produce a ready-to-use Pictide statistical library from raw Parquet metadata wit
 | `dev/runtime/importer/` | Local offline processing environment |
 | `data/libraries/` | Read-only libraries selected by the application |
 
-Run commands from the project root using the Python interpreter of the offline processing environment. Prepare that environment using the instructions for [Windows (Chinese)](setup/windows.md#从源码准备), [Linux (Chinese)](setup/linux.md#从源码准备), or [macOS (Chinese)](setup/macos.md#从源码准备), then install dependencies:
+Run commands from the project root using the Python interpreter of the offline processing environment. Prepare that environment using the instructions for [Windows (Chinese)](../zh-CN/dev/setup/windows.md#从源码准备), [Linux (Chinese)](../zh-CN/dev/setup/linux.md#从源码准备), or [macOS (Chinese)](../zh-CN/dev/setup/macos.md#从源码准备), then install dependencies:
 
 ```shell
 python -m pip install -r corpus/requirements.txt
@@ -33,9 +33,9 @@ The importer processes existing local files. Downloading and environment install
 
 ## Portable build resources
 
-Local `scripts/build_portable.py` builds use the `filtered` edition from `corpus/profiles/compact.json` by default. They can prepare it from raw data, or consume an exported library with `--prebuilt-library DIR`. Both use a separate builder environment and stay independent of the development application's `data/`. See the native build instructions for [Windows (Chinese)](setup/windows.md#构建便携包), [Linux (Chinese)](setup/linux.md#构建便携包), or [macOS (Chinese)](setup/macos.md#构建便携包).
+Local `scripts/build_portable.py` builds use the `filtered` edition from `corpus/profiles/compact.json` by default. They can prepare it from raw data, or consume an exported library with `--prebuilt-library DIR`. Both use a separate builder environment and stay independent of the development application's `data/`. See the native build instructions for [Windows (Chinese)](../zh-CN/dev/setup/windows.md#构建便携包), [Linux (Chinese)](../zh-CN/dev/setup/linux.md#构建便携包), or [macOS (Chinese)](../zh-CN/dev/setup/macos.md#构建便携包).
 
-Raw shards and `download.sqlite3` remain in `dev/datasets/danbooru-2026/`. Missing shards are downloaded at the pinned source revision; statistics and completed libraries go to `dev/cache/portable/`. Clearing the build cache preserves raw data for local recomputation. A verified library cache allows resource preparation without network requests. Change `--dataset-dir`, `--cache-dir`, or `--profile` to use other locations or processing settings. Corpus prepares vocabulary only; MiniLM is prepared [before application startup](../guides/getting-started.md#recommendation-dependency-preparation). The [build cache record (Chinese)](issues/portable-build-cache.md) defines fingerprints and file verification. Manual processing below remains available for other library specifications.
+Raw shards and `download.sqlite3` remain in `dev/datasets/danbooru-2026/`. Missing shards are downloaded at the pinned source revision; statistics and completed libraries go to `dev/cache/portable/`. Clearing the build cache preserves raw data for local recomputation. A verified library cache allows resource preparation without network requests. Change `--dataset-dir`, `--cache-dir`, or `--profile` to use other locations or processing settings. Corpus prepares vocabulary only; MiniLM is prepared [before application startup](../guides/getting-started.md#recommendation-dependency-preparation). The [build cache record (Chinese)](../zh-CN/dev/issues/portable-build-cache.md) defines fingerprints and file verification. Manual processing below remains available for other library specifications.
 
 ### Prebuilt vocabulary
 
@@ -51,7 +51,7 @@ The report records the source revision and checksums, normalized processing para
 
 Upload both files using the `gh release create` command printed by the preparation script. The resource tag is `corpus-<fingerprint>`; it is a prerelease excluded from the latest application release and does not match the application's `v*` workflow trigger. Authenticate GitHub CLI before uploading. Keep published resource assets unchanged; a changed vocabulary gets a new resource release. Commit and push the resulting resource lock after the upload succeeds.
 
-GitHub Actions downloads the exact locked files and passes their directory through `--prebuilt-library`. A missing, outdated, or damaged resource stops the build; CI never falls back to processing the raw dataset. The build carries MiniLM's fixed runtime catalog, without downloading or bundling its model files. Release builders install `backend/requirements-release.txt`; PyArrow and SciPy are needed only on machines preparing raw vocabulary data. For tag/version requirements and release commands, see [GitHub Actions releases (Chinese)](development.md#github-actions-发版).
+GitHub Actions downloads the exact locked files and passes their directory through `--prebuilt-library`. A missing, outdated, or damaged resource stops the build; CI never falls back to processing the raw dataset. The build carries MiniLM's fixed runtime catalog, without downloading or bundling its model files. Release builders install `backend/requirements-release.txt`; PyArrow and SciPy are needed only on machines preparing raw vocabulary data. For tag/version requirements and release commands, see [GitHub Actions releases (Chinese)](../zh-CN/dev/development.md#github-actions-发版).
 
 ### Export both vocabulary editions
 
@@ -233,12 +233,12 @@ Importer smoke tests use temporary Parquet and SQLite files for deduplication, w
 python -m unittest discover -s tests/corpus -p test_importer.py -v
 ```
 
-See [candidate smoke tests (Chinese)](../../tests/candidate/README.md) for application-side checks.
+See [candidate smoke tests (Chinese)](../zh-CN/tests/candidate/README.md) for application-side checks.
 
 | Record | Scope |
 | --- | --- |
-| [PMI processing (Chinese)](issues/candidate-pmi.md) | Original frequency, rating, PMI, and pair-floor decisions |
-| [Reduced library (Chinese)](issues/candidate-pair1000.md) | Historical 1,000-pair floor, sizes, and generation verification |
-| [Library floor (Chinese)](issues/library-cooccurrence-floor.md) | Application behavior based on the selected library's floor |
+| [PMI processing (Chinese)](../zh-CN/dev/issues/candidate-pmi.md) | Original frequency, rating, PMI, and pair-floor decisions |
+| [Reduced library (Chinese)](../zh-CN/dev/issues/candidate-pair1000.md) | Historical 1,000-pair floor, sizes, and generation verification |
+| [Library floor (Chinese)](../zh-CN/dev/issues/library-cooccurrence-floor.md) | Application behavior based on the selected library's floor |
 
 Historical one-off pruning scripts and reports remain under `dev/verification/candidate-pair1000-20261019/`. Their paths and structures describe that run; use the importer above for current repeatable processing.

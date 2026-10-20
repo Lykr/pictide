@@ -1,6 +1,6 @@
 # Generation Backends and Workflows
 
-[简体中文](backends.zh-CN.md)
+[简体中文](../../../zh-CN/dev/reference/api/backends.md)
 
 [API index](../../api.md) · [Common conventions and errors](../../api.md#general-conventions)
 

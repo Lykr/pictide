@@ -1,6 +1,6 @@
 # Installation and Image API Setup
 
-[简体中文](getting-started.zh-CN.md)
+[简体中文](../zh-CN/guides/getting-started.md)
 
 [User documentation](../README.md) · Next: [Roam](roam.md)
 

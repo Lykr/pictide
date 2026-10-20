@@ -1,6 +1,6 @@
 # Prompts and Presets
 
-[简体中文](prompts.zh-CN.md)
+[简体中文](../zh-CN/guides/prompts.md)
 
 [Documentation](../README.md)
 

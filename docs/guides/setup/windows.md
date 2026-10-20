@@ -1,6 +1,6 @@
 # Windows Installation and Startup
 
-[简体中文](windows.zh-CN.md)
+[简体中文](../../zh-CN/guides/setup/windows.md)
 
 [Installation and Image API setup](../getting-started.md) · [User documentation](../../README.md)
 
@@ -63,6 +63,6 @@ To use another port or store data on another drive, run from the portable packag
 
 ## Prepare from source
 
-Follow [Windows source preparation (Chinese)](../../dev/setup/windows.md#从源码准备) to install prerequisites and build the frontend, then run `.\start.cmd` in the project directory.
+Follow [Windows source preparation (Chinese)](../../zh-CN/dev/setup/windows.md#从源码准备) to install prerequisites and build the frontend, then run `.\start.cmd` in the project directory.
 
-The source launcher uses `-Lan`, `-Port`, and `-DataDir`, for example `.\start.cmd -Lan -Port 8191 -DataDir 'E:\PictideData'`. Add `-Cli` to keep the terminal open. See the [development guide (Chinese)](../../dev/setup/windows.md#构建便携包) to build a release package.
+The source launcher uses `-Lan`, `-Port`, and `-DataDir`, for example `.\start.cmd -Lan -Port 8191 -DataDir 'E:\PictideData'`. Add `-Cli` to keep the terminal open. See the [development guide (Chinese)](../../zh-CN/dev/setup/windows.md#构建便携包) to build a release package.

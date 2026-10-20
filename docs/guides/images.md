@@ -1,6 +1,6 @@
 # Image browsing
 
-[简体中文](images.zh-CN.md)
+[简体中文](../zh-CN/guides/images.md)
 
 [Documentation](../README.md) · [Generate](generate.md) / [Liked](liked.md)
 

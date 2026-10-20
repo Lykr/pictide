@@ -1,6 +1,6 @@
 # Documentation
 
-[简体中文](README.zh-CN.md)
+[简体中文](zh-CN/index.md)
 
 Choose what you want to do, then follow the guide to get started.
 

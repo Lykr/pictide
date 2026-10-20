@@ -1,12 +1,14 @@
-# 第三方声明
+# Third-party notices
+
+[简体中文](https://github.com/Lykr/pictide/blob/main/docs/zh-CN/web/src/THIRD_PARTY_NOTICES.md)
 
 ## shadcn/ui
 
-`web/src/components/ui/` 中的基础组件采用并调整了 [shadcn/ui](https://github.com/shadcn-ui/ui) 的组件源码。项目按 Pictide 的紧凑布局、共享主题和现有页面行为进行了适配。
+The base components in `web/src/components/ui/` use adapted [shadcn/ui](https://github.com/shadcn-ui/ui) source code, adjusted for Pictide's compact layout, shared theme and existing page behavior.
 
-交互控件使用官方 `radix-luma` registry 的 Select、Checkbox、Dialog、AlertDialog、Collapsible、Tabs、ToggleGroup、Command、Popover、InputGroup 和 Tooltip 源码。源码保持上游样式配方，转换本地导入别名、替换官方图标占位符为预设 Lucide 图标，并移除本地 Vite 单页应用无需的 RSC 指令。Tooltip 额外接受 portal 容器参数，使帮助提示保持在当前弹窗内。`control-bridge.tsx` 仅连接现有控制器的隐藏表单状态与这些组件，不实现新的菜单或弹窗交互。Command 使用 cmdk（MIT），由依赖包自带许可证分发。
+Interactive controls use Select, Checkbox, Dialog, AlertDialog, Collapsible, Tabs, ToggleGroup, Command, Popover, InputGroup and Tooltip source from the official `radix-luma` registry. Upstream style recipes are retained; local import aliases and the preset Lucide icons replace upstream placeholders, and RSC directives unnecessary for the local Vite application are removed. Tooltip accepts a portal container so help stays inside the active dialog. `control-bridge.tsx` connects existing controllers' hidden form state to these components. Command uses cmdk (MIT), whose license ships with the dependency.
 
-上游许可证：[MIT License](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md)。下列声明随组件源码与构建分发保留：
+Upstream license: [MIT License](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md). The following notice is retained with the component source and distributed builds:
 
 ```text
 MIT License
@@ -32,13 +34,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-通知交互复用既有 `radix-ui` 依赖中的官方 [Toast Primitive](https://www.radix-ui.com/primitives/docs/components/toast)，使用其自动关闭、暂停计时、键盘和滑动行为；Pictide 维护共享状态、挂载位置与主题样式。Radix Primitives 采用 [MIT License](https://github.com/radix-ui/primitives/blob/main/LICENSE)。
+Notifications use the official [Toast Primitive](https://www.radix-ui.com/primitives/docs/components/toast) from the existing `radix-ui` dependency for automatic dismissal, timer pausing, keyboard and swipe behavior. Pictide maintains shared state, mounting and theme styles. Radix Primitives uses the [MIT License](https://github.com/radix-ui/primitives/blob/main/LICENSE).
 
-其他前端依赖及精确版本由 `web/package.json`、`web/pnpm-lock.yaml` 记录；依赖包自带的版权与许可证声明保留在安装目录中。新增复制源码的第三方组件时在此补充来源和声明。
+Other frontend dependencies and exact versions are recorded in `web/package.json` and `web/pnpm-lock.yaml`. Their copyright and license notices remain in the installed packages. Add the source and notices here when copying another third-party component.
 
 ## Inter Variable
 
-通过 @fontsource-variable/inter 本地分发，遵循 SIL Open Font License 1.1。
+Distributed locally through @fontsource-variable/inter under the SIL Open Font License 1.1.
 
 ```text
 Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter) Inter-Italic[opsz,wght].ttf: Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
@@ -139,7 +141,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## SortableJS
 
-固定词与抽取规则的拖拽排序使用 [SortableJS](https://github.com/SortableJS/Sortable)，依赖版本由锁文件记录。
+Drag-and-drop ordering for fixed terms and extraction rules uses [SortableJS](https://github.com/SortableJS/Sortable), with its version recorded in the lockfile.
 
 ```text
 MIT License

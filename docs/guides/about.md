@@ -1,6 +1,6 @@
 # About Pictide
 
-[简体中文](about.zh-CN.md)
+[简体中文](../zh-CN/guides/about.md)
 
 [User documentation](../README.md#user-documentation) · [Getting started](getting-started.md)
 

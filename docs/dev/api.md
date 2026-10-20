@@ -1,6 +1,6 @@
 # HTTP API Reference
 
-[简体中文](api.zh-CN.md)
+[简体中文](../zh-CN/dev/api.md)
 
 The entry point for Pictide's currently implemented HTTP API. Read the general conventions, then follow the topic for your operation. Fields and return values are maintained only on their topic pages.
 

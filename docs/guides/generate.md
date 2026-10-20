@@ -1,6 +1,6 @@
 # Generate
 
-[简体中文](generate.zh-CN.md)
+[简体中文](../zh-CN/guides/generate.md)
 
 [Documentation](../README.md) · [Prompts and presets](prompts.md) / [Liked](liked.md)
 

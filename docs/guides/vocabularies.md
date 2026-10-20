@@ -1,6 +1,6 @@
 # Vocabulary editions
 
-[简体中文](vocabularies.zh-CN.md)
+[简体中文](../zh-CN/guides/vocabularies.md)
 
 [Documentation](../README.md) · [Prompts and presets](prompts.md)
 

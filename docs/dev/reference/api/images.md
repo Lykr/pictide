@@ -1,6 +1,6 @@
 # Images, Feedback, and Preference Scores
 
-[简体中文](images.zh-CN.md)
+[简体中文](../../../zh-CN/dev/reference/api/images.md)
 
 [API index](../../api.md) · [Common conventions and errors](../../api.md#general-conventions)
 
@@ -54,4 +54,4 @@ A single-image score returns `{status,score,love_score,score_min,score_max,state
 - `love_score`: a relative 0–100 value converted using the historical score range: `100 × (score-score_min)/(score_max-score_min)`. It is null when the range is unavailable or its endpoints are equal, and does not represent the probability of a like.
 - `state_revision,feature_version`: the learning-state and feature versions of this cached score. When scoring is unavailable, the relevant fields are null and `reason` explains why.
 
-Scores are persistently cached in image metadata. Normal reads only fill missing cache entries; they do not rescore historical images after every learning update. An explicit refresh recalculates scores for the selected scope and updates `refreshed_at`; normal reads do not update that timestamp. Resetting preferences clears the score cache. Existing cached scores may still be shown while recommendations are temporarily unavailable. A failed refresh preserves the old cache; check `scoring_available,error`. See [Score caching (Chinese)](../../issues/image-score-cache.md).
+Scores are persistently cached in image metadata. Normal reads only fill missing cache entries; they do not rescore historical images after every learning update. An explicit refresh recalculates scores for the selected scope and updates `refreshed_at`; normal reads do not update that timestamp. Resetting preferences clears the score cache. Existing cached scores may still be shown while recommendations are temporarily unavailable. A failed refresh preserves the old cache; check `scoring_available,error`. See [Score caching (Chinese)](../../../zh-CN/dev/issues/image-score-cache.md).

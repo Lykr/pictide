@@ -1,6 +1,6 @@
 # Roam
 
-[简体中文](roam.zh-CN.md)
+[简体中文](../zh-CN/guides/roam.md)
 
 [Documentation](../README.md)
 

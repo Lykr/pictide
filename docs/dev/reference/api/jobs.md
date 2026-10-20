@@ -1,6 +1,6 @@
 # Generation Jobs
 
-[简体中文](jobs.zh-CN.md)
+[简体中文](../../../zh-CN/dev/reference/api/jobs.md)
 
 [API index](../../api.md) · [Common conventions and errors](../../api.md#general-conventions)
 

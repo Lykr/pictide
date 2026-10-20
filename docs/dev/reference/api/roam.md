@@ -1,6 +1,6 @@
 # Roam
 
-[简体中文](roam.zh-CN.md)
+[简体中文](../../../zh-CN/dev/reference/api/roam.md)
 
 [API index](../../api.md) · [Common conventions and errors](../../api.md#general-conventions)
 
@@ -42,4 +42,4 @@ Changing the scope, mode, backend, preset, or anchors preserves the current imag
 
 The Ensure response includes `enabled,prefetch_count,target,waiting_for_liked_tags,preference_learning,ready,pending,roam_pending,paused`, with `job,error,recommendation_error,backend_id,preset_id` included as applicable. `ready` is the number of viewable images after the anchor, `pending` is the number of unfinished jobs across the application, and `roam_pending` is the number of unfinished Roam jobs that have not been invalidated.
 
-One call creates at most one Roam job and does not wait for image generation to finish. `demand:true` can explicitly request the next image even when prefetching is disabled. If the liked-scope pool is empty, the response returns `waiting_for_liked_tags:true` without falling back to the full library. Autoplay timing is handled in the browser; Ensure does not start a timed feeding loop. See [Roam prefetching (Chinese)](../../issues/roam-pipeline.md) and [Roam modes (Chinese)](../../issues/roam-modes.md).
+One call creates at most one Roam job and does not wait for image generation to finish. `demand:true` can explicitly request the next image even when prefetching is disabled. If the liked-scope pool is empty, the response returns `waiting_for_liked_tags:true` without falling back to the full library. Autoplay timing is handled in the browser; Ensure does not start a timed feeding loop. See [Roam prefetching (Chinese)](../../../zh-CN/dev/issues/roam-pipeline.md) and [Roam modes (Chinese)](../../../zh-CN/dev/issues/roam-modes.md).

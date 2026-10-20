@@ -1,6 +1,6 @@
 # Bootstrap and Live Events
 
-[简体中文](events.zh-CN.md)
+[简体中文](../../../zh-CN/dev/reference/api/events.md)
 
 [API index](../../api.md) · [Common conventions and errors](../../api.md#general-conventions)
 

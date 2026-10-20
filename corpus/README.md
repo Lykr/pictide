@@ -1,6 +1,6 @@
 # Corpus tools
 
-[简体中文](README.zh-CN.md)
+[简体中文](../docs/zh-CN/corpus/README.md)
 
 Offline metadata downloads, configurable statistics processing, and dependency manifests live here. From existing raw Parquet, run one command to build a Pictide runtime library:
 

@@ -1,6 +1,6 @@
 # Data Backup and Recovery
 
-[简体中文](backup.zh-CN.md)
+[简体中文](../zh-CN/guides/backup.md)
 
 [User documentation](../README.md)
 

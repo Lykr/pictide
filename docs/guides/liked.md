@@ -1,6 +1,6 @@
 # Liked
 
-[简体中文](liked.zh-CN.md)
+[简体中文](../zh-CN/guides/liked.md)
 
 [Documentation](../README.md) · [Roam](roam.md) / [Generate](generate.md)
 

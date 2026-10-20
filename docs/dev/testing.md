@@ -1,6 +1,6 @@
 # Focused smoke checks
 
-[简体中文](testing.zh-CN.md)
+[简体中文](../zh-CN/dev/testing.md)
 
 Use a small group for the behavior you changed. The shared entry point works from any directory and does not discover or run the full suite:
 
@@ -26,7 +26,7 @@ Use Python 3.12 to match release CI.
 
 ## Browser preparation
 
-After preparing the [development environment](development.md#首次准备检出目录), build an isolated frontend and install Chromium:
+After preparing the [development environment](../zh-CN/dev/development.md#首次准备检出目录), build an isolated frontend and install Chromium:
 
 ```shell
 pnpm --dir web run typecheck

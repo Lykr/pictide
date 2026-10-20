@@ -1,0 +1,30 @@
+# 数据备份与恢复
+
+[English](../../guides/backup.md)
+
+[用户文档](../index.md)
+
+换电脑或升级前，备份数据目录，就能保留图片、喜欢记录、偏好和设置。
+
+## 数据位置
+
+在「设置 → 通用」查看当前数据目录。Windows 和 Linux 发行包默认使用程序旁的 `data/`，macOS 应用使用 `~/Library/Application Support/Pictide/`；源码版使用项目内 `data/`。
+
+想把数据放到其他磁盘，按系统设置：[Windows](setup/windows.md#端口与数据目录) · [Linux](setup/linux.md#端口与数据目录) · [macOS](setup/macos.md#端口与数据目录)。
+
+## 备份与恢复
+
+1. 关闭 Pictide，等待程序退出。
+2. 复制整个数据目录到备份位置。Windows 和 Linux 便携版也可以直接备份整个程序目录；macOS 需单独备份数据目录。
+3. 恢复时先关闭程序、另存当前数据，再用备份替换数据目录。
+4. 重新启动，检查图片、喜欢记录与生图 API 设置。
+
+备份还包含提示词预设、工作流、词库和推荐依赖，以及 API 密钥，请妥善保管。
+
+跨操作系统搬家时，先准备对应系统的程序，再从同一份备份复制 `db/`、`images/`、`workflows/`、`history-cleanup.json`、`libraries/` 和 `models/`。原系统的运行环境不用复制。
+
+## 单独恢复工作流
+
+更新或删除前的工作流保存在数据目录的 `workflows/.backups/`。把所需版本复制回对应工作流文件，再在「设置 → 生图 API」重新选择并保存。
+
+清理图片前可先阅读[保留规则](settings.md#历史图片清理)；开发者目录说明见[数据目录](../dev/data-layout.md)。
