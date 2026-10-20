@@ -8,7 +8,7 @@
 
 The steps below apply to packages built from the current source. Existing releases keep their original launchers.
 
-Extract the Windows portable package and double-click `Pictide.exe`. On first launch, a short terminal guide lets you connect an existing image API, prepare local ComfyUI, or configure it later. Local preparation recommends an environment for your detected graphics card, with other environments available through manual selection. It offers ComfyUI with **Anima Turbo v1.1**, or ComfyUI alone. Before downloading, review the environment and model download sizes, required disk space, location, and model license. Downloads resume after an interruption.
+Extract the Windows portable package and double-click `Pictide.exe`. On first launch, a short terminal guide lets you connect an existing image API, prepare local ComfyUI, or configure it later. Local preparation shows your detected graphics card and recommends an environment, with other environments available through manual selection. It offers ComfyUI with **Anima Turbo v1.1**, or ComfyUI alone. Before downloading, review the estimated download size, required disk space, location, and model license. Downloads resume after an interruption.
 
 With the recommended model installed, its default workflow is connected automatically. Once the browser opens, choose **Show me around**, then **Start roaming** to generate your first image. Generate is also ready to use. If you chose an existing service, later setup, or ComfyUI alone, follow the [image service connection steps](../getting-started.md) as needed.
 

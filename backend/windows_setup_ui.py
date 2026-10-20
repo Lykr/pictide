@@ -17,7 +17,7 @@ _TEXT = {
         'keys': 'Up / Down: select   Enter: continue   Esc: back',
         'number': 'Choose a number (Enter / 0: back): ',
         'gpu': 'Prepare local image generation',
-        'detected': 'Detected: {name}. Pictide can prepare the matching ComfyUI environment.',
+        'detected': 'You are using a {name} graphics card. Pictide can prepare the matching ComfyUI environment for you.',
         'use_detected': 'Use the recommended environment ({name})',
         'choose_other': 'Choose another environment',
         'gpu_manual': 'Choose a local generation environment',
@@ -29,9 +29,8 @@ _TEXT = {
         'profile_amd': 'AMD', 'profile_intel': 'Intel', 'profile_cpu': 'CPU (slow)',
         'model': 'Choose an image generation model', 'only': 'Skip model download — install ComfyUI only',
         'recommended': 'Recommended', 'review': 'Ready to download',
-        'download': 'Total download', 'environment_download': 'Environment download',
+        'download': 'Estimated download',
         'model_download': 'Model download',
-        'download_help': 'Download sizes are not VRAM requirements. Installation needs more disk space after extraction.',
         'data': 'Data directory', 'environment': 'ComfyUI location',
         'model_location': 'Model location', 'license': 'Model license',
         'license_note': 'Model use: non-commercial. Generated images may be used commercially.',
@@ -53,7 +52,7 @@ _TEXT = {
         'keys': '↑ ↓ 选择 · Enter 继续 · Esc 返回',
         'number': '输入选项编号（Enter / 0 返回）：',
         'gpu': '准备本地生图环境',
-        'detected': '检测到 {name}，可以为你准备对应的 ComfyUI 运行环境。',
+        'detected': '检测到你正在使用 {name} 显卡，可以为你准备对应的 ComfyUI 运行环境。',
         'use_detected': '使用推荐环境（{name}）', 'choose_other': '选择其他环境',
         'gpu_manual': '选择本地生图环境',
         'gpu_help': '按显卡品牌选择；没有可用显卡时，可以使用 CPU。',
@@ -64,9 +63,8 @@ _TEXT = {
         'profile_amd': 'AMD', 'profile_intel': 'Intel', 'profile_cpu': 'CPU（速度较慢）',
         'model': '选择生图模型',
         'only': '暂不下载模型，仅安装 ComfyUI', 'recommended': '推荐',
-        'review': '准备下载', 'download': '预计下载合计',
-        'environment_download': '环境下载', 'model_download': '模型下载',
-        'download_help': '这里是下载体积，不是显存要求；解压安装后会占用更多磁盘空间。',
+        'review': '准备下载', 'download': '预计下载体积',
+        'model_download': '模型下载',
         'data': '数据目录',
         'environment': 'ComfyUI 位置', 'model_location': '模型位置', 'license': '模型许可',
         'license_note': '模型限非商业用途；生成图片可商用。',
@@ -102,8 +100,8 @@ def _profile_from_device_ids(device_ids):
         ('10DE', 'nvidia'), ('1002', 'amd'), ('8086', 'intel')) if vendor in vendors), None)
 
 
-def detect_gpu_profile() -> str | None:
-    """Read Windows display-adapter PCI IDs to suggest a user-adjustable profile."""
+def detect_gpu() -> dict | None:
+    """Read a Windows adapter's name and PCI vendor for an environment suggestion."""
     if os.name != 'nt':
         return None
     import ctypes
@@ -119,16 +117,21 @@ def detect_gpu_profile() -> str | None:
         enum.argtypes = [wintypes.LPCWSTR, wintypes.DWORD,
                          ctypes.POINTER(DisplayDevice), wintypes.DWORD]
         enum.restype = wintypes.BOOL
-        device_ids = []
+        devices = []
         index = 0
         while True:
             device = DisplayDevice()
             device.cb = ctypes.sizeof(device)
             if not enum(None, index, ctypes.byref(device), 0):
                 break
-            device_ids.append(device.DeviceID)
+            devices.append((device.DeviceID, device.DeviceString))
             index += 1
-        return _profile_from_device_ids(device_ids)
+        profile = _profile_from_device_ids([identifier for identifier, _ in devices])
+        if profile:
+            name = next(name for identifier, name in devices
+                        if _profile_from_device_ids([identifier]) == profile)
+            return {'profile': profile, 'name': name or profile.upper()}
+        return None
     except (AttributeError, OSError):
         return None
 
@@ -254,13 +257,14 @@ def _catalog_size(entry):
 def _choose_profile(console, profiles, detected):
     text = console.text
     if detected:
-        name = profiles[detected]['name']
+        profile = detected['profile']
+        name = profiles[profile]['name']
         choice = console.choose(text['gpu'], [text['use_detected'].format(name=name), text['choose_other']],
-                                [text['detected'].format(name=name)])
+                                [text['detected'].format(name=detected['name'])])
         if choice is None:
             return None
         if choice == 0:
-            return detected
+            return profile
     details = [text['gpu_help'], text['compatibility']]
     if not detected:
         details.insert(0, text['gpu_unknown'])
@@ -272,8 +276,8 @@ def _choose_profile(console, profiles, detected):
 
 def _run(console, profiles, recipes, install, data_directory):
     text = console.text
-    detected = detect_gpu_profile()
-    if detected not in profiles:
+    detected = detect_gpu()
+    if detected and detected['profile'] not in profiles:
         detected = None
     while True:
         mode = console.choose(text['title'], [text['external'], text['local'], text['later']],
@@ -299,13 +303,8 @@ def _run(console, profiles, recipes, install, data_directory):
         required_space = profile.get('required_space', _catalog_size(profile) * 4) + _catalog_size(recipe)
         directory = Path(data_directory)
         details = [text.get('profile_' + profile_id, profile['name']) + (' + ' + recipe['name'] if recipe else ''),
-                   f'{text["environment_download"]}: {_size(_catalog_size(profile))}']
-        if recipe:
-            details.append(f'{text["model_download"]}: {_size(_catalog_size(recipe))}')
-        details.extend([
                    f'{text["download"]}: {_size(size)}',
-                   text['download_help'], '',
-                   f'{text["environment"]}: {directory / "runtime" / "comfyui"}'])
+                   f'{text["environment"]}: {directory / "runtime" / "comfyui"}']
         if recipe:
             details.append(f'{text["model_location"]}: {directory / "models" / "generation"}')
         if recipe.get('license_name'):
