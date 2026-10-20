@@ -1,6 +1,8 @@
+import { useErrorNotice } from "./notifications";
+import { notifySuccess } from "../shared/notifications.mjs";
 import { t, tr, locale, messageKey } from "../i18n/index.mjs";
 import { useEffect, useRef, useState } from "react";
-import { Check, Download, Eye, LoaderCircle, RefreshCw, RotateCcw } from "lucide-react";
+import { Check, Download, Eye, LoaderCircle, RotateCcw } from "lucide-react";
 import { HelpTip, IconButton } from "./actions";
 import { PageControls } from "./page-controls";
 import { Badge } from "./ui/badge";
@@ -44,7 +46,9 @@ export function PreferenceActions() {
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const errorRetry = useRef<() => void>(() => {});
+  useErrorNotice(t(messageKey(error)), { id: "preferences", retry: () => errorRetry.current() });
+  useErrorNotice(result && !result.available ? result.error || t("推荐依赖暂不可用，仍可重置偏好。") : "", { id: "preferences-unavailable", visible: viewOpen });
   const generation = useRef(0);
   const readAbort = useRef<AbortController | null>(null);
   // Keep the same id after an uncertain response, including closing/reopening.
@@ -68,7 +72,7 @@ export function PreferenceActions() {
       readAbort.current?.abort();
       setLoading(false); setViewOpen(false); setResetOpen(false);
       setExporting(false); setExported(false);
-      setError(""); setMessage("");
+      setError("");
     };
     window.addEventListener("hashchange", navigate);
     return () => {
@@ -80,6 +84,7 @@ export function PreferenceActions() {
   }, []);
 
   const load = async (page: number, reset = false) => {
+    errorRetry.current = () => void load(page, reset);
     readAbort.current?.abort();
     const abort = new AbortController();
     readAbort.current = abort;
@@ -105,11 +110,12 @@ export function PreferenceActions() {
   }, [exported]);
 
   const exportPreferences = async () => {
+    errorRetry.current = () => void exportPreferences();
     readAbort.current?.abort();
     const abort = new AbortController();
     readAbort.current = abort;
     const current = ++generation.current;
-    setExporting(true); setExported(false); setError(""); setMessage("");
+    setExporting(true); setExported(false); setError("");
     try {
       const data = await request<PreferencesResult>("/api/recommendation/preferences?all=1", { signal: abort.signal });
       if (!mounted.current || current !== generation.current) return;
@@ -128,6 +134,7 @@ export function PreferenceActions() {
       document.body.appendChild(link); link.click(); link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setExported(true);
+      notifySuccess(t("用户偏好已导出"), { id: "preferences-export" });
     } catch (cause) {
       if (!mounted.current || current !== generation.current || abort.signal.aborted) return;
       setError(cause instanceof Error ? cause.message : t("导出用户偏好失败，请重试。"));
@@ -137,16 +144,16 @@ export function PreferenceActions() {
   };
 
   const showPreferences = () => {
-    setMessage(""); setResult(null); setViewOpen(true);
+    setResult(null); setViewOpen(true);
     void load(1);
   };
   const askReset = () => {
-    setMessage("");
     // A previous uncertain POST must be retried with its original revision.
     void load(1, true);
   };
 
   const resetPreferences = async () => {
+    errorRetry.current = () => void resetPreferences();
     if (posting.current || !result) return;
     const payload = pendingReset.current ?? {
       request_id: crypto.randomUUID(), expected_reset_revision: result.reset_revision,
@@ -161,7 +168,7 @@ export function PreferenceActions() {
       pendingReset.current = null;
       if (!mounted.current || current !== generation.current) return;
       setResetOpen(false);
-      setMessage(t("用户偏好已重置"));
+      notifySuccess(t("用户偏好已重置"), { id: "preferences-reset" });
       setResult(null);
     } catch (cause) {
       const conflict = cause instanceof PreferenceRequestError && cause.status === 409;
@@ -174,7 +181,10 @@ export function PreferenceActions() {
         setResetOpen(false);
         setError(t("偏好已在其他操作中重置，请重新确认。"));
         void load(1).then(() => {
-          if (mounted.current && current + 1 === generation.current) setError(t("偏好已在其他操作中重置，请重新确认。"));
+          if (mounted.current && current + 1 === generation.current) {
+            errorRetry.current = askReset;
+            setError(t("偏好已在其他操作中重置，请重新确认。"));
+          }
         });
       } else {
         setError(cause instanceof Error ? cause.message : t("重置结果未确认，请重试。"));
@@ -196,8 +206,6 @@ export function PreferenceActions() {
         {loading && !viewOpen && <LoaderCircle className="size-4 animate-spin text-muted-foreground" aria-label={t("读取用户偏好")} />}
       </div>
     </div>
-    {!viewOpen && !resetOpen && error && <p role="alert" className="text-sm text-destructive">{t(messageKey(error))}</p>}
-    {message && <p role="status" className="text-xs text-muted-foreground">{t(messageKey(message))}</p>}
 
     <Dialog open={viewOpen} onOpenChange={(open) => { setViewOpen(open); if (!open) { cancelRead(); setError(""); } }}>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl" onCloseAutoFocus={(event) => { event.preventDefault(); if (!viewEntry.current?.closest("[hidden],[inert]")) viewEntry.current?.focus(); }}>
@@ -212,7 +220,6 @@ export function PreferenceActions() {
               <div><dt className="text-muted-foreground">{t("学习标签")}</dt><dd className="mt-1 text-sm font-medium">{result.term_count.toLocaleString(locale())}</dd></div>
               <div><dt className="text-muted-foreground">{t("上次重置")}</dt><dd className="mt-1">{timeLabel(result.reset_at)}</dd></div>
             </dl>
-            {!result.available && <p role="status" className="text-sm text-muted-foreground">{result.error || t("推荐依赖暂不可用，仍可重置偏好。")}</p>}
             {result.terms.length > 0 ? <div className="min-w-0 overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-border text-muted-foreground"><tr>
@@ -230,9 +237,7 @@ export function PreferenceActions() {
               </table>
             </div> : result.available && <p className="py-6 text-center text-sm text-muted-foreground">{t("暂无学习记录")}</p>}
           </>}
-          {error && <p role="alert" className="text-sm text-destructive">{t(messageKey(error))}</p>}
           {loading && <div role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("读取中")}</div>}
-          {error && <div className="flex justify-end"><IconButton type="button" icon={RefreshCw} label={t("重试读取用户偏好")} disabled={busy} onClick={() => void load(result?.page ?? 1)} /></div>}
           {result && result.term_count > 0 && <PageControls label={t("偏好")} page={result.page} totalPages={result.total_pages} loading={busy} onPageChange={page => void load(page)} />}
         </div>
       </DialogContent>
@@ -244,7 +249,6 @@ export function PreferenceActions() {
           <AlertDialogTitle>{t("重置用户偏好？")}</AlertDialogTitle>
           <AlertDialogDescription>{t("清空喜欢与不喜欢反馈形成的偏好，保留图片的评价。从此后的新反馈重新学习。")}</AlertDialogDescription>
         </AlertDialogHeader>
-        {error && <p role="alert" className="text-sm text-destructive">{t(messageKey(error))}</p>}
         <AlertDialogFooter>
           <AlertDialogCancel type="button" disabled={resetting}>{t("取消")}</AlertDialogCancel>
           <AlertDialogAction type="button" variant="destructive" disabled={busy || !result} onClick={(event) => { event.preventDefault(); void resetPreferences(); }}>

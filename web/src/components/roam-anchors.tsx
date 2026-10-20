@@ -1,3 +1,4 @@
+import { useErrorNotice } from "./notifications";
 import { getUiState, publishUiState, subscribeUiState } from "../shared/ui-state.mjs";
 import { uiTarget } from "../shared/ui-targets";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactElement, type ReactNode } from "react";
@@ -26,6 +27,7 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
   const [adding, setAdding] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState("");
+  useErrorNotice(error, { id: "roam-anchors" });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const targets = useMemo(() => ({ trigger: uiTarget("anchors.trigger"), terms: uiTarget("anchors.terms"), clear: uiTarget("anchors.clear"), mobileClear: uiTarget("anchors.clear") }), []);
   const triggerTarget = useCallback((element: HTMLButtonElement | null) => { triggerRef.current = element; targets.trigger(element); }, [targets]);
@@ -119,7 +121,6 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
         </Button>;
       })}
     </div>
-    {error && <p role="alert" className="px-2 pb-2 text-sm text-destructive">{error}</p>}
   </>;
   const panel = immersive ? <ImageToolbarPopover immersive triggerRef={triggerRef}
     className="roam-anchors roam-anchor-popover" aria-label={t("锚点")}

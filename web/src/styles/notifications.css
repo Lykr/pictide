@@ -1,0 +1,33 @@
+/* A native top-layer popover keeps viewport positioning inside modal/fullscreen hosts. */
+.notification-layer {
+  position: fixed;
+  inset: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) auto auto;
+  z-index: 10000;
+  width: min(384px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  overflow: visible;
+  pointer-events: none;
+}
+.notification-layer::backdrop { background: transparent; pointer-events: none; }
+.notification-viewport { display: flex; flex-direction: column; gap: 8px; width: 100%; max-height: inherit; margin: 0; padding: 0; list-style: none; outline: none; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.notification-card { display: grid; grid-template-columns: 18px minmax(0, 1fr) 28px; align-items: start; gap: 10px; padding: 14px 12px 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--popover); color: var(--popover-foreground); box-shadow: 0 6px 24px #0002; pointer-events: auto; animation: notification-enter 180ms ease-out; }
+.notification-icon { width: 18px; height: 18px; margin-top: 2px; color: var(--muted-foreground); }
+.notification-card[data-kind="error"] .notification-icon { color: var(--destructive); }
+.notification-card[data-kind="warning"] .notification-icon { color: var(--warning); }
+.notification-card[data-kind="success"] .notification-icon { color: var(--success); }
+.notification-content { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.notification-description { max-height: 24dvh; overflow-y: auto; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.notification-close { margin-top: -4px; color: var(--muted-foreground); }
+.notification-card[data-state="closed"] { animation: notification-leave 180ms ease-in forwards; }
+.notification-card[data-swipe="move"] { transform: translateX(var(--radix-toast-swipe-move-x)); }
+.notification-card[data-swipe="cancel"] { transform: translateX(0); transition: transform 150ms ease-out; }
+.notification-card[data-swipe="end"] { animation: notification-leave 180ms ease-in forwards; }
+@keyframes notification-enter { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes notification-leave { to { opacity: 0; transform: translateX(12px); } }
+@media (max-width: 640px) { .notification-close { min-width: 32px; min-height: 32px; } }
+@media (prefers-reduced-motion: reduce) { .notification-card, .notification-card[data-state="closed"], .notification-card[data-swipe="end"] { animation: none; } .notification-card[data-swipe="cancel"] { transition: none; } }

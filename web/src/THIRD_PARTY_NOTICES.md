@@ -32,6 +32,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+通知交互复用既有 `radix-ui` 依赖中的官方 [Toast Primitive](https://www.radix-ui.com/primitives/docs/components/toast)，使用其自动关闭、暂停计时、键盘和滑动行为；Pictide 维护共享状态、挂载位置与主题样式。Radix Primitives 采用 [MIT License](https://github.com/radix-ui/primitives/blob/main/LICENSE)。
+
 其他前端依赖及精确版本由 `web/package.json`、`web/pnpm-lock.yaml` 记录；依赖包自带的版权与许可证声明保留在安装目录中。新增复制源码的第三方组件时在此补充来源和声明。
 
 ## Inter Variable

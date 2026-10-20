@@ -1,3 +1,4 @@
+import { notifyError, notifySuccess } from "../shared/notifications.mjs";
 import { t, tr, locale } from "../i18n/index.mjs";
 import { copyText } from "../lib/copy-text";
 import { useEffect, useRef, useState } from "react";
@@ -14,7 +15,7 @@ const normalized = (text: string) => text.trim().replaceAll("_", " ");
 
 function CopyText({ text, label }: { text: string; label: string }) {
   const [status, setStatus] = useState("");
-  const copy = async () => { try { await copyText(text); setStatus("success"); } catch { setStatus("error"); } };
+  const copy = async () => { try { await copyText(text); setStatus("success"); notifySuccess(t("已复制"), { id: "clipboard" }); } catch { setStatus("error"); notifyError(t("复制失败，请重试"), { id: "clipboard" }); } };
   useEffect(() => { if (!status) return; const timer = setTimeout(() => setStatus(""), 1800); return () => clearTimeout(timer); }, [status]);
   return <IconButton icon={status === "success" ? Check : Copy} label={status === "success" ? t("已复制") : status === "error" ? t("复制失败，请重试") : tr`复制${label}`} disabled={!text} onClick={copy} />;
 }
@@ -45,7 +46,7 @@ export function PreviewPrompts({ terms, positive, negative }: { terms: PreviewTe
       body: JSON.stringify({ anchor, terms: positiveTerms.map(term => term.text) }) })
       .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || tr`请求失败（${response.status}）`); return data as Relations; })
       .then(data => { if (!controller.signal.aborted) update({ data }); })
-      .catch(error => { if (!controller.signal.aborted) { requested.current.delete(anchor); update({ error: error instanceof Error ? error.message : String(error) }); } })
+      .catch(error => { if (!controller.signal.aborted) { requested.current.delete(anchor); update({ error: error instanceof Error ? error.message : String(error) }); notifyError(t("读取失败：{error}。移开后重试。", { error: error instanceof Error ? error.message : String(error) }), { id: "preview-relations" }); } })
       .finally(() => controllers.current.delete(controller));
   };
   const anchor = active === null ? null : normalized(terms[active].text);
@@ -61,7 +62,7 @@ export function PreviewPrompts({ terms, positive, negative }: { terms: PreviewTe
             <TooltipTrigger asChild><Button variant="ghost" size="sm" className="cooc-preview-term" data-relation={anchor === normalized(term.text) ? "anchor" : tone(relations.get(normalized(term.text)), query?.data?.anchor.known)} aria-label={tr`查看 ${term.text} 与其他正向词的相关性`} onClick={event => { event.preventDefault(); load(index); }}>{term.text}</Button></TooltipTrigger>
             <TooltipContent side="bottom" align="start" sideOffset={6} className="cooc-relations-tooltip">
               <strong>{term.text}</strong>
-              {!query || !query.data && !query.error ? <p role="status"><LoaderCircle className="size-3 animate-spin" />{t("读取相关性…")}</p> : query.error ? <p role="status">{t("读取失败：{error}。移开后重试。", { error: query.error })}</p> : !query.data!.anchor.known ? <p>{t("自定义词，无统计；不参与 PMI 比较。")}</p> : !query.data!.relations.length ? <p>{t("当前组合没有其他正向词。")}</p> : <>
+              {!query || !query.data && !query.error ? <p role="status"><LoaderCircle className="size-3 animate-spin" />{t("读取相关性…")}</p> : query.error ? null : !query.data!.anchor.known ? <p>{t("自定义词，无统计；不参与 PMI 比较。")}</p> : !query.data!.relations.length ? <p>{t("当前组合没有其他正向词。")}</p> : <>
                 <div className="cooc-relations-scroll"><table><thead><tr><th>{t("提示词")}</th><th>PMI</th><th>{t("共现次数")}</th></tr></thead><tbody>{query.data!.relations.map(relation => <tr key={relation.text}>
                   <td>{relation.text}</td><td>{!relation.known ? t("无统计") : relation.count === null ? t("未保留统计") : relation.pmi!.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>{!relation.known ? "—" : relation.count === null ? "—" : relation.count.toLocaleString(locale())}</td>
                 </tr>)}</tbody></table></div>

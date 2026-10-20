@@ -1,4 +1,5 @@
-import { t, messageKey } from "../i18n/index.mjs";
+import { useErrorNotice } from "./notifications";
+import { t } from "../i18n/index.mjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, Settings2 } from "lucide-react";
 import { Button } from "./ui/button";
@@ -92,6 +93,7 @@ export function RoamOptions() {
   const [saving, setSaving] = useState({ interval: false, choices: false });
   const intervalPending = useRef(false);
   const [error, setError] = useState("");
+  useErrorNotice(error, { id: "roam-options" });
   const dirty = useRef(false);
   useEffect(() => {
     const receive = (event: Event) => {
@@ -138,7 +140,6 @@ export function RoamOptions() {
         </form>
         <RoamChoices compact value={settings} disabled={!ready || saving.choices} onChange={patch => void save("choices", patch)} />
       </div>
-      {error && <p className="text-xs text-destructive" role="alert">{t(messageKey(error))}</p>}
     </PopoverContent>
   </Popover>;
 }

@@ -130,9 +130,6 @@ body { position: fixed; inset: 0; }
 @media (max-width: 1024px) { .workspace-content { padding: 16px; } }
 [data-slot=textarea] { resize: vertical; }
 [data-slot=native-select-wrapper] { width: 100%; min-width: 0; }
-.notice { padding: 10px 12px; border: 1px solid var(--border); background: var(--secondary); border-radius: var(--radius); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
-.notice.error { color: var(--destructive); border-color: color-mix(in oklch, var(--destructive) 30%, var(--border)); background: color-mix(in oklch, var(--destructive) 5%, var(--card)); }
-.notice.warning { color: var(--warning); border-color: color-mix(in oklch, var(--warning) 30%, var(--border)); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 
 

@@ -25,7 +25,6 @@
 .generated-viewer-details { grid-column: 1; grid-row: 1; justify-self: start; }
 .generated-viewer-details[hidden], .generated-viewer-toolbar [hidden] { display: none; }
 .generated-viewer-liked svg { fill: currentColor; }
-.generated-viewer-error { z-index: 4; padding: 8px 12px; color: var(--destructive); background: var(--card); font-size: 13px; overflow-wrap: anywhere; }
 .generated-viewer-info { z-index: 1100; }
 .generated-viewer.image-card.immersive {
   position: fixed;
@@ -49,7 +48,6 @@
 .generated-viewer.immersive .generated-viewer-heading { display: none; }
 .generated-viewer.immersive .generated-viewer-navigation { gap: 0; }
 .generated-viewer.immersive .generated-viewer-toolbar { position: absolute; z-index: 3; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; width: max-content; max-width: calc(100% - 24px); gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--immersive-surface); backdrop-filter: blur(16px); box-shadow: 0 4px 16px #0002; transition: opacity 150ms; }
-.generated-viewer.immersive .generated-viewer-error { position: absolute; top: 12px; left: 12px; right: 12px; border-radius: var(--radius-lg); }
 .generated-viewer.immersive-controls-hidden { cursor: none; }
 .generated-viewer.immersive-controls-hidden .generated-viewer-toolbar { opacity: 0; visibility: hidden; pointer-events: none; }
 @media (max-width: 450px) {

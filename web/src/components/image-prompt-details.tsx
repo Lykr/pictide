@@ -1,3 +1,5 @@
+import { useErrorNotice } from "./notifications";
+import { notifyError, notifySuccess } from "../shared/notifications.mjs";
 import { t, tr, messageKey } from "../i18n/index.mjs";
 import { copyText } from "../lib/copy-text";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -24,9 +26,9 @@ function CopyValue({ title, text, disabled = false }: { title: string; text: str
     setStatus("copying");
     try {
       await copyText(text);
-      if (request.current === token) setStatus("success");
+      if (request.current === token) { setStatus("success"); notifySuccess(t("已复制"), { id: "clipboard" }); }
     } catch {
-      if (request.current === token) setStatus("error");
+      if (request.current === token) { setStatus("error"); notifyError(t("复制失败，请选中文本复制"), { id: "clipboard" }); }
     }
   };
   const feedback = status === "success" ? t("已复制") : status === "error" ? t("复制失败，请选中文本复制") : "";
@@ -61,6 +63,7 @@ function ImagePreferenceScore({ imageId, active }: { imageId: string; active: bo
     setResult(null);
     if (active) return loadImagePreferenceScore(imageId, setResult);
   }, [imageId, active]);
+  useErrorNotice(result?.status === "unavailable" ? t(messageKey(result.reason || "暂无法评分")) : "", { id: "image-preference-score", visible: active });
   const scored = result?.status === "scored";
   const value = !result ? t("加载中…") : !scored ? t("暂无法评分")
     : result.love_score === null ? t("暂无区分") : result.love_score.toFixed(1);

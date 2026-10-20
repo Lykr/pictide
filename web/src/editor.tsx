@@ -1,3 +1,5 @@
+import { useErrorNotice } from "./components/notifications";
+import { notifySuccess } from "./shared/notifications.mjs";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { GripVertical, Check, ChevronRight, Settings2, ChevronsUpDown, Copy, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { Button } from "./components/ui/button";
@@ -50,6 +52,15 @@ function Choice({ label, value, onChange, options, disabled }: { label: string; 
 function Field({ label, help, children }: { label: string; help?: string; children: ReactNode }) {
   return <div className="cooc-field"><Label><span>{label}</span>{help && <HelpTip text={help} />}</Label>{children}</div>;
 }
+function usePromptsVisible() {
+  const [visible, setVisible] = useState(() => window.location.hash === "#prompts");
+  useEffect(() => {
+    const update = () => setVisible(window.location.hash === "#prompts");
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  return visible;
+}
 function FixedTags({ label, values, onChange, disabled, positive = false }: { label: string; values: string[]; onChange: (values: string[]) => void; disabled: boolean; positive?: boolean }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -58,6 +69,9 @@ function FixedTags({ label, values, onChange, disabled, positive = false }: { la
   const [loading, setLoading] = useState(false);
   const [origins, setOrigins] = useState<Map<string, boolean>>(new Map());
   const [originError, setOriginError] = useState(false);
+  const visible = usePromptsVisible();
+  useErrorNotice(error ? `${t("词库暂不可用，仍可输入提示词并回车添加")} · ${error}` : "", { id: "preset-tag-search", visible: visible && open });
+  useErrorNotice(originError ? t("词库识别暂不可用，尚未确定来源；编辑词项可重试") : "", { id: "preset-tag-origin", visible });
   const originCache = useRef(new Map<string, boolean>());
   const termKey = JSON.stringify([...new Set(values.map(value => value.trim().replaceAll("_", " ")).filter(Boolean))].sort());
   useEffect(() => {
@@ -114,7 +128,7 @@ function FixedTags({ label, values, onChange, disabled, positive = false }: { la
         if (event.key === "Enter" && query.trim() && (!navigating.current || !options.length)) { event.preventDefault(); event.stopPropagation(); add(query); }
       }} /></div><PopoverTrigger asChild><IconButton disabled={disabled} icon={ChevronsUpDown} label={tr`展开${label}匹配项；点击或用方向键选择后回车添加`} /></PopoverTrigger></div></PopoverAnchor>
       <PopoverContent className="min-w-72 p-0" align="start" onOpenAutoFocus={event => event.preventDefault()}><CommandList aria-label={tr`${label}匹配项`}>
-        <CommandEmpty>{error ? t("词库暂不可用，仍可输入提示词并回车添加") : loading ? t("搜索中…") : t("输入完整提示词并回车添加")}</CommandEmpty>
+        <CommandEmpty>{loading ? t("搜索中…") : t("输入完整提示词并回车添加")}</CommandEmpty>
         <CommandGroup>{custom && <CommandItem value="__custom" onSelect={() => add(query)}>{tr`添加：${query}`}</CommandItem>}
           {options.map(tag => <CommandItem key={tag.id} value={String(tag.id)} onSelect={() => add(tag.name)}><span className="break-words">{tag.name}</span></CommandItem>)}</CommandGroup>
       </CommandList></PopoverContent>
@@ -169,6 +183,10 @@ export function EditorWorkspace() {
   const [maxSteps, setMaxSteps] = useState(100);
   const [result, setResult] = useState<Result | null>(null);
   const [refresh, setRefresh] = useState(0);
+  const visible = usePromptsVisible();
+  useErrorNotice(notice, { id: "preset-operation", visible });
+  useErrorNotice(libraryError, { id: "preset-library", visible });
+  useErrorNotice(tagError, { id: "preset-tags", visible: visible && tab === "library", retry: () => setRefresh(value => value + 1) });
   const dirty = JSON.stringify(preset) !== saved;
   const minCooccurrence = typeof dataset.min_cooccurrence === "number" ? dataset.min_cooccurrence : defaults.min_cooccurrence;
   const updateDataset = (info: Record<string, unknown>) => {
@@ -286,6 +304,7 @@ export function EditorWorkspace() {
       document.dispatchEvent(new Event("pictide:candidate-presets-changed"));
       await activatePreset(next.id);
       setSuccess(next.document.min_cooccurrence >= cooccurrenceFloor.current);
+      notifySuccess(t("已保存"), { id: "preset-save" });
     } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
   };
   const remove = async () => {
@@ -317,7 +336,6 @@ export function EditorWorkspace() {
   return <section id="prompts-view" className="editor-page workspace-content" aria-label={t("提示词")} hidden>
     <header className="editor-toolbar"><h1>{t("提示词")}</h1><span className="spacer" /><Badge variant="secondary" data-tooltip={tr`数据来源：${String(dataset.source || t("尚未导入"))}`}>{dataset.status === "ready" ? t("词库就绪") : t("词库未就绪")}</Badge></header>
     <Tabs value={tab} onValueChange={setTab}><nav className="editor-tabs" aria-label={t("提示词栏目")}><TabsList><TabsTrigger value="library">{t("词库")}</TabsTrigger><TabsTrigger value="settings">{t("编排")}</TabsTrigger><TabsTrigger value="preview">{t("预览")}</TabsTrigger></TabsList></nav></Tabs>
-    {notice && <div className="notice error" role="alert">{notice}</div>}
     <main>
       {tab === "library" ? <section className="cooc-library">
         <div className="cooc-library-filters">
@@ -341,8 +359,6 @@ export function EditorWorkspace() {
           <Input className="cooc-library-search" aria-label={t("搜索词库标签")} placeholder={t("搜索标签")} value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} />
         </div>
         {libraryAction === "select" && <p className="text-xs text-muted-foreground" role="status">{t("正在切换词库…")}</p>}
-        {libraryError && <p className="cooc-error" role="alert">{libraryError}</p>}
-        {tagError && <p className="cooc-error" role="alert">{tagError}</p>}
         <div className="cooc-tags" aria-busy={tagLoading}>{tagLoading ? <div className="cooc-empty" role="status"><LoaderCircle className="size-4 animate-spin" />{t("加载中")}</div> : tags.tags.length ? tags.tags.map(tag => <div className="cooc-tag" key={tag.id}><span className="min-w-0 break-words" data-tooltip={["general", "sensitive", "questionable", "explicit"].includes(tag.name) ? t("图片评级标签，可添加为固定正向词以参与共现筛选。") : undefined}>{tag.name}</span><span className="cooc-frequency" data-tooltip={t("数据集中包含此标签的图片数量")}>{tag.post_count.toLocaleString(locale())}</span></div>) : <p className="cooc-empty">{query ? t("没有匹配标签") : t("上传或选择词库，开始浏览标签。")}</p>}</div>
         <PageControls label={t("词库")} page={page} totalPages={pages} loading={tagLoading} onPageChange={setPage} />
       </section> : <>
@@ -364,7 +380,7 @@ export function EditorWorkspace() {
             <IconButton icon={Copy} label={t("复制预设")} disabled={busy || !loaded} onClick={() => create(true)} />
             <IconButton icon={Trash2} label={t("删除预设")} disabled={busy || !preset.id} onClick={remove} />
             <span className="spacer" /><span className="text-xs text-muted-foreground" role="status">{loaded && dirty ? t("未保存") : ""}</span>
-            <Button disabled={busy || !dirty} onClick={save} data-tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")}>{busy ? <LoaderCircle className="animate-spin" /> : success ? <Check /> : <Save />}{success ? t("已保存") : t("保存")}</Button>
+            <Button disabled={busy || !dirty} onClick={save} data-tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")}>{busy ? <LoaderCircle className="animate-spin" /> : success ? <Check /> : <Save />}{t("保存")}</Button>
           </div>
         </section>
         {tab === "settings" ? <form className="cooc-settings" onSubmit={event => { event.preventDefault(); save(); }}>

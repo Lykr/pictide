@@ -11,6 +11,7 @@ Pictide 的唯一浏览器入口，npm 包名 `pictide-web`。产品操作见[�
 - `index.html` → `src/main.tsx`：唯一 React 根节点，先挂载全部工作区，再各初始化一次业务控制器。
 - `src/feed.tsx`：应用壳层、侧栏、漫游、生成与分类设置页。
 - `src/editor.tsx`：React 管理的只读词库、生成预设与预览工作区；没有独立页面入口。
+- `src/shared/notifications.mjs`、`src/components/notifications.tsx`：错误与操作结果共用的悬浮通知层，行为见[组件规范](reference/design/components.md#悬浮通知)。
 - `src/controllers/`：浏览器状态、事件和 API 调用；预设校验、共现扩展与预算连续生成由后端候选模块负责。
 - `src/components/ui/`、`src/styles/theme.css`：共享 shadcn/ui 组件与设计 token；规范见 [设计规范](design-system.md)。
 

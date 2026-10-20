@@ -1,3 +1,4 @@
+import { notifyError } from "../shared/notifications.mjs";
 import { t } from "../i18n/index.mjs";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Download, Eye, EyeOff, Heart, Info, LoaderCircle, Maximize, Minimize, X } from "lucide-react";
@@ -55,7 +56,7 @@ function ViewerImage({ item, privacyBlur, label, onNavigate, busy, transition, p
     <img ref={imageRef} src={artifactPath(item, "image")} alt={label} draggable={false} onLoad={event => {
       setStatus("ready");
       if (transition) playImageTransition(event.currentTarget);
-    }} onError={() => setStatus("error")} />
+    }} onError={() => { setStatus("error"); notifyError(t("图片已清理或读取失败"), { id: "artifact-image-load" }); }} />
     {status !== "ready" && <div className="generated-viewer-loading" data-loading={status === "loading"} role="status">{status === "loading" ? <><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("图片加载中")}</span></> : t("图片已清理或读取失败")}</div>}
   </div>;
 }
@@ -152,7 +153,6 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
     </div>
     <ViewerImage key={item.id} item={item} transition={imageChange.current.transition} privacyBlur={privacyBlur} label={props.imageLabel ?? t("生成的图片")} onNavigate={navigate} busy={busy || infoOpen} paging={!!waitingOlder && loadingMore} />
     {waitingOlder && loadingMore && <div className="generated-viewer-paging" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("正在加载更早图片")}</span></div>}
-    {error && <div className="generated-viewer-error" role="alert">{error}</div>}
     <div ref={toolbarRef} className="generated-viewer-toolbar" aria-label={t("图片操作")}>
       <div className="generated-viewer-details" hidden={immersive}>
         <Popover open={infoOpen && !immersive} onOpenChange={setInfoOpen}>

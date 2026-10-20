@@ -11,6 +11,7 @@ Code paths in this section are relative to `web/` at the project root.
 - `index.html` → `src/main.tsx`: the only React root. It mounts all workspaces, then initializes each business controller once.
 - `src/feed.tsx`: application shell, sidebar, Roam, Generate, and categorized Settings pages.
 - `src/editor.tsx`: React-managed workspaces for read-only libraries, generation presets, and previews; no separate page entry point.
+- `src/shared/notifications.mjs`, `src/components/notifications.tsx`: the shared floating notification layer for errors and operation results; behavior is defined in the [component guidelines (Chinese)](reference/design/components.md#悬浮通知).
 - `src/controllers/`: browser state, events, and API calls. The backend Candidate module handles preset validation, co-occurrence expansion, and continuous generation within a budget.
 - `src/components/ui/`, `src/styles/theme.css`: shared shadcn/ui components and design tokens. See [Design Guidelines (Chinese)](design-system.md).
 

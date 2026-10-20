@@ -70,8 +70,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </Toggle><IconButton id="roam-immersive" icon={Maximize} label={t("进入沉浸模式")} aria-controls="image-card" aria-pressed="false" disabled onClick={() => document.dispatchEvent(new Event("pictide:roam-options-close"))} /><RoamOptions /></span>
 </div>
 </div>
-{"\n      "}<div id="notice" role="status" className="notice" hidden>
-</div>
 {"\n      "}<section id="gallery-view" className="gallery-view">
 {"\n        "}<div id="empty-state" className="empty">
 <div className="empty-mark"><Image aria-hidden="true" /></div>
@@ -91,15 +89,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 <div className="image-stage" ref={targets["roam.image"]}>
 <img id="main-image" alt={t("生成的图片")} draggable={false} />
-<div id="image-error" className="image-error" hidden>{t("图片读取失败，请检查服务与文件是否可用。")}</div>
-</div>
-<div id="immersive-feedback" className="immersive-feedback" role="status" aria-live="polite" aria-atomic="true" hidden>
-<div className="immersive-feedback-content">
-<Heart data-feedback-icon="like" aria-hidden="true" />
-<ThumbsDown data-feedback-icon="dislike" aria-hidden="true" />
-<CircleSlash data-feedback-icon="clear" aria-hidden="true" />
-<span id="immersive-feedback-label" />
-</div>
+<span id="image-error" className="sr-only" aria-hidden="true" hidden />
 </div>
 <div className="image-toolbar">
 <div className="image-meta">
@@ -269,7 +259,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="settings-field-heading"><Label htmlFor="default-checkpoint"><span className="field-caption">{t("模型")}<HelpTip text={t("从配置的 ComfyUI 读取模型，留空时自动选择第一个可用模型。")} /></span></Label><IconButton id="load-models" icon={RefreshCw} label={t("读取 API 模型")} size="icon-xs" /></div>
 <NativeSelect id="default-checkpoint"><option value="">{t("自动选择第一个可用模型")}</option></NativeSelect>
 </div>
-<p id="model-note" className="hint" role="status" hidden />
 <Button id="edit-default-parameters" type="button" className="quiet" variant="outline" data-tooltip={t("将默认工作流展开为自定义草稿，编辑采样、尺寸等节点参数")}><SlidersHorizontal aria-hidden="true" />{t("节点参数")}</Button>
 </section>
 <fieldset id="custom-workflow" hidden disabled>
@@ -294,7 +283,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="settings-field"><Label htmlFor="output-nodes"><span className="field-caption">{t("输出节点")}<HelpTip text={t("可多选；留空时使用生图 API 返回的图像输出。")} /></span></Label><select id="output-nodes" data-slot="native-select" className={nativeSelectClassName} multiple size={3} /></div>
 </div>
 </fieldset>
-<div id="settings-result" className="notice" role="status" hidden />
 <div className="dialog-footer"><Button id="test-backend" ref={targets["api.test"]} type="button" className="quiet" variant="outline">{t("测试连接")}</Button><Button id="save-backend" ref={targets["api.save"]} type="submit" className="primary" variant="default">{t("保存 API")}</Button></div>
 </form></section>
 <section id="settings-roam" className="settings-category" hidden><form id="roam-form" className="settings-stack">
@@ -313,7 +301,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 </fieldset>
 <PreferenceActions />
-<div id="roam-result" className="notice" role="status" hidden />
 <div className="dialog-footer"><Button id="roam-save" type="submit">{t("保存设置")}</Button></div>
 </form></section>
 <section id="settings-history" className="settings-category space-y-6" hidden>
@@ -326,8 +313,6 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </fieldset>
 {"\n    "}<p className="hint retention-warning">{t("到期且未喜欢的本地图片及提示词 JSON 将永久删除。")}<HelpTip text={t("取消喜欢后，已过期图片也会被清理。任务记录和 ComfyUI 文件保留。")} /></p>
 {"\n    "}
-{"\n    "}<div id="history-result" className="notice" role="status" hidden>
-</div>
 <div className="dialog-footer">
 
 <Button id="history-save" type="submit" className="primary" variant="default" data-tooltip={t("保存后立即检查；之后在启动、浏览或生成等操作时按需清理。")}>{t("保存设置")}</Button>

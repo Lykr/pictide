@@ -1,3 +1,5 @@
+import { useErrorNotice } from "./notifications";
+import { notifyError } from "../shared/notifications.mjs";
 import { publishUiState } from "../shared/ui-state.mjs";
 import { uiTarget } from "../shared/ui-targets";
 import { t, tr, messageKey, locale } from "../i18n/index.mjs";
@@ -21,7 +23,7 @@ const seedLabel = imageSeedLabel;
 function ArtifactImage({ item, label }: { item: GeneratedArtifact; label: string }) {
   const [status, setStatus] = useState("loading");
   return <div className="generated-thumbnail">
-    <img src={imagePath(item)} alt={`${label} · ${seedLabel(item)}`} loading="lazy" onLoad={() => setStatus("ready")} onError={() => setStatus("error")} />
+    <img src={imagePath(item)} alt={`${label} · ${seedLabel(item)}`} loading="lazy" onLoad={() => setStatus("ready")} onError={() => { setStatus("error"); notifyError(t("图片已清理或读取失败"), { id: "artifact-image-load" }); }} />
     {status === "loading" && <span className="generated-image-state" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("图片加载中")}</span></span>}
     {status === "error" && <span className="generated-image-state" role="status">{t("图片已清理或读取失败")}</span>}
   </div>;
@@ -44,6 +46,7 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
   useEffect(() => { if (liked) publishUiState({ likedPrivacy: privacyBlur, likedLoading: state.loading, likedTotal: state.total }); }, [liked, privacyBlur, state.loading, state.total]);
   useEffect(() => { if (!state.visible) setSelectedId(null); }, [state.visible]);
   useEffect(() => { if (liked) setSelectedId(null); }, [liked, state.filterVersion]);
+  useErrorNotice(t(messageKey(state.error)), { id: `${prefix}-results`, visible: state.visible, retry: () => emit(`${prefix}-refresh`) });
   const busy = state.feedbackPending || state.mutationPending || liked && state.loading;
   const like = (item: GeneratedArtifact, toggle = true) => emit(`${prefix}-feedback`, { id: item.id, toggle });
   const privacyLabel = privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格");
@@ -67,7 +70,6 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
         {!liked && <IconButton icon={Trash2} label={t("清空生成结果：删除未喜欢图片，喜欢图片保留在喜欢页")} disabled={busy || state.loading || !state.total} onClick={() => emit("generated-clear")} />}
       </div>
     </div>}
-    {state.error && <div className="notice error" role="status">{t(messageKey(state.error))}<Button variant="ghost" size="sm" type="button" disabled={busy || state.loading} onClick={() => emit(`${prefix}-refresh`)}>{t("重试")}</Button></div>}
     {!state.artifacts.length && !state.loading && !state.error && <div className="empty small"><ImageIcon aria-hidden="true" /><p>{liked ? state.tags.length ? t("没有同时包含所选标签的喜欢图片。") : t("喜欢的图片会保存在这里。") : state.pending ? t("正在生成，完成后会显示在这里。") : state.configured ? t("生成图片后，在这里查看结果。") : t("先配置生图 API。")}</p>{!liked && !state.configured && <Button variant="outline" type="button" onClick={() => emit("generated-configure")}>{t("配置生图 API")}</Button>}</div>}
     <div ref={liked ? targets.collection : undefined} className={`generated-grid${privacyBlur ? " generated-privacy-blurred" : ""}`} aria-busy={state.loading || state.mutationPending}>{state.artifacts.map(item => <Card key={item.id} className="generated-card gap-0 overflow-hidden py-0">
       <Button type="button" variant="ghost" className="generated-image-button" aria-label={tr`查看${label} · ${seedLabel(item)}`} onClick={() => setSelectedId(item.id)}><ArtifactImage item={item} label={label} /></Button>

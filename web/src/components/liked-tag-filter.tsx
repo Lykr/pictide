@@ -1,6 +1,7 @@
+import { useErrorNotice } from "./notifications";
 import { t, tr, locale } from "../i18n/index.mjs";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownWideNarrow, ArrowDownAZ, ChevronDown, ListFilter, LoaderCircle, RotateCw, X } from "lucide-react";
+import { ArrowDownWideNarrow, ArrowDownAZ, ChevronDown, ListFilter, LoaderCircle, X } from "lucide-react";
 import { IconButton } from "./actions";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -22,6 +23,7 @@ export function LikedTagFilter({ visible, revision, disabled = false, sort = "la
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
+  useErrorNotice(error ? t("标签读取失败") : "", { id: "liked-tags", visible, retry: () => setRetry(value => value + 1) });
 
   useEffect(() => {
     if (!visible) { setOpen(false); return; }
@@ -69,7 +71,6 @@ export function LikedTagFilter({ visible, revision, disabled = false, sort = "la
           </div>
           <CommandList aria-label={t("可筛选标签")}>
             {loading ? <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground" role="status"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{t("读取中")}</div>
-              : error ? <div className="flex items-center justify-center gap-2 py-4 text-sm text-destructive" role="alert">{t("标签读取失败")}<IconButton icon={RotateCw} label={t("重试读取标签")} onClick={() => setRetry(value => value + 1)} /></div>
               : <><CommandEmpty>{query.trim() ? t("没有匹配标签") : t("喜欢图片暂无标签")}</CommandEmpty>
                 <CommandGroup>{visibleChoices.map(tag => <CommandItem key={tag.text} value={tag.text} data-checked={selected.includes(tag.text)} onSelect={() => toggle(tag.text)}>
                   <Checkbox checked={selected.includes(tag.text)} tabIndex={-1} aria-hidden="true" className="pointer-events-none" />
