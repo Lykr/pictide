@@ -1,0 +1,105 @@
+name: Validate macOS app
+
+on:
+  workflow_dispatch:
+    inputs:
+      architecture:
+        description: Mac architecture
+        type: choice
+        default: intel
+        options: [intel, apple-silicon]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ${{ inputs.architecture == 'intel' && 'macos-15-intel' || 'macos-15' }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Download and verify the locked vocabulary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: python
+        run: |
+          import json, subprocess, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from corpus.portable import load_prebuilt
+          lock = json.loads(Path('corpus/prebuilt.json').read_text())
+          destination = Path('dev/cache/prebuilt')
+          destination.mkdir(parents=True)
+          command = ['gh', 'release', 'download', lock['release_tag'], '--dir', str(destination)]
+          for item in lock['files']:
+              command.extend(['--pattern', item['path']])
+          subprocess.run(command, check=True)
+          load_prebuilt(destination, Path('corpus/profiles/compact.json'))
+      - name: Install the pinned pnpm version
+        shell: python
+        run: |
+          import json, shutil, subprocess
+          from pathlib import Path
+          manager = json.loads(Path('web/package.json').read_text())['packageManager']
+          assert manager.startswith('pnpm@')
+          subprocess.run([shutil.which('npm'), 'install', '--global', manager], check=True)
+      - name: Install packaging dependencies
+        run: python -m pip install --no-cache-dir -r backend/requirements-release.txt
+      - name: Check desktop lifecycle
+        env:
+          PYTHONPATH: tests:.
+        run: python -m unittest -v test_desktop_launcher
+      - name: Build the native app
+        run: python scripts/build_portable.py --prebuilt-library dev/cache/prebuilt
+      - name: Check the extracted app
+        run: python scripts/smoke_portable.py --archive releases/*.zip --report dev/verification/portable/smoke-report.json
+      - name: Collect verified package and provenance
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          TARGET_ARCHITECTURE: ${{ inputs.architecture }}
+        shell: python
+        run: |
+          import hashlib, json, os, shutil
+          from pathlib import Path
+          target = Path('dev/build/validation-assets')
+          target.mkdir(parents=True)
+          archives = list(Path('releases').glob('*.zip'))
+          assert len(archives) == 1
+          source = archives[0]
+          with source.open('rb') as stream:
+              digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+          shutil.copyfile(source, target / source.name)
+          (target / 'SHA256SUMS').write_text(digest + '  ' + source.name + '\n')
+          (target / 'source.json').write_text(json.dumps({
+              'commit': os.environ['SOURCE_SHA'], 'architecture': os.environ['TARGET_ARCHITECTURE'],
+              'archive': source.name, 'sha256': digest,
+          }, indent=2) + '\n')
+          for name in ('build-report', 'smoke-report'):
+              reports = list(Path('dev/verification/portable').rglob(name + '.json'))
+              assert len(reports) == 1
+              shutil.copyfile(reports[0], target / (name + '.json'))
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pictide-macos-${{ inputs.architecture }}-${{ github.run_id }}
+          path: dev/build/validation-assets/*
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - name: Preserve failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-diagnostics-${{ github.run_id }}
+          path: dev/verification/
+          retention-days: 7
+          if-no-files-found: ignore
