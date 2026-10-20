@@ -1,6 +1,7 @@
 // Native desktop entry; the bundled Python service still owns all application logic.
 import AppKit
 import Foundation
+import CoreFoundation
 import Darwin
 
 let engine = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
@@ -49,6 +50,14 @@ func preparationPercent(_ line: String) -> Double? {
     guard line.contains("MiniLM"), let range = line.range(of: #"\d+(?:\.\d+)?%"#, options: .regularExpression),
           let percent = Double(line[range].dropLast()) else { return nil }
     return min(100, max(0, percent))
+}
+
+func onLauncherRunLoop(_ action: @escaping () -> Void) {
+    // terminateLater runs a modal loop inside terminate(_:). A main dispatch
+    // callback can be waiting for that same call to return, so deliver process
+    // completion through both run-loop modes instead of the main dispatch queue.
+    RunLoop.main.perform(inModes: [.default, .modalPanel], block: action)
+    CFRunLoopWakeUp(CFRunLoopGetMain())
 }
 
 func menuIcon(_ source: NSImage) -> NSImage? {
@@ -216,7 +225,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         process.standardInput = parentPipe
         process.standardOutput = writer; process.standardError = writer
         process.terminationHandler = { [weak self] process in
-            DispatchQueue.main.async {
+            onLauncherRunLoop {
                 guard self?.child === process else { return }
                 self?.serviceExited()
             }
@@ -477,6 +486,13 @@ if arguments == ["--launcher-self-test"] {
         try require((try? localAddress(for: ["--port=0"])) == nil, "invalid port")
         try require(preparationPercent("MiniLM model.onnx: 42%") == 42, "download progress")
         try require(preparationPercent("MiniLM verified") == nil, "verification stage")
+        var completedInModalLoop = false
+        onLauncherRunLoop { completedInModalLoop = true }
+        let deadline = Date(timeIntervalSinceNow: 2)
+        while !completedInModalLoop && Date() < deadline {
+            RunLoop.main.run(mode: .modalPanel, before: deadline)
+        }
+        try require(completedInModalLoop, "process completion during modal termination")
         guard let icon = Bundle.main.url(forResource: "desktop", withExtension: "png"),
               let source = NSImage(contentsOf: icon), let image = menuIcon(source),
               let bitmap = image.representations.first as? NSBitmapImageRep, let pixels = bitmap.bitmapData else {
@@ -484,7 +500,7 @@ if arguments == ["--launcher-self-test"] {
         }
         try require(image.isTemplate && pixels[3] == 0, "transparent menu icon")
         try require((0..<72).contains { y in (0..<72).contains { x in pixels[y * bitmap.bytesPerRow + x * 4 + 3] > 0 } }, "visible menu glyph")
-        print("{\"passed\":true,\"checks\":9}")
+        print("{\"passed\":true,\"checks\":10}")
         exit(0)
     } catch {
         fputs("Pictide launcher self-test failed: \(error.localizedDescription)\n", stderr)

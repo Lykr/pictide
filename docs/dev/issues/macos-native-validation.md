@@ -62,3 +62,9 @@ sequenceDiagram
 - 正常退出时发现服务的父管道监视线程持有 `sys.stdin.buffer` 的锁，Python 解释器关闭 stdin 时触发 `_enter_buffered_busy`，原生入口也未在验证时限内退出。
 - 监视线程改为从现有 stdin 文件描述符调用 `os.read`，保持同一 EOF → SIGTERM 机制，避免持有 Python 缓冲 IO 锁；新增父管道仍打开时服务正常退出的真实进程冒烟。
 - 修复包继续由 Actions 构建后传回 Mac 验证。测试未更改系统设置；浏览器 Automation 未获授权，不申请授权或修改权限。
+
+## 原生入口退出修正
+
+- 第二轮包（`5568f95`）通过原生 CI 与实机启动；Python 服务退出时不再出现缓冲锁错误，但原生入口仍停在等待退出阶段。
+- AppKit 的 [terminateLater](https://developer.apple.com/documentation/appkit/nsapplication/terminatereply/terminatelater) 会运行模态 run loop。SIGTERM 的主 dispatch 回调调用 `terminate` 后，服务退出处理再次排入同一主 dispatch 队列，无法及时执行退出回复。
+- 服务退出回调改为投递到主 run loop 的默认与模态模式，并唤醒 run loop，继续沿用 `terminateLater` / `reply` 的正常收尾。启动器自检补充模态模式下处理进程退出的检查。
