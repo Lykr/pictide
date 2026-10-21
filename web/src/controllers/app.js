@@ -23,6 +23,7 @@ import { createLikedRanking } from './liked-ranking.mjs';
 import { playImageTransition, cancelImageTransition } from './image-transitions.mjs';
 
 let roamImageSwitchPending = false;
+let applicationUpdating = false;
 const state = { backends: [], jobs: [], artifacts: [], view: 'feed', activeId: null, polling: false, saving: false, currentImage: null, feedbackPending: false, feedbackRevision: 0 };
 const galleryCursors = createGalleryCursors();
 const pageScroll = createPageScroll();
@@ -110,7 +111,7 @@ bindTouchNavigation(document.querySelector('#image-card .image-stage'), {
   enabled: () => state.view === 'feed' && !!state.currentImage && !state.feedbackPending && !document.querySelector('[role=dialog][data-state=open],[role=alertdialog],[data-slot=popover-content][data-state=open]'),
 });
 const refillRoam = createRefillCoordinator({
-  active: () => galleryCursors.ready && roamPageActive && roamSettingsLoaded && !roamSwitch && !anchorPrefetchDeferred && !roamBlocked && (!!state.activeId || !!nextImageWait.current) && (roamSettings.prefetch_count > 0 || !!nextImageWait.current) && state.view === 'feed' && !document.hidden,
+  active: () => !applicationUpdating && galleryCursors.ready && roamPageActive && roamSettingsLoaded && !roamSwitch && !anchorPrefetchDeferred && !roamBlocked && (!!state.activeId || !!nextImageWait.current) && (roamSettings.prefetch_count > 0 || !!nextImageWait.current) && state.view === 'feed' && !document.hidden,
   version: () => `${roamVersion}:${nextImageWait.current?.token || 0}`,
   anchor: () => state.activeId || null,
   request: anchor_id => api('/api/roam/ensure', { method: 'POST', body: JSON.stringify({ anchor_id, demand: !!nextImageWait.current }) }),
@@ -550,6 +551,7 @@ async function cancelJob(id, button) {
   catch (error) { showNotice(error.message, true); button.disabled = false; }
 }
 async function refresh(force = false) {
+  if (applicationUpdating) return;
   if (!galleryCursors.ready) return;
   if (document.hidden && !force || state.polling) { if (force) state.refreshQueued = true; return; }
   state.polling = true;
@@ -789,6 +791,9 @@ $('history-form').addEventListener('submit', async (event) => {
   finally { $('history-save').disabled = false; $('history-fields').disabled = false; }
 });
 window.addEventListener('beforeunload', (event) => { if (generation.dirty || backendSettings.dirty || roamDraftDirty()) { event.preventDefault(); event.returnValue = ''; } });
+document.addEventListener('pictide:before-update', event => { if (generation.dirty || backendSettings.dirty || roamDraftDirty()) event.preventDefault(); });
+document.addEventListener('pictide:updating', () => { applicationUpdating = true; roamPlayback.pause(); });
+document.addEventListener('pictide:update-finished', () => { applicationUpdating = false; refresh(true); });
 $('like').addEventListener('click', () => feedback(1));
 $('dislike').addEventListener('click', () => feedback(-1));
 $('previous').addEventListener('click', () => moveImage('older')); $('next').addEventListener('click', () => moveImage('newer'));
@@ -854,7 +859,7 @@ document.addEventListener('keydown', (event) => {
 window.addEventListener('hashchange', () => setView(location.hash.slice(1) || 'feed', false));
 setView(location.hash.slice(1) || 'feed', false);
 subscribeUiActions((name, value) => { if (name === 'navigate') setView(value); });
-document.addEventListener('visibilitychange', () => { if (document.hidden) roamPlayback.pause(); else { loadRoamSettings({ preserveDraft: true }); refresh(true); } });
+document.addEventListener('visibilitychange', () => { if (applicationUpdating) return; if (document.hidden) roamPlayback.pause(); else { loadRoamSettings({ preserveDraft: true }); refresh(true); } });
 await bootstrap();
 updateRuleControls();
 let realtimeConnected = false;
@@ -865,11 +870,12 @@ function syncTheme() {
 function connectEvents() {
   if (!window.EventSource || eventSource) return;
   eventSource = new EventSource('/api/events');
-  eventSource.addEventListener('open', () => { realtimeConnected = true; syncTheme(); loadRoamSettings({ preserveDraft: true }); refresh(true); });
+  eventSource.addEventListener('open', () => { realtimeConnected = true; document.dispatchEvent(new Event('pictide:updates-changed')); if (applicationUpdating) return; syncTheme(); loadRoamSettings({ preserveDraft: true }); refresh(true); });
   // Queue another refresh if a change arrives while the current read is in flight.
   eventSource.addEventListener('change', event => {
     try {
       const topic = JSON.parse(event.data).topic;
+      if (topic === 'updates') { document.dispatchEvent(new Event('pictide:updates-changed')); return; }
       if (topic === 'roam_settings' || topic === 'candidate') loadRoamSettings({ preserveDraft: true });
       if (topic === 'candidate') document.dispatchEvent(new Event('pictide:candidate-library-changed'));
       if (topic === 'general_settings') syncTheme();

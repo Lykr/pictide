@@ -43,3 +43,14 @@ For terminal operation, add `--cli`; press Ctrl+C to stop.
 Follow [macOS source preparation](../../dev/setup/macos.md#prepare-from-source) to install prerequisites and build the frontend, then run `./start.command` in the project directory. Source startup keeps its terminal and uses the project's `data/`; use `--lan`, `--port`, or `--data-dir` as needed.
 
 Source startup requires Python 3.10+. If the source launch scripts lack executable permissions, run `chmod +x start.sh start.command` in the project directory. See the [development guide](../../dev/setup/macos.md#build-a-portable-package) to build a release package.
+
+## Updates
+
+Adjust the application path if you installed it elsewhere. `--check-updates` only checks; `--update` explicitly requests a compatible download, installation, and restart. Nothing updates automatically.
+
+```shell
+/Applications/Pictide.app/Contents/MacOS/Pictide --check-updates
+/Applications/Pictide.app/Contents/MacOS/Pictide --update
+```
+
+Save edits and finish generation tasks first. If direct installation is unavailable, use [GitHub Releases](https://github.com/Lykr/pictide/releases) to update manually. See [Settings](../settings.md#general-settings) for the in-app controls.

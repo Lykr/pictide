@@ -39,3 +39,14 @@ To use another port or data location:
 Follow [Linux source preparation](../../dev/setup/linux.md#prepare-from-source) to install prerequisites and build the frontend, then run `bash start.sh` in the project directory. LAN, port, and data directory options are the same as above.
 
 The launcher requires Python 3.10+. On Debian / Ubuntu, install the matching `python3-venv` package if venv is missing. See the [development guide](../../dev/setup/linux.md#build-a-portable-package) to build a release package.
+
+## Updates
+
+Run these commands in the extracted portable folder. `--check-updates` only checks; `--update` explicitly requests a compatible download, installation, and restart. Nothing updates automatically.
+
+```shell
+./start.sh --check-updates
+./start.sh --update
+```
+
+Save edits and finish generation tasks first. If direct installation is unavailable, use [GitHub Releases](https://github.com/Lykr/pictide/releases) to update manually. See [Settings](../settings.md#general-settings) for the in-app controls.

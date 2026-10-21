@@ -195,6 +195,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -217,6 +220,8 @@ jobs:
           assert len(reports) == 4
           assert all(json.loads(path.read_text())['passed'] for path in reports), 'Smoke checks must pass'
           assert len(list(directory.glob('build-report-*.json'))) == 4
+          from scripts.release_updates import write_manifest
+          write_manifest(directory)
           files = sorted(directory.iterdir())
           checksums = directory / 'SHA256SUMS'
           with checksums.open('w', encoding='utf-8', newline='\n') as handle:

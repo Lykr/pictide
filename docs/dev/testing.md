@@ -20,7 +20,7 @@ Use Python 3.12 to match release CI.
 | `core` (default) | Six HTTP/storage smokes: preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests | Application Python dependencies |
 | `ui` | Six Node test files: tour state and placement, button feedback, notifications, theme/language races, API key editing | Node.js |
 | `corpus` | Three offline smokes: post filtering, stale/corrupt prebuilt rejection, vocabulary editions | Python environment with `corpus/requirements.txt` |
-| `browser` | Six real-page flows: notifications without layout shifts, modal retry, mobile tour with a saved anchor edit, Roam keyboard feedback, standalone swipe feedback, and API-save-to-Generate with retained drafts | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
+| `browser` | Eight real-page flows: notifications without layout shifts, modal retry, mobile tour, Roam keyboard/swipe feedback, API-save-to-Generate, manual update actions with draft protection, and mobile update/error presentation | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
 
 `ui` and `browser` also have frontend shortcuts: `pnpm --dir web test` and `pnpm --dir web run test:browser`. The shared Python entry point passes its own interpreter to the browser fixture; the frontend shortcut uses `python` on `PATH`.
 
@@ -42,6 +42,8 @@ Alternatively, use an already installed Edge with `python scripts/check.py brows
 Each browser worker starts its own local HTTP service on an available port, uses temporary data under `dev/verification/browser/`, and closes the service and removes that data afterward. Generation uses a fake backend, a tiny neutral vocabulary and a deterministic test encoder; it downloads no models and submits no GPU or paid API requests. These checks verify application behavior, not real model compatibility or image quality.
 
 Failures retain screenshots, traces and a JSON report in `dev/verification/browser/`. Inspect a trace with `pnpm --dir web exec playwright show-trace TRACE_PATH`. The browser runner has no automatic retries.
+
+Application-update changes additionally use `python -m unittest tests.backend.updates.test_updates -v` and `web/tests/browser/updates.spec.mjs`. The latter covers explicit check/download/install actions, unsaved drafts, version reload, and mobile manual-update/error presentation. The portable smoke also runs the native helper's replacement, readiness, and restart path; each platform must pass before its Release asset enables direct installation.
 
 ## Release checks
 

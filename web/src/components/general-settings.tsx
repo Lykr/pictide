@@ -1,4 +1,5 @@
 import { useErrorNotice } from "./notifications";
+import { ApplicationUpdates } from "./application-updates";
 import { requestUiAction } from "../shared/ui-state.mjs";
 import { Button } from "./ui/button";
 import { useEffect, useState } from "react";
@@ -77,5 +78,6 @@ export function GeneralSettings({ initialError = "" }: { initialError?: string }
       <div className="general-setting-control general-setting-checkbox"><Checkbox id="image-transitions" aria-label={t("图片切换动效")} checked={effects} disabled={!!saving} onCheckedChange={next => changeEffects(next === true)} /></div>
     </div>
     <div className="general-setting-row general-setting-tour"><span>{t("新手引导")}</span><Button variant="outline" type="button" className="general-setting-control" onClick={() => requestUiAction("onboarding.restart")}><Compass aria-hidden="true" />{t("开始引导")}</Button></div>
+    <ApplicationUpdates />
   </div>;
 }

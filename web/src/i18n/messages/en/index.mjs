@@ -4,4 +4,5 @@ import controllers from './controllers.json' with { type: 'json' };
 import editor from './editor.json' with { type: 'json' };
 import components from './components.json' with { type: 'json' };
 import onboarding from './onboarding.json' with { type: 'json' };
-export default { ...common, ...feed, ...controllers, ...editor, ...components, ...onboarding };
+import updates from './updates.json' with { type: 'json' };
+export default { ...common, ...feed, ...controllers, ...editor, ...components, ...onboarding, ...updates };

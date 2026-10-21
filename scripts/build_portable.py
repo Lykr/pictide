@@ -159,6 +159,8 @@ def build(output_dir=None, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
             runtime.mkdir(parents=True)
             seed = working / 'resources'
             manifest = export_resources(resources, seed)
+            (seed / 'installation.json').write_text(json.dumps(dict(schema=1, version=__version__, platform=sys.platform,
+                                                                    arch=platform.machine().lower())), encoding='utf8')
             print('Resources exported; packaging the native runtime.', flush=True)
             command = [sys.executable, '-m', 'PyInstaller', '--onedir', '--noconfirm', '--name', 'Pictide',
                        '--distpath', str(runtime), '--workpath', str(working / 'work'), '--specpath', str(working),

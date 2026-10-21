@@ -204,7 +204,9 @@ export function EditorWorkspace() {
   })));
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { if (dirty && loaded) { event.preventDefault(); event.returnValue = ""; } };
-    window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn);
+    const beforeUpdate = (event: Event) => { if (dirty && loaded) event.preventDefault(); };
+    window.addEventListener("beforeunload", warn); document.addEventListener("pictide:before-update", beforeUpdate);
+    return () => { window.removeEventListener("beforeunload", warn); document.removeEventListener("pictide:before-update", beforeUpdate); };
   }, [dirty, loaded]);
   useEffect(() => {
     let active = true;

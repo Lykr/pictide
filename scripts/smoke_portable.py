@@ -1,6 +1,6 @@
 """Extract and start a native portable ZIP with isolated, disposable user data."""
 import argparse
-from contextlib import closing
+from contextlib import closing, contextmanager
 import hashlib
 from html.parser import HTMLParser
 import json
@@ -19,6 +19,21 @@ from urllib.error import URLError
 from urllib.parse import urlsplit
 from urllib.request import ProxyHandler, build_opener
 import zipfile
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from backend.updates.files import filesystem_path
+
+
+@contextmanager
+def temporary_workspace():
+    parent = Path(tempfile.gettempdir()).resolve()
+    directory = Path(tempfile.mkdtemp(prefix='pictide-smoke-', dir=parent)).resolve()
+    assert directory.parent == parent
+    try:
+        yield directory
+    finally:
+        shutil.rmtree(filesystem_path(directory))
 
 
 class Assets(HTMLParser):
@@ -127,7 +142,7 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
     report = dict(passed=False, archive=archive.name, platform=sys.platform, checks=[])
     started = time.monotonic()
     failure = None
-    with tempfile.TemporaryDirectory(prefix='pictide-smoke-') as temporary:
+    with temporary_workspace() as temporary:
         directory = Path(temporary)
         process = None
         log_path = directory / 'startup.log'
@@ -246,6 +261,13 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
                     if process.wait(timeout=15) != 0:
                         raise RuntimeError('Desktop worker did not stop cleanly after its owner pipe closed')
                     report['checks'].append('macOS owner-pipe closure stops the desktop worker cleanly')
+                if process.poll() is None:
+                    stop(process)
+                process = None
+                from scripts.smoke_updates import smoke as update_smoke
+                update_smoke(executable, data, base, archive)
+                report['updates_verified'] = True
+                report['checks'].append('native updater helper: replacement, readiness, restart, failed-start rollback and personal-data/model preservation')
                 report['passed'] = True
         except Exception as error:
             failure = error

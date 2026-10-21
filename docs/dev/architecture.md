@@ -2,7 +2,7 @@
 
 [简体中文](../zh-CN/dev/architecture.md)
 
-[Documentation navigation](README.md). This page describes modules, responsibilities, and dependencies. See [Calls and Data Flow](architecture/flows.md) for call sequences and [Recommendation Module](architecture/recommendation.md) for recommendation internals.
+[Documentation navigation](README.md). This page describes modules, responsibilities, and dependencies. See [Calls and Data Flow](architecture/flows.md) for call sequences, [Recommendation Module](architecture/recommendation.md) for recommendation internals, and [Manual Application Updates](architecture/updates.md) for compatible portable upgrades.
 
 Pictide is a local web application with a separate frontend and backend. `web/` is the only browser entry point, and `backend/` provides the business API. In deployment, one Python process serves both the compiled frontend and the API; normal operation requires no Node server.
 
@@ -62,6 +62,8 @@ pictide/
     task/                      Scheduling, recovery, cancellation, and result association
     generation/                Generation interface, ComfyUI workflows, OpenAI Images, and Gemini
     store/                     SQLite, image/JSON storage, cleanup policies, and reclamation
+    updates/                   Explicit release checks, downloads, validation, replacement and recovery
+    update_cli.py              Command-line update orchestration before ordinary startup
   corpus/                      Offline metadata processing and release vocabulary profiles
   data/                        Configurable runtime data root
   dev/                         Local development environments, datasets, caches, and verification

@@ -13,7 +13,7 @@ import unicodedata
 from . import __version__
 from .recommendation.contracts import ScoreCandidate, ScoreRequest, ScoreTerm
 from .candidate.rounds import validate_options
-from .domain import GoneError, NotFoundError, ValidationError, feedback_value, generation_count, generation_fields, roam_can_enqueue
+from .domain import ConflictError, GoneError, NotFoundError, ValidationError, feedback_value, generation_count, generation_fields, roam_can_enqueue
 from .events import EventHub
 from .generation import backend_capabilities
 from .store.contracts import Storage
@@ -62,6 +62,31 @@ class PictideApplication:
         self._roam_lock = asyncio.Lock()
         self.events = EventHub()
         self.tasks.on_change = lambda: self.events.publish("jobs")
+        self.updates = None
+        self.update_installing = False
+        self.update_verifying = False
+        self.active_writes = 0
+
+    async def prepare_update(self, arguments, url, pids):
+        from .store.update_state import unfinished_jobs
+        from .updates.apply import create_plan
+        if self.update_installing:
+            raise ConflictError('An update is already being installed')
+        if not self.updates.status()['can_install']:
+            raise ValidationError('The verified update is not ready to install')
+        self.update_installing = True
+        try:
+            async with self._roam_lock:
+                if self.active_writes or await asyncio.to_thread(unfinished_jobs, self.paths.database):
+                    raise ConflictError('Finish running or queued tasks and pending edits before installing the update.')
+                async with self.updates.lock:
+                    self.updates.publish(phase='preparing', error=None)
+                    return await asyncio.to_thread(create_plan, self.updates, arguments, url, pids)
+        except BaseException as error:
+            self.update_installing = False
+            if self.updates.state['phase'] == 'preparing':
+                self.updates.publish(phase='ready', error=str(error))
+            raise
 
     async def start(self, session):
         self.tasks.session = self.tasks.connections.session = session
@@ -105,6 +130,8 @@ class PictideApplication:
                 logging.getLogger(__name__).exception("Background feedback cleanup failed")
 
     async def clean_history(self, force=False, *, roam_only=False):
+        if self.update_installing or self.update_verifying:
+            return {}
         before = self.cleanup.stats.get("revision", 0)
         result = await self.cleanup.maybe_cleanup(force=force, roam_only=roam_only)
         if self.cleanup.stats.get("revision", 0) != before:
@@ -254,6 +281,8 @@ class PictideApplication:
         return await asyncio.to_thread(self.storage.job_page, int(digits))
 
     async def submit_job(self, payload):
+        if self.update_installing or self.update_verifying:
+            raise ConflictError('Pictide is updating; generation is temporarily paused.')
         if "repetitions" in payload or "candidate" in payload:
             result = await self._submit_generation_plan(payload)
         else:
@@ -615,6 +644,8 @@ class PictideApplication:
         return chosen, snapshot
 
     async def ensure_roam(self, payload):
+        if self.update_installing or self.update_verifying:
+            raise ConflictError('Pictide is updating; generation is temporarily paused.')
         anchor = payload.get("anchor_id")
         demand = payload.get("demand", False)
         if type(demand) is not bool:

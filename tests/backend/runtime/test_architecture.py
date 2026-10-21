@@ -64,6 +64,8 @@ from backend.recommendation.contracts import ScoreRequest, FeedbackUpdate, Recom
                                                  'backend.task', 'backend.generation', 'backend.store'])
 
     def test_task_and_store_dependency_directions(self):
+        self.assert_boundary('backend/updates', ['backend.host', 'backend.application', 'backend.candidate',
+                                               'backend.recommendation', 'backend.generation', 'backend.task', 'backend.store'])
         self.assert_boundary('backend/task', ['backend.host', 'backend.application', 'backend.candidate', 'backend.recommendation', 'backend.store.sqlite'])
         self.assert_boundary('backend/generation', ['backend.store', 'backend.task', 'backend.application', 'backend.host'])
         self.assert_boundary('backend/store', ['backend.generation', 'backend.task', 'backend.application', 'backend.host'])

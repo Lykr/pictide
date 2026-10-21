@@ -9,7 +9,7 @@ let engine = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComp
 let arguments = Array(CommandLine.arguments.dropFirst())
 
 // Preserve ordinary terminal behavior, including help, exit status and Ctrl+C.
-if arguments.contains(where: { ["--cli", "--no-browser", "--help", "-h"].contains($0) }) {
+if arguments.contains(where: { ["--cli", "--no-browser", "--help", "-h", "--check-updates", "--update", "--apply-update"].contains($0) }) {
     var argv = ([engine] + arguments).map { strdup($0) } + [nil]
     engine.withCString { executable in
         argv.withUnsafeMutableBufferPointer { buffer in _ = execv(executable, buffer.baseAddress!) }
@@ -258,6 +258,8 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         var environment = ProcessInfo.processInfo.environment
         environment["PICTIDE_DESKTOP_LANGUAGE"] = chinese ? "zh-CN" : "en"
         environment["PICTIDE_DESKTOP_PARENT_PIPE"] = "1"
+        environment["PICTIDE_DESKTOP_PARENT_PID"] = String(ProcessInfo.processInfo.processIdentifier)
+        environment["PICTIDE_DESKTOP_ARGUMENTS"] = String(data: try JSONSerialization.data(withJSONObject: arguments), encoding: .utf8)
         environment["PYTHONUNBUFFERED"] = "1"
         environment["PICTIDE_DESKTOP_STATUS"] = readiness!.path
         process.environment = environment
@@ -410,12 +412,14 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func serviceExited() {
+        let updating = readiness.flatMap { try? String(contentsOf: $0, encoding: .utf8) } == "updating"
         timer?.invalidate(); timer = nil
         readOutput()
         if ready { lastOutput = lastLogLine(at: data.appendingPathComponent("logs/pictide.log")) ?? "" }
         closeStreams()
         retainStartupLogs(in: data.appendingPathComponent("tmp"))
         removeReadiness()
+        if updating { NSApplication.shared.terminate(nil); return }
         if stopping { NSApplication.shared.reply(toApplicationShouldTerminate: true) }
         else if !failed {
             let code = child?.terminationStatus ?? -1

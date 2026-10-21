@@ -8,6 +8,7 @@ import json
 import math
 import logging
 import os
+import secrets
 import socket
 import tempfile
 import time
@@ -41,6 +42,7 @@ STATIC = Path(__file__).resolve().parent.parent / "web" / "dist"
 APPLICATION = web.AppKey("application", PictideApplication)
 LOCAL_GENERATION = web.AppKey("local_generation", object)
 ALLOW_LAN = web.AppKey("allow_lan", bool)
+UPDATE_START = web.AppKey("update_start", dict)
 CSP = "default-src 'self'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
 
 
@@ -69,7 +71,21 @@ async def boundary(request, handler):
             expected_type = "multipart/form-data" if library_upload else "application/json"
             if request.content_type != expected_type:
                 raise web.HTTPUnsupportedMediaType(text=f"请求需要 {expected_type}。")
-        response = await handler(request)
+        application = request.app.get(APPLICATION)
+        update_route = request.path.startswith('/api/updates')
+        if application and request.path.startswith('/api/'):
+            if application.update_verifying and request.path not in {'/api/updates/health', '/api/updates/abort'}:
+                raise web.HTTPServiceUnavailable(text='Update verification in progress')
+            if application.update_installing and request.path != '/api/updates':
+                raise web.HTTPServiceUnavailable(text='Pictide is installing an update')
+        writing = application and request.path.startswith('/api/') and not update_route and request.method not in ('GET', 'HEAD')
+        if writing:
+            application.active_writes += 1
+        try:
+            response = await handler(request)
+        finally:
+            if writing:
+                application.active_writes -= 1
     except ConflictError as exc:
         response = web.json_response({"error": str(exc)}, status=409)
     except NotFoundError as exc:
@@ -312,14 +328,16 @@ async def lifecycle(app):
                              connector=TCPConnector(ssl=tls_context())) as session:
         managed = app.get(LOCAL_GENERATION)
         try:
-            if managed is not None:
+            if managed is not None and not app[APPLICATION].update_verifying:
                 await asyncio.to_thread(managed.start)
                 await managed.configure(app[APPLICATION], session)
-            await app[APPLICATION].start(session)
+            if not app[APPLICATION].update_verifying:
+                await app[APPLICATION].start(session)
             try:
                 yield
             finally:
                 await app[APPLICATION].stop()
+                await app[APPLICATION].updates.close()
         finally:
             if managed is not None:
                 await asyncio.to_thread(managed.close)
@@ -327,6 +345,64 @@ async def lifecycle(app):
 
 async def shutdown(app):
     app[APPLICATION].events.close()
+
+
+def stop_for_update():
+    from .desktop.launcher import notify_launcher
+    notify_launcher('updating')
+    raise web.GracefulExit()
+
+
+def update_status(request):
+    result = request.app[APPLICATION].updates.status()
+    if not request.remote or not ipaddress.ip_address(request.remote).is_loopback:
+        result.update(can_download=False, can_install=False, reason='local_access_required')
+    return result
+
+
+async def updates(request):
+    return web.json_response(update_status(request))
+
+
+async def update_action(request):
+    application = request.app[APPLICATION]
+    operation = request.match_info['operation']
+    payload = await body(request)
+    if payload and (operation != 'install' or set(payload) != {'initiator_pid'} or type(payload['initiator_pid']) is not int or payload['initiator_pid'] <= 0):
+        raise ValidationError('Update actions do not accept download URLs or installation paths')
+    if operation in {'download', 'install'} and (not request.remote or not ipaddress.ip_address(request.remote).is_loopback):
+        raise web.HTTPForbidden(text='Install updates from this computer using its localhost address')
+    if operation == 'check':
+        await application.updates.check()
+    elif operation == 'download':
+        application.updates.start_download()
+    elif operation == 'install':
+        from .updates.apply import launch_helper
+        start = request.app.get(UPDATE_START)
+        if not start:
+            raise ValidationError('This instance cannot restart itself')
+        pids = start['pids'] + ([payload['initiator_pid']] if payload else [])
+        path, program = await application.prepare_update(start['arguments'], start['url'], pids)
+        try:
+            await asyncio.to_thread(launch_helper, path, program)
+        except Exception as error:
+            application.update_installing = False
+            application.updates.publish(phase='ready', error=str(error))
+            raise
+        application.updates.publish(phase='installing')
+        asyncio.get_running_loop().call_later(.5, stop_for_update)
+    else:
+        raise web.HTTPNotFound()
+    return web.json_response(update_status(request))
+
+
+async def update_health(request):
+    token = os.environ.get('PICTIDE_UPDATE_VERIFY_TOKEN', '')
+    if not token or not secrets.compare_digest(request.headers.get('X-Pictide-Update', ''), token):
+        raise web.HTTPNotFound()
+    if request.method == 'POST':
+        asyncio.get_running_loop().call_later(.1, stop_for_update)
+    return web.json_response(dict(version=__version__, pid=os.getpid(), data_directory=str(request.app[APPLICATION].paths.root)))
 
 
 def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False):
@@ -346,10 +422,16 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         CandidateService(candidate_store, libraries), recommendation,
         history, LazyCleanup(storage, paths, history.retention, max_roam_history=roam.history_limit),
         WorkflowLibrary(paths.workflows, tasks.connections.validate), roam, recommendation_store, GeneralSettings(paths))
+    from .updates.service import UpdateService
+    application = app[APPLICATION]
+    application.update_verifying = bool(os.environ.get('PICTIDE_UPDATE_VERIFY_TOKEN'))
+    application.updates = UpdateService(paths, on_change=lambda: application.events.publish('updates'))
     app.cleanup_ctx.append(lifecycle)
     app.on_shutdown.append(shutdown)
     app.add_routes([
         web.get("/api/bootstrap", bootstrap), web.get("/api/events", events),
+        web.get('/api/updates', updates), web.post('/api/updates/{operation:check|download|install}', update_action),
+        web.get('/api/updates/health', update_health), web.post('/api/updates/abort', update_health),
         web.get("/api/settings/general", general_settings), web.put("/api/settings/general", general_settings),
         web.get("/api/settings/history", history_settings), web.put("/api/settings/history", history_settings),
         web.get("/api/settings/roam", roam_settings), web.put("/api/settings/roam", roam_settings),
@@ -421,7 +503,18 @@ def _main(argv=None):
     parser.add_argument("--cli", action="store_true", help="Keep the terminal and disable desktop integration")
     parser.add_argument("--setup", action="store_true", help="Open Windows local generation setup")
     parser.add_argument("--desktop-worker", action="store_true", help=argparse.SUPPRESS)
+    updating = parser.add_mutually_exclusive_group()
+    updating.add_argument('--check-updates', action='store_true', help='Check the latest stable release without downloading or installing')
+    updating.add_argument('--update', action='store_true', help='Explicitly download and install a compatible stable release')
+    updating.add_argument('--apply-update', metavar='PLAN', help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.apply_update:
+        from .updates.apply import apply_plan
+        apply_plan(args.apply_update)
+        return
+    if args.check_updates or args.update:
+        from .update_cli import run
+        raise SystemExit(asyncio.run(run(args)))
     frozen = getattr(sys, "frozen", False)
     if args.setup and sys.platform != 'win32':
         parser.error('--setup is available on Windows')
@@ -466,6 +559,7 @@ def _main(argv=None):
     worker_socket = None
     started = time.monotonic()
     logger = logging.getLogger('backend')
+    instance = None
     if desktop_requested:
         from .desktop.session import DesktopSession, announce
         desktop = DesktopSession(paths, url)
@@ -485,7 +579,19 @@ def _main(argv=None):
             worker_socket = reserve_desktop_socket(host, args.port)
         PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
         app = create_app(paths.root, allow_lan=host == "0.0.0.0")
+        from .updates.runtime import save_instance, ready_instance, remove_instance
+        arguments = json.loads(os.environ.get('PICTIDE_DESKTOP_ARGUMENTS', 'null')) or list(sys.argv[1:] if argv is None else argv)
+        arguments = [value for value in arguments if value not in ('--desktop-worker', '--setup')]
+        # The macOS parent supplies its own original arguments instead of worker-only flags.
+        pids = [os.getpid()]
+        if os.environ.get('PICTIDE_DESKTOP_PARENT_PID'):
+            pids.append(int(os.environ['PICTIDE_DESKTOP_PARENT_PID']))
+        if '--data-dir' not in arguments:
+            arguments += ['--data-dir', str(paths.root)]
+        app[UPDATE_START] = dict(arguments=arguments, url=url, pids=pids)
+        instance = save_instance(paths, url, arguments, app[APPLICATION].updates.installation)
         async def log_ready(app):
+            ready_instance(paths, instance)
             addresses = []
             if host == '0.0.0.0':
                 try:
@@ -535,6 +641,8 @@ def _main(argv=None):
                 pass
         raise SystemExit(1) from None
     finally:
+        if instance is not None:
+            remove_instance(paths, instance)
         if worker_socket is not None:
             worker_socket.close()
         if desktop is not None:

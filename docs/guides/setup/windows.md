@@ -66,3 +66,14 @@ To use another port or store data on another drive, run from the portable packag
 Follow [Windows source preparation](../../dev/setup/windows.md#prepare-from-source) to install prerequisites and build the frontend, then run `.\start.cmd` in the project directory.
 
 The source launcher uses `-Lan`, `-Port`, and `-DataDir`, for example `.\start.cmd -Lan -Port 8191 -DataDir 'E:\PictideData'`. Add `-Cli` to keep the terminal open. See the [development guide](../../dev/setup/windows.md#build-a-portable-package) to build a release package.
+
+## Updates
+
+Run these commands in the extracted portable folder. `--check-updates` only checks; `--update` explicitly requests a compatible download, installation, and restart. Nothing updates automatically.
+
+```shell
+Pictide.exe --check-updates
+Pictide.exe --update
+```
+
+Save edits and finish generation tasks first. If direct installation is unavailable, use [GitHub Releases](https://github.com/Lykr/pictide/releases) to update manually. See [Settings](../settings.md#general-settings) for the in-app controls.

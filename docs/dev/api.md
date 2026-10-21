@@ -71,6 +71,7 @@ events.addEventListener('change', (event) => {
 - [Application orchestration and HTTP response objects](../../backend/application.py)
 - [Candidate parameters and results](../../backend/candidate/service.py), [Seed and sequence parameters](../../backend/candidate/rounds.py)
 - [Recommendation internal contracts](../../backend/recommendation/contracts.py)
+- [Manual update endpoints and lifecycle](architecture/updates.md)
 - [Task storage and pagination model](../../backend/store/sqlite.py)
 
 This is an HTTP reference. Internal Python methods for scoring, learning, and similar operations are not additional public HTTP interfaces. There is currently no OpenAPI / Swagger page. When adding, removing, or changing routes, update the corresponding topic and navigation.
