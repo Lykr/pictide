@@ -70,3 +70,37 @@ test('mobile manual-update result fits and failures remain floating notification
   await expect(page.locator('.notification-card')).toContainText('Update source is unavailable');
   expect(checked).toBe(2);
 });
+
+test('failed restart stops polling and shows a log hint without resubmitting actions', async ({ page, context }) => {
+  await context.addInitScript(() => localStorage.setItem('pictide.first-run-guide.v1', JSON.stringify({ version: 1, status: 'dismissed' })));
+  await page.clock.install();
+  let phase = 'idle';
+  let reads = 0;
+  const actions = [];
+  await page.route('**/api/updates**', route => {
+    const action = new URL(route.request().url()).pathname.split('/')[3];
+    if (route.request().method() === 'POST') {
+      actions.push(action);
+      phase = action === 'check' ? 'checked' : action === 'download' ? 'ready' : 'installing';
+    } else {
+      reads++;
+      if (phase === 'installing') return route.fulfill({ status: 503, json: { error: 'Service unavailable' } });
+    }
+    return route.fulfill({ json: { current_version: '0.5.0', latest_version: phase === 'idle' ? null : '0.5.1',
+      phase, reason: '', can_download: phase === 'checked', can_install: phase === 'ready',
+      downloaded_bytes: 100, total_bytes: 100, error: null } });
+  });
+  await page.goto('/#settings/general');
+  await page.getByRole('button', { name: 'Check for updates', exact: true }).click();
+  await page.getByRole('button', { name: 'Download update', exact: true }).click();
+  await page.getByRole('button', { name: 'Install and restart', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(page.getByText('Installing. Pictide will restart…', { exact: true })).toBeVisible();
+  await page.clock.fastForward(125000);
+  await expect(page.locator('.notification-card')).toContainText('Could not reconnect to Pictide.');
+  await expect(page.getByText('Installing. Pictide will restart…', { exact: true })).toHaveCount(0);
+  const finishedReads = reads;
+  await page.clock.fastForward(30000);
+  expect(reads).toBe(finishedReads);
+  expect(actions).toEqual(['check', 'download', 'install']);
+});

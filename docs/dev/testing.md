@@ -43,7 +43,7 @@ Each browser worker starts its own local HTTP service on an available port, uses
 
 Failures retain screenshots, traces and a JSON report in `dev/verification/browser/`. Inspect a trace with `pnpm --dir web exec playwright show-trace TRACE_PATH`. The browser runner has no automatic retries.
 
-Application-update changes additionally use `python -m unittest tests.backend.updates.test_updates -v` and `web/tests/browser/updates.spec.mjs`. The latter covers explicit check/download/install actions, unsaved drafts, version reload, and mobile manual-update/error presentation. The portable smoke runs the native helper's replacement, `--help` runtime check, and normal restart, then checks HTTP readiness and database backups. A damaged runtime must restore the previous program without restoring databases. Each platform must pass before its Release asset enables direct installation.
+Application-update changes additionally use `python -m unittest tests.backend.updates.test_updates -v` and `web/tests/browser/updates.spec.mjs`. They cover explicit actions, equal/older published versions, unsaved drafts, version reload, bounded restart waiting, and mobile manual-update/error presentation. Release CI adds `--previous-release` to the portable smoke: the actual previous stable package prepares settings and data, a replacement failure restores the old program, and a successful upgrade must serve the target version while preserving data and models. Use `--previous-archive PATH` for an already downloaded older ZIP. Only a successful cross-version native smoke enables direct installation; same-version self-replacement is reported separately.
 
 ## Release checks
 

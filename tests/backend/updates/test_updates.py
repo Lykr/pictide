@@ -104,7 +104,9 @@ class ReleaseTests(unittest.TestCase):
                 with open_database(paths.database) as database:
                     database.execute('CREATE TABLE evidence(value TEXT)')
                     database.execute("INSERT INTO evidence VALUES ('old')")
-                plan, _ = create_plan(service, ['--cli'], [])
+                plan, helper = create_plan(service, ['--cli'], [])
+                self.assertEqual(helper, service.package / 'Pictide.exe')
+                self.assertFalse((plan.parent / 'helper').exists())
                 def check(installed):
                     self.assertEqual((Path(installed.root) / 'Pictide.exe').read_text(), 'updated')
                     if fail:
@@ -188,6 +190,27 @@ class ReleaseTests(unittest.TestCase):
 
 
 class DownloadTests(unittest.IsolatedAsyncioTestCase):
+    async def test_cli_current_or_newer_version_is_a_success_without_download(self):
+        from backend.update_cli import run
+        for running in (False, True):
+            for latest in ('0.5.0', '0.4.9'):
+                with self.subTest(running=running, latest=latest), tempfile.TemporaryDirectory() as directory:
+                    paths, installation, prepared = fixture(Path(directory))
+                    release = replace(prepared.release, version=latest, compatible=False, reason='already_current')
+                    service = UpdateService(paths, installation=installation, discover=Mock(return_value=release))
+                    result = dict(phase='current', current_version='0.5.0', latest_version=latest, error=None)
+                    args = SimpleNamespace(data_dir=str(paths.root), check_updates=False, update=True)
+                    with patch('backend.update_cli.UpdateService', return_value=service), \
+                         patch('backend.update_cli.running_instance', return_value={'url': 'http://127.0.0.1:1'} if running else None), \
+                         patch('backend.update_cli.local_json', return_value=result) as request, \
+                         patch.object(service, 'start_download') as download, \
+                         patch('backend.update_cli.launch_helper') as launch, redirect_stdout(io.StringIO()):
+                        self.assertEqual(await run(args), 0)
+                    download.assert_not_called()
+                    launch.assert_not_called()
+                    if running:
+                        request.assert_called_once_with('http://127.0.0.1:1/api/updates/check', method='POST')
+
     async def test_cli_update_uses_the_shared_verified_download_and_install_plan(self):
         from backend.update_cli import run
         with tempfile.TemporaryDirectory() as directory:

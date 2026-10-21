@@ -46,7 +46,7 @@ def alive(pid):
 
 
 def local_json(url, *, method='GET', payload=None):
-    request = Request(url, data=json.dumps(payload or {}).encode() if method == 'POST' else None, method=method,
+    request = Request(url, data=json.dumps(payload or {}).encode() if method != 'GET' else None, method=method,
                       headers={'Content-Type': 'application/json'})
     with build_opener(ProxyHandler({})).open(request, timeout=3) as response:
         return json.load(response)
@@ -83,15 +83,12 @@ def _create_plan(service, restart_args, pids):
         service.package = extract_package(archive, archive.parent / 'unpacked', service.release, installation)
     directory = service.paths.tmp / 'updates' / secrets.token_hex(16)
     directory.mkdir(parents=True)
-    helper = directory / 'helper' / service.package.name
-    helper.parent.mkdir()
-    shutil.copytree(filesystem_path(service.package), filesystem_path(helper), symlinks=True)
     plan = dict(schema=1, installation=asdict(installation), version=service.release.version,
                 data=str(service.paths.root), package=str(service.package),
                 restart_args=restart_args, pids=pids)
     path = directory / 'plan.json'
     path.write_text(json.dumps(plan, indent=2), encoding='utf8')
-    return path, executable(helper, installation.platform, service=True)
+    return path, executable(service.package, installation.platform, service=True)
 
 
 def child_environment():

@@ -62,7 +62,7 @@ jobs:
       - name: Build the native app
         run: python scripts/build_portable.py --prebuilt-library dev/cache/prebuilt
       - name: Check the extracted app
-        run: python scripts/smoke_portable.py --archive releases/*.zip --report dev/verification/portable/smoke-report.json
+          run: python scripts/smoke_portable.py --archive releases/*.zip --report dev/verification/portable/smoke-report.json --previous-release
       - name: Collect verified package and provenance
         env:
           SOURCE_SHA: ${{ github.sha }}

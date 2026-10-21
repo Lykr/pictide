@@ -136,7 +136,7 @@ def stop(process):
         process.wait(timeout=10)
 
 
-def smoke(archive, report_path, timeout=900, model_dir=None):
+def smoke(archive, report_path, timeout=900, model_dir=None, previous_archive=None, previous_release=False):
     archive = Path(archive).resolve()
     report_path = Path(report_path).resolve()
     report = dict(passed=False, archive=archive.name, platform=sys.platform, checks=[])
@@ -264,10 +264,12 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
                 if process.poll() is None:
                     stop(process)
                 process = None
-                from scripts.smoke_updates import smoke as update_smoke
-                update_smoke(executable, data, base, archive)
-                report['updates_verified'] = True
-                report['checks'].append('native updater helper: runtime check, replacement, normal restart readiness, damaged-runtime rollback and personal-data/model preservation')
+                from scripts.smoke_updates import smoke as update_smoke, download_previous
+                if previous_release:
+                    previous_archive = download_previous(archive, directory / 'previous-download')
+                report['upgrade'] = update_smoke(executable, data, base, archive, previous_archive)
+                report['updates_verified'] = report['upgrade']['cross_version']
+                report['checks'].append('native updater: staged helper, replacement-failure rollback, normal restart and previous data/model preservation')
                 report['passed'] = True
         except Exception as error:
             failure = error
@@ -297,5 +299,9 @@ if __name__ == '__main__':
     parser.add_argument('--timeout', type=float, default=900)
     parser.add_argument('--model-dir', type=Path,
                         help='Optional verified MiniLM snapshot to seed a warm-start smoke; omitted for a real first-start download')
+    previous = parser.add_mutually_exclusive_group()
+    previous.add_argument('--previous-archive', type=Path, help='Older native release ZIP for a real cross-version upgrade smoke')
+    previous.add_argument('--previous-release', action='store_true', help='Download the latest older stable native release for CI verification')
     arguments = parser.parse_args()
-    smoke(arguments.archive, arguments.report, arguments.timeout, arguments.model_dir)
+    smoke(arguments.archive, arguments.report, arguments.timeout, arguments.model_dir,
+          arguments.previous_archive, arguments.previous_release)

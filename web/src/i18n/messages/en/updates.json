@@ -18,6 +18,7 @@
   "请先保存未完成的修改，再安装更新。": "Save your changes before installing the update.",
   "安装更新并重启 Pictide？图片、偏好和模型会保留。": "Install the update and restart Pictide? Your images, preferences, and models will be kept.",
   "正在安装，Pictide 将重新启动…": "Installing. Pictide will restart…",
+  "未能重新连接 Pictide。请检查程序是否运行，或查看 logs/pictide.log。": "Could not reconnect to Pictide. Check that it is running, or see logs/pictide.log.",
   "正在校验更新…": "Verifying update…",
   "正在准备安装…": "Preparing installation…",
   "正在下载更新…": "Downloading update…",

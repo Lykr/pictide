@@ -56,7 +56,7 @@ async def run(args):
             result = await asyncio.to_thread(local_json, base + '/check', method='POST')
             if result.get('error'):
                 raise ValueError(result['error'])
-            if result['latest_version'] == result['current_version']:
+            if result['phase'] == 'current':
                 print('Pictide is up to date.')
                 return 0
             if not result['can_download']:
@@ -76,7 +76,7 @@ async def run(args):
             result = await service.check()
             if result['error']:
                 raise ValueError(result['error'])
-            if result['latest_version'] == result['current_version']:
+            if result['phase'] == 'current':
                 print('Pictide is up to date.')
                 return 0
             service.start_download()

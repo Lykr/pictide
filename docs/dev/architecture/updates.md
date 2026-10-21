@@ -18,19 +18,21 @@ The General settings component reads local status through `GET /api/updates`. On
 
 Native packages embed `resources/installation.json` with schema, version, platform, and architecture. The publisher creates `update.json` from the policy, archives, build reports, and successful native smoke reports. Each asset includes its name, compressed and unpacked sizes, SHA-256, and native verification status. GitHub asset metadata must agree. Missing or unverified metadata offers manual updates rather than guessing.
 
-`scripts/smoke_portable.py` also exercises `scripts/smoke_updates.py`: a copied native runtime applies its own package, restarts normally, and checks HTTP readiness, existing data, database backups, and MiniLM weights. A damaged runtime exercises program rollback. `install_verified` is enabled per platform only when this smoke passes. Releases still build exclusively on version-tag pushes.
+`scripts/smoke_portable.py` also exercises `scripts/smoke_updates.py`. Release CI passes `--previous-release` to download and start the latest older stable native package, save settings with the old version, and verify failure recovery followed by upgrading to the new package. Checks cover the actual service version, HTTP readiness, existing settings and database records, backups, personal files, and MiniLM weights. `--previous-archive PATH` uses an already downloaded older package. Without an older release, the same-version replacement smoke still runs, but does not enable `install_verified`. Releases still build exclusively on version-tag pushes.
 
 ## Installation and recovery
 
 Explicit downloads use `data/cache/updates/<version>/`, verify size and digest, and validate archive paths and symlinks before extraction. macOS uses native archive tools and verifies the existing ad-hoc signatures; no system security settings or quarantine attributes are changed. The app does not auto-install an existing cache on a later launch.
 
-The update plan and copied helper runtime live under `data/tmp/updates/`. A file lease serializes operations across GUI and CLI. Before replacement the helper waits for the old service and macOS launcher to exit and rejects other processes using the same installation. Frozen restarts reset the PyInstaller environment to load the correct runtime.
+The update plan and helper log live under `data/tmp/updates/`. The helper runs directly from the verified package in `data/cache/updates/`, without copying another runtime. A file lease serializes operations across GUI and CLI. Before replacement the helper waits for the old service and macOS launcher to exit and rejects other processes using the same installation. Frozen restarts reset the PyInstaller environment to load the correct runtime.
 
 Backups under `data/backups/updates/` contain consistent SQLite snapshots and the replaced program files. Windows replaces the executable and `_internal/`; macOS replaces the `.app`; Linux replaces its launcher, packaged runtime, and release documents. The data directory, data-location pointer, images, models, vocabularies, and unrelated installation files remain outside the replacement set.
 
 After replacing program files, the helper runs the existing `--help` entry to check that the bundled runtime loads. This does not prepare data, download dependencies, or start services. It then starts the application once in its original mode. Replacement, runtime-check, or process-launch failures restore the program files and attempt to restart the previous version. Database snapshots are retained for manual recovery; the updater never restores or removes runtime databases.
 
 The runtime check does not establish that business initialization or later operation will succeed. Normal HTTP readiness is verified by the native release smoke, rather than a special application mode or update-only endpoints. Detailed output and the result remain with the update plan. Backups are retained for recovery.
+
+After the user requests installation, the page waits up to two minutes for the service to reconnect. Individual status requests time out after five seconds. If the wait expires, polling stops and a floating notification points to the application log; it does not trigger another check, download, or installation. A later successful local SSE reconnection can still refresh the page.
 
 ## Focused verification
 

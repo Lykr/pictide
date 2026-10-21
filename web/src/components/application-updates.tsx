@@ -21,12 +21,17 @@ const reasons: Record<string, string> = {
 };
 
 async function request(action = ""): Promise<Status> {
-  const response = await fetch("/api/updates" + (action ? "/" + action : ""), action ? {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
-  } : {});
-  const body = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(body?.error || t("更新操作失败，请稍后重试。"));
-  return body;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), action ? 90000 : 5000);
+  try {
+    const response = await fetch("/api/updates" + (action ? "/" + action : ""), {
+      ...(action ? { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" } : {}),
+      signal: controller.signal,
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(body?.error || t("更新操作失败，请稍后重试。"));
+    return body;
+  } finally { clearTimeout(timeout); }
 }
 
 export function ApplicationUpdates() {
@@ -35,6 +40,7 @@ export function ApplicationUpdates() {
   const [error, setError] = useState("");
   const currentVersion = useRef<string | null>(null);
   const restarting = useRef(false);
+  const restartStarted = useRef(0);
   useErrorNotice(t(messageKey(error)), { id: "application-updates" });
   const receive = useCallback((next: Status) => {
     if (currentVersion.current && currentVersion.current !== next.current_version) {
@@ -44,6 +50,7 @@ export function ApplicationUpdates() {
     }
     currentVersion.current = next.current_version;
     if (["preparing", "installing"].includes(next.phase)) {
+      if (!restarting.current) restartStarted.current = Date.now();
       restarting.current = true;
       document.dispatchEvent(new Event("pictide:updating"));
     }
@@ -63,7 +70,12 @@ export function ApplicationUpdates() {
         if (!restarting.current && mounted) setError(failure instanceof Error ? failure.message : String(failure));
       }
       // Only poll local readiness during an explicitly initiated installation, never releases.
-      if (mounted && restarting.current) timer = setTimeout(read, 800);
+      if (mounted && restarting.current) {
+        if (Date.now() - restartStarted.current >= 120000) {
+          setError(t("未能重新连接 Pictide。请检查程序是否运行，或查看 logs/pictide.log。"));
+          setStatus(previous => previous && { ...previous, phase: "error", can_download: false, can_install: false });
+        } else timer = setTimeout(read, 800);
+      }
     };
     const changed = () => { clearTimeout(timer); void read(); };
     void read();
