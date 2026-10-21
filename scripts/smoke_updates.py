@@ -1,10 +1,12 @@
 """Native updater smoke invoked after the portable service/model smoke, with disposable data."""
 import hashlib
+from contextlib import closing
 import json
 import os
 from pathlib import Path
 import shutil
 import signal
+import sqlite3
 import subprocess
 import sys
 import time
@@ -50,7 +52,7 @@ def smoke(executable, data, base, archive):
     port = str(urlsplit(base).port)
     arguments = ['--cli', '--no-browser', '--data-dir', str(data), '--host', '127.0.0.1', '--port', port]
     for expected in ('installed', 'rolled_back'):
-        plan, helper = create_plan(service, arguments, base, [])
+        plan, helper = create_plan(service, arguments, [])
         if expected == 'rolled_back':
             package_executable(stage, sys.platform, service=True).write_bytes(b'Invalid executable for rollback verification')
         worker = None
@@ -75,6 +77,13 @@ def smoke(executable, data, base, archive):
                     time.sleep(.2)
             if result['phase'] != expected or bootstrap['version'] != info['version'] or bootstrap['data_directory'] != str(data):
                 raise RuntimeError('Unexpected update result or restarted data directory')
+            snapshots = list((Path(result['backup']) / 'db').glob('*.sqlite3'))
+            if not snapshots:
+                raise RuntimeError('Update did not retain database backups')
+            for snapshot in snapshots:
+                with closing(sqlite3.connect(snapshot.as_uri() + '?mode=ro', uri=True)) as database:
+                    if database.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
+                        raise RuntimeError('Database backup failed integrity check')
             if marker.read_text(encoding='utf8') != 'Keep user data':
                 raise RuntimeError('Update modified personal files')
             with weights.open('rb') as stream:

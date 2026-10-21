@@ -36,7 +36,7 @@ The following paths are relative to the selected data directory:
 | `logs/comfyui.log` | Output from ComfyUI started by Pictide; absent when using an external service |
 | `backups/` | Data backups |
 | `cache/updates/`, `tmp/updates/` | Explicitly downloaded updates, staging, operation leases, helper output, and installation results |
-| `backups/updates/` | Program recovery copies and consistent database snapshots created by user-requested upgrades |
+| `backups/updates/` | Program recovery copies and consistent database snapshots created by user-requested upgrades; database snapshots are retained for manual recovery |
 
 See the [Prompt Guide](../guides/prompts.md#add-and-switch-libraries) for adding and selecting libraries. MiniLM is a recommendation runtime resource stored separately under models; routine cache cleanup preserves it. Source and portable startup download missing files and verify the fixed catalog before serving the application; valid files are reused offline. See [startup preparation](../guides/getting-started.md#recommendation-dependency-preparation). The program serves compiled frontend assets. In the source tree, web/node_modules points to dev/runtime/frontend/node_modules at the project root.
 

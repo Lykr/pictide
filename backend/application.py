@@ -64,10 +64,9 @@ class PictideApplication:
         self.tasks.on_change = lambda: self.events.publish("jobs")
         self.updates = None
         self.update_installing = False
-        self.update_verifying = False
         self.active_writes = 0
 
-    async def prepare_update(self, arguments, url, pids):
+    async def prepare_update(self, arguments, pids):
         from .store.update_state import unfinished_jobs
         from .updates.apply import create_plan
         if self.update_installing:
@@ -81,7 +80,7 @@ class PictideApplication:
                     raise ConflictError('Finish running or queued tasks and pending edits before installing the update.')
                 async with self.updates.lock:
                     self.updates.publish(phase='preparing', error=None)
-                    return await asyncio.to_thread(create_plan, self.updates, arguments, url, pids)
+                    return await asyncio.to_thread(create_plan, self.updates, arguments, pids)
         except BaseException as error:
             self.update_installing = False
             if self.updates.state['phase'] == 'preparing':
@@ -130,7 +129,7 @@ class PictideApplication:
                 logging.getLogger(__name__).exception("Background feedback cleanup failed")
 
     async def clean_history(self, force=False, *, roam_only=False):
-        if self.update_installing or self.update_verifying:
+        if self.update_installing:
             return {}
         before = self.cleanup.stats.get("revision", 0)
         result = await self.cleanup.maybe_cleanup(force=force, roam_only=roam_only)
@@ -281,7 +280,7 @@ class PictideApplication:
         return await asyncio.to_thread(self.storage.job_page, int(digits))
 
     async def submit_job(self, payload):
-        if self.update_installing or self.update_verifying:
+        if self.update_installing:
             raise ConflictError('Pictide is updating; generation is temporarily paused.')
         if "repetitions" in payload or "candidate" in payload:
             result = await self._submit_generation_plan(payload)
@@ -644,7 +643,7 @@ class PictideApplication:
         return chosen, snapshot
 
     async def ensure_roam(self, payload):
-        if self.update_installing or self.update_verifying:
+        if self.update_installing:
             raise ConflictError('Pictide is updating; generation is temporarily paused.')
         anchor = payload.get("anchor_id")
         demand = payload.get("demand", False)

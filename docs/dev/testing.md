@@ -43,7 +43,7 @@ Each browser worker starts its own local HTTP service on an available port, uses
 
 Failures retain screenshots, traces and a JSON report in `dev/verification/browser/`. Inspect a trace with `pnpm --dir web exec playwright show-trace TRACE_PATH`. The browser runner has no automatic retries.
 
-Application-update changes additionally use `python -m unittest tests.backend.updates.test_updates -v` and `web/tests/browser/updates.spec.mjs`. The latter covers explicit check/download/install actions, unsaved drafts, version reload, and mobile manual-update/error presentation. The portable smoke also runs the native helper's replacement, readiness, and restart path; each platform must pass before its Release asset enables direct installation.
+Application-update changes additionally use `python -m unittest tests.backend.updates.test_updates -v` and `web/tests/browser/updates.spec.mjs`. The latter covers explicit check/download/install actions, unsaved drafts, version reload, and mobile manual-update/error presentation. The portable smoke runs the native helper's replacement, `--help` runtime check, and normal restart, then checks HTTP readiness and database backups. A damaged runtime must restore the previous program without restoring databases. Each platform must pass before its Release asset enables direct installation.
 
 ## Release checks
 

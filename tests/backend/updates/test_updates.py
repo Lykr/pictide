@@ -66,7 +66,7 @@ class ReleaseTests(unittest.TestCase):
             with UpdateLease(paths.root), self.assertRaises(ValueError):
                 UpdateLease(paths.root)
             with patch('backend.updates.apply.running_pids', return_value={987654}), self.assertRaisesRegex(ValueError, 'other instances'):
-                create_plan(service, ['--cli'], 'http://127.0.0.1:1', [])
+                create_plan(service, ['--cli'], [])
 
     def test_explicit_compatibility_and_asset_binding(self):
         url = PAGE + '/download/v0.5.1/'
@@ -74,7 +74,8 @@ class ReleaseTests(unittest.TestCase):
         document = dict(tag_name='v0.5.1', draft=False, prerelease=False, assets=[
             dict(name='update.json', browser_download_url=url + 'update.json'),
             dict(name=name, browser_download_url=url + name, size=10)])
-        manifest = dict(schema=1, version='0.5.1', direct_upgrade_from=dict(minimum='0.5.0', maximum_exclusive='0.5.1'),
+        manifest = dict(schema=1, version='0.5.1', requires_data_migration=False,
+                        direct_upgrade_from=dict(minimum='0.5.0', maximum_exclusive='0.5.1'),
                         assets={'win32-amd64': dict(name=name, bytes=10, unpacked_bytes=100, sha256='a' * 64, install_verified=True)})
         requests = []
         def opener(request, **kwargs):
@@ -83,6 +84,10 @@ class ReleaseTests(unittest.TestCase):
         self.assertTrue(read_release('0.5.0', 'win32', 'amd64', opener=opener).compatible)
         self.assertEqual(requests, [API, url + 'update.json'])
         self.assertEqual(read_release('0.4.9', 'win32', 'amd64', opener=opener).reason, 'incompatible')
+        for migration in (True, None):
+            manifest['requires_data_migration'] = migration
+            self.assertEqual(read_release('0.5.0', 'win32', 'amd64', opener=opener).reason, 'incompatible')
+        manifest['requires_data_migration'] = False
         manifest['assets']['win32-amd64']['install_verified'] = False
         self.assertEqual(read_release('0.5.0', 'win32', 'amd64', opener=opener).reason, 'platform_unverified')
         manifest['assets']['win32-amd64']['install_verified'] = True
@@ -92,7 +97,7 @@ class ReleaseTests(unittest.TestCase):
         document['assets'] = []
         self.assertEqual(read_release('0.5.0', 'win32', 'amd64', opener=opener).reason, 'manual_update')
 
-    def test_success_preserves_data_and_failure_restores_program_and_database(self):
+    def test_upgrade_backs_up_data_and_runtime_failure_restores_only_program(self):
         for fail in (False, True):
             with self.subTest(fail=fail), tempfile.TemporaryDirectory() as directory:
                 paths, installation, service = fixture(Path(directory))
@@ -104,27 +109,63 @@ class ReleaseTests(unittest.TestCase):
                 with open_database(paths.database) as database:
                     database.execute('CREATE TABLE evidence(value TEXT)')
                     database.execute("INSERT INTO evidence VALUES ('old')")
-                plan, _ = create_plan(service, ['--cli'], 'http://127.0.0.1:1', [])
-                def verify(document, installed):
+                plan, _ = create_plan(service, ['--cli'], [])
+                def check(installed):
                     self.assertEqual((Path(installed.root) / 'Pictide.exe').read_text(), 'updated')
                     if fail:
+                        # Program rollback must leave any later database writes intact.
                         with open_database(paths.database) as database:
                             database.execute("UPDATE evidence SET value='new'")
-                        raise RuntimeError('Simulated startup failure')
+                        with open_database(paths.root / 'db/new.sqlite3') as database:
+                            database.execute('CREATE TABLE later_write(value TEXT)')
+                        raise RuntimeError('Simulated runtime load failure')
                 restart = Mock()
                 if fail:
-                    with self.assertRaisesRegex(RuntimeError, 'Simulated startup failure'):
-                        apply_plan(plan, verifier=verify, restarter=restart)
+                    with self.assertRaisesRegex(RuntimeError, 'Simulated runtime load failure'):
+                        apply_plan(plan, checker=check, restarter=restart)
                 else:
-                    apply_plan(plan, verifier=verify, restarter=restart)
+                    apply_plan(plan, checker=check, restarter=restart)
                 self.assertEqual((Path(installation.root) / 'Pictide.exe').read_text(), 'previous' if fail else 'updated')
                 with open_database(paths.database) as database:
+                    self.assertEqual(database.execute('SELECT value FROM evidence').fetchone()[0], 'new' if fail else 'old')
+                result = json.loads((paths.tmp / 'updates/result.json').read_text(encoding='utf8'))
+                with open_database(Path(result['backup']) / 'db' / paths.database.name) as database:
                     self.assertEqual(database.execute('SELECT value FROM evidence').fetchone()[0], 'old')
+                if fail:
+                    self.assertTrue((paths.root / 'db/new.sqlite3').exists())
                 self.assertEqual((paths.images / 'liked.png').read_bytes(), b'personal')
                 self.assertEqual((paths.models / 'user-model.bin').read_bytes(), b'personal')
                 self.assertEqual((paths.libraries / 'custom.sqlite3').read_bytes(), b'personal')
                 self.assertEqual((Path(installation.root) / 'pictide.local.json').read_text(), 'user settings')
                 restart.assert_called_once()
+
+    def test_partial_file_replacement_failure_restores_the_previous_program(self):
+        from backend.updates.apply import copy
+        with tempfile.TemporaryDirectory() as directory:
+            paths, installation, service = fixture(Path(directory))
+            plan, _ = create_plan(service, ['--cli'], [])
+            def failing_copy(source, target):
+                if source == service.package / '_internal':
+                    raise OSError('Simulated file replacement failure')
+                return copy(source, target)
+            checker, restart = Mock(), Mock()
+            with patch('backend.updates.apply.copy', side_effect=failing_copy):
+                with self.assertRaisesRegex(OSError, 'file replacement failure'):
+                    apply_plan(plan, checker=checker, restarter=restart)
+            self.assertEqual((Path(installation.root) / 'Pictide.exe').read_text(), 'previous')
+            self.assertEqual(json.loads((Path(installation.root) / '_internal/resources/installation.json').read_text())['version'], '0.5.0')
+            checker.assert_not_called()
+            restart.assert_called_once()
+
+    def test_process_launch_failure_restores_program_and_retries_the_previous_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            paths, installation, service = fixture(Path(directory))
+            plan, _ = create_plan(service, ['--cli'], [])
+            restart = Mock(side_effect=[OSError('Cannot launch the updated program'), None])
+            with self.assertRaisesRegex(OSError, 'Cannot launch'):
+                apply_plan(plan, checker=Mock(), restarter=restart)
+            self.assertEqual((Path(installation.root) / 'Pictide.exe').read_text(), 'previous')
+            self.assertEqual(restart.call_count, 2)
 
     def test_unsafe_archives_and_overlapping_data_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -224,7 +265,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
             service = application.updates
             service.installation = installation
             service.discover = Mock(return_value=prepared.release)
-            app[host.UPDATE_START] = dict(arguments=['--cli'], url='http://127.0.0.1:1', pids=[])
+            app[host.UPDATE_START] = dict(arguments=['--cli'], pids=[])
             async with TestClient(TestServer(app)) as client:
                 for endpoint in ('/api/bootstrap', '/api/updates', '/api/settings/general', '/api/updates'):
                     response = await client.get(endpoint)
@@ -252,6 +293,13 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
 
 
 class CliTests(unittest.TestCase):
+    def test_help_checks_the_runtime_without_preparing_data_or_starting_services(self):
+        with patch.object(host.PictideApplication, 'prepare_startup', side_effect=AssertionError('prepared data')):
+            with patch.object(host, 'create_app', side_effect=AssertionError('started service')):
+                with redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as exit:
+                    host._main(['--help'])
+        self.assertEqual(exit.exception.code, 0)
+
     def test_check_flag_skips_startup_setup_and_downloads(self):
         result = dict(current_version='0.5.0', latest_version='0.5.1', error=None)
         service = SimpleNamespace(check=AsyncMock(return_value=result), close=AsyncMock())

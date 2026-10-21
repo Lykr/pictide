@@ -8,7 +8,6 @@ import json
 import math
 import logging
 import os
-import secrets
 import socket
 import tempfile
 import time
@@ -74,8 +73,6 @@ async def boundary(request, handler):
         application = request.app.get(APPLICATION)
         update_route = request.path.startswith('/api/updates')
         if application and request.path.startswith('/api/'):
-            if application.update_verifying and request.path not in {'/api/updates/health', '/api/updates/abort'}:
-                raise web.HTTPServiceUnavailable(text='Update verification in progress')
             if application.update_installing and request.path != '/api/updates':
                 raise web.HTTPServiceUnavailable(text='Pictide is installing an update')
         writing = application and request.path.startswith('/api/') and not update_route and request.method not in ('GET', 'HEAD')
@@ -328,11 +325,10 @@ async def lifecycle(app):
                              connector=TCPConnector(ssl=tls_context())) as session:
         managed = app.get(LOCAL_GENERATION)
         try:
-            if managed is not None and not app[APPLICATION].update_verifying:
+            if managed is not None:
                 await asyncio.to_thread(managed.start)
                 await managed.configure(app[APPLICATION], session)
-            if not app[APPLICATION].update_verifying:
-                await app[APPLICATION].start(session)
+            await app[APPLICATION].start(session)
             try:
                 yield
             finally:
@@ -382,7 +378,7 @@ async def update_action(request):
         if not start:
             raise ValidationError('This instance cannot restart itself')
         pids = start['pids'] + ([payload['initiator_pid']] if payload else [])
-        path, program = await application.prepare_update(start['arguments'], start['url'], pids)
+        path, program = await application.prepare_update(start['arguments'], pids)
         try:
             await asyncio.to_thread(launch_helper, path, program)
         except Exception as error:
@@ -394,15 +390,6 @@ async def update_action(request):
     else:
         raise web.HTTPNotFound()
     return web.json_response(update_status(request))
-
-
-async def update_health(request):
-    token = os.environ.get('PICTIDE_UPDATE_VERIFY_TOKEN', '')
-    if not token or not secrets.compare_digest(request.headers.get('X-Pictide-Update', ''), token):
-        raise web.HTTPNotFound()
-    if request.method == 'POST':
-        asyncio.get_running_loop().call_later(.1, stop_for_update)
-    return web.json_response(dict(version=__version__, pid=os.getpid(), data_directory=str(request.app[APPLICATION].paths.root)))
 
 
 def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False):
@@ -424,14 +411,12 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         WorkflowLibrary(paths.workflows, tasks.connections.validate), roam, recommendation_store, GeneralSettings(paths))
     from .updates.service import UpdateService
     application = app[APPLICATION]
-    application.update_verifying = bool(os.environ.get('PICTIDE_UPDATE_VERIFY_TOKEN'))
     application.updates = UpdateService(paths, on_change=lambda: application.events.publish('updates'))
     app.cleanup_ctx.append(lifecycle)
     app.on_shutdown.append(shutdown)
     app.add_routes([
         web.get("/api/bootstrap", bootstrap), web.get("/api/events", events),
         web.get('/api/updates', updates), web.post('/api/updates/{operation:check|download|install}', update_action),
-        web.get('/api/updates/health', update_health), web.post('/api/updates/abort', update_health),
         web.get("/api/settings/general", general_settings), web.put("/api/settings/general", general_settings),
         web.get("/api/settings/history", history_settings), web.put("/api/settings/history", history_settings),
         web.get("/api/settings/roam", roam_settings), web.put("/api/settings/roam", roam_settings),
@@ -588,7 +573,7 @@ def _main(argv=None):
             pids.append(int(os.environ['PICTIDE_DESKTOP_PARENT_PID']))
         if '--data-dir' not in arguments:
             arguments += ['--data-dir', str(paths.root)]
-        app[UPDATE_START] = dict(arguments=arguments, url=url, pids=pids)
+        app[UPDATE_START] = dict(arguments=arguments, pids=pids)
         instance = save_instance(paths, url, arguments, app[APPLICATION].updates.installation)
         async def log_ready(app):
             ready_instance(paths, instance)

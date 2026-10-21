@@ -14,7 +14,7 @@ Choose **Start tour** in the Getting started row to revisit connecting a service
 
 Choose **Check for updates** to look for a new stable release. Checks, downloads, and installation happen only when you request them; Pictide never updates automatically. Compatible portable releases offer **Download update**, then **Install and restart**. Save your edits and finish generation tasks first. Images, preferences, models, and your selected data folder are kept.
 
-If direct installation is unavailable, open the release notes and update manually. Source deployments always update manually. The command-line equivalents are described in the [Windows](setup/windows.md#updates), [macOS](setup/macos.md#updates), and [Linux](setup/linux.md#updates) guides.
+Releases requiring data migration and source deployments use manual updates. If direct installation is unavailable, open the release notes. The command-line equivalents are described in the [Windows](setup/windows.md#updates), [macOS](setup/macos.md#updates), and [Linux](setup/linux.md#updates) guides.
 
 See [Roam](roam.md) to adjust exploration, or [Getting started](getting-started.md) to connect an image service.
 

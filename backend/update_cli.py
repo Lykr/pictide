@@ -91,8 +91,7 @@ async def run(args):
                 arguments.append('--no-browser')
             if args.desktop or sys.platform == 'win32' and not (args.cli or args.no_browser):
                 arguments.append('--desktop')
-            hostname = '[::1]' if args.host == '::1' else '127.0.0.1'
-            path, program = await asyncio.to_thread(create_plan, service, arguments, f'http://{hostname}:{args.port}', [os.getpid()])
+            path, program = await asyncio.to_thread(create_plan, service, arguments, [os.getpid()])
             launch_helper(path, program)
         print('Update installation has been requested. Pictide will restart after this command exits.\n'
               'Result: ' + str(paths.tmp / 'updates/result.json'), flush=True)

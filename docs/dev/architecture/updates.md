@@ -14,11 +14,11 @@ The General settings component reads local status through `GET /api/updates`. On
 
 ## Compatibility and release publication
 
-`scripts/update-policy.json` declares the source-version range eligible for direct upgrades. Maintain it deliberately when release behavior or persistent data changes; version numbers alone do not prove compatibility. The target must be a newer stable release, accept the current version, match the updater protocol and native platform/architecture, and have a verified native installation smoke. Source checkouts and read-only or overlapping-data installations use manual upgrade instructions.
+`scripts/update-policy.json` declares the source-version range eligible for direct upgrades and whether data migration is required. Direct upgrades require `requires_data_migration: false`; releases needing migration use manual upgrades. Maintain the policy deliberately when release behavior or persistent data changes; version numbers alone do not prove compatibility. The target must be a newer stable release, accept the current version, match the updater protocol and native platform/architecture, and have a verified native installation smoke. Source checkouts and read-only or overlapping-data installations use manual upgrade instructions.
 
 Native packages embed `resources/installation.json` with schema, version, platform, and architecture. The publisher creates `update.json` from the policy, archives, build reports, and successful native smoke reports. Each asset includes its name, compressed and unpacked sizes, SHA-256, and native verification status. GitHub asset metadata must agree. Missing or unverified metadata offers manual updates rather than guessing.
 
-`scripts/smoke_portable.py` also exercises `scripts/smoke_updates.py`: a copied native runtime applies its own package, verifies a temporary headless service, restarts the application, and checks existing data and MiniLM weights. `install_verified` is enabled per platform only when this smoke passes. Releases still build exclusively on version-tag pushes.
+`scripts/smoke_portable.py` also exercises `scripts/smoke_updates.py`: a copied native runtime applies its own package, restarts normally, and checks HTTP readiness, existing data, database backups, and MiniLM weights. A damaged runtime exercises program rollback. `install_verified` is enabled per platform only when this smoke passes. Releases still build exclusively on version-tag pushes.
 
 ## Installation and recovery
 
@@ -28,7 +28,9 @@ The update plan and copied helper runtime live under `data/tmp/updates/`. A file
 
 Backups under `data/backups/updates/` contain consistent SQLite snapshots and the replaced program files. Windows replaces the executable and `_internal/`; macOS replaces the `.app`; Linux replaces its launcher, packaged runtime, and release documents. The data directory, data-location pointer, images, models, vocabularies, and unrelated installation files remain outside the replacement set.
 
-Before the normal application restarts, a temporary headless worker verifies the new runtime and selected data behind a token-protected readiness endpoint. It does not start generation, preference learning, history cleanup, managed ComfyUI, or the browser. On failure the helper restores the program and database snapshots and restarts the previous version. Detailed output and the result remain with the update plan. Backups are retained for recovery.
+After replacing program files, the helper runs the existing `--help` entry to check that the bundled runtime loads. This does not prepare data, download dependencies, or start services. It then starts the application once in its original mode. Replacement, runtime-check, or process-launch failures restore the program files and attempt to restart the previous version. Database snapshots are retained for manual recovery; the updater never restores or removes runtime databases.
+
+The runtime check does not establish that business initialization or later operation will succeed. Normal HTTP readiness is verified by the native release smoke, rather than a special application mode or update-only endpoints. Detailed output and the result remain with the update plan. Backups are retained for recovery.
 
 ## Focused verification
 

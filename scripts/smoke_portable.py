@@ -267,7 +267,7 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
                 from scripts.smoke_updates import smoke as update_smoke
                 update_smoke(executable, data, base, archive)
                 report['updates_verified'] = True
-                report['checks'].append('native updater helper: replacement, readiness, restart, failed-start rollback and personal-data/model preservation')
+                report['checks'].append('native updater helper: runtime check, replacement, normal restart readiness, damaged-runtime rollback and personal-data/model preservation')
                 report['passed'] = True
         except Exception as error:
             failure = error
