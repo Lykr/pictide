@@ -17,11 +17,12 @@ Pictide is a local generative image exploration app that gradually adapts to you
 
 ### Quick start
 
-1. Have ComfyUI or another image generation API ready. On Windows, you can also use the [portable package's first-launch guide](docs/guides/setup/windows.md#portable-edition) to get everything ready.
-2. Download and extract the portable package for your system from [GitHub Releases](https://github.com/Lykr/pictide/releases).
-3. Follow the startup steps for [Windows](docs/guides/setup/windows.md#portable-edition), [Linux](docs/guides/setup/linux.md#portable-edition), or [macOS](docs/guides/setup/macos.md#portable-edition), then follow the in-app tour to get started.
+1. Download and extract the portable package for your system from [GitHub Releases](https://github.com/Lykr/pictide/releases).
+2. Launch Pictide and follow the in-app tour to start roaming.
 
-The package includes a default vocabulary. Windows and Linux keep personal data beside the program in `data/`; macOS keeps it in your user account. For data locations, running from source, or another vocabulary, choose a guide in the [user documentation](docs/README.md).
+On Windows, first-launch setup can install ComfyUI and a recommended model. On macOS and Linux, have ComfyUI or another image generation API ready.
+
+Startup help: [Windows](docs/guides/setup/windows.md#portable-edition) · [Linux](docs/guides/setup/linux.md#portable-edition) · [macOS](docs/guides/setup/macos.md#portable-edition).
 
 ### Feature overview
 

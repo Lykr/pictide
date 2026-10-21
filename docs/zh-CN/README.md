@@ -17,11 +17,12 @@
 
 ### 快速开始
 
-1. 准备好 ComfyUI 或其他生图 API。Windows 用户也可通过[便携包内的首次启动引导](guides/setup/windows.md#便携版本)完成准备。
-2. 从 [GitHub Releases](https://github.com/Lykr/pictide/releases) 下载并解压适合系统的便携包。
-3. 按系统选择启动方式：[Windows](guides/setup/windows.md#便携版本) · [Linux](guides/setup/linux.md#便携版本) · [macOS](guides/setup/macos.md#便携版本)，然后跟随应用内引导快速上手。
+1. 从 [GitHub Releases](https://github.com/Lykr/pictide/releases) 下载并解压适合系统的便携包。
+2. 启动 Pictide，跟随应用内引导开始漫游。
 
-发行包随带默认词库。Windows 和 Linux 的个人数据保存在程序旁的 `data/`，macOS 保存在用户目录。查看数据位置、从源码运行或更换词库，见[用户文档](index.md)。
+Windows 可在首次启动时安装 ComfyUI 和推荐模型；macOS、Linux 用户需提前准备好 ComfyUI 或其他生图 API。
+
+启动帮助：[Windows](guides/setup/windows.md#便携版本) · [Linux](guides/setup/linux.md#便携版本) · [macOS](guides/setup/macos.md#便携版本)。
 
 ### 功能概览
 
