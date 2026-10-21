@@ -1,5 +1,7 @@
 # 组件规范
 
+[English](../../../../dev/reference/design/components.md)
+
 [设计规范入口](../../design-system.md) · [开发流程](../../development.md)
 
 ## 组件使用

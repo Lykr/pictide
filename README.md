@@ -43,11 +43,11 @@ Pictide is a proof of concept. See the [setup guide](docs/guides/getting-started
 
 ## Developer documentation
 
-- [Development workflow (Chinese)](docs/zh-CN/dev/development.md): source setup, builds, verification, and releases.
+- [Development workflow](docs/dev/development.md): source setup, builds, verification, and releases.
 - [Architecture and module boundaries](docs/dev/architecture.md): responsibilities, dependencies, and call flows.
 - [Corpus tools](docs/dev/corpus.md): vocabulary processing and release data preparation.
 - [HTTP API reference](docs/dev/api.md): endpoints, request parameters, and responses.
-- [UI design system (Chinese)](docs/zh-CN/dev/design-system.md): components, visuals, and interactions.
+- [UI design system](docs/dev/design-system.md): components, visuals, and interactions.
 - [Developer documentation index](docs/dev/README.md): data layout, code entry points, and further reference.
 
 ## License

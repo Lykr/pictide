@@ -1,5 +1,7 @@
 # Linux 开发与构建
 
+[English](../../../dev/setup/linux.md)
+
 [开发文档](../../../dev/README.md) · [Linux 安装与启动](../../../guides/setup/linux.md)
 
 以下命令在项目根目录执行。

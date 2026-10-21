@@ -1,5 +1,7 @@
 # Git 开发流程
 
+[English](../../dev/development.md)
+
 包含 `README.md`、`backend/`、`web/` 与启动脚本的目录是仓库根目录，独立管理 Pictide 源码、测试、文档和工作流模板。`main` 保存验证后的集成结果；远程 `origin` 为 `git@github.com:Lykr/pictide.git`。
 
 按步骤阅读：[开始任务](#开始任务) → [准备环境](#首次准备检出目录) → [验证提交](#验证与提交) → [集成发布](#集成与发布)。接口、架构和界面规则分别见[文档导航](../../dev/README.md)。

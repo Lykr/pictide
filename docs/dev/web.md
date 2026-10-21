@@ -11,9 +11,9 @@ Code paths in this section are relative to `web/` at the project root.
 - `index.html` → `src/main.tsx`: the only React root. It mounts all workspaces, then initializes each business controller once.
 - `src/feed.tsx`: application shell, sidebar, Roam, Generate, and categorized Settings pages.
 - `src/editor.tsx`: React-managed workspaces for read-only libraries, generation presets, and previews; no separate page entry point.
-- `src/shared/notifications.mjs`, `src/components/notifications.tsx`: the shared floating notification layer for errors and operation results; behavior is defined in the [component guidelines (Chinese)](../zh-CN/dev/reference/design/components.md#悬浮通知).
+- `src/shared/notifications.mjs`, `src/components/notifications.tsx`: the shared floating notification layer for errors and operation results; behavior is defined in the [component guidelines](reference/design/components.md#floating-notifications).
 - `src/controllers/`: browser state, events, and API calls. The backend Candidate module handles preset validation, co-occurrence expansion, and continuous generation within a budget.
-- `src/components/ui/`, `src/styles/theme.css`: shared shadcn/ui components and design tokens. See [Design Guidelines (Chinese)](../zh-CN/dev/design-system.md).
+- `src/components/ui/`, `src/styles/theme.css`: shared shadcn/ui components and design tokens. See [Design Guidelines](design-system.md).
 
 The React shell and existing DOM controllers manage presentation and drafts. Controllers initialize only once per page lifecycle. The shared control layer integrates official shadcn/Radix components through portals, maintaining a single React root. Hidden form-state interfaces bridge legacy controllers and must not appear as visible native controls. New features reuse this layer without creating separate page entry points or a React root per control.
 
@@ -29,7 +29,7 @@ The entire application shares one `/api/events` EventSource. Existing polling fa
 
 ## Build
 
-Run `pnpm install --frozen-lockfile`, `pnpm run typecheck`, and `pnpm run build` in `web/`. The [Development Workflow (Chinese)](../zh-CN/dev/development.md) defines initial setup, validation, and release order. Do not clear dist directly in a directory currently serving pages.
+Run `pnpm install --frozen-lockfile`, `pnpm run typecheck`, and `pnpm run build` in `web/`. The [Development Workflow](development.md) defines initial setup, validation, and release order. Do not clear dist directly in a directory currently serving pages.
 
 Builds use dependencies under the project root's `dev/runtime/frontend/` and caches under `dev/cache/`. `web/node_modules` points to the actual dependencies, and `web/dist` contains distribution assets. Node.js is used only for builds; the Python host serves `/static/ui/` at runtime.
 
@@ -37,7 +37,7 @@ Compiled JavaScript and CSS filenames include content hashes, and the HTML entry
 
 ## Further Reading
 
-- [Shared Components, Theme, and Page Guidelines (Chinese)](../zh-CN/dev/design-system.md)
+- [Shared Components, Theme, and Page Guidelines](design-system.md)
 - [Module Boundaries](architecture.md)
 - [Image Operations and Keyboard Shortcuts](../guides/roam.md#browsing-and-autoplay)
-- [Third-Party Component Notices (Chinese)](../../web/src/THIRD_PARTY_NOTICES.md)
+- [Third-Party Component Notices](../../web/src/THIRD_PARTY_NOTICES.md)

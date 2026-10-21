@@ -72,11 +72,11 @@ sequenceDiagram
 
 The browser checks for gaps when entering roam, switching images, receiving task state updates, and at similar entry points, with no separate feeding loop. Each ensure creates at most one task, with at most two unfinished roam tasks, overlapping prompt preparation with the previous image's generation. At most two tasks across the application can be in flight at the backend; manual tasks have priority for newly available slots. After a completion event, Task verifies state, fills the slot, and saves results. ComfyUI falls back to polling when events are unavailable. OpenAI Images and Gemini complete synchronously over asynchronous HTTP I/O and save returned Base64 or downloaded URL images locally. They have no remote recovery reference; a timeout or interrupted submission stays uncertain and is not automatically sent again. Newly selected cloud Roam backends start with prefetch disabled until the user explicitly enables it.
 
-ComfyUI connection establishment failures are definitive submission failures and release the dispatch slot. Uncertain jobs are never resubmitted: Task checks the backend queue and history by request ID. A successful lookup with no match releases the slot while retaining the uncertain record for later recovery; a failed lookup retains the slot. See the [queue recovery record (Chinese)](../../zh-CN/dev/issues/roam-queue-recovery.md).
+ComfyUI connection establishment failures are definitive submission failures and release the dispatch slot. Uncertain jobs are never resubmitted: Task checks the backend queue and history by request ID. A successful lookup with no match releases the slot while retaining the uncertain record for later recovery; a failed lookup retains the slot.
 
 When the preference scope, roam mode, or anchor changes, App saves settings and prefetch invalidation state through Store; late artifacts are hidden. Flow continues from the actually selected combination; Anchor reuses the full prompt set. Candidate, Recommendation, and Task never interact directly.
 
-A failure, uncertain state, or cancellation in the current settings version pauses prefetch. Saving the complete roam settings clears the pause; correcting and saving the current roam backend can also resume it. Historical images and tasks remain, and old failed tasks are not automatically resubmitted. See the [Roam Guide](../../guides/roam.md), [Prefetch API](../reference/api/roam.md), and [Event Design (Chinese)](../../zh-CN/dev/issues/task-events.md).
+A failure, uncertain state, or cancellation in the current settings version pauses prefetch. Saving the complete roam settings clears the pause; correcting and saving the current roam backend can also resume it. Historical images and tasks remain, and old failed tasks are not automatically resubmitted. See the [Roam Guide](../../guides/roam.md) and [Prefetch API](../reference/api/roam.md).
 
 ## Feedback and Background Learning
 
@@ -97,10 +97,9 @@ sequenceDiagram
     Worker->>Store: Run lazy cleanup triggered by this feedback
 ```
 
-Learning uses the actual text, polarity, and combination associations at generation time, without reinterpreting history using the current library. Unrated remains unknown; withdrawal removes the original contribution. A successful feedback request means the feedback was saved, not that recommendation learning has completed. Records are retained when the model is temporarily unavailable, and later operations wake processing. See the [Background Learning Record (Chinese)](../../zh-CN/dev/issues/feedback-background-learning.md).
+Learning uses the actual text, polarity, and combination associations at generation time, without reinterpreting history using the current library. Unrated remains unknown; withdrawal removes the original contribution. A successful feedback request means the feedback was saved, not that recommendation learning has completed. Records are retained when the model is temporarily unavailable, and later operations wake processing.
 
 ## Further Reading
 
-- [Generation Submission Window Design (Chinese)](../../zh-CN/dev/issues/task-window.md)
 - [Storage and Image Sources](../reference/storage.md)
 - [Recommendation Feature Flow](recommendation.md)

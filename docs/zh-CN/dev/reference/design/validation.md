@@ -1,5 +1,7 @@
 # 开发与验收
 
+[English](../../../../dev/reference/design/validation.md)
+
 [设计规范入口](../../design-system.md) · [开发流程](../../development.md)
 
 ## 开发与验收

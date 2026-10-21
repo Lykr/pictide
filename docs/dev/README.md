@@ -4,7 +4,7 @@
 
 [Project home](../../README.md) · [User documentation](../README.md#user-documentation)
 
-Start with the [product goals](../guides/about.md), then read the technical details relevant to your task. For a fresh checkout, [prepare the development environment (Chinese)](../zh-CN/dev/development.md#首次准备检出目录) before consulting architecture, API, or UI documentation.
+Start with the [product goals](../guides/about.md), then read the technical details relevant to your task. For a fresh checkout, [prepare the development environment](development.md#prepare-a-checkout) before consulting architecture, API, or UI documentation.
 
 Prioritize changes that help people discover images they enjoy or guide exploration more naturally. The [product scope and experience goals](../guides/about.md#product-scope) explain how roaming guides feature decisions.
 
@@ -19,10 +19,10 @@ Prioritize changes that help people discover images they enjoy or guide explorat
 ## Development and maintenance
 
 - [Corpus tools](corpus.md): configurable processing, input/output structures, and [prebuilt release vocabularies](corpus.md#prebuilt-vocabulary).
-- [Development workflow (Chinese)](../zh-CN/dev/development.md): start a task → prepare the environment → verify → integrate and deploy.
+- [Development workflow](development.md): start a task → prepare the environment → verify → integrate and deploy.
 - [Focused smoke checks](testing.md): core, UI, corpus and browser groups, plus release gates.
-- [GitHub Actions releases (Chinese)](../zh-CN/dev/development.md#github-actions-发版): prepare locked resources, then push a version tag to build native portable packages.
-- [UI design system (Chinese)](../zh-CN/dev/design-system.md): terminology, visuals, components, layout, and interactions.
+- [GitHub Actions releases](development.md#github-actions-releases): prepare locked resources, then push a version tag to build native portable packages.
+- [UI design system](design-system.md): terminology, visuals, components, layout, and interactions.
 - [Web code entry points](web.md): pages, controllers, and shared components.
 
 ## Documentation maintenance
@@ -33,13 +33,14 @@ User guides start with the need they serve and the shortest path to trying it. E
 
 The project README puts user guidance first and developer entry points last. Entry pages contain a summary and next steps. English user procedures belong in `docs/guides/`; English developer documentation belongs in `docs/dev/`, with API and data details in `reference/` and architecture details in `architecture/`. Maintain each current rule in one place and link to it elsewhere. Update the relevant documentation when behavior changes, and preserve historical context in issue records.
 
-English is the authoritative source for user guides and current architecture, data and API documentation. During normal development, update only the English source. Refresh Chinese translations on request or in a focused pass before a release; translating every change is not a delivery requirement. Where translations differ, the English source takes precedence.
+English is the authoritative source for user guides and core developer documentation, including setup, workflow, architecture, UI guidelines, data, and APIs. During normal development, update only the English source. Refresh Chinese translations on request or in a focused pass before a release; translating every change is not a delivery requirement. Where translations differ, the English source takes precedence.
 
 All Chinese documentation lives under `docs/zh-CN/`, using ordinary `.md` filenames:
 
 | English source | Chinese translation |
 | --- | --- |
 | `README.md` | `docs/zh-CN/README.md` |
+| `AGENTS.md` | `docs/zh-CN/AGENTS.md` |
 | `docs/README.md` | `docs/zh-CN/index.md` |
 | `docs/guides/<topic>.md` | `docs/zh-CN/guides/<topic>.md` |
 | `docs/dev/<topic>.md` | `docs/zh-CN/dev/<topic>.md` |
@@ -47,4 +48,4 @@ All Chinese documentation lives under `docs/zh-CN/`, using ordinary `.md` filena
 
 Keep reciprocal language links immediately below each translated page's title. Chinese navigation prefers a Chinese page where one exists; images and other shared assets stay at their existing paths.
 
-Chinese-only development procedures, UI specifications, design templates and issue records stay in Chinese under `docs/zh-CN/dev/`, preserving their `setup/`, `reference/` and `issues/` categories. Links from English pages identify these documents as Chinese. `AGENTS.md` remains at the repository root as the collaboration entry point. The distributed frontend notice stays at `web/src/THIRD_PARTY_NOTICES.md` in English, with its Chinese translation in `docs/zh-CN/web/src/`.
+Issue records, change proposals, and the design template remain in Chinese under `docs/zh-CN/dev/`. English core navigation links to current English instructions rather than historical records. `AGENTS.md` remains at the repository root as the English collaboration entry point. The distributed frontend notice stays at `web/src/THIRD_PARTY_NOTICES.md` in English, with its Chinese translation in `docs/zh-CN/web/src/`.

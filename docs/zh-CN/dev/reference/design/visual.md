@@ -1,5 +1,7 @@
 # 视觉基础
 
+[English](../../../../dev/reference/design/visual.md)
+
 [设计规范入口](../../design-system.md) · [开发流程](../../development.md)
 
 ## 视觉基础

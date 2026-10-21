@@ -1,5 +1,7 @@
 # Pictide 页面设计规范
 
+[English](../../dev/design-system.md)
+
 适用于图片 Feed、提示词编辑器、设置与后续新增页面。目标是简约、紧凑、层级清晰，主要空间留给图片、提示词与正在编辑的数据。
 
 视觉基准固定为用户提供的 [shadcn Create 预设 b1VlIttI](https://ui.shadcn.com/create?preset=b1VlIttI)：Radix Luma、Neutral 配色、Inter 字体、Lucide 图标、默认圆角，菜单使用 default / subtle。预设记录在 `web/shadcn-preset.json`，生成器配置在 `web/components.json`。不再以笼统的“类似官网”作为验收标准。

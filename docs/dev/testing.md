@@ -26,7 +26,7 @@ Use Python 3.12 to match release CI.
 
 ## Browser preparation
 
-After preparing the [development environment](../zh-CN/dev/development.md#首次准备检出目录), build an isolated frontend and install Chromium:
+After preparing the [development environment](development.md#prepare-a-checkout), build an isolated frontend and install Chromium:
 
 ```shell
 pnpm --dir web run typecheck

@@ -2,7 +2,7 @@
 
 [简体中文](../zh-CN/dev/cleanup.md)
 
-[Data layout](data-layout.md) · [Development workflow (Chinese)](../zh-CN/dev/development.md)
+[Data layout](data-layout.md) · [Development workflow](development.md)
 
 Use `scripts/clean_project.py` to review disposable development files and remove the entries you approve. It requires Python 3.10+ and Git, with no extra packages. Run it from the project root using your Python interpreter.
 

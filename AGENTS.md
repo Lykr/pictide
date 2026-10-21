@@ -1,34 +1,36 @@
-# Pictide 项目协作约定
+# Pictide collaboration guide
 
-适用于本仓库所有目录和会话。路径均相对于仓库根目录，`main` 保存集成结果。
+[简体中文](docs/zh-CN/AGENTS.md)
 
-## 工作方式
+Applies throughout this repository. Paths are relative to its root; `main` holds integrated work.
 
-- 优先正向表达：围绕“有什么、要什么、是什么”，说明事实、能力、目标和具体行动。
-- 默认中文、表达简洁；从 [README](README.md) 获取入口，按需阅读 [架构](docs/dev/architecture.md)、[设计规范](docs/zh-CN/dev/design-system.md)、[数据目录](docs/dev/data-layout.md) 与 [Git 开发流程](docs/zh-CN/dev/development.md)。
-- 产品定位、功能边界和取舍依据统一维护在[About Pictide](docs/guides/about.md)；评估新功能时先对照漫游体验目标。
-- 当前为概念验证阶段，优先最小完整方案和现有机制，避免过度设计、防御性编程及迁移兼容层；少数有意义的冒烟即可，不运行全量测试。
-- 独立且值得并行的任务可交给 subagent；主管协调共享接口，核对集成结果。简单任务直接完成。
-- 实现使用独立分支；并行或涉及运行实例时使用独立 worktree、数据目录和端口。先检查 Git 状态，只提交本任务文件，不覆盖用户或其他任务的修改，不擅自 reset、stash 或改写历史。
-- 提交遵循 [Commit 规范](docs/zh-CN/dev/development.md#commit-规范)，任务交付前将新提交推送到 `origin`；集成到 `main` 的提交同步推送 `origin/main`。
-- 数据变更前备份原始数据；冲突时可从备份恢复。历史数据按清单提交用户确认后再删除；保留图片、任务、喜欢和偏好记录。
-- 文档按“入口 → 主题概览 → 专题细节”渐进披露；README 用户内容在前，开发者内容在后并通过文档链接展开；首页只保留快速开始和导航。英文用户指南放 `docs/guides/`，英文开发文档放 `docs/dev/`；中文文档统一放 `docs/zh-CN/`，其中开发流程、规范、设计与需求记录按 `dev/` 下的原分类组织。入口见[用户文档](docs/README.md)与[开发文档](docs/dev/README.md)。平台相关步骤按 Windows、Linux、macOS 独立阅读路径组织，不混排不同系统的命令。
-- 面向用户的文档和描述现状的架构、数据与 API 文档以英文为唯一维护源；日常任务只更新英文，中文译文按需或发版前集中同步，不要求每次改动同步两份。中文译文与中文开发资料集中在 `docs/zh-CN/`，文件名使用普通 `.md`，有英文原文时页首互链；需求记录、设计变更与设计模板继续用中文。完整目录映射与维护约定见[文档维护](docs/dev/README.md#documentation-maintenance)。
-- 行为变化同步所属文档；同一约定只在一处维护。核实实际调用链，区分已实现、已发布和未验证。
+## Working agreements
 
-## 模块边界
+- Communicate concisely in Chinese by default. Prefer direct, positive descriptions of facts, goals, and actions.
+- Start at [README](README.md). Consult [product scope](docs/guides/about.md), [architecture](docs/dev/architecture.md), [UI guidelines](docs/dev/design-system.md), [data layout](docs/dev/data-layout.md), and [development workflow](docs/dev/development.md) as needed. Evaluate features against the image exploration experience.
+- This is a proof of concept: favor the smallest complete solution and existing mechanisms. Use a few meaningful smoke checks rather than the full suite; avoid speculative abstractions, defensive layers, and migration compatibility.
+- Inspect Git status first. Implement on a separate branch; use separate worktrees, data directories, and ports for parallel work or running instances. Preserve unrelated changes and existing history; do not reset or stash without authorization. Delegate only worthwhile independent tasks, with explicit file ownership and coordinated interfaces.
+- Follow the English [commit conventions](docs/dev/development.md#commit-conventions). Stage only task files and push new commits to `origin` before delivery; push integrated results to `origin/main`.
+- Back up original data before changing it. Present historical data deletion as a reviewable inventory for user confirmation. Preserve images, tasks, likes, and preference records.
 
-- `web/` 是唯一前端，npm 包名 `pictide-web`；Feed、提示词、生成、任务和设置共用入口与导航，不另建编辑器站点或 iframe 页面。
-- `backend/host.py` 提供 HTTP/SSE/生命周期；`backend/application.py` 编排候选、推荐、任务与存储。业务分别位于 `candidate/`、`recommand/`、`task/`、`generation/`、`store/`，不让候选、推荐、任务直接相互调用。
-- 候选模块负责只读 PMI 词库、预设校验/保存、完整组合与连续预算；浏览器负责交互和草稿，推荐只对完整组合评分，ComfyUI 只执行生成 API。
-- 新增或调整架构、跨模块调用与数据流、模块对外接口时，先提交这三项设计并获得用户确认；沿用已确认边界不重复确认。界面细节、内部实现与常规验证自主完成。
-- 开发前提交的设计文档统一使用 [设计模板](docs/zh-CN/dev/design-template.md)，重点呈现变更项；概述尽量一句话，避免过多阐述已有逻辑和防御性逻辑。
-- 离线数据处理源码与依赖清单集中在根目录 corpus/，操作说明统一放在 docs/dev/corpus.md；开发资料、原始数据、离线导入环境、开发依赖和验证材料放在项目根目录 dev/，发行产物放在根目录 releases/；data/ 与便携包保持运行数据职责一致。
-- 运行数据、数据库、图片/提示词 JSON、模型、日志、缓存、临时文件与环境统一放在所选 `data/`；数据库和原始素材不提交。图片旁只保留实际正负提示词 JSON，不附配置或 TXT。
-- 漫游仅在操作/事件入口按需预取，不新增定时投喂循环。反馈支持喜欢、不喜欢与撤回，未评价保持未知；历史按生成时快照解释。
+## Documentation
 
-## 验证与发布
+- Use English for user guides and current developer documentation. Update English during normal work; refresh Chinese translations on request or before release. Keep Chinese documents under `docs/zh-CN/`, with reciprocal language links where an English source exists. Issue records, change proposals, and the design template remain Chinese.
+- Follow entry → overview → details. README puts quick start and user navigation first, developer links last. Keep guides concise and focused on user needs; maintain each rule in one place. See [documentation maintenance](docs/dev/README.md#documentation-maintenance) for directories and translation policy.
+- Update the owning document when behavior changes. Check actual call paths and distinguish implemented, released, and unverified behavior. Keep Windows, Linux, and macOS instructions on separate reading paths.
 
-- 前端复用共享 shadcn 组件和主题，修改后类型检查、构建并做少数真实界面冒烟。发布匹配源码的 `web/dist/`，先备份旧产物，保留旧 chunks，不在运行目录直接清空构建。
-- 生图后端先只读预检，测试优先临时数据与模拟后端；模拟结果不等于真实 GPU 出图。需要真实 GPU 任务时明确场景。
-- 重启前核对进程和任务并提前告知，保留草稿和正在执行的任务。结束后关闭自己的验证实例、标签页并清理已集成 worktree，先保留必要数据。
+## Module and data boundaries
+
+- `web/` is the sole frontend (`pictide-web`). Roam, Prompts, Generate, tasks, and Settings share one entry and navigation; keep application features within it.
+- `backend/host.py` owns HTTP, SSE, and lifecycle; `backend/application.py` orchestrates Candidate, Recommendation, Task, Generation, and Store. Candidate, Recommendation, and Task do not call one another directly.
+- Candidate reads the PMI vocabulary, validates/saves presets, and builds complete combinations with continuous-change budgets. The browser owns interaction and drafts. Recommendation scores complete combinations; ComfyUI executes generation API requests.
+- Before changing architecture, cross-module calls/data flow, or public module interfaces, present those three design aspects and obtain user confirmation. Reuse approved boundaries without asking again; UI details and internal implementation are autonomous. Use the Chinese template at `docs/zh-CN/dev/design-template.md`, focusing on changes with a short overview.
+- Offline processing source/dependencies live in `corpus/`, with instructions in [Corpus tools](docs/dev/corpus.md). Development materials, raw datasets, environments, and verification outputs belong in `dev/`; final archives belong in `releases/`.
+- Keep runtime databases, images and prompt JSON, models, logs, caches, temporary files, and environments under the selected data directory. Source and portable deployments share these responsibilities. Do not commit databases or raw materials; image sidecars contain only actual positive/negative prompt JSON.
+- Roam prefetch runs on operations/events; do not add timed feeding loops. Feedback supports like, dislike, and withdrawal; unrated remains unknown. Interpret history from generation-time snapshots.
+
+## Verification and deployment
+
+- Reuse shared shadcn components and theme. Frontend changes need type checking, a build, and a few real UI smokes. Deploy matching assets: back up old `web/dist/`, copy new chunks before the entry, and retain old chunks for open tabs. Build separately while serving an instance.
+- Precheck image services with read-only requests. Prefer temporary data and simulated backends; report simulation separately from real GPU generation. Scope real GPU tasks explicitly.
+- Before restarting, inspect processes and tasks, announce the restart, and preserve drafts and executing work. Close your verification instances and tabs afterward; remove integrated worktrees only after preserving needed data.

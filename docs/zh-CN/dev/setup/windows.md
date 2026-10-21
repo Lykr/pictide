@@ -1,5 +1,7 @@
 # Windows 开发与构建
 
+[English](../../../dev/setup/windows.md)
+
 [开发文档](../../../dev/README.md) · [Windows 安装与启动](../../../guides/setup/windows.md)
 
 以下命令在项目根目录执行。
