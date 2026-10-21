@@ -111,6 +111,13 @@ Deploy frontend assets built from the matching source. For a running instance, b
 
 Close verification instances and tabs after the task. Remove a worktree only after its work is integrated, its tracked changes are clean, and needed ignored data is preserved.
 
+After integration and a successful push to `origin/main`, delete completed task branches locally and, if published, on `origin`. Verify that their commits are included in `main`; after cherry-picking, check patch equivalence as well. Finish any worktree cleanup before deleting its branch. Keep branches with ongoing work or independent unmerged changes. `main` remains the integration branch; version tags and Releases remain available independently of task branches.
+
+```shell
+git branch -d codex/example
+git push origin --delete codex/example
+```
+
 ## Version-control scope
 
 Track source, neutral test fixtures, documentation, lockfiles, icons, and maintained workflow templates. Ignore `data/`, `dev/`, `releases/`, environments, dependencies, generated assets, caches, reports, logs, secrets, SQLite files, model weights, and raw Parquet data. Keep placeholder-only `.env.example` / `.env.template` files and shared VS Code configuration. Avoid extension-wide exclusions for JSON, images, or lockfiles. Check already tracked ignored files with `git ls-files -ci --exclude-standard` when changing ignore rules.

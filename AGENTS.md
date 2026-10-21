@@ -10,7 +10,7 @@ Applies throughout this repository. Paths are relative to its root; `main` holds
 - Start at [README](README.md). Consult [product scope](docs/guides/about.md), [architecture](docs/dev/architecture.md), [UI guidelines](docs/dev/design-system.md), [data layout](docs/dev/data-layout.md), and [development workflow](docs/dev/development.md) as needed. Evaluate features against the image exploration experience.
 - This is a proof of concept: favor the smallest complete solution and existing mechanisms. Use a few meaningful smoke checks rather than the full suite; avoid speculative abstractions, defensive layers, and migration compatibility.
 - Inspect Git status first. Implement on a separate branch; use separate worktrees, data directories, and ports for parallel work or running instances. Preserve unrelated changes and existing history; do not reset or stash without authorization. Delegate only worthwhile independent tasks, with explicit file ownership and coordinated interfaces.
-- Follow the English [commit conventions](docs/dev/development.md#commit-conventions). Stage only task files and push new commits to `origin` before delivery; push integrated results to `origin/main`.
+- Follow the English [commit conventions](docs/dev/development.md#commit-conventions). Stage only task files and push new commits to `origin` before delivery; push integrated results to `origin/main`. After integration and a successful push, delete completed task branches locally and on `origin`; retain branches still needed for ongoing work.
 - Back up original data before changing it. Present historical data deletion as a reviewable inventory for user confirmation. Preserve images, tasks, likes, and preference records.
 
 ## Documentation
