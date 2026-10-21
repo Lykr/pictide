@@ -35,7 +35,7 @@ Notifications sit at the viewport's upper right, respecting safe areas, theme, a
 
 Success and informational notices default to 4.5 seconds; errors and warnings to 10 seconds. Hover, keyboard focus, and window blur pause the timer. Mount into the active dialog or immersive container; use the native top layer where supported and fixed positioning otherwise. Notices remain interactive in fullscreen and dialogs, and errors preserve immersive mode.
 
-Loading progress, unsaved markers, empty states, unavailable-image placeholders, and historical task error details remain page content. New result messages use this shared layer rather than inserting banners or changing button labels.
+Loading progress, unsaved markers, empty states, unavailable-image placeholders, and historical task error details remain page content. Roam keyboard and standalone swipe feedback keeps its brief icon/text acknowledgement over the image, including in immersive mode; failed feedback requests use error notifications. Other result messages use the shared notification layer rather than inserting banners or changing button labels.
 
 ## Forms and editing
 

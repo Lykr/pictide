@@ -68,3 +68,70 @@ test('mobile tour requires a saved anchor edit before generating the next image'
   await expect(page.locator('#main-image')).not.toHaveAttribute('src', before);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+async function prepareUnratedImage(page, context) {
+  await dismissTour(context);
+  await page.goto('/#feed');
+  await expect(page.locator('#empty-generate:visible, #image-card:visible').first()).toBeVisible();
+  if (await page.locator('#empty-generate').isVisible()) await page.locator('#empty-generate').click();
+  await expect(page.locator('#main-image')).toHaveAttribute('src', /\/api\/artifacts\/.+\/image/);
+  const image = await page.locator('#main-image').getAttribute('src');
+  const response = await page.request.put(image.replace(/\/image$/, '/feedback'), { data: { value: null } });
+  expect(response.ok()).toBe(true);
+  await page.reload();
+  await expect(page.locator('#image-card')).toBeVisible();
+  await expect(page.locator('#like')).toHaveAttribute('aria-pressed', 'false');
+}
+
+test('Roam feedback keys keep image acknowledgements and leave failures in notifications', async ({ page, context }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await prepareUnratedImage(page, context);
+  const overlay = page.locator('#immersive-feedback');
+  const stage = page.locator('#image-card .image-stage');
+  const before = await stage.boundingBox();
+  await page.locator('#image-card').focus();
+  for (const [key, message] of [['ArrowUp', 'Liked'], ['ArrowDown', 'Like removed'], ['ArrowDown', 'Disliked'], ['ArrowUp', 'Dislike removed']]) {
+    await page.keyboard.press(key);
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toHaveText(message);
+    await expect(page.locator('.notification-card[data-kind="success"][data-state="open"]')).toHaveCount(0);
+  }
+  expect(await stage.boundingBox()).toEqual(before);
+  const image = await stage.boundingBox(), feedback = await overlay.boundingBox();
+  expect(Math.abs(feedback.x + feedback.width / 2 - image.x - image.width / 2)).toBeLessThan(1);
+  await expect(overlay).toBeHidden();
+
+  await page.locator('#roam-immersive').click();
+  await expect(page.locator('#image-card')).toHaveClass(/immersive/);
+  await page.keyboard.press('ArrowUp');
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toHaveText('Liked');
+  await expect(page.locator('#image-card')).toHaveClass(/immersive-controls-hidden/);
+  await expect(page.locator('.notification-card[data-state="open"]')).toHaveCount(0);
+
+  await page.route('**/api/artifacts/*/feedback', route => route.fulfill({ status: 503, json: { error: 'Feedback fixture unavailable' } }));
+  await page.keyboard.press('ArrowDown');
+  await expect(notice(page)).toContainText('Feedback fixture unavailable');
+  await expect(overlay).toBeHidden();
+  await expect(page.locator('#image-card')).toHaveClass(/immersive/);
+});
+
+test('Roam feedback standalone swipes use the image acknowledgement', async ({ page, context }) => {
+  await context.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepareUnratedImage(page, context);
+  const stage = page.locator('#image-card .image-stage');
+  for (const [delta, message] of [[-100, 'Liked'], [100, 'Like removed'], [100, 'Disliked']]) {
+    await stage.evaluate((element, delta) => {
+      const rect = element.getBoundingClientRect();
+      const touch = y => new Touch({ identifier: 1, target: element, clientX: rect.x + rect.width / 2, clientY: y });
+      const start = touch(rect.y + rect.height / 2), end = touch(start.clientY + delta);
+      element.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [start], changedTouches: [start] }));
+      element.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches: [end], changedTouches: [end] }));
+      element.dispatchEvent(new TouchEvent('touchend', { bubbles: true, touches: [], changedTouches: [end] }));
+    }, delta);
+    await expect(page.locator('#immersive-feedback')).toBeVisible();
+    await expect(page.locator('#immersive-feedback')).toHaveText(message);
+    await expect(page.locator('.notification-card[data-state="open"]')).toHaveCount(0);
+  }
+});

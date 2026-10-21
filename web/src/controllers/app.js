@@ -496,12 +496,29 @@ async function moveImage(direction, automatic = null) {
   if (destination === null) { showNotice(items.length ? direction === 'newer' ? t("已经是最新的一张。") : state.pages[pageView()].hasMore ? t("已到已加载图片的末尾，请点击加载更早图片。") : t("已经是最早的一张。") : t("还没有可以浏览的图片。")); return; }
   state.activeId = items[destination].id; renderArtifacts(); refillRoam();
 }
-function clearFeedbackNotice() { dismissNotification('roam-feedback'); }
+let feedbackMotion = null, feedbackMotionTimer;
+function clearFeedbackNotice() {
+  clearTimeout(feedbackMotionTimer);
+  feedbackMotion?.cancel(); feedbackMotion = null;
+  $('immersive-feedback').hidden = true;
+}
 function showFeedbackNotice(value, previous) {
-  if (!immersive.active) return;
-  const message = value === 1 ? t("已喜欢") : value === -1 ? t("已不喜欢")
+  clearFeedbackNotice();
+  const overlay = $('immersive-feedback');
+  overlay.dataset.value = value === null ? 'clear' : String(value);
+  $('immersive-feedback-label').textContent = value === 1 ? t("已喜欢") : value === -1 ? t("已不喜欢")
     : previous === 1 ? t("已取消喜欢") : t("已取消不喜欢");
-  notifySuccess(message, { id: 'roam-feedback', duration: 1800 });
+  overlay.hidden = false;
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    feedbackMotion = overlay.firstElementChild.animate([
+      { opacity: 0, transform: 'translateY(12px) scale(.86)', offset: 0 },
+      { opacity: 1, transform: 'translateY(0) scale(1.06)', offset: .18 },
+      { opacity: 1, transform: 'translateY(0) scale(1)', offset: .3 },
+      { opacity: 1, transform: 'translateY(0) scale(1)', offset: .7 },
+      { opacity: 0, transform: 'translateY(-8px) scale(.98)', offset: 1 },
+    ], { duration: 900, easing: 'ease-out', fill: 'both' });
+  }
+  feedbackMotionTimer = setTimeout(clearFeedbackNotice, 900);
 }
 function stepFeedback(direction) {
   if (state.feedbackPending) return;

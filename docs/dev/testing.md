@@ -20,7 +20,7 @@ Use Python 3.12 to match release CI.
 | `core` (default) | Six HTTP/storage smokes: preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests | Application Python dependencies |
 | `ui` | Six Node test files: tour state and placement, button feedback, notifications, theme/language races, API key editing | Node.js |
 | `corpus` | Three offline smokes: post filtering, stale/corrupt prebuilt rejection, vocabulary editions | Python environment with `corpus/requirements.txt` |
-| `browser` | Three real-page flows: notifications without layout shifts, retry inside a modal, mobile tour with a saved anchor edit | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
+| `browser` | Five real-page flows: notifications without layout shifts, modal retry, mobile tour with a saved anchor edit, Roam keyboard feedback, and standalone swipe feedback | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
 
 `ui` and `browser` also have frontend shortcuts: `pnpm --dir web test` and `pnpm --dir web run test:browser`. The shared Python entry point passes its own interpreter to the browser fixture; the frontend shortcut uses `python` on `PATH`.
 

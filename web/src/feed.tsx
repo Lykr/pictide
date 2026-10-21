@@ -90,6 +90,14 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <div className="image-stage" ref={targets["roam.image"]}>
 <img id="main-image" alt={t("生成的图片")} draggable={false} />
 <span id="image-error" className="sr-only" aria-hidden="true" hidden />
+<div id="immersive-feedback" className="immersive-feedback" role="status" aria-live="polite" aria-atomic="true" hidden>
+<div className="immersive-feedback-content">
+<Heart data-feedback-icon="like" aria-hidden="true" />
+<ThumbsDown data-feedback-icon="dislike" aria-hidden="true" />
+<CircleSlash data-feedback-icon="clear" aria-hidden="true" />
+<span id="immersive-feedback-label" />
+</div>
+</div>
 </div>
 <div className="image-toolbar">
 <div className="image-meta">
