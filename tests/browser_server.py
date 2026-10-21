@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT))
 from aiohttp import web
 from backend import host
 from backend.host import APPLICATION
-from backend.recommendation import RecommendationService
+from backend.recommendation.service import RecommendationService
 from tests.backend.application.test_app import FakeBackend, configuration
 from tests.backend.candidate.test_candidate_libraries import vocabulary
 from tests.backend.recommendation.test_recommendation_application import CPUEncoder

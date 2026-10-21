@@ -14,8 +14,9 @@ try:
 except ImportError:
     np = None
 
-from backend.contracts.recommendation import ResetState, FeedbackUpdate, PolicyRecord, ScoreCandidate, ScoreRequest, ScoreTerm
-from backend.recommendation import MiniLMEncoder, RecommendationService
+from backend.recommendation.contracts import ResetState, FeedbackUpdate, PolicyRecord, ScoreCandidate, ScoreRequest, ScoreTerm
+from backend.recommendation.encoder import MiniLMEncoder
+from backend.recommendation.service import RecommendationService
 from backend.recommendation.features import FeatureEncoder, content_key, dense_features, feature_version
 from backend.recommendation import policy
 

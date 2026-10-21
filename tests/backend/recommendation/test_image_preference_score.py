@@ -1,8 +1,8 @@
 """Preference-score smoke: deterministic ranges, HTTP display semantics and reset."""
 import unittest
 from unittest.mock import patch
-from backend.contracts.recommendation import FeedbackUpdate, ScoreRequest
-from backend.recommendation import RecommendationService
+from backend.recommendation.contracts import FeedbackUpdate, ScoreRequest
+from backend.recommendation.service import RecommendationService
 from backend.recommendation import policy
 from tests.backend.recommendation.test_recommendation_core import MemoryStore, FakeEncoder, candidate
 from tests.backend.recommendation.test_recommendation_application import RecommendationApplicationTests

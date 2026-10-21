@@ -4,8 +4,9 @@ from unittest.mock import patch
 
 import numpy as np
 
-from backend.contracts.recommendation import FeedbackUpdate, ResetResult, ResetState, ScoreRequest
-from backend.recommendation import RecommendationService, policy
+from backend.recommendation.contracts import FeedbackUpdate, ResetResult, ResetState, ScoreRequest
+from backend.recommendation.service import RecommendationService
+from backend.recommendation import policy
 from backend.recommendation.features import SEMANTIC_DIMENSION, content_key, dense_features
 from tests.backend.recommendation.test_recommendation_core import MemoryStore, FakeEncoder, candidate
 

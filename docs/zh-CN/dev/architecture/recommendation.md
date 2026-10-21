@@ -67,7 +67,7 @@ flowchart TD
 
 ## 当前能力与限制
 
-第一版已实现 MiniLM CPU 离线标签编码、完整组合评分、贝叶斯线性后验采样、显式正负反馈学习、撤回和重启恢复。App 先接收候选组合集合，传给推荐服务 `score`，再选择组合提交任务；旧 `choose` 接口和推荐对候选模块的类型导入已移除，中立契约位于 `backend/contracts/recommendation.py`。
+第一版已实现 MiniLM CPU 离线标签编码、完整组合评分、贝叶斯线性后验采样、显式正负反馈学习、撤回和重启恢复。App 先接收候选组合集合，传给推荐服务 `score`，再选择组合提交任务；旧 `choose` 接口和推荐对候选模块的类型导入已移除，中立契约位于 `backend/recommendation/contracts.py`。
 
 学习使用显式正负反馈的组合关联，未评价保持未知；评分不是点赞概率，也未实现曝光/未转化学习、复杂搭配或图像特征。模型缺失或不可用时报告状态，App 保留既有默认候选处理，不把降级称为学习。bootstrap 的 `recommendation` 返回可用状态与版本，`preference_learning` 根据实际可用状态报告；学习通知未成功应用时保留重试，用户反馈不回滚。偏好查看与重置复用 Web → Host → App → Recommendation → Store 链路；查看只读当前学习状态，重置原子清除全部特征版本偏好并记录反馈事件分界，保留图片和反馈。详见 [第一版推荐设计](../issues/recommendation-v1.md) 、[偏好查看与重置](../issues/recommendation-preferences.md) 与 [不喜欢反馈](../issues/dislike-feedback.md)。
 

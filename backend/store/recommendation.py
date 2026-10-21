@@ -1,11 +1,11 @@
-"""SQLite persistence for recommendation contracts, independent of business modules."""
+"""SQLite persistence depends on recommendation contracts, not its implementation."""
 from dataclasses import asdict
 from datetime import datetime, timezone
 import json
 import math
 import struct
 
-from ..contracts.recommendation import (FeedbackUpdate, PolicyRecord, ResetResult, ResetState,
+from ..recommendation.contracts import (FeedbackUpdate, PolicyRecord, ResetResult, ResetState,
                                         ScoreCandidate, ScoreTerm)
 from ..domain import ConflictError
 

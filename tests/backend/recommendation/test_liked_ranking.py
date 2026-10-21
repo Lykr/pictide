@@ -1,6 +1,6 @@
 """Liked ranking smoke: global ordering, combination dedup, filters and fallback."""
 from unittest.mock import patch
-from backend.contracts.recommendation import FeedbackUpdate, ScoreCandidate, ScoreTerm
+from backend.recommendation.contracts import FeedbackUpdate, ScoreCandidate, ScoreTerm
 from backend.domain import generation_fields
 from tests.backend.recommendation.test_recommendation_application import RecommendationApplicationTests
 

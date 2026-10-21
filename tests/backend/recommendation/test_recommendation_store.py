@@ -8,7 +8,7 @@ import struct
 import tempfile
 import unittest
 from unittest.mock import patch
-from backend.contracts.recommendation import FeedbackUpdate, PolicyRecord, ScoreCandidate, ScoreTerm
+from backend.recommendation.contracts import FeedbackUpdate, PolicyRecord, ScoreCandidate, ScoreTerm
 from backend.store.recommendation import SQLiteRecommendationStore
 from backend.store.sqlite import Repository
 

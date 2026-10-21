@@ -11,7 +11,7 @@ import uuid
 import unicodedata
 
 from . import __version__
-from .contracts.recommendation import ScoreCandidate, ScoreRequest, ScoreTerm
+from .recommendation.contracts import ScoreCandidate, ScoreRequest, ScoreTerm
 from .candidate.rounds import validate_options
 from .domain import GoneError, NotFoundError, ValidationError, feedback_value, generation_count, generation_fields, roam_can_enqueue
 from .events import EventHub

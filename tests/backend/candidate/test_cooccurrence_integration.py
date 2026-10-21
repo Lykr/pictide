@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 from pathlib import Path
 from aiohttp.test_utils import TestClient, TestServer
-from backend.contracts.recommendation import CandidateScore, RecommendationStatus, ScoreResult
+from backend.recommendation.contracts import CandidateScore, RecommendationStatus, ScoreResult
 from backend.host import APPLICATION, create_app
 from backend.store.candidate import SQLiteCandidateStore
 from tests.backend.application.test_app import FakeBackend, configuration

@@ -98,7 +98,7 @@ pictide/
 
 - Host 负责传输、来源检查和生命周期，通过 App 执行用例；不承载候选求解、推荐算法或 SQL。
 - App 是候选、推荐、任务之间的唯一交互核心。它获取完整候选池、请求组合评分、选择组合并提交任务；评分不会回传候选进行重新抽取。
-- Candidate、Recommendation、Task 不直接相互调用或导入。共享推荐请求/结果位于 `backend/contracts/recommendation.py`，候选快照位于 `backend/candidate/contracts.py`。
+- Candidate、Recommendation、Task 不直接相互调用或导入。共享推荐请求/结果位于 `backend/recommendation/contracts.py`，候选快照位于 `backend/candidate/contracts.py`。
 - Candidate 通过 Host 注入的存储接口读取在线词库和预设，不导入 SQLite 适配器；离线下载、导入工具独立使用 SQLite，不放入在线启动或请求链。
 - Task 依赖 Generation 和 Store，负责确定任务的提交、事件核实、恢复、取消与结果关联；Generation 隔离协议差异；ComfyUI 返回远端任务引用，OpenAI Images 与 Gemini 在一次 HTTP 请求中返回完整结果。云端结果不确定的提交不自动重试。
 - 浏览器通过 HTTP/SSE 管理展示、输入和草稿，不直接读写配置或数据库。提示词页是同一前端中的视图，没有额外站点或 iframe。

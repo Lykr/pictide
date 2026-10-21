@@ -4,8 +4,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from backend.contracts.recommendation import FeedbackUpdate, ScoreRequest
-from backend.recommendation import RecommendationService
+from backend.recommendation.contracts import FeedbackUpdate, ScoreRequest
+from backend.recommendation.service import RecommendationService
 from backend.store.recommendation import SQLiteRecommendationStore
 from backend.store.sqlite import Repository, encode
 from tests.backend.recommendation.test_recommendation_core import MemoryStore, FakeEncoder, candidate

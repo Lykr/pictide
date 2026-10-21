@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import numpy as np
 
-from backend.contracts.recommendation import FeedbackUpdate, ResetState
-from backend.recommendation import RecommendationService
+from backend.recommendation.contracts import FeedbackUpdate, ResetState
+from backend.recommendation.service import RecommendationService
 from backend.recommendation import policy
 from backend.recommendation.features import SEMANTIC_DIMENSION, content_key
 import tests.backend.recommendation.test_recommendation_application as app_tests

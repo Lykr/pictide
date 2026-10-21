@@ -5,7 +5,7 @@ import math
 import unicodedata
 from collections import Counter
 
-from ..contracts.recommendation import ScoreCandidate, ScoreTerm
+from .contracts import ScoreCandidate, ScoreTerm
 
 SEMANTIC_DIMENSION = 768
 FEATURE_RECIPE = "nfc-strip-v1;exact-channel-l2;mean-channel-l2;semantic-weight=.25;dim=384"

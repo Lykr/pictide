@@ -70,7 +70,7 @@ events.addEventListener('change', (event) => {
 - [HTTP 路由、请求解析及状态码](../../../backend/host.py)
 - [应用编排与 HTTP 返回对象](../../../backend/application.py)
 - [候选参数与结果](../../../backend/candidate/service.py)、[种子和序列参数](../../../backend/candidate/rounds.py)
-- [推荐模块内部契约](../../../backend/contracts/recommendation.py)
+- [推荐模块内部契约](../../../backend/recommendation/contracts.py)
 - [任务存储与分页模型](../../../backend/store/sqlite.py)
 
 本文是 HTTP 参考，不将模块内部的评分、学习等 Python 方法作为额外公开 HTTP 接口；当前没有 OpenAPI / Swagger 页面。新增、删除或调整路由时同步维护对应章节和导航。

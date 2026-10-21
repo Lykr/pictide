@@ -23,7 +23,7 @@ from .store.candidate_libraries import CandidateLibraries, MAX_LIBRARY_BYTES
 from .domain import BackendError, ConflictError, GoneError, NotFoundError, ValidationError
 from .generation import create_backend
 from .paths import DataPaths
-from .recommendation import RecommendationService
+from .recommendation.service import RecommendationService
 from .recommendation.encoder import MiniLMEncoder
 from .store.recommendation import SQLiteRecommendationStore
 from .store import Repository

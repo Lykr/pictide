@@ -4,6 +4,8 @@ import asyncio
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -26,6 +28,26 @@ def dependencies(path):
 
 
 class ArchitectureTests(unittest.TestCase):
+    def test_recommendation_contracts_import_without_implementations(self):
+        # A fresh interpreter catches package-entry imports even when this suite loaded the host.
+        result = subprocess.run([sys.executable, '-c', '''
+import importlib.abc
+import sys
+
+class ContractsOnly(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        blocked = ('backend.recommendation.service', 'backend.recommendation.encoder',
+                   'backend.recommendation.features', 'backend.recommendation.policy',
+                   'backend.store', 'backend.candidate', 'aiohttp', 'sqlite3',
+                   'numpy', 'fastembed', 'onnxruntime', 'tokenizers')
+        if any(fullname == name or fullname.startswith(name + '.') for name in blocked):
+            raise AssertionError('Contract import loaded implementation: ' + fullname)
+
+sys.meta_path.insert(0, ContractsOnly())
+from backend.recommendation.contracts import ScoreRequest, FeedbackUpdate, Recommendation
+'''], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def assert_boundary(self, directory, forbidden):
         for path in (ROOT / directory).rglob('*.py'):
             # Offline data tools are adapters, never imported by online candidate use cases.

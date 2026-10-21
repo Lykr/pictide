@@ -3,7 +3,7 @@ from collections import Counter
 import json
 from threading import RLock
 
-from ..contracts.recommendation import CandidateScore, LearningResult, PreferenceTerm, PreferencesResult, RecommendationStatus, ScoreResult
+from .contracts import CandidateScore, LearningResult, PreferenceTerm, PreferencesResult, RecommendationStatus, ScoreResult
 from .features import SEMANTIC_DIMENSION, FeatureEncoder, content_key, dense_features, feature_version, validate_candidate
 from . import policy
 

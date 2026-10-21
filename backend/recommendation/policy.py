@@ -1,5 +1,5 @@
 """Full-covariance, signed-evidence Bayesian linear policy."""
-from ..contracts.recommendation import PolicyRecord
+from .contracts import PolicyRecord
 from .features import SEMANTIC_DIMENSION
 
 POLICY_VERSION = "bayes-linear-v2:signed:prior=1:noise=1:exploration=1"

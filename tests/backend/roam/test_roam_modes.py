@@ -94,7 +94,7 @@ class RoamModesSmoke(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await (await self.client.get("/api/settings/roam")).json())["prompt_mode"],"stay")
 
     async def test_along_follows_selected_parent_instead_of_other_pool_candidates(self):
-        from backend.contracts.recommendation import CandidateScore, RecommendationStatus, ScoreResult
+        from backend.recommendation.contracts import CandidateScore, RecommendationStatus, ScoreResult
         class LastScorer:
             def status(self): return RecommendationStatus(True,"smoke","smoke-features","smoke-policy")
             def score(self,request):

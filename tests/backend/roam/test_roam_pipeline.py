@@ -10,7 +10,7 @@ from unittest.mock import patch
 from aiohttp.test_utils import TestClient, TestServer
 
 from backend.candidate.contracts import Candidate, TagSnapshot
-from backend.contracts.recommendation import CandidateScore, RecommendationStatus, ScoreResult
+from backend.recommendation.contracts import CandidateScore, RecommendationStatus, ScoreResult
 from backend.host import APPLICATION, create_app
 from backend.domain import BackendError
 from tests.backend.application.test_app import FakeBackend, configuration

@@ -9,7 +9,7 @@ from unittest.mock import patch
 import numpy as np
 from aiohttp.test_utils import TestClient, TestServer
 
-from backend.contracts.recommendation import ScoreCandidate, ScoreRequest, ScoreTerm
+from backend.recommendation.contracts import ScoreCandidate, ScoreRequest, ScoreTerm
 from backend.host import APPLICATION, create_app
 from backend.recommendation.service import RecommendationService
 from tests.backend.application.test_app import FakeBackend, configuration

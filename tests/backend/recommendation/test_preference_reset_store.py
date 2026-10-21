@@ -10,7 +10,7 @@ import tempfile
 import unittest
 import uuid
 
-from backend.contracts.recommendation import PolicyRecord, ResetState, ScoreCandidate, ScoreTerm
+from backend.recommendation.contracts import PolicyRecord, ResetState, ScoreCandidate, ScoreTerm
 from backend.domain import ConflictError
 from backend.store.recommendation import SQLiteRecommendationStore
 from backend.store.sqlite import Repository
