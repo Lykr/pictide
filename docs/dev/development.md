@@ -52,7 +52,7 @@ The default vocabulary profile is `corpus/profiles/compact.json`. Raw shards and
 
 Use `--dataset-dir`, `--cache-dir`, and `--profile` to select other locations or settings. `--prebuilt-library DIR` consumes a verified `vocabulary.sqlite3` and `report.json` matching the dataset revision, profile, and processing code. Invalid resources stop the build; this mode does not fall back to raw processing and does not require PyArrow or SciPy. See [prebuilt vocabularies](corpus.md#prebuilt-vocabulary).
 
-The build retains FastEmbed, ONNX Runtime, tokenizers, and `backend/recommand/model.json`, without downloading or bundling MiniLM weights. Startup verifies the selected data directory's model files before exposing HTTP; failures stop startup, and a later attempt resumes retained partial downloads.
+The build retains FastEmbed, ONNX Runtime, tokenizers, and `backend/recommendation/model.json`, without downloading or bundling MiniLM weights. Startup verifies the selected data directory's model files before exposing HTTP; failures stop startup, and a later attempt resumes retained partial downloads.
 
 Only final `pictide-VERSION-PLATFORM-ARCH.zip` files go into `releases/`. `--output-dir DIR` selects an existing alternative directory. After archive checks succeed, a repeated local build atomically replaces the same ZIP; other versions and previous successful output survive a failed build. Temporary frontend, PyInstaller, and expanded-package directories are cleaned on success or failure. Reports remain in `dev/verification/portable/VERSION-PLATFORM-ARCH/build-report.json`.
 

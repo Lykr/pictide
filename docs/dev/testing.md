@@ -20,9 +20,11 @@ Use Python 3.12 to match release CI.
 | `core` (default) | Six HTTP/storage smokes: preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests | Application Python dependencies |
 | `ui` | Six Node test files: tour state and placement, button feedback, notifications, theme/language races, API key editing | Node.js |
 | `corpus` | Three offline smokes: post filtering, stale/corrupt prebuilt rejection, vocabulary editions | Python environment with `corpus/requirements.txt` |
-| `browser` | Five real-page flows: notifications without layout shifts, modal retry, mobile tour with a saved anchor edit, Roam keyboard feedback, and standalone swipe feedback | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
+| `browser` | Six real-page flows: notifications without layout shifts, modal retry, mobile tour with a saved anchor edit, Roam keyboard feedback, standalone swipe feedback, and API-save-to-Generate with retained drafts | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
 
 `ui` and `browser` also have frontend shortcuts: `pnpm --dir web test` and `pnpm --dir web run test:browser`. The shared Python entry point passes its own interpreter to the browser fixture; the frontend shortcut uses `python` on `PATH`.
+
+Python checks mirror backend responsibilities under `tests/backend/`, with offline checks in `tests/corpus/` and tooling checks in `tests/scripts/`. Packages use explicit imports and share `tests.ROOT` for repository resources. Frontend units live in `web/tests/unit/` and browser flows in `web/tests/browser/`. To run one Python module, use its package name, for example `python -m unittest tests.backend.desktop.test_desktop_launcher -v`.
 
 ## Browser preparation
 

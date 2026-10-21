@@ -6,15 +6,15 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(ROOT), str(ROOT / 'tests')]
+sys.path.insert(0, str(ROOT))
 
 from aiohttp import web
 from backend import host
 from backend.host import APPLICATION
-from backend.recommand import RecommendationService
-from test_app import FakeBackend, configuration
-from test_candidate_libraries import vocabulary
-from test_recommendation_application import CPUEncoder
+from backend.recommendation import RecommendationService
+from tests.backend.application.test_app import FakeBackend, configuration
+from tests.backend.candidate.test_candidate_libraries import vocabulary
+from tests.backend.recommendation.test_recommendation_application import CPUEncoder
 
 
 class BrowserBackend(FakeBackend):

@@ -1,6 +1,6 @@
 # 共现候选冒烟
 
-[English](../../../../tests/candidate/README.md)
+[English](../../../../tests/backend/candidate/README.md)
 
 当前仅保留 general/频次筛选、PMI 与支持次数门槛、预算连续帧和离线导入的少量中性冒烟。旧可编辑 JSON 词库与槽位求解测试随实现移除。
 

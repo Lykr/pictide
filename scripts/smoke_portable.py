@@ -138,7 +138,7 @@ def smoke(archive, report_path, timeout=900, model_dir=None):
                 report['checks'].append('macOS ditto roundtrip, framework links, signatures, both entry help commands and native launcher self-test')
             internal = executable.parent.parent / 'Frameworks' if sys.platform == 'darwin' else executable.parent / '_internal'
             manifest = json.loads((internal / 'resources/manifest.json').read_text(encoding='utf-8'))
-            catalog = json.loads((internal / 'backend/recommand/model.json').read_text(encoding='utf-8'))
+            catalog = json.loads((internal / 'backend/recommendation/model.json').read_text(encoding='utf-8'))
             if manifest['model'] != catalog or any(not item['path'].startswith('libraries/') for item in manifest['files']):
                 raise RuntimeError('Portable resources must contain only vocabulary files and the locked model catalog')
             if any(path.name == 'model.onnx' or path.suffix == '.safetensors' for path in internal.rglob('*')):

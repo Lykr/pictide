@@ -241,6 +241,6 @@ Importer smoke tests use temporary Parquet and SQLite files for deduplication, w
 python -m unittest discover -s tests/corpus -p test_importer.py -v
 ```
 
-See [candidate smoke tests](../../tests/candidate/README.md) for application-side checks.
+See [candidate smoke tests](../../tests/backend/candidate/README.md) for application-side checks.
 
 Historical one-off pruning scripts and reports remain under `dev/verification/candidate-pair1000-20261019/`. Their paths and structures describe that run; use the importer above for current repeatable processing.

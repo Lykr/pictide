@@ -67,7 +67,7 @@ First launch downloads MiniLM, a recommendation dependency (about **91 MB**). Ke
 <details>
 <summary>First launch offline: prepare the model manually</summary>
 
-Download these five files on a connected machine, keep their names, and place them in `models/minilm/` under your selected [data directory](backup.md#data-location). Then start Pictide. See the [model catalog](../../backend/recommand/model.json) for the version and checksums.
+Download these five files on a connected machine, keep their names, and place them in `models/minilm/` under your selected [data directory](backup.md#data-location). Then start Pictide. See the [model catalog](../../backend/recommendation/model.json) for the version and checksums.
 
 - [model.onnx](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/model.onnx)
 - [tokenizer.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/tokenizer.json)

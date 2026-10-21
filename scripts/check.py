@@ -11,17 +11,17 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 GROUPS = {
     'core': (
-        'test_cooccurrence_integration.CooccurrenceIntegrationSmoke.test_preset_preview_rounds_and_sqlite_roam',
-        'test_task_window.TaskWindowSmoke.test_restart_releases_two_missing_unknown_jobs_without_resubmitting',
-        'test_storage.RepositoryTests.test_existing_database_is_migrated_without_losing_images_or_feedback',
-        'test_recommendation_application.RecommendationApplicationTests.test_signed_http_feedback_is_exclusive_reversible_and_idempotent',
-        'test_cloud_backends.CloudProtocolTests.test_openai_base64_and_actual_request_fields',
-        'test_cloud_backends.CloudProtocolTests.test_gemini_interactions_only_final_images_and_stateless',
+        'tests.backend.candidate.test_cooccurrence_integration.CooccurrenceIntegrationSmoke.test_preset_preview_rounds_and_sqlite_roam',
+        'tests.backend.task.test_task_window.TaskWindowSmoke.test_restart_releases_two_missing_unknown_jobs_without_resubmitting',
+        'tests.backend.store.test_storage.RepositoryTests.test_existing_database_is_migrated_without_losing_images_or_feedback',
+        'tests.backend.recommendation.test_recommendation_application.RecommendationApplicationTests.test_signed_http_feedback_is_exclusive_reversible_and_idempotent',
+        'tests.backend.generation.test_cloud_backends.CloudProtocolTests.test_openai_base64_and_actual_request_fields',
+        'tests.backend.generation.test_cloud_backends.CloudProtocolTests.test_gemini_interactions_only_final_images_and_stateless',
     ),
     'corpus': (
-        'test_importer.ImportSmoke.test_post_filter_matches_any_tag_and_keeps_only_surviving_population',
-        'test_portable.PortableCacheSmoke.test_prebuilt_rejects_stale_profile_and_corrupt_files_without_fallback',
-        'test_editions.VocabularyEditionsSmoke.test_two_editions_checksums_reuse_and_default_lock_preserved',
+        'tests.corpus.test_importer.ImportSmoke.test_post_filter_matches_any_tag_and_keeps_only_surviving_population',
+        'tests.corpus.test_portable.PortableCacheSmoke.test_prebuilt_rejects_stale_profile_and_corrupt_files_without_fallback',
+        'tests.corpus.test_editions.VocabularyEditionsSmoke.test_two_editions_checksums_reuse_and_default_lock_preserved',
     ),
 }
 
@@ -51,9 +51,8 @@ def main():
         return 0
     if args.group == 'corpus' and any(importlib.util.find_spec(name) is None for name in ('pyarrow', 'scipy', 'numpy')):
         parser.error('Corpus checks need the offline environment: python -m pip install -r corpus/requirements.txt')
-    # The offline tests live beside the corpus package, not inside that package.
-    # Explicit names avoid both missing discovery and shadowing corpus imports.
-    sys.path[:0] = [str(ROOT), str(ROOT / 'tests'), str(ROOT / 'tests/corpus')]
+    # Explicit package names keep each smoke group small and deterministic.
+    sys.path.insert(0, str(ROOT))
     temporary = ROOT / 'dev/tmp'
     temporary.mkdir(parents=True, exist_ok=True)
     os.environ['TMPDIR'] = os.environ['TEMP'] = os.environ['TMP'] = str(temporary)

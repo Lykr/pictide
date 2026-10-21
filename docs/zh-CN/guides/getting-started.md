@@ -67,7 +67,7 @@ Windows 准备引导可下载 ComfyUI 与推荐的 Anima 模型，自动接入�
 <details>
 <summary>离线首次启动：手动准备模型</summary>
 
-在可联网的机器下载以下五个文件，保留文件名，放入所选[数据目录](backup.md#数据位置)的 `models/minilm/`，再启动 Pictide。版本和校验值见[模型清单](../../../backend/recommand/model.json)。
+在可联网的机器下载以下五个文件，保留文件名，放入所选[数据目录](backup.md#数据位置)的 `models/minilm/`，再启动 Pictide。版本和校验值见[模型清单](../../../backend/recommendation/model.json)。
 
 - [model.onnx](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/model.onnx)
 - [tokenizer.json](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/d13954661f83248295ba75c1ed411eef3b7b936e/tokenizer.json)

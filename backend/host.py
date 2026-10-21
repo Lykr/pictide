@@ -23,8 +23,8 @@ from .store.candidate_libraries import CandidateLibraries, MAX_LIBRARY_BYTES
 from .domain import BackendError, ConflictError, GoneError, NotFoundError, ValidationError
 from .generation import create_backend
 from .paths import DataPaths
-from .recommand import RecommendationService
-from .recommand.encoder import MiniLMEncoder
+from .recommendation import RecommendationService
+from .recommendation.encoder import MiniLMEncoder
 from .store.recommendation import SQLiteRecommendationStore
 from .store import Repository
 from .store.cleanup import LazyCleanup
@@ -428,7 +428,7 @@ def _main(argv=None):
     desktop_requested = args.desktop and sys.platform == 'win32' and not (args.cli or args.no_browser)
     if args.desktop_worker:
         if sys.platform == 'darwin' and os.environ.get('PICTIDE_DESKTOP_PARENT_PIPE') == '1':
-            from .desktop_launcher import watch_desktop_parent
+            from .desktop.launcher import watch_desktop_parent
             watch_desktop_parent()
         # Frozen console programs ignore PYTHONIOENCODING; use UTF-8 for the startup log.
         for stream in (sys.stdout, sys.stderr):
@@ -438,7 +438,7 @@ def _main(argv=None):
     try:
         paths = DataPaths(args.data_dir)
         if interactive_setup:
-            from .local_generation_session import prepare_windows_data_directory, prepare_windows_setup
+            from .setup.local_generation_session import prepare_windows_data_directory, prepare_windows_setup
             paths = prepare_windows_data_directory(paths, force=args.setup)
             if paths is None:
                 return
@@ -450,11 +450,11 @@ def _main(argv=None):
         logging.getLogger('backend').exception('Runtime preparation failed')
         print(str(error), file=sys.stderr, flush=True)
         if sys.stdin and sys.stdin.isatty():
-            from .desktop_text import translate
+            from .desktop.text import translate
             input(translate('close_prompt'))
         raise SystemExit(1) from None
     if desktop_requested and not args.desktop_worker:
-        from .desktop_launcher import launch_desktop
+        from .desktop.launcher import launch_desktop
         if launch_desktop(sys.argv[1:] if argv is None else argv, paths):
             return
         # The worker released its tray-less session; this terminal now owns logs.
@@ -467,7 +467,7 @@ def _main(argv=None):
     started = time.monotonic()
     logger = logging.getLogger('backend')
     if desktop_requested:
-        from .desktop import DesktopSession, announce
+        from .desktop.session import DesktopSession, announce
         desktop = DesktopSession(paths, url)
     try:
         if desktop is not None:
@@ -481,7 +481,7 @@ def _main(argv=None):
             announce('starting')
             announce('data_directory', directory=paths.root)
         if sys.platform == 'darwin' and args.desktop_worker:
-            from .desktop_launcher import reserve_desktop_socket
+            from .desktop.launcher import reserve_desktop_socket
             worker_socket = reserve_desktop_socket(host, args.port)
         PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
         app = create_app(paths.root, allow_lan=host == "0.0.0.0")
@@ -499,11 +499,11 @@ def _main(argv=None):
         app.on_startup.append(log_ready)
         if worker_socket is not None:
             async def notify_worker_ready(app):
-                from .desktop_launcher import notify_launcher
+                from .desktop.launcher import notify_launcher
                 notify_launcher('ready')
             app.on_startup.append(notify_worker_ready)
         if sys.platform == 'win32':
-            from .local_generation_session import ManagedComfy, read_state
+            from .setup.local_generation_session import ManagedComfy, read_state
             local_state = read_state(paths)
             if local_state and local_state.get('mode') == 'managed':
                 app[LOCAL_GENERATION] = ManagedComfy(paths, local_state)
@@ -525,7 +525,7 @@ def _main(argv=None):
         else:
             web.run_app(app, host=host, port=args.port, access_log=None)
     except Exception as error:
-        from .desktop_text import translate
+        from .desktop.text import translate
         logging.getLogger('backend').exception('Pictide startup failed')
         print(translate('startup_failed', error=error), file=sys.stderr, flush=True)
         if desktop is not None and not os.environ.get('PICTIDE_DESKTOP_STATUS') and sys.stdin is not None and sys.stdin.isatty():

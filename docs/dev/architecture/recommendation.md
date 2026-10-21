@@ -38,7 +38,7 @@ The recommendation application service coordinates encoding, scoring, and learni
 
 ## Data Processing for Recommendation Scoring
 
-The diagram below uses Standard strength to illustrate the data and processing steps in a scoring request. Tag content features, semantic vectors, and combination-level features are data products; content encoding, semantic encoding, and feature combination are processing steps. The feature encoder above handles these steps, implemented in `backend/recommand/features.py` and `policy.py`.
+The diagram below uses Standard strength to illustrate the data and processing steps in a scoring request. Tag content features, semantic vectors, and combination-level features are data products; content encoding, semantic encoding, and feature combination are processing steps. The feature encoder above handles these steps, implemented in `backend/recommendation/features.py` and `policy.py`.
 
 ```mermaid
 flowchart TD
@@ -81,7 +81,7 @@ Preference scores in image information reuse a deterministic raw-score cache; an
 
 ## Recommendation Dependency Preparation
 
-Recommendation depends on [MiniLM](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx) for text embeddings, using offline FastEmbed-format ONNX files. `backend/recommand/model.json` is the single catalog for the fixed source revision, five required files, byte sizes, and SHA-256 values. `backend/recommand/resources.py` prepares and verifies these files in the selected data directory's `models/minilm/`. It resumes partial downloads and preserves existing invalid files in a backup before replacing them successfully.
+Recommendation depends on [MiniLM](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx) for text embeddings, using offline FastEmbed-format ONNX files. `backend/recommendation/model.json` is the single catalog for the fixed source revision, five required files, byte sizes, and SHA-256 values. `backend/recommendation/resources.py` prepares and verifies these files in the selected data directory's `models/minilm/`. It resumes partial downloads and preserves existing invalid files in a backup before replacing them successfully.
 
 Source and portable startup share `PictideApplication.prepare_startup()` in `backend/application.py`: initialize any bundled library, then prepare the model. Host creates the HTTP service and opens the page only after preparation succeeds. A model download or verification failure stops startup; restarting retries with retained `.part` files. Valid local files allow offline startup. See [startup and offline model preparation](../../guides/getting-started.md#recommendation-dependency-preparation) for user instructions.
 

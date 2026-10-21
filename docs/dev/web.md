@@ -13,9 +13,12 @@ Code paths in this section are relative to `web/` at the project root.
 - `src/editor.tsx`: React-managed workspaces for read-only libraries, generation presets, and previews; no separate page entry point.
 - `src/shared/notifications.mjs`, `src/components/notifications.tsx`: the shared floating notification layer for errors and operation results; behavior is defined in the [component guidelines](reference/design/components.md#floating-notifications).
 - `src/controllers/`: browser state, events, and API calls. The backend Candidate module handles preset validation, co-occurrence expansion, and continuous generation within a budget.
+- `src/controllers/app.js`: composes the page controllers and coordinates navigation, galleries, Roam, and realtime refresh. `backend-settings.js` owns Image API/workflow drafts and save/test actions; `generation-controller.js` owns the Generate form, prompt counters, and uncertain submissions. `dom-utils.mjs` shares DOM labels, localized status text, and options.
 - `src/components/ui/`, `src/styles/theme.css`: shared shadcn/ui components and design tokens. See [Design Guidelines](design-system.md).
 
 The React shell and existing DOM controllers manage presentation and drafts. Controllers initialize only once per page lifecycle. The shared control layer integrates official shadcn/Radix components through portals, maintaining a single React root. Hidden form-state interfaces bridge legacy controllers and must not appear as visible native controls. New features reuse this layer without creating separate page entry points or a React root per control.
+
+Frontend unit checks live in `web/tests/unit/`; real-page checks and fixtures live in `web/tests/browser/`. Their temporary Python service is `tests/browser_server.py`. See [focused smoke checks](testing.md) for the shared entry points.
 
 ## Pages and State
 

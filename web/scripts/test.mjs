@@ -9,7 +9,7 @@ if (!['ui', 'browser'].includes(group) || options.some(option => option !== '--l
   throw new Error('Usage: node web/scripts/test.mjs [ui|browser] [--list]');
 }
 const files = ['onboarding', 'onboarding-placement', 'button-feedback', 'notifications', 'theme', 'settings-controls']
-  .map(name => resolve(root, `tests/${name}.test.mjs`));
+  .map(name => resolve(root, `web/tests/unit/${name}.test.mjs`));
 let command;
 if (group === 'ui') {
   if (options.includes('--list')) { console.log(files.join('\n')); process.exit(0); }

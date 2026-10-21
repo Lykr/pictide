@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from backend import __version__
 from backend.paths import DataPaths
-from backend.recommand.resources import model_catalog
+from backend.recommendation.resources import model_catalog
 from corpus.download import sha256 as digest
 from corpus.portable import prepare_resources
 
@@ -163,7 +163,7 @@ def build(output_dir=None, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
             command = [sys.executable, '-m', 'PyInstaller', '--onedir', '--noconfirm', '--name', 'Pictide',
                        '--distpath', str(runtime), '--workpath', str(working / 'work'), '--specpath', str(working),
                        '--paths', str(ROOT), '--add-data', f'{front}{os.pathsep}web/dist',
-                       '--add-data', f'{ROOT / "backend/recommand/model.json"}{os.pathsep}backend/recommand',
+                       '--add-data', f'{ROOT / "backend/recommendation/model.json"}{os.pathsep}backend/recommendation',
                        '--add-data', f'{ROOT / "docs/assets/workflows/anima-turbo-v1.1.api.json"}{os.pathsep}backend/workflows',
                        '--add-data', f'{seed}{os.pathsep}resources', '--collect-all', 'fastembed',
                        '--collect-all', 'onnxruntime', '--collect-all', 'tokenizers',

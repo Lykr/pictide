@@ -135,3 +135,21 @@ test('Roam feedback standalone swipes use the image acknowledgement', async ({ p
     await expect(page.locator('.notification-card[data-state="open"]')).toHaveCount(0);
   }
 });
+
+test('saved API settings reach Generate and navigation retains its draft', async ({ page, context }) => {
+  await dismissTour(context);
+  await page.goto('/#settings/backend');
+  await expect(page.locator('#backend-name')).toHaveValue('Browser fixture');
+  await page.locator('#backend-name').fill('Saved browser API');
+  await page.locator('#save-backend').click();
+  await expect(notice(page)).toContainText('saved');
+  await page.locator('[data-view="generate"]').click();
+  await page.locator('#positive').fill('garden, sunlight');
+  await page.locator('[data-view="settings"]').click();
+  await page.locator('[data-view="generate"]').click();
+  await expect(page.locator('#positive')).toHaveValue('garden, sunlight');
+  const submitted = page.waitForResponse(response => response.url().endsWith('/api/jobs') && response.request().method() === 'POST');
+  await page.locator('#generate').click();
+  expect((await submitted).status()).toBe(202);
+  await expect(page.locator('#compose .generated-card')).toHaveCount(1);
+});

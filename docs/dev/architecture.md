@@ -50,36 +50,40 @@ pictide/
     dist/                      Vite distribution assets
   backend/
     host.py                    HTTP API, SSE, static assets, startup, and shutdown
-    desktop.py                 Windows desktop session, single-instance lock, and tray lifecycle
-    desktop_launcher.py        Desktop port reservation, Windows progress launcher, and worker parent lifetime
-    windows_tray.py            Native Windows notification area and owned-console handling
-    windows_setup_ui.py        Standard-library first-run choices and download progress
-    windows_hardware.py        Read-only Windows adapter/VRAM and installed-RAM detection
-    local_generation.py        Pinned resources, model recipes, hardware gates, and installation
-    local_generation_session.py Setup state/lock, owned ComfyUI process, and automatic connection
-    desktop_text.py            System-language startup and tray messages
+    desktop/                   Desktop session, launcher, localized messages, and Windows tray
+    setup/                     Local generation resources/session, Windows preparation UI and hardware detection
     application.py             Application orchestration: generation, candidates, feedback, cleanup
     domain.py                  Shared input validation and errors
     paths.py                   Data paths and this process's runtime environment
     runtime_logging.py         Bounded logs, exception capture, and startup output cleanup
     network.py                 Shared system proxy selection and synchronous resource transport
     candidate/                 Read-only co-occurrence libraries, presets, continuous-change budget, offline import
-    recommand/                 Combination features, MiniLM, Bayesian scoring and learning; existing spelling retained
+    recommendation/            Combination features, MiniLM, Bayesian scoring and learning
     task/                      Scheduling, recovery, cancellation, and result association
     generation/                Generation interface, ComfyUI workflows, OpenAI Images, and Gemini
     store/                     SQLite, image/JSON storage, cleanup policies, and reclamation
-  data/                        Configurable data root
+  corpus/                      Offline metadata processing and release vocabulary profiles
+  data/                        Configurable runtime data root
+  dev/                         Local development environments, datasets, caches, and verification
+  releases/                    Final distribution archives
   docs/                        Documentation entry points
     guides/                    User guides
     dev/                       Developer documentation and topic overviews
       architecture/            Architecture and flow details
       reference/               API, data, and design references
-      issues/                  Requirement designs, feature changes, and delivery records
+    zh-CN/                     Chinese translations and development history
+      dev/issues/              Chinese requirement designs, changes, and delivery records
   scripts/
     macos_launcher.swift       System AppKit launcher: preparation, menu bar, and service lifecycle
   tests/
+    backend/                   Python checks grouped by application module
+    corpus/                    Offline processing checks
+    scripts/                   Packaging, cleanup, and launch-script checks
+    browser_server.py          Disposable Python service for web/tests/browser/
   start.cmd
   start.ps1
+  start.sh
+  start.command
 ```
 
 | Diagram module | Location | Responsibilities and boundaries |
@@ -88,7 +92,7 @@ pictide/
 | Host | `backend/host.py` | Requests and responses, origin checks, error mapping, static assets, events, and lifecycle; calls application orchestration |
 | App | `backend/application.py` | Connects Candidate, Recommendation, Task, and Store; orchestrates the roam buffer, settings versions, and pause conditions |
 | Rules | `backend/candidate/` | Read-only libraries, co-occurrence presets and candidate generation, sequence budgets; does not call generation services |
-| Rec | `backend/recommand/` | Complete-combination scoring, tag feature encoding, and positive/negative preference learning; does not generate candidates or call generation services |
+| Rec | `backend/recommendation/` | Complete-combination scoring, tag feature encoding, and positive/negative preference learning; does not generate candidates or call generation services |
 | Jobs | `backend/task/` | Task state, idempotency, recovery, cancellation, and artifact association; depends on generation and storage interfaces |
 | Backend / Comfy / Cloud | `backend/generation/` | Registers adapters and capabilities; prepares requests, submits, queries when supported, and reads image outputs |
 | Store / DB | `backend/store/` | SQLite and file storage, atomic feedback, image–prompt associations, and lazy cleanup |
@@ -113,11 +117,11 @@ The guide observes successful tests, saves, feedback, anchor changes, and actual
 
 Every default local model declares required dedicated VRAM, physical RAM and supported environments. The Windows TUI blocks model selection when requirements are unmet or unknown; the installer rechecks before downloading any resources for that model. DXGI supplies per-adapter dedicated VRAM; shared memory and capacities from different cards are not combined. Without an execution-card binding, matching cards are checked conservatively using the smallest capacity.
 
-Source and portable startup share `PictideApplication.prepare_startup()` in `backend/application.py`. It initializes bundled vocabulary when present, then asks `backend/recommand/resources.py` to verify or download the fixed MiniLM files into the selected runtime data directory. Host starts HTTP/SSE and opens the browser only after preparation succeeds. Failure terminates startup, preserving partial downloads for the next attempt. The encoder reads the prepared local files; offline corpus tools remain outside the startup path. See [Recommendation Dependency Preparation](architecture/recommendation.md#recommendation-dependency-preparation).
+Source and portable startup share `PictideApplication.prepare_startup()` in `backend/application.py`. It initializes bundled vocabulary when present, then asks `backend/recommendation/resources.py` to verify or download the fixed MiniLM files into the selected runtime data directory. Host starts HTTP/SSE and opens the browser only after preparation succeeds. Failure terminates startup, preserving partial downloads for the next attempt. The encoder reads the prepared local files; offline corpus tools remain outside the startup path. See [Recommendation Dependency Preparation](architecture/recommendation.md#recommendation-dependency-preparation).
 
 Windows first-run local generation preparation is implemented and verified with the current NVIDIA portable package; AMD, Intel, and CPU paths have configuration/simulated coverage without hardware verification. Before runtime initialization, the interactive desktop entry confirms the resolved data location and remembers it beside the Windows executable; the hidden worker receives the final root explicitly. It then offers an existing API, local ComfyUI preparation, or later configuration. `--setup` reopens it explicitly; CLI and no-browser startup stay noninteractive by default. The standard-library TUI selects a pinned official Windows portable environment and optional model recipe, confirms downloads, then reports download, verification, extraction, and startup progress. Each recommended recipe includes all model files, a complete default API workflow, and prompt/seed/output bindings. With a model prepared, Host starts the owned ComfyUI process, saves and selects its connection through existing application methods, then exposes HTTP/bootstrap: Roam and Generate can use it immediately. Existing configurations remain intact. ComfyUI-only preparation keeps the manual connection path. Host owns process shutdown; the installer does not write business databases or change Candidate, Recommendation, Task, or the generation protocol.
 
-Windows launchers select `--desktop`: a temporary progress process starts the service with `CREATE_NO_WINDOW`, relays startup output and exits after tray registration. This also closes startup terminals hosted by Windows Terminal. `backend/desktop.py` owns a data-directory lock and reserves the HTTP port before resource preparation. Once HTTP is ready, it registers the native tray and opens the browser. A failed startup stays visible; unavailable tray support falls back to the original terminal. The tray thread uses Per-Monitor V2 DPI awareness and loads the icon at the taskbar's DPI, without changing system settings. The tray requests normal Host shutdown or opens the browser/application log; it owns no business state. Startup progress and tray messages follow the system display language, using Simplified Chinese or English. `--cli` and `--no-browser` keep terminal operation; Linux retains its terminal launcher.
+Windows launchers select `--desktop`: a temporary progress process starts the service with `CREATE_NO_WINDOW`, relays startup output and exits after tray registration. This also closes startup terminals hosted by Windows Terminal. `backend/desktop/session.py` owns a data-directory lock and reserves the HTTP port before resource preparation. Once HTTP is ready, it registers the native tray and opens the browser. A failed startup stays visible; unavailable tray support falls back to the original terminal. The tray thread uses Per-Monitor V2 DPI awareness and loads the icon at the taskbar's DPI, without changing system settings. The tray requests normal Host shutdown or opens the browser/application log; it owns no business state. Startup progress and tray messages follow the system display language, using Simplified Chinese or English. `--cli` and `--no-browser` keep terminal operation; Linux retains its terminal launcher.
 
 The macOS `.app` uses a small native launcher compiled from `scripts/macos_launcher.swift` with system AppKit. `Contents/MacOS/Pictide` owns the preparation window, menu bar, data-directory session lock, and child process; `PictideService` runs the existing Host with `--cli --no-browser`. Preparation output updates the window, and HTTP readiness gates opening the browser. Quitting sends a normal stop signal to the owned service and waits for it to exit. CLI arguments delegate to the engine. No additional business API or GUI runtime is introduced. `backend/paths.py` resolves the bundled macOS default to the user’s Application Support directory; explicit paths and environment variables retain precedence. Windows packages expose the existing desktop lifecycle directly through their top-level `Pictide.exe`.
 
