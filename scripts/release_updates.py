@@ -15,8 +15,7 @@ def write_manifest(directory, policy_path=ROOT / 'scripts/update-policy.json'):
     directory = Path(directory)
     policy = json.loads(Path(policy_path).read_text(encoding='utf8'))
     allowed = policy['direct_upgrade_from']
-    if (policy['schema'] != 1 or type(policy.get('requires_data_migration')) is not bool
-            or version(allowed['minimum']) >= version(allowed['maximum_exclusive'])):
+    if policy['schema'] != 1 or version(allowed['minimum']) >= version(allowed['maximum_exclusive']):
         raise ValueError('Invalid direct-upgrade compatibility range')
     assets = {}
     for archive in sorted(directory.glob('pictide-*.zip')):
@@ -36,8 +35,7 @@ def write_manifest(directory, policy_path=ROOT / 'scripts/update-policy.json'):
                             install_verified=bool(report.get('updates_verified')))
     if not assets:
         raise ValueError('No verified release assets')
-    document = dict(schema=1, version=__version__, requires_data_migration=policy['requires_data_migration'],
-                    direct_upgrade_from=allowed, assets=assets)
+    document = dict(schema=1, version=__version__, direct_upgrade_from=allowed, assets=assets)
     (directory / 'update.json').write_text(json.dumps(document, indent=2) + '\n', encoding='utf8')
     return document
 

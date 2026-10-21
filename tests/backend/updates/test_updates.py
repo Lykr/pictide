@@ -74,8 +74,7 @@ class ReleaseTests(unittest.TestCase):
         document = dict(tag_name='v0.5.1', draft=False, prerelease=False, assets=[
             dict(name='update.json', browser_download_url=url + 'update.json'),
             dict(name=name, browser_download_url=url + name, size=10)])
-        manifest = dict(schema=1, version='0.5.1', requires_data_migration=False,
-                        direct_upgrade_from=dict(minimum='0.5.0', maximum_exclusive='0.5.1'),
+        manifest = dict(schema=1, version='0.5.1', direct_upgrade_from=dict(minimum='0.5.0', maximum_exclusive='0.5.1'),
                         assets={'win32-amd64': dict(name=name, bytes=10, unpacked_bytes=100, sha256='a' * 64, install_verified=True)})
         requests = []
         def opener(request, **kwargs):
@@ -84,10 +83,6 @@ class ReleaseTests(unittest.TestCase):
         self.assertTrue(read_release('0.5.0', 'win32', 'amd64', opener=opener).compatible)
         self.assertEqual(requests, [API, url + 'update.json'])
         self.assertEqual(read_release('0.4.9', 'win32', 'amd64', opener=opener).reason, 'incompatible')
-        for migration in (True, None):
-            manifest['requires_data_migration'] = migration
-            self.assertEqual(read_release('0.5.0', 'win32', 'amd64', opener=opener).reason, 'incompatible')
-        manifest['requires_data_migration'] = False
         manifest['assets']['win32-amd64']['install_verified'] = False
         self.assertEqual(read_release('0.5.0', 'win32', 'amd64', opener=opener).reason, 'platform_unverified')
         manifest['assets']['win32-amd64']['install_verified'] = True

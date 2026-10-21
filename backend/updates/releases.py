@@ -47,8 +47,6 @@ def read_release(current, platform, arch, *, opener=open_url):
     manifest = read_json(prefix + 'update.json', opener=opener)
     if manifest.get('schema') != PROTOCOL or manifest.get('version') != latest:
         return Release(latest, page, False, 'manual_update')
-    if manifest.get('requires_data_migration') is not False:
-        return Release(latest, page, False, 'incompatible')
     allowed = manifest.get('direct_upgrade_from', {})
     if not (version(allowed.get('minimum')) <= version(current) < version(allowed.get('maximum_exclusive'))):
         return Release(latest, page, False, 'incompatible')

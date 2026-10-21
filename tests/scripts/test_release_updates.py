@@ -19,13 +19,8 @@ class ReleaseManifestTests(unittest.TestCase):
             (root / 'smoke-report-windows.json').write_text(json.dumps(report))
             (root / 'build-report-windows.json').write_text(json.dumps(dict(passed=True, archive='D:\\build\\releases\\' + name, unpacked_bytes=100)))
             manifest = write_manifest(root)
-            self.assertIs(manifest['requires_data_migration'], False)
             self.assertEqual(manifest['assets']['win32-amd64']['sha256'], digest)
             self.assertTrue(manifest['assets']['win32-amd64']['install_verified'])
-            policy = root / 'policy.json'
-            policy.write_text(json.dumps(dict(schema=1, requires_data_migration=True,
-                                             direct_upgrade_from=manifest['direct_upgrade_from'])))
-            self.assertIs(write_manifest(root, policy)['requires_data_migration'], True)
             report.pop('updates_verified')
             (root / 'smoke-report-windows.json').write_text(json.dumps(report))
             self.assertFalse(write_manifest(root)['assets']['win32-amd64']['install_verified'])
