@@ -31,6 +31,7 @@ Applies throughout this repository. Paths are relative to its root; `main` holds
 
 ## Verification and deployment
 
+- Apply the [shared notification rules](docs/dev/reference/design/components.md#floating-notifications) to operation feedback: transient notices must preserve page layout, scroll position, drafts, and focus.
 - Reuse shared shadcn components and theme. Frontend changes need type checking, a build, and a few real UI smokes. Deploy matching assets: back up old `web/dist/`, copy new chunks before the entry, and retain old chunks for open tabs. Build separately while serving an instance.
 - Precheck image services with read-only requests. Prefer temporary data and simulated backends; report simulation separately from real GPU generation. Scope real GPU tasks explicitly.
 - Before restarting, inspect processes and tasks, announce the restart, and preserve drafts and executing work. Close your verification instances and tabs afterward; remove integrated worktrees only after preserving needed data.

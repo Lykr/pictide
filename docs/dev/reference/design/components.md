@@ -33,6 +33,8 @@ All errors, validation failures, save conflicts, and temporary results share `co
 
 Notifications sit at the viewport's upper right, respecting safe areas, theme, and locale. They preserve layout, scroll position, drafts, and input focus. Display at most three and merge repeated notices from the same source. Radix Toast provides close, swipe dismissal, F8 focus, and optional retry through the original business action.
 
+Update-check results (up to date, a new version, or manual-update guidance) use this same notification layer only after a user check. Reading cached status or receiving background status events does not repeat the result. The current version, available update actions, and download/install progress stay with their controls.
+
 Success and informational notices default to 4.5 seconds; errors and warnings to 10 seconds. Hover, keyboard focus, and window blur pause the timer. Mount into the active dialog or immersive container; use the native top layer where supported and fixed positioning otherwise. Notices remain interactive in fullscreen and dialogs, and errors preserve immersive mode.
 
 Loading progress, unsaved markers, empty states, unavailable-image placeholders, and historical task error details remain page content. Roam keyboard and standalone swipe feedback keeps its brief icon/text acknowledgement over the image, including in immersive mode; failed feedback requests use error notifications. Other result messages use the shared notification layer rather than inserting banners or changing button labels.

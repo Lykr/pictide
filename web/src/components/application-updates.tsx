@@ -3,6 +3,7 @@ import { ArrowUpToLine, Download, LoaderCircle, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
 import { confirmAction } from "./confirm-action";
 import { useErrorNotice } from "./notifications";
+import { dismissNotification, notify } from "../shared/notifications.mjs";
 import { t, messageKey } from "../i18n/index.mjs";
 
 type Status = {
@@ -92,7 +93,19 @@ export function ApplicationUpdates() {
       if (!await confirmAction(t("安装更新并重启 Pictide？图片、偏好和模型会保留。"))) return;
     }
     setBusy(true); setError("");
-    try { receive(await request(action)); if (action === "install") document.dispatchEvent(new Event("pictide:updates-changed")); }
+    dismissNotification("application-update-check");
+    try {
+      const next = await request(action);
+      receive(next);
+      if (action === "check" && !next.error && next.latest_version) {
+        const current = next.phase === "current" || next.latest_version === next.current_version;
+        notify(() => current ? t("已是最新版本。") : [
+          t("发现新版本 {version}", { version: `v${next.latest_version}` }),
+          next.reason ? t(reasons[next.reason] || "此版本需要手动升级，请查看发行说明。") : "",
+        ].filter(Boolean).join(" "), { id: "application-update-check", kind: current ? "success" : "info" });
+      }
+      if (action === "install") document.dispatchEvent(new Event("pictide:updates-changed"));
+    }
     catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { setBusy(false); }
   };
@@ -109,13 +122,10 @@ export function ApplicationUpdates() {
         </Button>
       </div>
       {status && newer && <div className="flex flex-wrap items-center gap-3 text-sm">
-        <span>{t("发现新版本 {version}", { version: `v${status.latest_version}` })}</span>
         <a className="underline underline-offset-4" href={status.release_url} target="_blank" rel="noreferrer">{t("发行说明")}</a>
         {status.can_download && phase !== "ready" && <Button type="button" variant="outline" size="sm" disabled={working} onClick={() => void act("download")}><Download aria-hidden="true" />{t("下载更新")}</Button>}
         {status.can_install && <Button type="button" size="sm" disabled={working} onClick={() => void act("install")}><ArrowUpToLine aria-hidden="true" />{t("安装并重启")}</Button>}
       </div>}
-      {status && (phase === 'current' || phase === "checked" && status.latest_version === status.current_version) && <span className="text-sm text-muted-foreground" role="status">{t("已是最新版本。")}</span>}
-      {status && newer && status.reason && <p className="m-0 text-sm text-muted-foreground">{t(reasons[status.reason] || "此版本需要手动升级，请查看发行说明。")}</p>}
       {["downloading", "verifying", "preparing", "installing"].includes(phase || "") && <div className="flex flex-col gap-2 text-sm" role="status">
         <span>{t(phase === "installing" ? "正在安装，Pictide 将重新启动…" : phase === "preparing" ? "正在准备安装…" : phase === "verifying" ? "正在校验更新…" : "正在下载更新…")}</span>
         {phase === "downloading" && status && <div role="progressbar" aria-label={t("更新下载进度")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(status.downloaded_bytes / status.total_bytes * 100)} className="h-1.5 w-full overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary transition-[width]" style={{ width: `${status.downloaded_bytes / status.total_bytes * 100}%` }} /></div>}
