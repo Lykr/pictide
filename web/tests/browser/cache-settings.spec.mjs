@@ -1,0 +1,42 @@
+import { test, expect } from './fixtures.mjs';
+
+for (const width of [1365, 390]) test(`manual cache cleanup keeps settings stable at ${width}px`, async ({ page, context }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await context.addInitScript(() => localStorage.setItem('pictide.first-run-guide.v1', JSON.stringify({ version: 1, status: 'dismissed' })));
+  const endpoint = '/api/settings/cache/clear';
+  let calls = 0;
+  page.on('request', request => { if (request.url().endsWith(endpoint)) calls++; });
+  await page.goto('/#settings/general');
+  const button = page.getByRole('button', { name: 'Clear cache', exact: true });
+  await button.scrollIntoViewIfNeeded();
+  await page.evaluate(() => document.fonts.ready);
+  expect(calls).toBe(0);
+  const before = await button.boundingBox();
+  const response = page.waitForResponse(result => result.url().endsWith(endpoint));
+  await button.click();
+  expect((await response).ok()).toBe(true);
+  const notice = page.locator('.notification-card[data-state=open]').first();
+  await expect(notice).toContainText('No cache needs clearing.');
+  await expect(button).toBeFocused();
+  await expect.poll(() => button.boundingBox()).toEqual(before);
+  // Hold one response to check disabled state without changing the button width.
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  await page.route('**' + endpoint, async route => { await held; await route.fulfill({ json: { deleted_image_scores: 3 } }); });
+  await button.click();
+  await expect(button).toHaveAttribute('aria-disabled', 'true');
+  await button.press('Enter');
+  await expect.poll(() => button.boundingBox()).toEqual(before);
+  await expect.poll(() => calls).toBe(2);
+  release();
+  await expect(notice).toContainText('Cleared 3 cached scores.');
+  await expect(button).toHaveAttribute('aria-disabled', 'false');
+  await page.unroute('**' + endpoint);
+  await page.route('**' + endpoint, route => route.fulfill({ status: 500, json: { error: 'Fixture cleanup failure' } }));
+  await button.click();
+  await expect(notice).toContainText('Fixture cleanup failure');
+  await expect(button).toHaveAttribute('aria-disabled', 'false');
+  await expect.poll(() => button.boundingBox()).toEqual(before);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath('cache-settings.png') });
+});

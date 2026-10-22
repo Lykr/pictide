@@ -18,6 +18,8 @@ If direct installation is unavailable, open the release notes and update manuall
 
 See [Roam](roam.md) to adjust exploration, or [Getting started](getting-started.md) to connect an image service.
 
+Choose **Clear cache** to remove cached preference scores for deleted images. Your images and learned preferences are kept.
+
 ## Task records
 
 Open History to check generation progress, inspect failures, or cancel tasks you no longer need. Generate also lets you cancel all its tasks that have not started; tasks already running in the image service continue.

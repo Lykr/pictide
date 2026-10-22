@@ -82,6 +82,8 @@ App's single background learning worker processes unapplied feedback records, wo
 
 `artifact_preference_scores` stores raw image mean scores, feature/policy versions, and learning revisions. Ordinary reads fill missing cache entries; explicit refresh recomputes the selected scope. Manual refresh time is stored in the score row's refreshed_at, and queries return its maximum. Historical score ranges live in recommendation_score_range; resetting preferences clears the corresponding cache. See the [Image Scoring API](api/images.md#like-filters-and-image-preference-scores) for HTTP responses and field semantics, and the [Main Database Implementation](../../../backend/store/sqlite.py) as the implementation authority.
 
+The manual [cache cleanup operation](api/settings.md#manual-cache-cleanup) deletes scores only for images marked deleted. Score writes reject deleted or missing images, preventing late computations from recreating their cache. Cleanup preserves learning data and does not run database compaction.
+
 ## Candidate Data
 
 The library's dataset.min_cooccurrence records the minimum relation count used during processing and is retained through import, upload, and release export. Orchestration and candidate generation use it as the lower bound for minimum co-occurrence count. The base library uses 10; the current reduced library uses 1000.

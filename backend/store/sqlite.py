@@ -531,18 +531,25 @@ class Repository:
         if (reset["revision"] if reset else 0) != reset_revision:
             return
         scored_at = now()
-        db.executemany("INSERT INTO artifact_preference_scores VALUES (?,?,?,?,?,?,?) "
+        # A score computed before image deletion must not recreate its cache later.
+        db.executemany("INSERT INTO artifact_preference_scores SELECT ?,?,?,?,?,?,? "
+                       "WHERE EXISTS (SELECT 1 FROM artifacts WHERE id=? AND deleted_at IS NULL) "
                        "ON CONFLICT(artifact_id) DO UPDATE SET score=excluded.score, "
                        "feature_version=excluded.feature_version,policy_version=excluded.policy_version, "
                        "state_revision=excluded.state_revision,scored_at=excluded.scored_at, "
                        "refreshed_at=COALESCE(excluded.refreshed_at,artifact_preference_scores.refreshed_at)",
                        [(record["artifact_id"], record["score"], record["feature_version"], record["policy_version"],
-                         record["state_revision"], scored_at, refreshed_at) for record in records])
+                         record["state_revision"], scored_at, refreshed_at, record["artifact_id"]) for record in records])
 
     def save_image_scores(self, records, reset_revision, refreshed_at=None):
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
             self._save_image_scores(db, records, reset_revision, refreshed_at)
+
+    def clear_deleted_image_scores(self):
+        with self.connection() as db:
+            return db.execute("DELETE FROM artifact_preference_scores WHERE artifact_id IN "
+                              "(SELECT id FROM artifacts WHERE deleted_at IS NOT NULL)").rowcount
 
     def liked_positive_prompts(self, actor_id="local"):
         with self.connection() as db:

@@ -2,6 +2,7 @@ import { onSignal, offSignal } from '../shared/signals.mjs';
 import { SettingsRow } from "./settings-row";
 import { useErrorNotice } from "./notifications";
 import { ApplicationUpdates } from "./application-updates";
+import { CacheSettings } from "./cache-settings";
 import { requestUiAction } from "../shared/ui-state.mjs";
 import { Button } from "./ui/button";
 import { useEffect, useState } from "react";
@@ -78,5 +79,6 @@ export function GeneralSettings({ initialError = "" }: { initialError?: string }
     </SettingsRow>
     <SettingsRow separated label={t("新手引导")}><Button variant="outline" type="button" onClick={() => requestUiAction("onboarding.restart")}><Compass aria-hidden="true" />{t("开始引导")}</Button></SettingsRow>
     <ApplicationUpdates />
+    <CacheSettings />
   </div>;
 }
