@@ -56,13 +56,17 @@ jobs:
       - name: Install packaging dependencies
         run: python -m pip install --no-cache-dir -r backend/requirements-release.txt
       - name: Check desktop lifecycle
-        env:
-          PYTHONPATH: tests:.
-        run: python -m unittest -v test_desktop_launcher test_runtime_logging test_managed_output_logging test_job_logging test_network
+        run: >-
+          python -m unittest -v
+          tests.backend.desktop.test_desktop_launcher
+          tests.backend.runtime.test_runtime_logging
+          tests.backend.runtime.test_managed_output_logging
+          tests.backend.task.test_job_logging
+          tests.backend.runtime.test_network
       - name: Build the native app
         run: python scripts/build_portable.py --prebuilt-library dev/cache/prebuilt
       - name: Check the extracted app
-          run: python scripts/smoke_portable.py --archive releases/*.zip --report dev/verification/portable/smoke-report.json --previous-release
+        run: python scripts/smoke_portable.py --archive releases/*.zip --report dev/verification/portable/smoke-report.json --previous-release
       - name: Collect verified package and provenance
         env:
           SOURCE_SHA: ${{ github.sha }}
