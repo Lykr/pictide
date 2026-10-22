@@ -19,7 +19,8 @@ export function observeArtifactRevision(store, revision) {
   if (store.likedSort !== 'score') store.likedArtifacts = [];
   store.pages = { feed: emptyPage(), liked: store.likedSort === 'score' ? store.pages.liked : emptyPage() };
   if ('generatedArtifacts' in store) { store.generatedArtifacts = []; store.pages.generate = emptyPage(); }
-  store.currentImage = null;
+  // Invalidate lists, not the displayed image. If the refreshed page retains
+  // its src, the browser emits no new load event to restart autoplay.
   return true;
 }
 

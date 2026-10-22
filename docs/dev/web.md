@@ -30,6 +30,8 @@ Each feature model owns its draft; React views remain mounted across navigation.
 
 `components/generated-results.tsx` and `generated-viewer.tsx` manage the Generate/Liked grids and full-size viewer. The roam controller manages the current image, prefetch, and autoplay; `components/page-controls.tsx` manages ordinary pagination. The [Image API](reference/api/images.md) defines source, count, and feedback semantics.
 
+Image-list invalidation preserves the displayed Roam image's identity and loaded state until rendering selects a different image. A retained image keeps the same `src`, so the browser will not emit another load event; resetting its readiness would stall autoplay.
+
 The entire application shares one `/api/events` EventSource. Existing polling fallback remains on disconnection; switching sections does not create a second connection. Candidate uses `/api/candidate/tags|presets|dataset|generate|relations`; see the [Candidate API](reference/api/candidate.md) for methods and fields.
 
 ## Build

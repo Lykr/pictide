@@ -42,8 +42,17 @@ test('deletion revision replaces current list and clears both pagination caches'
   assert.deepEqual(value.likedArtifacts, []);
   assert.equal(value.pages.feed.loadedMore, false);
   assert.equal(value.pages.liked.total, 0);
-  assert.equal(value.currentImage, null);
+  assert.equal(value.currentImage, 'old'); // Renderer owns the displayed image until it selects a replacement.
   assert.equal(value.activeId, 'old'); // Renderer selects first available if this id is absent.
+});
+
+test('list invalidation retains the loaded image state when the current image survives', () => {
+  const value = { ...store(), imageReady: true };
+  applyArtifactPage(value, 'feed', page(5, ['old']), { replace: true });
+  assert.equal(value.currentImage, 'old');
+  assert.equal(value.imageReady, true);
+  assert.equal(value.activeId, 'old');
+  assert.deepEqual(value.artifacts, [{ id: 'old' }]);
 });
 
 test('a late old first page cannot resurrect removed artifacts in either list', () => {
