@@ -13,7 +13,7 @@
 
 ## Layout regression baseline
 
-`web/tests/browser/layout.spec.mjs` checks the real application at desktop, phone, and wide viewports with light/dark themes and English/Chinese labels. It asserts centered navigation, information-button placement, viewport-bounded panels, equal immersive panel widths and surfaces, focus return, reduced-motion behavior, aligned settings controls, and long-path wrapping. It exercises Roam, Liked, and Generate with simulated generation.
+`web/tests/browser/layout.spec.mjs` checks the real application at desktop, phone, and wide viewports with light/dark themes and English/Chinese labels. It asserts centered navigation, information-button placement, viewport-bounded panels, equal immersive panel widths and surfaces, focus return, reduced-motion behavior, aligned settings controls, and long-path wrapping. A separate scenario injects nonzero safe-area token values and checks the Generate/Liked frame through portrait/landscape rotation and entering/leaving immersion; desktop mobile emulation alone does not provide iOS device insets. It exercises Roam, Liked, and Generate with simulated generation.
 
 These geometric and computed-style assertions are the portable baseline; they avoid OS-dependent font rasterization snapshots. Each run also attaches screenshots of anchors, information panels, and settings for visual review. Inspect the relevant screenshots after a shared layout change. A passing geometry check alone does not establish visual quality. Existing notification tests separately protect layout, scroll, and drafts during results and errors.
 

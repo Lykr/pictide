@@ -137,3 +137,65 @@ for (const scenario of scenarios) test(`shared layout: ${scenario.name}`, async 
   if (scenario.width > 640) expect(Math.max(...controls) - Math.min(...controls)).toBeLessThan(1);
   await capture(page, testInfo, 'settings-long-path');
 });
+
+test('large image frames respect nonzero safe areas across rotation and immersion', async ({ page, context }, testInfo) => {
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'standalone', { value: true });
+    localStorage.setItem('pictide.first-run-guide.v1', JSON.stringify({ version: 1, status: 'dismissed' }));
+  });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/#generate');
+  await page.locator('#positive').fill('garden, sunlight');
+  await page.locator('#generate').click();
+  await page.locator('#compose .generated-card').first().click();
+  const viewer = page.locator('.generated-viewer');
+  await expect(viewer).toBeVisible();
+  const orientations = [
+    { name: 'portrait', width: 390, height: 844, top: 59, right: 0, bottom: 34, left: 0 },
+    { name: 'landscape', width: 844, height: 390, top: 0, right: 0, bottom: 21, left: 59 },
+    { name: 'portrait-return', width: 390, height: 844, top: 59, right: 0, bottom: 34, left: 0 },
+  ];
+  async function checkSafeFrame(area) {
+    const left = Math.max(8, area.left), right = Math.max(8, area.right);
+    const top = Math.max(8, area.top), bottom = Math.max(8, area.bottom);
+    await expect.poll(async () => {
+      const box = await viewer.boundingBox();
+      return Math.max(Math.abs(box.x - left), Math.abs(box.y - top),
+        Math.abs(box.width - (area.width - left - right)), Math.abs(box.height - (area.height - top - bottom)));
+    }).toBeLessThan(1);
+    const toolbar = await viewer.locator('[data-image-toolbar]').boundingBox();
+    const heading = await viewer.locator('.generated-viewer-heading').boundingBox();
+    expect(toolbar.y + toolbar.height).toBeLessThanOrEqual(area.height - bottom);
+    expect(heading.y).toBeGreaterThanOrEqual(top);
+  }
+  for (const area of orientations) {
+    await page.setViewportSize(area);
+    // Desktop engines expose zero device insets; inject only their values, not layout rules.
+    await page.evaluate(area => {
+      for (const side of ['top', 'right', 'bottom', 'left']) document.documentElement.style.setProperty(`--safe-area-${side}`, `${area[side]}px`);
+    }, area);
+    await checkSafeFrame(area);
+    await capture(page, testInfo, `safe-frame-${area.name}`);
+  }
+  const portrait = orientations[0];
+  await viewer.locator('.generated-viewer-heading button').first().click();
+  await expect(viewer).toHaveClass(/immersive/);
+  await expect.poll(() => viewer.boundingBox()).toEqual({ x: 0, y: 0, width: portrait.width, height: portrait.height });
+  const bar = await viewer.locator('[data-image-toolbar]').boundingBox();
+  expect(bar.y + bar.height).toBeLessThanOrEqual(portrait.height - portrait.bottom);
+  expect((await viewer.locator('.immersive-actions').boundingBox()).y).toBeGreaterThanOrEqual(portrait.top);
+  await page.keyboard.press('Escape');
+  await expect(viewer).not.toHaveClass(/immersive/);
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
+  await checkSafeFrame(portrait);
+  await viewer.getByRole('button', { name: 'Like image · ↑', exact: true }).click();
+  await expect(viewer.getByRole('button', { name: 'Unlike', exact: true })).toBeVisible();
+  await viewer.locator('.generated-viewer-heading button').last().click();
+  await page.locator('[data-view=liked]').click();
+  await page.locator('#liked-view .generated-card').first().click();
+  await checkSafeFrame(portrait);
+  await viewer.locator('[data-toolbar-slot=information] button').click();
+  await expect(viewer.locator('.image-info-popover')).toBeVisible();
+  await checkSafeFrame(portrait);
+});

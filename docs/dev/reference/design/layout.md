@@ -51,6 +51,9 @@ Generate and Liked share a compact responsive thumbnail grid and large-image vie
 
 Large views use a shared Dialog with previous, like, and next controls centered; information sits at the lower left, and blur sits beside the upper-right close action. Full image downloads are absent; information retains prompt JSON download. Preserve the image during pagination waits and cache rereads; close only when no image remains. Escape exits immersive mode before closing the viewer.
 
+The Generate/Liked dialog frame is sized and centered inside the viewport minus its four safe-area insets; internal padding is not a substitute for keeping the frame above the Home indicator. Shared `--safe-area-*` tokens read the browser's device insets. Rotation recalculates the safe rectangle. Immersive images may fill the viewport, while floating controls remain inside the safe area.
+
+
 Liked offers Latest / Preference score sorting and a searchable multi-select tag filter above the grid. The tag filter shows matching liked-image counts, supports individual removal and clear, and scrolls independently. Default tag order is alphabetical; count order is descending with alphabetical ties. Preference-score mode offers manual refresh beside blur, with the last successful refresh time in its tooltip. Use neutral Load more wording. Removing a like uses the shared confirmation dialog. Liked omits generation configuration and task controls.
 
 ## Prompts

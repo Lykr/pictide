@@ -16,7 +16,7 @@
   position: absolute;
   z-index: 3;
   left: 50%;
-  bottom: max(16px, env(safe-area-inset-bottom));
+  bottom: max(16px, var(--safe-area-bottom));
   transform: translateX(-50%);
   grid-template-columns: auto auto auto;
   width: max-content;
