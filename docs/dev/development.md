@@ -26,6 +26,14 @@ cd ../pictide-example
 
 Check whether the branch or directory already exists. Git carries source files; ignored data and dependencies are prepared separately. Simple documentation changes can use a clean checkout directly. When delegating independent work, agree on file ownership, shared interfaces, and delivery requirements.
 
+## Design agreement and data protection
+
+Before changing architecture, cross-module calls or data flow, or public module interfaces, present those three design aspects and obtain user confirmation. Use the Chinese [design template](../zh-CN/dev/design-template.md), focusing on the changes. Reuse approved boundaries without asking again; UI details and internal implementation are autonomous.
+
+Preserve unrelated changes and existing history; do not reset, stash, or rewrite history without authorization. Delegate only worthwhile independent tasks, with explicit file ownership and coordinated interfaces.
+
+Before directly modifying existing user data, back it up. Present historical data deletion as a reviewable inventory and obtain user confirmation. Preserve images, tasks, likes, and preference records; use temporary data for verification. Follow the [data layout](data-layout.md) and [backup procedure](../guides/backup.md).
+
 ## Prepare a checkout
 
 Source development needs Git, Python 3.10+, Node.js 20.19+ or 22.12+, and the pnpm version declared in `web/package.json`. Runtime dependencies are in `backend/requirements.txt`; offline processing dependencies are in `corpus/requirements.txt`. Install frontend dependencies from the lockfile.
