@@ -130,6 +130,12 @@ for (const scenario of scenarios) test(`shared layout: ${scenario.name}`, async 
   await viewer.locator('.generated-viewer-heading button').last().click();
   await page.goto('/#settings/general');
   await expect(page.locator('.settings-row')).toHaveCount(6);
+  const tourButton = page.locator('.general-settings .settings-row[data-separated=true] button');
+  const updateButton = page.locator('[data-application-updates] button').first();
+  const tourBox = await tourButton.boundingBox(), updateBox = await updateButton.boundingBox();
+  const alignedEdge = box => scenario.width <= 640 ? box.x + box.width : box.x;
+  expect(Math.abs(alignedEdge(tourBox) - alignedEdge(updateBox))).toBeLessThan(1);
+  expect(updateBox.height).toBe(tourBox.height);
   // A long real-world path must wrap inside the shared row rather than widening it.
   await page.locator('#data-directory').evaluate(el => { el.textContent = 'E:\\Pictide\\' + 'long-directory-name-'.repeat(20); });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

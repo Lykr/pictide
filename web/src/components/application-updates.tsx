@@ -115,11 +115,13 @@ export function ApplicationUpdates() {
   const phase = status?.phase;
   const working = busy || ["checking", "downloading", "verifying", "preparing", "installing"].includes(phase || "");
   const newer = phase !== 'current' && !!status?.latest_version && status.latest_version !== status.current_version;
-  return <SettingsRow stackOnMobile label={t("版本与更新")} className="items-start py-3" data-application-updates="">
+  return <SettingsRow label={<div className="flex flex-col gap-1">
+    <span>{t("版本与更新")}</span>
+    <span className="text-sm text-muted-foreground">{status ? `Pictide v${status.current_version}` : "Pictide"}</span>
+  </div>} data-application-updates="">
     <div className="flex flex-col gap-2 w-full">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm text-muted-foreground">{status ? `Pictide v${status.current_version}` : "Pictide"}</span>
-        <Button type="button" variant="outline" size="sm" disabled={working || !status} onClick={() => void act("check")}>
+        <Button type="button" variant="outline" disabled={working || !status} onClick={() => void act("check")}>
           {working ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}{t("检查更新")}
         </Button>
       </div>
