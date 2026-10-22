@@ -43,3 +43,14 @@
 先按[macOS 源码准备](../../dev/setup/macos.md#从源码准备)安装环境并构建前端，再在项目目录运行 `./start.command`。源码启动保留终端，默认使用项目内 `data/`；可按需添加 `--lan`、`--port` 或 `--data-dir`。
 
 源码启动需要 Python 3.10+。若源码启动脚本缺少执行权限，在项目目录运行 `chmod +x start.sh start.command`。构建发行包见[开发文档](../../dev/setup/macos.md#构建便携包)。
+
+## 更新
+
+应用安装在其他位置时，请调整命令中的路径。`--check-updates` 只检查；`--update` 显式请求兼容版本的下载、安装与重启，不会自动更新。
+
+```shell
+/Applications/Pictide.app/Contents/MacOS/Pictide --check-updates
+/Applications/Pictide.app/Contents/MacOS/Pictide --update
+```
+
+请先保存编辑并等待生图任务结束。无法直接安装时，通过 [GitHub Releases](https://github.com/Lykr/pictide/releases) 手动更新；应用内操作见[通用设置](../settings.md#通用设置)。

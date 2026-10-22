@@ -1,5 +1,7 @@
 # Manual Application Updates
 
+[简体中文](../../zh-CN/dev/architecture/updates.md)
+
 [Architecture](../architecture.md) · [Release workflow](../development.md#build-portable-packages)
 
 Updates are explicit user operations. No startup, settings mount, status read, timer, or recovery from a cached download checks GitHub or starts an installation. A running download or installation completes only as part of the action the user requested.

@@ -38,7 +38,7 @@ flowchart TD
 
 ## 推荐评分的数据处理流程
 
-下图以标准力度为例，表达一次评分请求的数据与处理步骤。标签内容特征、语义向量和组合级特征是数据产物；内容编码、语义编码和特征组合是处理步骤。上图的特征编码器负责这些步骤，实现位于 `backend/recommand/features.py` 与 `policy.py`。
+下图以标准力度为例，表达一次评分请求的数据与处理步骤。标签内容特征、语义向量和组合级特征是数据产物；内容编码、语义编码和特征组合是处理步骤。上图的特征编码器负责这些步骤，实现位于 `backend/recommendation/features.py` 与 `policy.py`。
 
 ```mermaid
 flowchart TD
@@ -81,7 +81,7 @@ flowchart TD
 
 ## 推荐依赖准备
 
-推荐依赖 [MiniLM](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx) 负责文本向量编码，使用离线 FastEmbed 格式的 ONNX 文件。`backend/recommand/model.json` 统一定义固定来源版本、五个必需文件、字节数与 SHA-256。`backend/recommand/resources.py` 将文件准备并校验到所选数据目录的 `models/minilm/`，支持断点续传；已有无效文件在成功替换前保留备份。
+推荐依赖 [MiniLM](https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx) 负责文本向量编码，使用离线 FastEmbed 格式的 ONNX 文件。`backend/recommendation/model.json` 统一定义固定来源版本、五个必需文件、字节数与 SHA-256。`backend/recommendation/resources.py` 将文件准备并校验到所选数据目录的 `models/minilm/`，支持断点续传；已有无效文件在成功替换前保留备份。
 
 源码与便携启动共用 `backend/application.py` 的 `PictideApplication.prepare_startup()`：先初始化随包词库，再准备模型。准备成功后，Host 才创建 HTTP 服务并打开页面。下载或校验失败则终止启动；重启后利用保留的 `.part` 文件重试。有效本地文件支持离线启动。用户步骤见[启动与离线模型准备](../../guides/getting-started.md#推荐依赖准备)，边界变化见[启动前准备设计](../issues/minilm-startup-download.md)。
 

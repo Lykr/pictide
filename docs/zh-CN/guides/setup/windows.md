@@ -66,3 +66,14 @@ New-NetFirewallRule -Name 'Pictide-LAN-8189' -DisplayName 'Pictide LAN (8189)' -
 先按[Windows 源码准备](../../dev/setup/windows.md#从源码准备)安装环境并构建前端，再在项目目录运行 `.\start.cmd`。
 
 源码启动器的参数使用 `-Lan`、`-Port` 和 `-DataDir`，例如 `.\start.cmd -Lan -Port 8191 -DataDir 'E:\PictideData'`；加 `-Cli` 保留终端。构建发行包见[开发文档](../../dev/setup/windows.md#构建便携包)。
+
+## 更新
+
+在解压后的便携包目录运行。`--check-updates` 只检查；`--update` 显式请求兼容版本的下载、安装与重启，不会自动更新。
+
+```shell
+Pictide.exe --check-updates
+Pictide.exe --update
+```
+
+请先保存编辑并等待生图任务结束。无法直接安装时，通过 [GitHub Releases](https://github.com/Lykr/pictide/releases) 手动更新；应用内操作见[通用设置](../settings.md#通用设置)。

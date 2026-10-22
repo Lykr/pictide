@@ -39,3 +39,14 @@
 先按[Linux 源码准备](../../dev/setup/linux.md#从源码准备)安装环境并构建前端，再在项目目录运行 `bash start.sh`；局域网、端口和数据目录参数同上。
 
 启动器需要 Python 3.10+。Debian / Ubuntu 若提示缺少 venv，安装与 Python 版本匹配的 `python3-venv`。构建发行包见[开发文档](../../dev/setup/linux.md#构建便携包)。
+
+## 更新
+
+在解压后的便携包目录运行。`--check-updates` 只检查；`--update` 显式请求兼容版本的下载、安装与重启，不会自动更新。
+
+```shell
+./start.sh --check-updates
+./start.sh --update
+```
+
+请先保存编辑并等待生图任务结束。无法直接安装时，通过 [GitHub Releases](https://github.com/Lykr/pictide/releases) 手动更新；应用内操作见[通用设置](../settings.md#通用设置)。

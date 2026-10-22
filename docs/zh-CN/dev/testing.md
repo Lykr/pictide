@@ -20,7 +20,7 @@ python scripts/check.py browser
 | `core`（默认） | 6 项 HTTP/存储冒烟：预设到漫游、阻塞队列恢复、数据库迁移、反馈撤回、OpenAI 与 Gemini 协议请求 | 应用 Python 依赖 |
 | `ui` | 6 个 Node 测试文件：引导状态与定位、按钮反馈、通知、主题/语言竞态、API 密钥编辑 | Node.js |
 | `corpus` | 3 项离线冒烟：图片过滤、过期/损坏预构建资源拒绝、两版词库导出 | 安装了 `corpus/requirements.txt` 的 Python 环境 |
-| `browser` | 3 条真实页面流程：通知不挤动布局、弹窗内重试、移动端引导与锚点保存 | 应用 Python 依赖、前端依赖、测试前端产物与浏览器 |
+| `browser` | 9 条真实页面流程：通知不挤动布局、弹窗内重试、移动端引导、漫游键盘/滑动反馈、API 保存后生成、手动更新与草稿保护、移动端更新与错误展示、重连等待上限 | 应用 Python 依赖、前端依赖、测试前端产物与浏览器 |
 
 前端快捷入口为 `pnpm --dir web test` 和 `pnpm --dir web run test:browser`。统一 Python 入口会把当前解释器传给浏览器测试服务；前端快捷入口使用 `PATH` 中的 `python`。
 
@@ -40,6 +40,10 @@ python scripts/check.py browser
 每个浏览器测试 worker 使用可用端口启动本机 HTTP 服务，数据临时保存在 `dev/verification/browser/`，结束后关闭服务并删除临时数据。生图使用模拟后端、小型中性词库和确定性的测试编码器，不下载模型，不提交 GPU 或付费 API 请求。通过这些检查代表应用交互正常，真实模型兼容性和出图质量需另行验证。
 
 失败时，截图、trace 与 JSON 报告保留在 `dev/verification/browser/`。使用 `pnpm --dir web exec playwright show-trace TRACE_PATH` 查看 trace。浏览器测试不自动重试。
+
+应用更新另运行 `python -m unittest tests.backend.updates.test_updates -v` 和 `web/tests/browser/updates.spec.mjs`，覆盖显式操作、相同/旧版本、未保存草稿、版本刷新、重连等待上限及移动端展示。发行 CI 为便携冒烟加上 `--previous-release`：启动上一稳定版保存设置，验证替换失败后恢复旧程序，再验证成功升级后的版本、数据与模型保留。可用 `--previous-archive PATH` 指定本地旧包；只有跨版本原生冒烟成功才允许直接安装，同版本替换单独报告。
+
+Python 测试按模块放在 `tests/backend/`，离线检查位于 `tests/corpus/`，工具检查位于 `tests/scripts/`；前端单元测试和浏览器流程分别位于 `web/tests/unit/`、`web/tests/browser/`。运行单个 Python 模块时使用包名，例如 `python -m unittest tests.backend.desktop.test_desktop_launcher -v`。
 
 ## 发版检查
 

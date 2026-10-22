@@ -44,13 +44,13 @@ cd ../pictide-example
 
 按本机系统一次准备 Python、Node.js、pnpm 与独立构建环境：[Windows](setup/windows.md#构建便携包) · [Linux](setup/linux.md#构建便携包) · [macOS](setup/macos.md#构建便携包)。推荐使用 Python 3.12，应用运行要求仍为 Python 3.10+。独立的 `dev/runtime/builder/` 环境安装 `backend/requirements-release.txt`；本地需要处理原始数据时另装 `corpus/requirements.txt`（Python 3.11+）。此后只需使用该环境执行 `scripts/build_portable.py`，自动运行 `pnpm install --frozen-lockfile`、类型检查和前端构建，再准备资源、完成 PyInstaller 目录式打包与 ZIP 归档。前端构建输出到 `dev/build/` 下的临时目录，保留运行中的 `web/dist/`。准备发行包无需先启动应用，也不读写开发运行目录 `data/`。
 
-构建默认按 `corpus/profiles/compact.json` 准备词库，仅携带 `backend/recommand/model.json` 固定模型清单，保留 FastEmbed、ONNX Runtime、tokenizers 等推理依赖。构建不下载或打包 MiniLM。原始分片和下载清单长期保存在 `dev/datasets/danbooru-2026/`；统计中间结果与成品词库放在 `dev/cache/portable/`。有效词库缓存可离线准备发行资源；缺失时补充下载并处理。清理构建缓存保留原始数据，直接本地重新统计。指纹、校验和恢复规则见[独立发行资源与构建缓存](issues/portable-build-cache.md)。
+构建默认按 `corpus/profiles/compact.json` 准备词库，仅携带 `backend/recommendation/model.json` 固定模型清单，保留 FastEmbed、ONNX Runtime、tokenizers 等推理依赖。构建不下载或打包 MiniLM。原始分片和下载清单长期保存在 `dev/datasets/danbooru-2026/`；统计中间结果与成品词库放在 `dev/cache/portable/`。有效词库缓存可离线准备发行资源；缺失时补充下载并处理。清理构建缓存保留原始数据，直接本地重新统计。指纹、校验和恢复规则见[独立发行资源与构建缓存](issues/portable-build-cache.md)。
 
 通过 `--dataset-dir`、`--cache-dir` 和 `--profile` 可分别指定原始数据目录、缓存目录与处理配置。指定 `--prebuilt-library DIR` 时，`DIR` 必须包含匹配当前源数据版本、配置和处理代码的 `vocabulary.sqlite3` 与 `report.json`；校验失败即终止，不回退到原始数据处理。该路径无需安装 PyArrow、SciPy 等离线处理依赖。源码和便携启动共用 `prepare_startup`，在创建 HTTP 服务、打开页面前校验并补齐所选数据目录下的 MiniLM；失败终止启动，重启后续传。词库导出、清单与指纹规则见[预构建词库](corpus.md#预构建词库)。
 
 便携构建默认只向 `releases/` 输出最终 `pictide-版本-平台-架构.zip`，无需手工创建输出目录，文件名不含日期。`--output-dir DIR` 可指定已有的最终包收集目录。本地重复构建在归档检查完成后原子替换同名 ZIP，保留其他版本，失败时保留已有最终包。`dev/build/` 下的临时前端、PyInstaller 工作区与展开目录在成功或失败后自动回收；构建报告保存到 `dev/verification/portable/版本-平台-架构/build-report.json`，失败时也保留。运行用户解压 ZIP 后启动 Pictide，词库初始化沿用[便携发行方案](issues/automatic-startup.md)，模型下载与离线准备见[安装与接入](../guides/getting-started.md#推荐依赖准备)。
 
-#Windows 新构建包解压后以最外层 `Pictide.exe` 启动，依赖置于 `_internal/`，个人数据置于 `data/`。macOS 构建需要 Xcode Command Line Tools，编译系统 AppKit 原生入口并封装 `Pictide.app`；默认数据在用户 Application Support，构建采用 ad-hoc 签名，不接入 Developer ID 或公证。Linux 保持 ZIP 与 `start.sh` 终端入口。具体职责与验证状态见[桌面分发](issues/desktop-distribution.md)。
+Windows 新构建包解压后以最外层 `Pictide.exe` 启动，依赖置于 `_internal/`，个人数据置于 `data/`。macOS 构建需要 Xcode Command Line Tools，编译系统 AppKit 原生入口并封装 `Pictide.app`；默认数据在用户 Application Support，构建采用 ad-hoc 签名，不接入 Developer ID 或公证。Linux 保持 ZIP 与 `start.sh` 终端入口。具体职责与验证状态见[桌面分发](issues/desktop-distribution.md)。
 
 ## GitHub Actions 发版
 
@@ -67,7 +67,7 @@ git tag v0.4.0
 git push origin v0.4.0
 ```
 
-工作流从资源锁指定的 Release 下载词库并校验文件大小、SHA-256、报告与数据库；始终显式使用 `--prebuilt-library`，不在 runner 下载原始数据或进行统计。CI 准备构建环境后执行同一个 `scripts/build_portable.py` 入口，再独立自动执行隔离启动冒烟。所有平台构建并通过冒烟后，统一发布 ZIP、`SHA256SUMS` 和构建报告。带预发布后缀的版本发布为 prerelease；已发布版本和资源不覆盖。
+工作流从资源锁指定的 Release 下载词库并校验文件大小、SHA-256、报告与数据库；始终显式使用 `--prebuilt-library`，不在 runner 下载原始数据或进行统计。CI 准备构建环境后执行同一个 `scripts/build_portable.py` 入口，再独立自动执行隔离启动冒烟。所有平台构建并通过冒烟后，统一发布 ZIP、`update.json`、`SHA256SUMS`、构建与冒烟报告。`scripts/update-policy.json` 声明目标版本支持的来源版本范围；目标版本负责正常启动时需要的数据初始化或迁移。跨版本原生升级冒烟通过后才启用直接安装，见[应用更新架构](architecture/updates.md)。带预发布后缀的版本发布为 prerelease；已发布版本和资源不覆盖。
 
 工作流只在推送 `v*` 版本标签时触发；日常分支与 commit 推送使用本地验证。资源 Release 保存固定词库，应用 Release 保存用户下载的便携包；Actions cache 只用于加速，资源可用性由资源锁和 Release 保证。
 
