@@ -212,8 +212,9 @@ jobs:
           GH_REPO: ${{ github.repository }}
         shell: python
         run: |
-          import hashlib, json, os, subprocess
+          import hashlib, json, os, subprocess, sys
           from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
           directory = Path('dev/build/release-assets')
           assert len(list(directory.glob('*.zip'))) == 4, 'Expected four native archives'
           reports = list(directory.glob('smoke-report-*.json'))
