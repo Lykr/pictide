@@ -1,3 +1,5 @@
+import { useApplication, useModel, useUiFact } from '../shared/application-context';
+import { runUiCommand } from '../shared/ui-state.mjs';
 import { useErrorNotice } from "./notifications";
 import { notifyError } from "../shared/notifications.mjs";
 import { publishUiState } from "../shared/ui-state.mjs";
@@ -16,7 +18,7 @@ import { imageSeedLabel } from "../controllers/backend-controls.mjs";
 
 type ResultState = { artifacts: GeneratedArtifact[]; total: number; hasMore: boolean; loading: boolean; error: string; pending: boolean; status: string; feedbackPending: boolean; mutationPending: boolean; visible: boolean; configured: boolean; tags: string[]; sort: "latest" | "score"; refreshedAt: string | null; filterVersion: number; revision: number };
 const initial: ResultState = { artifacts: [], total: 0, hasMore: false, loading: true, error: "", pending: false, status: "", feedbackPending: false, mutationPending: false, visible: false, configured: false, tags: [], sort: "latest", refreshedAt: null, filterVersion: 0, revision: 0 };
-const emit = (name: string, detail?: unknown) => document.dispatchEvent(new CustomEvent(`pictide:${name}`, { detail }));
+const emit = (name: string, detail?: unknown) => runUiCommand(name, detail);
 const imagePath = (item: GeneratedArtifact) => `/api/artifacts/${encodeURIComponent(item.id)}/image`;
 const seedLabel = imageSeedLabel;
 
@@ -30,19 +32,16 @@ function ArtifactImage({ item, label }: { item: GeneratedArtifact; label: string
 }
 
 // Both collections use the same grid/viewer; only their data and actions differ.
-export function GeneratedResults({ collection = "generate" }: { collection?: "generate" | "liked" }) {
+export function GeneratedResults({ collection = "generate", privacyHost }: { collection?: "generate" | "liked"; privacyHost?: HTMLElement | null }) {
   const targets = useMemo(() => ({ privacy: uiTarget("liked.privacy"), collection: uiTarget("liked.collection") }), []);
   const liked = collection === "liked";
   const prefix = liked ? "liked" : "generated";
   const label = liked ? t("喜欢图片") : t("生成的图片");
-  const [state, setState] = useState(initial);
+  const state: ResultState = { ...initial, ...useUiFact(liked ? "likedResults" : "generatedResults", initial) };
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [privacyBlur, setPrivacyBlur] = useState(true);
-  useEffect(() => {
-    const receive = (event: Event) => setState({ ...initial, ...(event as CustomEvent<ResultState>).detail });
-    document.addEventListener(`pictide:${prefix}-results`, receive);
-    return () => document.removeEventListener(`pictide:${prefix}-results`, receive);
-  }, [prefix]);
+  const app = useApplication(), application = useModel(app.model);
+  const privacyBlur = application.privacy[collection];
+  const setPrivacyBlur = (value: boolean) => app.setPrivacy(collection, value);
   useEffect(() => { if (liked) publishUiState({ likedPrivacy: privacyBlur, likedLoading: state.loading, likedTotal: state.total }); }, [liked, privacyBlur, state.loading, state.total]);
   useEffect(() => { if (!state.visible) setSelectedId(null); }, [state.visible]);
   useEffect(() => { if (liked) setSelectedId(null); }, [liked, state.filterVersion]);
@@ -54,7 +53,6 @@ export function GeneratedResults({ collection = "generate" }: { collection?: "ge
   const refreshTooltip = state.refreshedAt
     ? t("刷新偏好评分 · 上次刷新：{time}", { time: new Date(state.refreshedAt).toLocaleString(locale()) })
     : t("刷新偏好评分 · 尚未刷新");
-  const privacyHost = liked ? document.getElementById("liked-privacy-controls") : null;
   return <section className="generated-results" aria-label={liked ? t("喜欢的图片") : t("生成结果")}>
     {liked && privacyHost && createPortal(<span className="inline-flex items-center gap-1">
       {state.sort === "score" && <IconButton icon={state.loading ? LoaderCircle : RotateCw} className={`generated-privacy-toggle rounded-3xl border-0 ${state.loading ? "[&_svg]:animate-spin" : ""}`} label={state.loading ? t("正在计算偏好评分") : t("刷新偏好评分")} tooltip={refreshTooltip} disabled={busy} onClick={() => emit("liked-refresh")} />}

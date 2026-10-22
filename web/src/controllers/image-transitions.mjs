@@ -1,4 +1,5 @@
-// One shared image-only effect for DOM roam and React viewers.
+import { emitSignal } from '../shared/signals.mjs';
+// One shared image-only effect for Roam and collection viewers.
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 let enabled = true;
 const active = new Map();
@@ -13,7 +14,7 @@ function cancelAll() {
 export function applyImageTransitions(value) {
   enabled = value !== false;
   if (!enabled) cancelAll();
-  document.dispatchEvent(new Event('pictide:image-transitions-changed'));
+  emitSignal("image-transitions-changed");
 }
 reducedMotion.addEventListener('change', () => {
   if (reducedMotion.matches) cancelAll();

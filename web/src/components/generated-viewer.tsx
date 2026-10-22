@@ -1,3 +1,4 @@
+import { onSignal, offSignal } from '../shared/signals.mjs';
 import { ImageToolbar } from "./image-toolbar";
 import { ImageToolbarPopover } from "./image-toolbar-popover";
 import { notifyError } from "../shared/notifications.mjs";
@@ -130,11 +131,11 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
       if (action === "privacy") current.onPrivacyChange(!current.privacyBlur);
     };
     document.addEventListener("keydown", keyboard);
-    document.addEventListener("pictide:close-image-info", closeInfo);
+    onSignal("close-image-info", closeInfo);
     return () => {
-      viewer.leave(); viewerRef.current = null;
+      viewer.dispose(); viewerRef.current = null;
       document.removeEventListener("keydown", keyboard);
-      document.removeEventListener("pictide:close-image-info", closeInfo);
+      offSignal("close-image-info", closeInfo);
     };
   }, [cardElement]);
 

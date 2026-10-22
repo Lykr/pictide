@@ -8,15 +8,17 @@ Pictide's only browser entry point; npm package `pictide-web`. See the [User Gui
 
 Code paths in this section are relative to `web/` at the project root.
 
-- `index.html` → `src/main.tsx`: the only React root. It mounts all workspaces, then initializes each business controller once.
-- `src/feed.tsx`: application shell, sidebar, Roam, Generate, and categorized Settings pages.
+- `index.html` → `src/main.tsx`: the only React root. It creates one application session and provides it through `shared/application-context.tsx`. Mounting binds browser listeners and SSE; unmounting releases them.
+- `src/feed.tsx`: application shell, navigation, and Roam. `src/features/` contains the controlled Generate, Image API, Roam settings, and History forms.
 - `src/editor.tsx`: React-managed workspaces for read-only libraries, generation presets, and previews; no separate page entry point.
 - `src/shared/notifications.mjs`, `src/components/notifications.tsx`: the shared floating notification layer for errors and operation results; behavior is defined in the [component guidelines](reference/design/components.md#floating-notifications).
 - `src/controllers/`: browser state, events, and API calls. The backend Candidate module handles preset validation, co-occurrence expansion, and continuous generation within a budget.
-- `src/controllers/app.js`: composes the page controllers and coordinates navigation, galleries, Roam, and realtime refresh. `backend-settings.js` owns Image API/workflow drafts and save/test actions; `generation-controller.js` owns the Generate form, prompt counters, and uncertain submissions. `dom-utils.mjs` shares DOM labels, localized status text, and options.
+- `src/controllers/app.js`: composes the page controllers and coordinates navigation, galleries, Roam, and realtime refresh. `backend-settings.js` owns Image API/workflow drafts and save/test actions; `generation-controller.js` owns the Generate form, prompt counters, and uncertain submissions. `components/job-history.tsx` renders task records from the pager state.
 - `src/components/ui/`, `src/styles/theme.css`: shared shadcn/ui components and design tokens. See [Design Guidelines](design-system.md).
 
-The React shell and existing DOM controllers manage presentation and drafts. Controllers initialize only once per page lifecycle. The shared control layer integrates official shadcn/Radix components through portals, maintaining a single React root. Hidden form-state interfaces bridge legacy controllers and must not appear as visible native controls. New features reuse this layer without creating separate page entry points or a React root per control.
+React owns page markup and controlled inputs. Feature services store ordinary draft data in small observable models (`shared/model.mjs`); `useModel` subscribes with `useSyncExternalStore`. Actions accept values and return results or promises. Use shared shadcn/Radix components directly; do not introduce hidden proxy controls, native property interception, or DOM-based business-state synchronization.
+
+`shared/ui-state.mjs` retains immutable UI facts for the tour and shared views, with explicitly bound application commands for cross-feature actions. `shared/signals.mjs` carries lifecycle invalidations such as theme or library changes. Persistent data belongs in models/facts, not transient events. DOM refs remain appropriate for browser capabilities: focus, measurement, scrolling, fullscreen, image animation, and file selection.
 
 Frontend unit checks live in `web/tests/unit/`; real-page checks and fixtures live in `web/tests/browser/`. Their temporary Python service is `tests/browser_server.py`. See [focused smoke checks](testing.md) for the shared entry points.
 
@@ -24,7 +26,7 @@ Frontend unit checks live in `web/tests/unit/`; real-page checks and fixtures li
 
 Internal routes are `#feed`, `#generate`, `#liked`, `#prompts`, and `#settings/general|roam|backend|history`. Task records live in Settings' History section, with no separate Tasks section.
 
-The React page shell and controllers jointly maintain drafts. Image windows distinguish Generate and Roam by source; Liked spans sources. The backend saves the viewing position. The UI does not access files, SQLite, or Python modules directly; business algorithms run in the backend.
+Each feature model owns its draft; React views remain mounted across navigation. Server refreshes update service data without replacing unsaved drafts. Image windows distinguish Generate and Roam by source; Liked spans sources. The backend saves the viewing position. The UI does not access files, SQLite, or Python modules directly; business algorithms run in the backend.
 
 `components/generated-results.tsx` and `generated-viewer.tsx` manage the Generate/Liked grids and full-size viewer. The roam controller manages the current image, prefetch, and autoplay; `components/page-controls.tsx` manages ordinary pagination. The [Image API](reference/api/images.md) defines source, count, and feedback semantics.
 

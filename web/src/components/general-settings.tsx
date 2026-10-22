@@ -1,3 +1,4 @@
+import { onSignal, offSignal } from '../shared/signals.mjs';
 import { SettingsRow } from "./settings-row";
 import { useErrorNotice } from "./notifications";
 import { ApplicationUpdates } from "./application-updates";
@@ -22,13 +23,13 @@ export function GeneralSettings({ initialError = "" }: { initialError?: string }
   useErrorNotice(error, { id: "general-settings" });
   useEffect(() => {
     const sync = () => { setTheme(currentTheme()); setError(""); };
-    const failed = (event: Event) => setError((event as CustomEvent<string>).detail);
+    const failed = (message: string) => setError(message);
     const unsubscribe = subscribe(() => setSelectedLanguage(language()));
     const syncEffects = () => setEffects(imageTransitionsEnabled());
-    document.addEventListener("pictide:image-transitions-changed", syncEffects);
-    document.addEventListener("pictide:theme-changed", sync);
-    document.addEventListener("pictide:theme-error", failed);
-    return () => { document.removeEventListener("pictide:image-transitions-changed", syncEffects); unsubscribe(); document.removeEventListener("pictide:theme-changed", sync); document.removeEventListener("pictide:theme-error", failed); };
+    onSignal("image-transitions-changed", syncEffects);
+    onSignal("theme-changed", sync);
+    onSignal("theme-error", failed);
+    return () => { offSignal("image-transitions-changed", syncEffects); unsubscribe(); offSignal("theme-changed", sync); offSignal("theme-error", failed); };
   }, []);
   const change = async (next: string) => {
     if (!next || saving || next === theme) return;

@@ -1,0 +1,57 @@
+import { test, expect } from './fixtures.mjs';
+
+test('workflow parameter drafts survive navigation and serialize through JSON and API save', async ({ page, context }) => {
+  await context.addInitScript(() => localStorage.setItem('pictide.first-run-guide.v1', JSON.stringify({ version: 1, status: 'dismissed' })));
+  await page.goto('/#settings/backend');
+  await expect(page.locator('#backend-name')).toHaveValue('Browser fixture');
+  await page.locator('#toggle-node-parameters').click();
+  const seed = page.getByRole('spinbutton', { name: '3 KSampler seed', exact: true });
+  await seed.fill('');
+  await page.locator('#toggle-workflow-json').click();
+  await expect(page.locator('.notification-card[data-state=open]')).toContainText('invalid');
+  await expect(seed).toBeVisible();
+  await page.locator('#toggle-node-parameters').click();
+  await page.locator('#save-backend').click();
+  await expect(seed).toBeVisible();
+  await expect(seed).toBeFocused();
+  await seed.fill('17');
+  await page.locator('[data-view=generate]').click();
+  await page.locator('#positive').fill('retained generation draft');
+  await page.locator('[data-view=settings]').click();
+  await expect(seed).toHaveValue('17');
+  await page.locator('#toggle-workflow-json').click();
+  const workflow = JSON.parse(await page.locator('#workflow-json').inputValue());
+  expect(workflow['3'].inputs.seed).toBe(17);
+  workflow['6'].inputs.text = 'updated JSON prompt';
+  await page.locator('#workflow-json').fill(JSON.stringify(workflow));
+  await page.locator('#toggle-workflow-json').click();
+  await expect(page.getByRole('textbox', { name: '6 CLIPTextEncode text', exact: true })).toHaveValue('updated JSON prompt');
+  const saved = page.waitForResponse(response => response.url().endsWith('/api/backends/fixture') && response.request().method() === 'PUT');
+  await page.locator('#save-backend').click();
+  const response = await saved;
+  expect(response.ok()).toBe(true);
+  expect(response.request().postDataJSON().workflow['3'].inputs.seed).toBe(17);
+  await expect(page.locator('#save-backend')).toBeEnabled();
+  await page.locator('[data-view=generate]').click();
+  await expect(page.locator('#positive')).toHaveValue('retained generation draft');
+  expect(await page.locator('[data-control-proxy],[data-control-host],[data-controller-content]').count()).toBe(0);
+});
+
+test('a stale default workflow response cannot overwrite a changed API draft', async ({ page, context }) => {
+  await context.addInitScript(() => localStorage.setItem('pictide.first-run-guide.v1', JSON.stringify({ version: 1, status: 'dismissed' })));
+  await page.goto('/#settings/backend');
+  await expect(page.locator('#backend-name')).toHaveValue('Browser fixture');
+  await page.getByRole('button', { name: 'Expand workflow list', exact: true }).click();
+  await page.getByRole('option', { name: 'Default text-to-image', exact: true }).click();
+  let finish;
+  const arrived = new Promise(resolve => { finish = resolve; });
+  let held;
+  await page.route('**/api/backends/*/template', async route => { held = route; finish(); });
+  await page.locator('#edit-default-parameters').click();
+  await arrived;
+  await page.locator('#backend-url').fill('http://127.0.0.1:9999');
+  await held.fulfill({ json: { workflow: { '1': { class_type: 'StaleNode', inputs: { text: 'stale' } } }, bindings: {}, output_nodes: [] } });
+  await expect(page.locator('.notification-card[data-state=open]')).toContainText('changed');
+  await expect(page.locator('#backend-url')).toHaveValue('http://127.0.0.1:9999');
+  await expect(page.locator('#custom-workflow')).toBeHidden();
+});

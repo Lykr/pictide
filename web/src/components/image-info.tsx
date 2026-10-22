@@ -1,3 +1,5 @@
+import { onSignal, offSignal } from '../shared/signals.mjs';
+import { useUiFact } from '../shared/application-context';
 import { t } from "../i18n/index.mjs";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getUiState, subscribeUiState } from "../shared/ui-state.mjs";
@@ -11,22 +13,15 @@ import { ImagePromptDetails } from "./image-prompt-details";
 type ImageDetails = { id: string; seed: string; positive: string; negative: string };
 
 export function ImageInfo() {
-  const [image, setImage] = useState<ImageDetails | null>(null);
+  const image: ImageDetails | null = useUiFact("imageInfo");
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const immersive = useSyncExternalStore(subscribeUiState, () => (getUiState() as Record<string, unknown>).roamImmersive === true);
   useEffect(() => {
-    const receive = (event: Event) => {
-      const next = (event as CustomEvent<ImageDetails | null>).detail;
-      setImage(next);
-      if (!next) setOpen(false);
-    };
     const close = () => setOpen(false);
-    document.addEventListener("pictide:image-info", receive);
-    document.addEventListener("pictide:close-image-info", close);
+    onSignal("close-image-info", close);
     return () => {
-      document.removeEventListener("pictide:image-info", receive);
-      document.removeEventListener("pictide:close-image-info", close);
+        offSignal("close-image-info", close);
     };
   }, []);
   return <>

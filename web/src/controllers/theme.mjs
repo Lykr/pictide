@@ -1,3 +1,4 @@
+import { emitSignal } from '../shared/signals.mjs';
 import { applyLanguage, tr } from '../i18n/index.mjs';
 import { applyImageTransitions } from './image-transitions.mjs';
 const systemAppearance = window.matchMedia('(prefers-color-scheme: dark)');
@@ -13,7 +14,7 @@ function renderTheme() {
   document.documentElement.classList.toggle('dark', dark);
   const chrome = document.querySelector('meta[name="theme-color"]');
   if (chrome) chrome.setAttribute('content', dark ? '#0a0a0a' : '#ffffff');
-  document.dispatchEvent(new Event('pictide:theme-changed'));
+  emitSignal("theme-changed");
 }
 
 export function applyTheme(theme) {

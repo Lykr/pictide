@@ -152,4 +152,15 @@ test('saved API settings reach Generate and navigation retains its draft', async
   await page.locator('#generate').click();
   expect((await submitted).status()).toBe(202);
   await expect(page.locator('#compose .generated-card')).toHaveCount(1);
+  await page.locator('[data-view="settings"]').click();
+  await page.getByRole('tab', { name: 'History', exact: true }).click();
+  const job = page.locator('#job-list .job').first();
+  await job.locator('.collapsible-label').click();
+  await expect(job.locator('.job-meta')).toContainText('Saved browser API');
+  await expect(job.locator('.job-meta dt')).toHaveText(['Status', 'Time', 'Image API', 'Seed', 'Task ID']);
+  await expect(job.locator('.job-prompt').first()).toHaveText('garden, sunlight');
+  await page.locator('[data-view="generate"]').click();
+  await page.locator('[data-view="settings"]').click();
+  await expect(job.locator('.job-body')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('task-history.png') });
 });

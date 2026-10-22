@@ -17,19 +17,19 @@
 
 Usually give each action area one primary button. Keep short labels for save, generate, and confirm. Use Lucide icons for familiar tools such as copy, refresh, close, sort, download, and image navigation; keep names alongside navigation icons. Loading shows the running action and prevents duplicate submission.
 
-React icon buttons use `web/src/components/actions.tsx`'s `IconButton`, normally `ghost` / `icon-sm`, with a localized accessible name and tooltip. DOM controllers use `dom-primitives.ts`'s `setAction` and the same Lucide SVG data. State changes update both accessible names and tooltips while preserving icons.
+React icon buttons use `web/src/components/actions.tsx`'s `IconButton`, normally `ghost` / `icon-sm`, with a localized accessible name and tooltip. State changes update both accessible names and tooltips while preserving icons.
 
 ## Copy and contextual help
 
 Show task titles, labels, values, short status, and necessary actions. Keep technical explanations and long background in topic documentation. Tooltips explain their own control in one or two sentences; field help, matching rules, source, sorting, and saving explanations belong to the relevant control. Empty states offer one short explanation and a next action.
 
-Use shared `HelpTip` or `data-tooltip` support instead of permanent explanatory paragraphs beneath every input. Radix Tooltip serves both React and DOM controls. Hover or keyboard focus reveals help; help icons also accept click and Enter / Space, and Escape closes them. Help uses layer 1200 above image information at 1100, with mounting inside the active dialog when appropriate. Destructive scope and consequences remain discoverable through explicit controls or confirmation.
+Use shared `HelpTip` or `data-tooltip` support instead of permanent explanatory paragraphs beneath every input. Radix Tooltip serves both React controls. Hover or keyboard focus reveals help; help icons also accept click and Enter / Space, and Escape closes them. Help uses layer 1200 above image information at 1100, with mounting inside the active dialog when appropriate. Destructive scope and consequences remain discoverable through explicit controls or confirmation.
 
 Unchanged page status, unsaved markers, and current progress stay with their controls. Transient results and detailed errors use notifications.
 
 ## Floating notifications
 
-All errors, validation failures, save conflicts, and temporary results share `components/notifications.tsx`. React and DOM controllers call `shared/notifications.mjs`; state-driven errors use `useErrorNotice()`.
+All errors, validation failures, save conflicts, and temporary results share `components/notifications.tsx`. React views and feature actions call `shared/notifications.mjs`; state-driven errors use `useErrorNotice()`.
 
 Notifications sit at the viewport's upper right, respecting safe areas, theme, and locale. They preserve layout, scroll position, drafts, and input focus. Display at most three and merge repeated notices from the same source. Radix Toast provides close, swipe dismissal, F8 focus, and optional retry through the original business action.
 

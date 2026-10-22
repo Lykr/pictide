@@ -2,6 +2,10 @@ import { test, expect } from './fixtures.mjs';
 
 test('update-check notices preserve layout and only appear after explicit checks', async ({ page, context }) => {
   await context.addInitScript(() => localStorage.setItem('pictide.first-run-guide.v1', JSON.stringify({ version: 1, status: 'dismissed' })));
+  await context.addInitScript(() => {
+    const NativeEvents = window.EventSource;
+    window.EventSource = class extends NativeEvents { constructor(...args) { super(...args); window.testEvents = this; } };
+  });
   let checks = 0, reads = 0;
   let status = { current_version: '0.5.0', latest_version: '0.5.0', phase: 'current', reason: 'already_current',
     can_download: false, can_install: false, release_url: 'https://github.com/Lykr/pictide/releases', error: null };
@@ -36,7 +40,7 @@ test('update-check notices preserve layout and only appear after explicit checks
     await notice.getByRole('button', { name: 'Dismiss notification', exact: true }).click();
     await expect(notice).toHaveCount(0);
     const previousReads = reads;
-    await page.evaluate(() => document.dispatchEvent(new Event('pictide:updates-changed')));
+    await page.evaluate(() => window.testEvents.dispatchEvent(new MessageEvent('change', { data: JSON.stringify({ topic: 'updates' }) })));
     await expect.poll(() => reads).toBeGreaterThan(previousReads);
     await expect(notice).toHaveCount(0);
   }

@@ -1,3 +1,4 @@
+import { runUiCommand } from '../shared/ui-state.mjs';
 import { useErrorNotice } from "./notifications";
 import { t, tr, locale } from "../i18n/index.mjs";
 import { useEffect, useMemo, useState } from "react";
@@ -52,7 +53,7 @@ export function LikedTagFilter({ visible, revision, disabled = false, sort = "la
   const visibleChoices = choices.slice(0, shown);
   const change = (next: string[]) => {
     setSelected(next);
-    document.dispatchEvent(new CustomEvent("pictide:liked-filter", { detail: { tags: next } }));
+    runUiCommand("liked-filter", { tags: next });
   };
   const toggle = (text: string) => change(selected.includes(text) ? selected.filter(tag => tag !== text) : [...selected, text]);
 
@@ -88,7 +89,7 @@ export function LikedTagFilter({ visible, revision, disabled = false, sort = "la
     </Badge>)}
     {selected.length > 0 && <IconButton icon={X} label={t("清空标签筛选")} disabled={disabled} onClick={() => change([])} />}
     <div className="ml-auto flex items-center gap-1">
-      <Select value={sort} disabled={disabled} onValueChange={next => document.dispatchEvent(new CustomEvent("pictide:liked-sort", { detail: { sort: next } }))}>
+      <Select value={sort} disabled={disabled} onValueChange={next => runUiCommand("liked-sort", { sort: next })}>
         <SelectTrigger size="sm" aria-label={t("喜欢图片排序")} data-tooltip-hover-only="" data-tooltip={sort === "score" ? t("偏好评分使用图片缓存，点击刷新后更新。") : t("按时间从新到旧排列。")}><SelectValue /></SelectTrigger>
         <SelectContent><SelectItem value="latest">{t("最新优先")}</SelectItem><SelectItem value="score">{t("偏好评分")}</SelectItem></SelectContent>
       </Select>

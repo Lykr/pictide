@@ -30,14 +30,3 @@ export function PageControls({ label, page, totalPages, loading = false, onPageC
     <IconButton icon={ArrowRight} label={tr`下一页${label}`} disabled={loading || page >= totalPages} onClick={() => navigate(page + 1)} />
   </form>;
 }
-
-type JobPageState = { page: number; totalPages: number; loading: boolean; visible: boolean };
-export function JobPageControls() {
-  const [state, setState] = useState<JobPageState>({ page: 1, totalPages: 1, loading: false, visible: false });
-  useEffect(() => {
-    const receive = (event: Event) => setState({ ...(event as CustomEvent<JobPageState>).detail });
-    document.addEventListener("pictide:jobs-pagination", receive);
-    return () => document.removeEventListener("pictide:jobs-pagination", receive);
-  }, []);
-  return <div hidden={!state.visible}><PageControls label={t("任务")} {...state} onPageChange={page => document.dispatchEvent(new CustomEvent("pictide:jobs-page", { detail: { page } }))} /></div>;
-}

@@ -1,3 +1,6 @@
+import { emitSignal } from '../shared/signals.mjs';
+import { useUiFact } from '../shared/application-context';
+import { runUiCommand } from '../shared/ui-state.mjs';
 import { useErrorNotice } from "./notifications";
 import { getUiState, publishUiState, subscribeUiState } from "../shared/ui-state.mjs";
 import { uiTarget } from "../shared/ui-targets";
@@ -19,10 +22,11 @@ const normalize = (text: string) => text.trim().replaceAll("_", " ");
 export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel: ReactNode) => ReactElement }) {
   const facts = useSyncExternalStore(subscribeUiState, getUiState) as Record<string, unknown>;
   const immersive = facts.roamImmersive === true;
-  const [settings, setSettings] = useState<AnchorSettings>({ pinned_positive: [], preset_base_positive: [], prompt_mode: "random" });
-  const [positive, setPositive] = useState("");
+  const value = useUiFact("roamOptions");
+  const settings: AnchorSettings = { pinned_positive: value?.pinned_positive ?? [], preset_base_positive: value?.preset_base_positive ?? [], prompt_mode: value?.prompt_mode ?? "random" };
+  const positive = useUiFact("imageInfo")?.positive ?? "";
   const [query, setQuery] = useState("");
-  const [ready, setReady] = useState(false);
+  const ready = !!value;
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
@@ -35,20 +39,6 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
   const anchorRevision = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (adding && open) inputRef.current?.focus(); }, [adding, open]);
-  useEffect(() => {
-    const receive = (event: Event) => {
-      const value = (event as CustomEvent<AnchorSettings>).detail;
-      setSettings({ pinned_positive: value.pinned_positive ?? [], preset_base_positive: value.preset_base_positive ?? [], prompt_mode: value.prompt_mode });
-      setReady(true);
-    };
-    const image = (event: Event) => setPositive((event as CustomEvent<{ positive: string } | null>).detail?.positive ?? "");
-    document.addEventListener("pictide:roam-options-settings", receive);
-    document.addEventListener("pictide:image-info", image);
-    return () => {
-      document.removeEventListener("pictide:roam-options-settings", receive);
-      document.removeEventListener("pictide:image-info", image);
-    };
-  }, []);
   const fixed = new Set(settings.preset_base_positive.map(normalize));
   const pins = settings.pinned_positive.map(normalize).filter(text => !fixed.has(text));
   const pinned = new Set(pins);
@@ -68,9 +58,7 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
     const next = text === null ? [] : pinned.has(text) ? pins.filter(value => value !== text) : [...pins, text];
     setPending(text ?? ""); setError("");
     try {
-      await new Promise((resolve, reject) => document.dispatchEvent(new CustomEvent("pictide:roam-settings-save", {
-        detail: { patch: { pinned_positive: next }, resolve, reject },
-      })));
+      await runUiCommand('roam-settings-save', { pinned_positive: next });
       return true;
     } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); return false; }
     finally { setPending(null); }
@@ -79,7 +67,7 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
     const text = normalize(query);
     if (text && await save(text, true)) { setQuery(""); setAdding(false); }
   };
-  const triggerButton = <Button ref={triggerTarget} variant={open ? "secondary" : "ghost"} size="icon-sm" className="roam-anchor-trigger" aria-label={t("锚点")} aria-pressed={open} data-tooltip={t("锚点")} onClick={() => { if (!open) document.dispatchEvent(new Event("pictide:close-image-info")); }}>
+  const triggerButton = <Button ref={triggerTarget} variant={open ? "secondary" : "ghost"} size="icon-sm" className="roam-anchor-trigger" aria-label={t("锚点")} aria-pressed={open} data-tooltip={t("锚点")} onClick={() => { if (!open) emitSignal("close-image-info"); }}>
       <Anchor aria-hidden="true" />{pins.length > 0 && <span className="roam-anchor-count">{pins.length}</span>}
     </Button>;
   const trigger = immersive ? <PopoverTrigger asChild>{triggerButton}</PopoverTrigger> : <CollapsibleTrigger asChild>{triggerButton}</CollapsibleTrigger>;

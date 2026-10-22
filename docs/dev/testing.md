@@ -45,6 +45,8 @@ Failures retain screenshots, traces and a JSON report in `dev/verification/brows
 
 Application-update changes additionally use `python -m unittest tests.backend.updates.test_updates -v` and `web/tests/browser/updates.spec.mjs`. They cover explicit actions, equal/older published versions, unsaved drafts, version reload, bounded restart waiting, and mobile manual-update/error presentation. Release CI adds `--previous-release` to the portable smoke: the actual previous stable package prepares settings and data, a replacement failure restores the old program, and a successful upgrade must serve the target version while preserving data and models. Use `--previous-archive PATH` for an already downloaded older ZIP. Only a successful cross-version native smoke enables direct installation; same-version self-replacement is reported separately.
 
+Controlled-form coverage lives in `web/tests/unit/generation-draft.test.mjs` and `web/tests/browser/react-forms.spec.mjs`. It checks uncertain-submit request IDs, duplicate submission, draft retention, workflow node/JSON editing, validation, and stale workflow responses. Browser task-history checks retain metadata and disclosure state across navigation.
+
 ## Release checks
 
 The tag-triggered release workflow runs `core`, `ui` and `browser` once before the four native builds. The offline `corpus` group remains available separately when data processing changes. Each native build retains its own extracted-package startup smoke.

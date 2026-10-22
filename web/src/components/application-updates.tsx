@@ -1,3 +1,5 @@
+import { emitSignal, onSignal, offSignal } from '../shared/signals.mjs';
+import { runUiCommand } from '../shared/ui-state.mjs';
 import { SettingsRow } from "./settings-row";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUpToLine, Download, LoaderCircle, RefreshCw } from "lucide-react";
@@ -54,11 +56,11 @@ export function ApplicationUpdates() {
     if (["preparing", "installing"].includes(next.phase)) {
       if (!restarting.current) restartStarted.current = Date.now();
       restarting.current = true;
-      document.dispatchEvent(new Event("pictide:updating"));
+      runUiCommand("updating");
     }
     if (restarting.current && !["preparing", "installing"].includes(next.phase)) {
       restarting.current = false;
-      document.dispatchEvent(new Event("pictide:update-finished"));
+      runUiCommand("update-finished");
     }
     setStatus(next);
     if (next.error) setError(next.error);
@@ -81,13 +83,13 @@ export function ApplicationUpdates() {
     };
     const changed = () => { clearTimeout(timer); void read(); };
     void read();
-    document.addEventListener("pictide:updates-changed", changed);
-    return () => { mounted = false; clearTimeout(timer); document.removeEventListener("pictide:updates-changed", changed); };
+    onSignal("updates-changed", changed);
+    return () => { mounted = false; clearTimeout(timer); offSignal("updates-changed", changed); };
   }, [receive]);
   const act = async (action: string) => {
     if (busy) return;
     if (action === "install") {
-      if (!document.dispatchEvent(new Event("pictide:before-update", { cancelable: true }))) {
+      if (!runUiCommand("before-update")) {
         setError(t("请先保存未完成的修改，再安装更新。"));
         return;
       }
@@ -105,7 +107,7 @@ export function ApplicationUpdates() {
           next.reason ? t(reasons[next.reason] || "此版本需要手动升级，请查看发行说明。") : "",
         ].filter(Boolean).join(" "), { id: "application-update-check", kind: current ? "success" : "info" });
       }
-      if (action === "install") document.dispatchEvent(new Event("pictide:updates-changed"));
+      if (action === "install") emitSignal("updates-changed");
     }
     catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { setBusy(false); }

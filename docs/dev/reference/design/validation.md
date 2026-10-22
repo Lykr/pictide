@@ -5,7 +5,7 @@
 [UI design system](../../design-system.md) · [Development workflow](../../development.md) · [Focused smoke checks](../../testing.md)
 
 1. Before editing a shared interaction, list every consuming surface and intentional variation. For image controls this includes Roam, Generate, Liked, normal/immersive views, and mobile. Reuse `web/src/components/ui/` and the [shared feature layouts](components.md). Change common visuals in their owning stylesheet rather than adding page-specific overrides.
-2. Preserve existing IDs, events, draft state, and save behavior. Keep component sizing, corners, padding, and focus rules in their shared layer.
+2. Preserve semantic targets, explicit actions, draft state, and save behavior. Keep component sizing, corners, padding, and focus rules in their shared layer.
 3. In `web/`, install locked dependencies, run `pnpm run typecheck`, and build. For an active instance, use an isolated output directory and follow the [deployment procedure](../../development.md#integrate-and-deploy).
 4. Run the small relevant UI, interface, or browser smoke group, then inspect affected interactions with an isolated instance and tab. Record whether testing used a simulated backend or real generation.
 5. Check normal, loading, empty, error, disabled, selected, and unsaved states. Include keyboard focus, long text, narrow screens, dialog scrolling, and translated labels.
@@ -19,7 +19,7 @@ These geometric and computed-style assertions are the portable baseline; they av
 
 Run the focused baseline after the isolated build: `pnpm --dir web exec playwright test tests/browser/layout.spec.mjs`. The standard browser group includes it in release checks. Update the assertions only for an intentional design change, and review all consumers before accepting new behavior.
 
-Keep layout ownership in React feature components and their styles. Existing DOM controllers may still supply business state and actions; new layout components should not add property interception or another DOM observer. Remove obsolete DOM writes when their presentation is retired, and migrate remaining bridges incrementally when touching the owning feature.
+Keep layout ownership in React feature components and their styles. Feature models and actions supply data through explicit subscriptions and callbacks. Do not add property interception, hidden proxy inputs, or DOM observers to synchronize business state. Browser-only adapters may measure or focus elements, manage fullscreen, and position overlays through refs.
 
 The only frontend entry is `web/index.html → web/src/main.tsx`. Prompts is the `#prompts` view in the same application. Navigation retains drafts and each section's position. HTTP serves APIs, events, and built assets.
 

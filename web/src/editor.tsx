@@ -1,3 +1,5 @@
+import { emitSignal, onSignal, offSignal } from './shared/signals.mjs';
+import { runUiCommand, publishUiState } from './shared/ui-state.mjs';
 import { useErrorNotice } from "./components/notifications";
 import { notifySuccess } from "./shared/notifications.mjs";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -199,14 +201,12 @@ export function EditorWorkspace() {
     const loaded = { ...next, document: { ...next.document, blocked_keywords: next.document.blocked_keywords ?? [] } };
     setPreset(withCooccurrenceFloor(loaded, cooccurrenceFloor.current)); setBlockedText(loaded.document.blocked_keywords.join("\n")); setSaved(JSON.stringify(loaded));
   };
-  const activatePreset = (id: string) => new Promise((resolve, reject) => document.dispatchEvent(new CustomEvent("pictide:roam-settings-save", {
-    detail: { patch: { preset_id: id }, resolve, reject },
-  })));
+  const activatePreset = (id: string) => runUiCommand("roam-settings-save", { preset_id: id });
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { if (dirty && loaded) { event.preventDefault(); event.returnValue = ""; } };
-    const beforeUpdate = (event: Event) => { if (dirty && loaded) event.preventDefault(); };
-    window.addEventListener("beforeunload", warn); document.addEventListener("pictide:before-update", beforeUpdate);
-    return () => { window.removeEventListener("beforeunload", warn); document.removeEventListener("pictide:before-update", beforeUpdate); };
+    publishUiState({ editorDirty: dirty && loaded });
+    window.addEventListener("beforeunload", warn);
+    return () => { window.removeEventListener("beforeunload", warn); publishUiState({ editorDirty: false }); };
   }, [dirty, loaded]);
   useEffect(() => {
     let active = true;
@@ -245,8 +245,8 @@ export function EditorWorkspace() {
   };
   useEffect(() => {
     const changed = () => { refreshLibrary().catch(error => setLibraryError(message(error))); };
-    document.addEventListener("pictide:candidate-library-changed", changed);
-    return () => { document.removeEventListener("pictide:candidate-library-changed", changed); libraryRequest.current++; };
+    onSignal("candidate-library-changed", changed);
+    return () => { offSignal("candidate-library-changed", changed); libraryRequest.current++; };
   }, []);
   const libraryOperation = async (action: string, filename?: string, file?: File) => {
     setBusy(true); setLibraryAction(action); setLibraryError("");
@@ -303,7 +303,7 @@ export function EditorWorkspace() {
       const next = await api<Preset>("/api/candidate/presets", { method: "POST", body: JSON.stringify({ ...draft, id: draft.id || undefined }) });
       loadPreset(next); setLoaded(true);
       const listing = await api<{ presets: { id: string; name: string }[] }>("/api/candidate/presets"); setPresets(listing.presets);
-      document.dispatchEvent(new Event("pictide:candidate-presets-changed"));
+      emitSignal("candidate-presets-changed");
       await activatePreset(next.id);
       setSuccess(next.document.min_cooccurrence >= cooccurrenceFloor.current);
       notifySuccess(t("已保存"), { id: "preset-save" });
@@ -317,7 +317,7 @@ export function EditorWorkspace() {
       const listing = await api<{ presets: { id: string; name: string }[] }>("/api/candidate/presets"); setPresets(listing.presets);
       const next = listing.presets[0] ? await api<Preset>(`/api/candidate/presets/${encodeURIComponent(listing.presets[0].id)}`) : { id: "", name: t("新预设"), document: { ...defaults } };
       loadPreset(next); setResult(null); setSuccess(false);
-      document.dispatchEvent(new Event("pictide:candidate-presets-changed"));
+      emitSignal("candidate-presets-changed");
       await activatePreset(next.id);
     } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
   };
@@ -335,7 +335,7 @@ export function EditorWorkspace() {
   const controlOptions = [{ value: "fixed", text: t("固定") }, { value: "increment", text: t("递增") }, { value: "decrement", text: t("递减") }, { value: "randomize", text: t("随机") }];
   const numberField = (key: keyof Omit<PresetDocument, "base_positive" | "base_negative" | "blocked_keywords">, label: string, help: string, min?: number, max?: number, increment: number | "any" = 1) => <Field label={label} help={help}><Input aria-label={label} type="number" min={min} max={max} step={increment} value={Number.isNaN(preset.document[key]) ? "" : preset.document[key]} required disabled={busy} onChange={event => update(key, event.target.valueAsNumber)} onBlur={key === "min_cooccurrence" ? () => setPreset(current => withCooccurrenceFloor(current, cooccurrenceFloor.current)) : undefined} /></Field>;
   const pages = Math.max(1, Math.ceil(tags.total / tags.page_size));
-  return <section id="prompts-view" className="editor-page workspace-content" aria-label={t("提示词")} hidden>
+  return <section id="prompts-view" className="editor-page workspace-content" aria-label={t("提示词")}>
     <header className="editor-toolbar"><h1>{t("提示词")}</h1><span className="spacer" /><Badge variant="secondary" data-tooltip={tr`数据来源：${String(dataset.source || t("尚未导入"))}`}>{dataset.status === "ready" ? t("词库就绪") : t("词库未就绪")}</Badge></header>
     <Tabs value={tab} onValueChange={setTab}><nav className="editor-tabs" aria-label={t("提示词栏目")}><TabsList><TabsTrigger value="library">{t("词库")}</TabsTrigger><TabsTrigger value="settings">{t("编排")}</TabsTrigger><TabsTrigger value="preview">{t("预览")}</TabsTrigger></TabsList></nav></Tabs>
     <main>

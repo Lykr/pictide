@@ -1,3 +1,4 @@
+import { emitSignal } from '../shared/signals.mjs';
 import english from './messages/en/index.mjs';
 
 // Chinese source phrases are stable message keys; only product UI calls t().
@@ -35,7 +36,7 @@ function publish() {
     document.title = t('Pictide · 本地图片工作台');
   }
   for (const listener of listeners) listener();
-  if (typeof document !== 'undefined') document.dispatchEvent(new Event('pictide:language-changed'));
+  if (typeof document !== 'undefined') emitSignal("language-changed");
 }
 export function applyLanguage(value) {
   const next = value || 'system';

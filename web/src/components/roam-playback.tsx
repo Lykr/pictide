@@ -1,3 +1,6 @@
+import { onSignal, offSignal } from '../shared/signals.mjs';
+import { useUiFact } from '../shared/application-context';
+import { runUiCommand } from '../shared/ui-state.mjs';
 import { useErrorNotice } from "./notifications";
 import { t } from "../i18n/index.mjs";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -11,20 +14,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { playbackInterval } from "../controllers/roam-playback.mjs";
 
 type PlaybackState = { playing: boolean; canPlay: boolean; startedAt: number | null; durationMs: number; cycle: number; waiting: boolean };
-function usePlaybackState() {
-  const [state, setState] = useState<PlaybackState>({ playing: false, canPlay: false, startedAt: null, durationMs: 8000, cycle: 0, waiting: false });
-  useEffect(() => {
-    const receive = (event: Event) => setState((event as CustomEvent<PlaybackState>).detail);
-    document.addEventListener("pictide:roam-playback-state", receive);
-    return () => document.removeEventListener("pictide:roam-playback-state", receive);
-  }, []);
-  return state;
+function usePlaybackState(): PlaybackState {
+  return useUiFact('playback', { playing: false, canPlay: false, startedAt: null, durationMs: 8000, cycle: 0, waiting: false });
 }
 export function RoamPlaybackButton({ immersive = false }: { immersive?: boolean }) {
   const state = usePlaybackState();
   const label = state.playing ? t("暂停播放") : t("自动播放");
   const delay = useMemo(() => state.startedAt === null ? 0 : -Math.max(0, performance.now() - state.startedAt), [state.startedAt, state.cycle]);
-  return <Button id={immersive ? "roam-immersive-playback" : "roam-playback"} type="button" variant="ghost" size="icon-sm" className="relative" aria-label={label} data-tooltip={label} aria-pressed={state.playing} disabled={!state.canPlay} onClick={() => document.dispatchEvent(new Event("pictide:roam-playback-toggle"))}>
+  return <Button id={immersive ? "roam-immersive-playback" : "roam-playback"} type="button" variant="ghost" size="icon-sm" className="relative" aria-label={label} data-tooltip={label} aria-pressed={state.playing} disabled={!state.canPlay} onClick={() => runUiCommand("roam-playback-toggle")}>
     {state.playing && <svg className="playback-progress absolute left-1/2 top-1/2 size-8 -translate-x-1/2 -translate-y-1/2 -rotate-90" viewBox="0 0 32 32" fill="none" aria-hidden="true">
       <circle cx="16" cy="16" r="13" stroke="currentColor" strokeWidth="1.5" opacity="0.15" />
       <circle key={state.cycle} className="playback-progress-value" cx="16" cy="16" r="13" pathLength="1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ strokeDashoffset: state.waiting ? 0 : 1, animation: state.startedAt === null ? "none" : `playback-progress ${state.durationMs}ms linear ${delay}ms forwards` }} />
@@ -65,30 +62,14 @@ function RoamChoices({ value, disabled = false, onChange, compact = false }: {
     </div>
   </div>;
 }
-export function RoamSettingsChoices() {
-  const [value, setValue] = useState<ModeChoices>({ liked_tags_only: false, prompt_mode: "random", recommendation_strength: "standard" });
-  useEffect(() => {
-    const receive = (event: Event) => setValue((event as CustomEvent<ModeChoices>).detail);
-    document.addEventListener("pictide:roam-settings-draft", receive);
-    return () => document.removeEventListener("pictide:roam-settings-draft", receive);
-  }, []);
-  return <>
-    <input id="roam-liked-tags-only" type="checkbox" aria-hidden="true" hidden checked={value.liked_tags_only} readOnly />
-    <input id="roam-prompt-mode" type="hidden" value={value.prompt_mode} readOnly />
-    <input id="roam-recommendation-strength" type="hidden" value={value.recommendation_strength} readOnly />
-    <RoamChoices value={value} onChange={patch => {
-      const next = { ...value, ...patch }; setValue(next);
-      (document.getElementById("roam-liked-tags-only") as HTMLInputElement).checked = next.liked_tags_only;
-      const mode = document.getElementById("roam-prompt-mode") as HTMLInputElement; mode.value = next.prompt_mode;
-      (document.getElementById("roam-recommendation-strength") as HTMLInputElement).value = next.recommendation_strength;
-      mode.dispatchEvent(new Event("change", { bubbles: true }));
-    }} />
-  </>;
+export function RoamSettingsChoices({ value, onChange }: { value: ModeChoices; onChange: (patch: Partial<ModeChoices>) => void }) {
+  return <RoamChoices value={value} onChange={onChange} />;
 }
-export function RoamOptions() {
+export function RoamOptions({ buttonRef }: { buttonRef?: React.Ref<HTMLButtonElement> }) {
   const [open, setOpen] = useState(false);
-  const [settings, setSettings] = useState<RoamSettings>({ playback_interval_seconds: 8, liked_tags_only: false, prompt_mode: "random", recommendation_strength: "standard" });
-  const [ready, setReady] = useState(false);
+  const current = useUiFact("roamOptions");
+  const settings: RoamSettings = current ?? { playback_interval_seconds: 8, liked_tags_only: false, prompt_mode: "random", recommendation_strength: "standard" };
+  const ready = !!current;
   const [draft, setDraft] = useState("8");
   const [saving, setSaving] = useState({ interval: false, choices: false });
   const intervalPending = useRef(false);
@@ -96,19 +77,13 @@ export function RoamOptions() {
   useErrorNotice(error, { id: "roam-options" });
   const dirty = useRef(false);
   useEffect(() => {
-    const receive = (event: Event) => {
-      const value = (event as CustomEvent<RoamSettings>).detail;
-      setSettings(value); setReady(true);
-      if (!dirty.current) setDraft(String(value.playback_interval_seconds));
-    };
     const close = () => setOpen(false);
-    document.addEventListener("pictide:roam-options-settings", receive);
-    document.addEventListener("pictide:roam-options-close", close);
+    onSignal("roam-options-close", close);
     return () => {
-      document.removeEventListener("pictide:roam-options-settings", receive);
-      document.removeEventListener("pictide:roam-options-close", close);
+        offSignal("roam-options-close", close);
     };
   }, []);
+  useEffect(() => { if (!dirty.current) setDraft(String(settings.playback_interval_seconds)); }, [settings.playback_interval_seconds]);
   const save = async (kind: "interval" | "choices", choices?: Partial<ModeChoices>) => {
     if (kind === "interval" && (!ready || !dirty.current || intervalPending.current)) return;
     setError("");
@@ -116,7 +91,7 @@ export function RoamOptions() {
       const patch = kind === "interval" ? { playback_interval_seconds: playbackInterval(draft) } : choices;
       if (kind === "interval") intervalPending.current = true;
       setSaving(value => ({ ...value, [kind]: true }));
-      const data = await new Promise<RoamSettings>((resolve, reject) => document.dispatchEvent(new CustomEvent("pictide:roam-settings-save", { detail: { patch, resolve, reject } })));
+      const data = await runUiCommand("roam-settings-save", patch);
       if (kind === "interval") { dirty.current = false; setDraft(String(data.playback_interval_seconds)); }
     } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
     finally {
@@ -128,7 +103,7 @@ export function RoamOptions() {
     setOpen(next);
     if (next) { dirty.current = false; setDraft(String(settings.playback_interval_seconds)); setError(""); }
   }}>
-    <PopoverTrigger asChild><IconButton id="roam-options" icon={Settings2} label={t("漫游选项")} /></PopoverTrigger>
+    <PopoverTrigger asChild><IconButton ref={buttonRef} id="roam-options" icon={Settings2} label={t("漫游选项")} /></PopoverTrigger>
     <PopoverContent forceMount hidden={!open} align="end" collisionPadding={12} className="roam-options-panel w-max gap-1 p-3" aria-label={t("漫游选项")} onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
       <div className="grid gap-1">
         <form className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-3" onSubmit={event => { event.preventDefault(); void save("interval"); }}>

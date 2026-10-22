@@ -1,4 +1,4 @@
-/** Shared notification state for React views and the existing DOM controllers. */
+/** Shared notification state for React views and feature actions. */
 /** @typedef {string | (() => string)} Message */
 /** @typedef {{label: Message, onClick: () => unknown}} Action */
 /** @typedef {{id?: string, kind?: 'error'|'success'|'warning'|'info', action?: Action, duration?: number}} Options */

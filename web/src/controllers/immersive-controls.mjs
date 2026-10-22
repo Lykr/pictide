@@ -1,3 +1,4 @@
+import { emitSignal } from '../shared/signals.mjs';
 /** A single idle timeout; focused/hovered controls stay available. */
 export function createAutoHideControls({ visible, held, delay = 2000, schedule = setTimeout, cancel = clearTimeout }) {
   let active = false, timer;
@@ -132,7 +133,7 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
     // Native fullscreen can change display-mode; capture installation before entering.
     installed = win.matchMedia?.('(display-mode: standalone)').matches || win.navigator?.standalone === true;
     active = true; mode = 'browser'; const token = ++revision;
-    doc.dispatchEvent(new Event('pictide:close-image-info'));
+    emitSignal("close-image-info");
     card.classList.add('immersive'); doc.body.classList.add('pictide-immersive');
     if (exit) exit.hidden = false;
     entry.setAttribute('aria-pressed', 'true');
@@ -153,6 +154,7 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
       }).catch(() => {}); // A denied/unsupported native request keeps the viewport fallback.
     } catch {} // Some embedded browsers throw instead of returning a rejected promise.
   }
-  entry.addEventListener('click', enter); exit?.addEventListener('click', () => leave());
-  return { get active() { return active; }, leave, wake: controls.wake };
+  const exitClick = () => leave();
+  entry.addEventListener('click', enter); exit?.addEventListener('click', exitClick);
+  return { get active() { return active; }, leave, wake: controls.wake, dispose() { leave(); entry.removeEventListener('click', enter); exit?.removeEventListener('click', exitClick); } };
 }

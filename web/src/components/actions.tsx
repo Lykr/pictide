@@ -18,8 +18,7 @@ export function HelpTip({ text, children, ...props }: ComponentProps<typeof Butt
 
 type Target = { node: HTMLElement; text: string; rect: DOMRect; container: HTMLElement };
 
-/** One Radix tooltip bridge for React and controller-owned DOM. The bridge
- * reuses the official Tooltip for React and controller-owned controls. */
+/** Shared tooltip positioning for semantic help targets, including fullscreen. */
 export function TooltipLayer() {
   const [target, setTarget] = useState<Target | null>(null);
   useEffect(() => {

@@ -11,7 +11,7 @@ test('standalone generation, API creation and preference reset work without rand
   await page.goto('/#settings/backend');
   await expect(page.locator('#backend-name')).toHaveValue('Browser fixture');
   expect(await page.evaluate(() => typeof crypto.randomUUID)).toBe('undefined');
-  await page.locator('[id="edit-backend--control"]').click();
+  await page.locator('#edit-backend').click();
   await page.getByRole('option', { name: '＋ 添加 API', exact: true }).click();
   await page.locator('#backend-name').fill('LAN setup');
   const saved = page.waitForResponse(response => /\/api\/backends\/[^/]+$/.test(response.url()) && response.request().method() === 'PUT');

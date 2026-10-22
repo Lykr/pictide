@@ -6,7 +6,7 @@
 
 The base components in `web/src/components/ui/` use adapted [shadcn/ui](https://github.com/shadcn-ui/ui) source code, adjusted for Pictide's compact layout, shared theme and existing page behavior.
 
-Interactive controls use Select, Checkbox, Dialog, AlertDialog, Collapsible, Tabs, ToggleGroup, Command, Popover, InputGroup and Tooltip source from the official `radix-luma` registry. Upstream style recipes are retained; local import aliases and the preset Lucide icons replace upstream placeholders, and RSC directives unnecessary for the local Vite application are removed. Tooltip accepts a portal container so help stays inside the active dialog. `control-bridge.tsx` connects existing controllers' hidden form state to these components. Command uses cmdk (MIT), whose license ships with the dependency.
+Interactive controls use Select, Checkbox, Dialog, AlertDialog, Collapsible, Tabs, ToggleGroup, Command, Popover, InputGroup and Tooltip source from the official `radix-luma` registry. Upstream style recipes are retained; local import aliases and the preset Lucide icons replace upstream placeholders, and RSC directives unnecessary for the local Vite application are removed. Tooltip accepts a portal container so help stays inside the active dialog. React feature components use these controls directly with draft values and callbacks. Command uses cmdk (MIT), whose license ships with the dependency.
 
 Upstream license: [MIT License](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md). The following notice is retained with the component source and distributed builds:
 

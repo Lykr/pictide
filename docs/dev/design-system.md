@@ -27,10 +27,10 @@ Fixed terms support search, free text, keyboard selection, removal, and ordering
 
 ## Implementation
 
-React, TypeScript, Tailwind, and shared shadcn components serve the single `web/index.html → web/src/main.tsx` entry. The React shell and existing DOM controllers share component recipes through `dom-primitives.ts`. Preserve controller IDs, event wiring, drafts, and save behavior when changing presentation.
+React, TypeScript, Tailwind, and shared shadcn components serve the single `web/index.html → web/src/main.tsx` entry. React feature components own layout and markup; feature models own drafts and actions. Preserve semantic targets, draft values, and save behavior when changing presentation. See [frontend ownership](web.md#code-entry-points).
 
-Visible Select, Checkbox, Radio, Toggle, Dialog, and Collapsible controls use the shared Radix components. Hidden native controls may bridge controller state. Preserve keyboard focus, disabled states, form constraints, and validation.
+Visible Select, Checkbox, Radio, Toggle, Dialog, and Collapsible controls use the shared Radix components. Pass values and callbacks directly; do not mirror state through hidden native controls. Preserve keyboard focus, disabled states, form constraints, and validation.
 
 Node.js is a development and build dependency. Runtime serves built assets through aiohttp, with bundled fonts and no CDN or Node process. Third-party notices live in `web/src/THIRD_PARTY_NOTICES.md`.
 
-Before adding a primitive, check the shared library and official shadcn Vite instructions. Apply preset changes in an isolated checkout, review the diff, and retain dynamic DOM recipes. Use the pinned pnpm version and commit its lockfile. Follow the [development workflow](development.md) for builds and publishing assets.
+Before adding a primitive, check the shared library and official shadcn Vite instructions. Apply preset changes in an isolated checkout, review the diff, and reuse the shared component recipes. Use the pinned pnpm version and commit its lockfile. Follow the [development workflow](development.md) for builds and publishing assets.
