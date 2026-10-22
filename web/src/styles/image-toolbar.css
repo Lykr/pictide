@@ -1,0 +1,46 @@
+/* Shared by Roam and the Generate/Liked viewer. Page styles own the image stage. */
+[data-image-toolbar] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 0;
+  gap: 8px;
+  padding: 8px 12px;
+}
+[data-toolbar-slot] { display: flex; align-items: center; grid-row: 1; min-width: 0; }
+[data-toolbar-slot=information] { grid-column: 1; justify-self: start; }
+[data-toolbar-slot=navigation] { grid-column: 2; justify-content: center; gap: 4px; }
+[data-toolbar-slot=trailing] { grid-column: 3; justify-self: end; }
+.image-card.immersive [data-image-toolbar] {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  grid-template-columns: auto auto auto;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--immersive-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 16px #0002;
+  transition: opacity 150ms;
+}
+.image-card.immersive [data-toolbar-slot=navigation] { gap: 0; }
+.image-card.immersive.immersive-controls-hidden [data-image-toolbar] { opacity: 0; visibility: hidden; pointer-events: none; }
+@media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
+  [data-image-toolbar] { padding: 4px; gap: 4px; }
+  [data-toolbar-slot=navigation] { gap: 0; }
+  .image-card.immersive [data-image-toolbar] { max-width: calc(100% - 16px); }
+}
+@media (max-width: 640px), (pointer: coarse) {
+  [data-image-toolbar] button { min-width: 44px; min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .image-card.immersive [data-image-toolbar] { transition: none; }
+}

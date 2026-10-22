@@ -302,9 +302,7 @@ function renderArtifacts() {
     state.currentImage = artifact.id; $('image-error').hidden = true; dismissNotification('roam-image-error');
     const imageUrl = `/api/artifacts/${encodeURIComponent(artifact.id)}/image`;
     $('main-image').src = imageUrl;
-    $('image-date').textContent = dateLabel(artifact.created_at);
   }
-  $('image-index').textContent = `${index + 1} / ${page.total || items.length}`;
   $('like').setAttribute('aria-pressed', String(artifact.feedback === 1));
   describeAction($('like'), artifact.feedback === 1 ? t("已喜欢，点击撤回") : t("喜欢 · ↑"));
   $('dislike').setAttribute('aria-pressed', String(artifact.feedback === -1));

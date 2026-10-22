@@ -12,7 +12,7 @@ type Props = ComponentProps<typeof PopoverContent> & {
 export function ImageToolbarPopover({ immersive, triggerRef, className, container, align, sideOffset, avoidCollisions, ...props }: Props) {
   const [toolbar, setToolbar] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
-    setToolbar(immersive ? triggerRef.current?.closest<HTMLElement>(".image-toolbar") ?? null : null);
+    setToolbar(immersive ? triggerRef.current?.closest<HTMLElement>("[data-image-toolbar]") ?? null : null);
   }, [immersive, triggerRef]);
   const anchor = useMemo(() => toolbar ? { current: toolbar } : undefined, [toolbar]);
   return <>

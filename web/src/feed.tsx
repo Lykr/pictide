@@ -1,3 +1,5 @@
+import { ImageToolbar } from "./components/image-toolbar";
+import { SettingsRow } from "./components/settings-row";
 import { t, tr } from './i18n/index.mjs';
 import { useEffect, useMemo, useState } from "react";
 import { publishUiState } from "./shared/ui-state.mjs";
@@ -99,24 +101,12 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 </div>
 </div>
-<div className="image-toolbar">
-<div className="image-meta">
-<strong id="image-index">
-</strong>
-<span id="image-date">
-</span>
-</div>
-<div className="image-info"><ImageInfo /></div>
-<div className="image-navigation">
+<ImageToolbar information={<ImageInfo />} trailing={anchorTrigger} navigation={<>
 <IconButton id="previous" icon={ArrowLeft} label={t("上一张较旧图片 · ←")} variant="ghost" type="button" />
 <IconButton id="like" ref={targets["roam.like"]} icon={Heart} label={t("喜欢 · ↑")} variant="ghost" type="button" className="feedback" aria-pressed="false" />
 <IconButton id="dislike" icon={ThumbsDown} label={t("不喜欢 · ↓")} variant="ghost" type="button" className="feedback" aria-pressed="false" />
 <IconButton id="next" ref={targets["roam.next"]} icon={ArrowRight} label={t("下一张较新图片 · →")} variant="ghost" type="button" />
-</div>
-<div className="image-anchor">
-{anchorTrigger}
-</div>
-</div>
+</>} />
 {anchorPanel}
 </Card>}</RoamAnchors>
 {"\n        "}<div className="load-more-row">
@@ -222,7 +212,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </nav>
 <div className="settings-content">
 <section id="settings-general" className="settings-category"><GeneralSettings initialError={themeError} />
-<dl className="settings-data-location general-setting-row"><dt>{t("数据位置")}</dt><dd id="data-directory">{t("读取中…")}</dd></dl>
+<SettingsRow className="settings-data-location" label={t("数据位置")} stackOnMobile><code id="data-directory">{t("读取中…")}</code></SettingsRow>
 </section>
 <section id="settings-backend" className="settings-category"><form id="settings-form" ref={targets["api.form"]}>
 <div className="form-grid">

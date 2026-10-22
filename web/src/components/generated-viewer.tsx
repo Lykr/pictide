@@ -1,3 +1,5 @@
+import { ImageToolbar } from "./image-toolbar";
+import { ImageToolbarPopover } from "./image-toolbar-popover";
 import { notifyError } from "../shared/notifications.mjs";
 import { t } from "../i18n/index.mjs";
 import { useEffect, useRef, useState } from "react";
@@ -6,7 +8,7 @@ import { IconButton } from "./actions";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 import { Toggle } from "./ui/toggle";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Popover, PopoverTrigger } from "./ui/popover";
 import { ImagePromptDetails } from "./image-prompt-details";
 import { ImmersiveLoading } from "./immersive-loading";
 import { createImmersiveViewer } from "../controllers/immersive-controls.mjs";
@@ -67,6 +69,7 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
   if (imageChange.current.id !== item.id) imageChange.current = { id: item.id, transition: true };
   const [cardElement, setCardElement] = useState<HTMLDivElement | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const infoRef = useRef<HTMLButtonElement>(null);
   const entryRef = useRef<HTMLButtonElement>(null);
   const exitRef = useRef<HTMLButtonElement>(null);
   const viewerRef = useRef<ReturnType<typeof createImmersiveViewer> | null>(null);
@@ -153,23 +156,19 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
     </div>
     <ViewerImage key={item.id} item={item} transition={imageChange.current.transition} privacyBlur={privacyBlur} label={props.imageLabel ?? t("生成的图片")} onNavigate={navigate} busy={busy || infoOpen} paging={!!waitingOlder && loadingMore} />
     {waitingOlder && loadingMore && <div className="generated-viewer-paging" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("正在加载更早图片")}</span></div>}
-    <div ref={toolbarRef} className="generated-viewer-toolbar" aria-label={t("图片操作")}>
-      <div className="generated-viewer-details" hidden={immersive}>
-        <Popover open={infoOpen && !immersive} onOpenChange={setInfoOpen}>
-          <PopoverTrigger asChild><IconButton icon={Info} label={t("图片信息")} /></PopoverTrigger>
-          <PopoverContent className="generated-viewer-info image-details-popover" align="start" side="top" aria-label={t("图片信息")}>
-            <ImagePromptDetails key={item.id} imageId={item.id} active={infoOpen && !immersive} seed={item.seed_applied === false ? imageSeedLabel(item) : item.seed ?? "—"} positive={item.positive || ""} negative={item.negative || ""}
+    <ImageToolbar ref={toolbarRef} className="generated-viewer-toolbar" aria-label={t("图片操作")} information={
+        <Popover open={infoOpen} onOpenChange={setInfoOpen}>
+          <PopoverTrigger asChild><IconButton ref={infoRef} icon={Info} label={t("图片信息")} /></PopoverTrigger>
+          <ImageToolbarPopover immersive={immersive} triggerRef={infoRef} container={cardElement} className="image-info-popover image-details-popover" align="start" aria-label={t("图片信息")}>
+            <ImagePromptDetails key={item.id} imageId={item.id} active={infoOpen} seed={item.seed_applied === false ? imageSeedLabel(item) : item.seed ?? "—"} positive={item.positive || ""} negative={item.negative || ""}
               actions={<Button asChild variant="ghost" size="icon-sm"><a href={artifactPath(item, "prompts")} download aria-label={t("下载提示词 JSON")} data-tooltip={t("下载提示词 JSON")}><Download aria-hidden="true" /></a></Button>} />
-          </PopoverContent>
+          </ImageToolbarPopover>
         </Popover>
-      </div>
-      <div className="generated-viewer-navigation">
+      } navigation={<>
       <IconButton icon={ArrowLeft} label={t("上一张 · ←")} disabled={busy || (!older && !hasMore) || !!waitingOlder} onClick={() => navigate("older")} />
       <IconButton icon={Heart} label={item.feedback === 1 ? t("撤回喜欢") : t("喜欢图片 · ↑")} className={item.feedback === 1 ? "generated-viewer-liked" : ""} aria-pressed={item.feedback === 1} disabled={busy} onClick={async () => { if (props.confirmUnlike && item.feedback === 1) await viewerRef.current?.leave(); onLike(item); }} />
       <IconButton icon={ArrowRight} label={t("下一张 · →")} disabled={busy || !newer} onClick={() => navigate("newer")} />
-      </div>
-
-    </div>
+      </>} />
   </DialogContent>;
 }
 

@@ -1,3 +1,4 @@
+import { SettingsRow } from "./settings-row";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUpToLine, Download, LoaderCircle, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
@@ -112,9 +113,8 @@ export function ApplicationUpdates() {
   const phase = status?.phase;
   const working = busy || ["checking", "downloading", "verifying", "preparing", "installing"].includes(phase || "");
   const newer = phase !== 'current' && !!status?.latest_version && status.latest_version !== status.current_version;
-  return <div className="general-setting-row general-setting-options items-start py-3" data-application-updates="">
-    <span>{t("版本与更新")}</span>
-    <div className="general-setting-control flex flex-col gap-2 w-full">
+  return <SettingsRow stackOnMobile label={t("版本与更新")} className="items-start py-3" data-application-updates="">
+    <div className="flex flex-col gap-2 w-full">
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm text-muted-foreground">{status ? `Pictide v${status.current_version}` : "Pictide"}</span>
         <Button type="button" variant="outline" size="sm" disabled={working || !status} onClick={() => void act("check")}>
@@ -131,5 +131,5 @@ export function ApplicationUpdates() {
         {phase === "downloading" && status && <div role="progressbar" aria-label={t("更新下载进度")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(status.downloaded_bytes / status.total_bytes * 100)} className="h-1.5 w-full overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary transition-[width]" style={{ width: `${status.downloaded_bytes / status.total_bytes * 100}%` }} /></div>}
       </div>}
     </div>
-  </div>;
+  </SettingsRow>;
 }

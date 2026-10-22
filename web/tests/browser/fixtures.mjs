@@ -31,7 +31,7 @@ export const test = base.extend({
       clearTimeout(timeout);
       if (code !== 0) throw new Error(`Browser fixture failed (${code})\n${diagnostics}`);
     }
-  }, { scope: 'worker' }],
+  }, { scope: 'test' }],
   baseURL: async ({ server }, use) => use(server.url),
   page: async ({ page }, use) => {
     const errors = [];

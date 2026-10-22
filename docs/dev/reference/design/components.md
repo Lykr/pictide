@@ -41,6 +41,8 @@ Loading progress, unsaved markers, empty states, unavailable-image placeholders,
 
 ## Forms and editing
 
+General settings, application updates, and the data location use `components/settings-row.tsx`. Its stylesheet owns label/control columns, spacing, mobile stacking, and section separators. Callers provide labels and controls; use `stackOnMobile` for wide controls and `separated` for a new group. Keep state and save operations in the owning feature component.
+
 Place labels above controls and associate them with `label` / `htmlFor`. Place help beside the label. Placeholders illustrate values rather than replacing names. Use 8–12px within compact groups and 16–24px between sections; help icons use `ghost` / `icon-xs`. Fields retain constraints, invalid state, and required focus behavior; detailed errors, including native validation errors, use shared notifications. Frontend input limits complement server validation.
 
 Preset editing groups fixed positive terms with cooccurrence expansion. Negative terms live in a separate, initially collapsed shared Collapsible and save with the same preset. They affect generation and exclude matching expansion terms without participating in PMI calculations. Hidden and collapsed controls retain drafts.
@@ -62,6 +64,10 @@ Cards group complete tasks or data areas. Use spacing and alignment within cards
 Dialogs have a title, close action, and clear primary action. Long content scrolls internally while actions remain reachable. Keep Radix Dialog's Escape, focus trap, and return-focus behavior. Liked navigation shows its name and icon without a count.
 
 ## Image controls
+
+Roam and the Generate/Liked large viewer use `components/image-toolbar.tsx`. Information, navigation/feedback, and optional trailing actions occupy named slots. `styles/image-toolbar.css` owns placement, touch sizes, and the immersive toolbar surface; page styles may position the toolbar within their card but must not redefine its slots, padding, or immersive appearance.
+
+All large-view image information and immersive anchors use `ImageToolbarPopover`. In immersion it anchors to the entire toolbar, centers the panel above it, and shares width, surface, and opening/closing motion. Information remains available in Generate and Liked immersion as well as Roam. The normal Roam anchor editor retains its desktop split and compact mobile layouts.
 
 Preserve aspect ratio in full image views and keep tools clear of important content. Loading, missing, cleaned-up, and failed images have distinct states. Place information at the lower left, Roam anchors at the lower right, and image navigation / feedback centered across the entire frame. Information includes preference score, seed, positive and negative prompts, copy actions, and prompt JSON download. Keep image counters, timestamps, and keyboard-hint icons out of the Roam bottom toolbar.
 
