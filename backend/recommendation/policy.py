@@ -2,7 +2,7 @@
 from .contracts import PolicyRecord
 from .features import SEMANTIC_DIMENSION
 
-POLICY_VERSION = "bayes-linear-v2:signed:prior=1:noise=1:exploration=1"
+POLICY_VERSION = "bayes-linear-v3:signed:prior=1:noise=1:thompson-contrast-v1"
 
 
 def unpack(record, extra_keys=()):
@@ -39,7 +39,7 @@ def validate(precision, reward):
 
 
 def _triangular_solve(matrix, values, lower):
-    # Vector-only forward/back substitution avoids generic cubic solves.
+    # Forward/back substitution supports vectors or bounded batches of columns.
     import numpy as np
     result = np.empty_like(values)
     if lower:
@@ -64,18 +64,22 @@ def mean(precision, reward):
     return _posterior_mean(validate(precision, reward), reward)
 
 
-def scoring_parameters(precision, reward, seed=None):
-    import numpy as np
-    factor = validate(precision, reward)
+def scoring_parameters(precision, reward, seed=None, *, factor=None):
+    factor = validate(precision, reward) if factor is None else factor
     center = _posterior_mean(factor, reward)
     if seed is None:
         return center, center
-    noise = np.random.default_rng(seed).standard_normal(len(reward))
+    return center, sample_parameters(factor, center, seed)
+
+
+def sample_parameters(factor, center, seed):
+    import numpy as np
+    noise = np.random.default_rng(seed).standard_normal(len(center))
     # L^-T z has covariance (L L^T)^-1, retaining all feature correlations.
     parameters = center + _triangular_solve(factor.T, noise, False)
     if not np.isfinite(parameters).all():
         raise ValueError("Non-finite sampled parameters")
-    return center, parameters
+    return parameters
 
 
 def sample(precision, reward, seed):

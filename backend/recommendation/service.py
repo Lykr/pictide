@@ -5,7 +5,7 @@ from threading import RLock
 
 from .contracts import CandidateScore, LearningResult, PreferenceTerm, PreferencesResult, RecommendationStatus, ScoreResult
 from .features import SEMANTIC_DIMENSION, FeatureEncoder, content_key, dense_features, feature_version, validate_candidate
-from . import policy
+from . import exploration, policy
 
 
 class RecommendationService:
@@ -15,6 +15,7 @@ class RecommendationService:
         self.features = FeatureEncoder(store, encoder)
         self._lock = RLock()
         self._mean_cache = None
+        self._exploration_cache = None
 
     def status(self):
         try:
@@ -110,6 +111,7 @@ class RecommendationService:
         with self._lock:
             result = self.store.reset_user(user_id, request_id, expected_reset_revision)
             self._mean_cache = None
+            self._exploration_cache = None
             return result
 
     def score(self, request):
@@ -142,12 +144,24 @@ class RecommendationService:
             except ValueError:
                 record = self._rebuilt_record(request.user_id, version, record)
                 keys, precision, reward = policy.unpack(record, extra_keys)
-            center, parameters = policy.scoring_parameters(precision, reward,
-                request.sampling_seed if request.strategy == "thompson" else None)
+            factor = policy.validate(precision, reward)
+            center, _ = policy.scoring_parameters(precision, reward, factor=factor)
             vectors = dense_features(prepared, keys)
             means = vectors @ center
-            values = means if request.strategy == "mean" else vectors @ parameters
             import numpy as np
+            bonuses = None
+            if (record is not None and record.evidence_count >= exploration.MIN_JOINT
+                    and len(prepared) > 1 and exploration.is_exploration_round(request.sampling_seed)):
+                reset = self.store.get_reset_state(request.user_id)
+                cache_key = (request.user_id, version, reset.revision, record.revision)
+                if self._exploration_cache is None or self._exploration_cache[0] != cache_key:
+                    observed = exploration.occurrences(self.store.load_evidence(request.user_id, version))
+                    self._exploration_cache = (cache_key, observed)
+                bonuses = exploration.rewards(factor, keys, prepared, vectors, self._exploration_cache[1])
+            if bonuses is not None and np.ptp(bonuses) > 1e-12:
+                values = means + exploration.BONUS_LIMIT * bonuses
+            else:
+                values = vectors @ policy.sample_parameters(factor, center, request.sampling_seed)
             if not np.isfinite(values).all() or not np.isfinite(means).all():
                 raise ValueError("Non-finite recommendation score")
             minimum, maximum = self.store.observe_score_range(request.user_id, version, policy.POLICY_VERSION,
@@ -264,5 +278,6 @@ class RecommendationService:
                     state = type(rebuilt)(revision + 1, rebuilt.term_keys, rebuilt.precision, rebuilt.reward, rebuilt.evidence_count)
                 if self.store.commit_feedback(update, state, revision):
                     self._mean_cache = None
+                    self._exploration_cache = None
                     return LearningResult(state.revision, "applied")
             return LearningResult(revision, "pending")

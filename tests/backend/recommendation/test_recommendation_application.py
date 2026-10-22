@@ -214,6 +214,46 @@ class RecommendationApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(payload["recommendation"]["available"])
         self.assertEqual(payload["recommendation"]["feature_version"], self.version)
 
+    async def test_contrast_scores_select_a_complete_roam_candidate_and_preserve_snapshot(self):
+        from backend.candidate.contracts import Candidate, TagSnapshot
+        from backend.recommendation import exploration, policy
+        images = self.output(3)
+        for image in images:
+            await self.rate(image, 1)
+        pool = tuple(Candidate(identifier, ", ".join(texts), "", terms=tuple(
+            TagSnapshot("contrast", text, text) for text in texts))
+            for identifier, texts in (("a", ("forest",)), ("b", ("standing",)),
+                                      ("joint", ("forest", "standing"))))
+        self.app.roam.save(1, "local", "contrast")
+        original, observed = self.app.recommendation.score, []
+
+        def score(request):
+            result = original(request)
+            observed.append(result)
+            return result
+
+        with patch.object(self.app.candidates.provider, "generate", return_value=pool), \
+             patch.object(self.app.candidates, "list_presets", return_value={"presets": [{"id": "contrast"}]}), \
+             patch.object(exploration, "is_exploration_round", return_value=True), \
+             patch.object(self.app.recommendation, "score", side_effect=score):
+            response = await self.client.post("/api/roam/ensure", json={"anchor_id": None, "demand": True})
+            result = await response.json()
+        self.assertEqual(response.status, 200, result)
+        self.assertEqual(len(observed), 1)
+        scores = observed[0].scores
+        self.assertEqual({row.candidate_id for row in scores}, {item.id for item in pool})
+        self.assertTrue(all(np.isfinite(row.score) for row in scores))
+        self.assertTrue(any(row.score > row.mean_score for row in scores))
+        best = max(scores, key=lambda row: row.score)
+        snapshot = self.app.storage.roam_snapshot(result["job"]["id"])
+        self.assertEqual(snapshot["candidate_id"], best.candidate_id)
+        self.assertEqual(snapshot["score"], best.score)
+        self.assertEqual(snapshot["mean_score"], best.mean_score)
+        self.assertEqual(snapshot["policy_version"], policy.POLICY_VERSION)
+        self.assertEqual(result["job"]["positive"], snapshot["positive"])
+        self.assertEqual(self.policy().evidence_count, 3, "Scoring is not feedback")
+        self.assertTrue(all(self.app.storage.artifact(image["id"])["feedback"] == 1 for image in images))
+
     async def test_missing_derived_state_rebuilds_from_evidence_for_score_and_next_like(self):
         first, second = self.output()
         await self.rate(first, 1)

@@ -70,7 +70,8 @@ class RoamPipelineTests(unittest.IsolatedAsyncioTestCase):
         self.app = self.host[APPLICATION]
         self.pool = PromptPool(self.backend)
         self.app.candidates = SimpleNamespace(provider=self.pool,
-            list_presets=lambda: {"presets": [{"id": "neutral", "name": "Neutral"}]})
+            list_presets=lambda: {"presets": [{"id": "neutral", "name": "Neutral"}]},
+            normalize_roam_anchors=lambda preset, pins: dict(preset_base_positive=[], pinned_positive=pins))
         self.scorer = Scorer()
         self.app.recommendation = self.scorer
         self.app.recommendation_store = None
@@ -246,7 +247,7 @@ class RoamPipelineTests(unittest.IsolatedAsyncioTestCase):
                                for i, c in enumerate(request.candidates)), "smoke-features", "smoke-policy", 0)
         self.scorer.score = score
         epoch = self.app.roam.get()["epoch"]
-        response = await self.client.put("/api/settings/roam", json={"recommendation_strength": "strong"})
+        response = await self.client.put("/api/settings/roam", json={"recommendation_strength": "strong", "candidate_count": 4})
         self.assertEqual(response.status, 200)
         first = await self.ensure()
         self.assertEqual((counts, self.scorer.requests[-1].strategy), ([8], "mean"))

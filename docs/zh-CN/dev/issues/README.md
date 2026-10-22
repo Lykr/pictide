@@ -16,7 +16,7 @@
 ## 推荐与偏好
 
 - [第一版推荐模块设计](recommendation-v1.md)
-- [推荐模块内的标签区分探索（待确认）](recommendation-contrast-exploration.md)
+- [推荐模块内的标签区分探索](recommendation-contrast-exploration.md)
 - [用户偏好查看与重置](recommendation-preferences.md)
 - [用户偏好导出](preference-export.md)
 - [反馈快速返回与后台偏好学习](feedback-background-learning.md)
