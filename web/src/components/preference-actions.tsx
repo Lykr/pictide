@@ -1,3 +1,4 @@
+import { createRequestId } from '../shared/request-id.mjs';
 import { useErrorNotice } from "./notifications";
 import { notifySuccess } from "../shared/notifications.mjs";
 import { t, tr, locale, messageKey } from "../i18n/index.mjs";
@@ -156,7 +157,7 @@ export function PreferenceActions() {
     errorRetry.current = () => void resetPreferences();
     if (posting.current || !result) return;
     const payload = pendingReset.current ?? {
-      request_id: crypto.randomUUID(), expected_reset_revision: result.reset_revision,
+      request_id: createRequestId(), expected_reset_revision: result.reset_revision,
     };
     pendingReset.current = payload;
     posting.current = true;

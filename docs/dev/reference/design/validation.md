@@ -26,3 +26,7 @@ The only frontend entry is `web/index.html → web/src/main.tsx`. Prompts is the
 Preset switching, deletion, and reload protect unsaved edits. Save is enabled only for valid changes. Vocabulary loading is paged. Help explains PMI, minimum cooccurrence, fixed terms in total counts, and additions/removals in change budgets; preview shows actual stop reasons and sequence information.
 
 Use [components](components.md) for controls and notifications and [layout](layout.md) for shell, responsive behavior, image panels, settings, keyboard, and touch acceptance. Keep exact token values and component behavior in source, and maintain each shared rule in its owning reference.
+
+## LAN and Home Screen compatibility
+
+Use `shared/request-id.mjs` for browser-generated request and configuration IDs. LAN HTTP and some Home Screen environments do not expose `crypto.randomUUID`; the helper uses `crypto.getRandomValues` to construct UUID v4 when needed. Keep an uncertain operation's existing ID on retry. The standalone browser smoke removes `randomUUID` and checks API creation, generation/retry, and preference reset; this is capability simulation, not a physical iOS test.

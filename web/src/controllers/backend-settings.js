@@ -1,3 +1,4 @@
+import { createRequestId } from '../shared/request-id.mjs';
 import { t, tr } from '../i18n/index.mjs';
 import { publishUiState } from '../shared/ui-state.mjs';
 import { notify, notifyError, dismissNotification } from '../shared/notifications.mjs';
@@ -422,7 +423,7 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
     state.saving = true; $('save-backend').disabled = true; $('settings-form').inert = true;
     try {
       const draft = draftBackend({ saveWorkflow: true });
-      const id = $('edit-backend').value === '__new__' ? crypto.randomUUID() : $('edit-backend').value;
+      const id = $('edit-backend').value === '__new__' ? createRequestId() : $('edit-backend').value;
       const result = await api(`/api/backends/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(draft) });
       const backend = result.backend || result;
       const index = state.backends.findIndex((item) => item.id === backend.id);

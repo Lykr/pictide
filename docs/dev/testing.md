@@ -18,9 +18,9 @@ Use Python 3.12 to match release CI.
 | Group | Checks | Requirements |
 | --- | --- | --- |
 | `core` (default) | Six HTTP/storage smokes: preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests | Application Python dependencies |
-| `ui` | Six Node test files: tour state and placement, button feedback, notifications, theme/language races, API key editing | Node.js |
+| `ui` | Seven Node test files: tour state and placement, button feedback, notifications, theme/language races, API key editing, HTTP-compatible request IDs | Node.js |
 | `corpus` | Three offline smokes: post filtering, stale/corrupt prebuilt rejection, vocabulary editions | Python environment with `corpus/requirements.txt` |
-| `browser` | Thirteen real-page flows: notifications and explicit update-check results without layout shifts, modal retry, mobile tour, Roam keyboard/swipe feedback, API-save-to-Generate, manual update actions with draft protection, mobile update/error presentation, bounded restart waiting, and three shared-layout scenarios across image viewers and settings | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
+| `browser` | Fourteen real-page flows: notifications and explicit update-check results without layout shifts, modal retry, mobile tour, Roam keyboard/swipe feedback, API-save-to-Generate, manual update actions with draft protection, mobile update/error presentation, bounded restart waiting, three shared-layout scenarios across image viewers and settings, and standalone actions without `crypto.randomUUID` | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
 
 `ui` and `browser` also have frontend shortcuts: `pnpm --dir web test` and `pnpm --dir web run test:browser`. The shared Python entry point passes its own interpreter to the browser fixture; the frontend shortcut uses `python` on `PATH`.
 

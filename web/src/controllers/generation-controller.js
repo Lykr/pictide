@@ -1,3 +1,4 @@
+import { createRequestId } from '../shared/request-id.mjs';
 import { t, tr } from '../i18n/index.mjs';
 import { createIcon } from '../dom-primitives';
 import { createButtonFeedback } from './button-feedback.mjs';
@@ -133,7 +134,7 @@ export function createGenerationController({ state, api, getRoamSettings, render
       if (!payload.positive.trim() && !automatic) throw new Error(t("请输入正向提示词，或使用共现候选生成提示词。"));
       const decision = submissionDecision(payload, uncertainRequests, automatic);
       if (!automatic && payload.negative.trim() && !capabilities.negative_prompt) throw new Error(t("当前生图 API 未绑定负向输入。请清空负向提示词，或在生图 API 设置中指定负向绑定。"));
-      operation = decision.retry || requestIdentity(payload, uncertainRequests, () => crypto.randomUUID());
+      operation = decision.retry || requestIdentity(payload, uncertainRequests, createRequestId);
       const hasOtherUncertain = uncertainRequests.size && !uncertainRequests.has(operation.key);
       uncertainRequests.set(operation.key, operation);
       const result = await api('/api/jobs', { method: 'POST', body: JSON.stringify(operation.payload) });
