@@ -479,12 +479,6 @@ class PictideApplication:
         self.events.publish("general_settings")
         return document
 
-    async def clear_cache(self, payload):
-        if payload:
-            raise ValidationError("清除缓存不接受额外参数。")
-        count = await asyncio.to_thread(self.storage.clear_deleted_image_scores)
-        return {"deleted_image_scores": count}
-
     async def history_settings(self, payload=None):
         if payload is not None:
             if "unliked_retention_days" not in payload:

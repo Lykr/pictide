@@ -204,10 +204,6 @@ async def general_settings(request):
         await body(request) if request.method == "PUT" else None))
 
 
-async def clear_cache(request):
-    return web.json_response(await request.app[APPLICATION].clear_cache(await body(request)))
-
-
 async def history_settings(request):
     return web.json_response(await request.app[APPLICATION].history_settings(
         await body(request) if request.method == "PUT" else None))
@@ -422,7 +418,6 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get("/api/bootstrap", bootstrap), web.get("/api/events", events),
         web.get('/api/updates', updates), web.post('/api/updates/{operation:check|download|install}', update_action),
         web.get("/api/settings/general", general_settings), web.put("/api/settings/general", general_settings),
-        web.post("/api/settings/cache/clear", clear_cache),
         web.get("/api/settings/history", history_settings), web.put("/api/settings/history", history_settings),
         web.get("/api/settings/roam", roam_settings), web.put("/api/settings/roam", roam_settings),
         web.get("/api/recommendation/preferences", preferences),

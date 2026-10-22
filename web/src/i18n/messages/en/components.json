@@ -184,11 +184,5 @@
   "输入完整提示词并回车添加；自定义词不参与 PMI 计算。": "Enter a complete prompt and press Enter to add it. Custom terms do not take part in PMI calculations.",
   "通知": "Notification",
   "关闭通知": "Dismiss notification",
-  "通知（{hotkey}）": "Notifications ({hotkey})",
-  "缓存": "Cache",
-  "清除缓存": "Clear cache",
-  "清除已删除图片的评分缓存，保留图片和偏好。": "Clear scores cached for deleted images. Your images and preferences are kept.",
-  "缓存清理失败，请重试。": "Could not clear the cache. Please try again.",
-  "已清除 {count} 条缓存。": "Cleared {count} cached scores.",
-  "没有需要清除的缓存。": "No cache needs clearing."
+  "通知（{hotkey}）": "Notifications ({hotkey})"
 }

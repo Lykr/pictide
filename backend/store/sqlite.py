@@ -100,6 +100,9 @@ class Repository:
             if "context" not in {row["name"] for row in db.execute("PRAGMA table_info(generation_batches)")}:
                 db.execute("ALTER TABLE generation_batches ADD COLUMN context TEXT")
             initialize_recommendation(db)
+            # Repair caches left by versions that only marked images as deleted.
+            db.execute("DELETE FROM artifact_preference_scores WHERE artifact_id IN "
+                       "(SELECT id FROM artifacts WHERE deleted_at IS NOT NULL)")
 
     @contextmanager
     def connection(self):
@@ -546,11 +549,6 @@ class Repository:
             db.execute("BEGIN IMMEDIATE")
             self._save_image_scores(db, records, reset_revision, refreshed_at)
 
-    def clear_deleted_image_scores(self):
-        with self.connection() as db:
-            return db.execute("DELETE FROM artifact_preference_scores WHERE artifact_id IN "
-                              "(SELECT id FROM artifacts WHERE deleted_at IS NOT NULL)").rowcount
-
     def liked_positive_prompts(self, actor_id="local"):
         with self.connection() as db:
             rows = db.execute("SELECT DISTINCT j.positive FROM feedback f "
@@ -695,8 +693,7 @@ class Repository:
                     db.execute("UPDATE artifacts SET generated_hidden_at=? WHERE id=?", (timestamp, row["id"]))
                     hidden += 1
                 else:
-                    db.execute("UPDATE artifacts SET deleted_at=? WHERE id=?", (timestamp, row["id"]))
-                    self._queue_deletion(db, row["id"], row["local_path"])
+                    self._delete_artifact(db, row["id"], row["local_path"], timestamp)
                     removed += 1
             return {"removed": removed, "hidden": hidden, "revision": self._artifact_revision(db)}
 
@@ -758,6 +755,13 @@ class Repository:
         if path:
             db.execute("INSERT OR IGNORE INTO pending_image_deletions (artifact_id,local_path,created_at) VALUES (?,?,?)",(iid,path,now()))
 
+    @classmethod
+    def _delete_artifact(cls, db, iid, path, timestamp):
+        """Keep the tombstone, score removal, and file queue in one transaction."""
+        db.execute("UPDATE artifacts SET deleted_at=? WHERE id=?", (timestamp, iid))
+        db.execute("DELETE FROM artifact_preference_scores WHERE artifact_id=?", (iid,))
+        cls._queue_deletion(db, iid, path)
+
     def expire_artifacts(self, cutoff, limit=100):
         """Commit tombstones before any file operation; feedback wins by write order."""
         with self.connection() as db:
@@ -768,8 +772,7 @@ class Repository:
                 ORDER BY a.created_at,a.id LIMIT ?""",(cutoff,limit)).fetchall()
             timestamp = now()
             for row in rows:
-                db.execute("UPDATE artifacts SET deleted_at=? WHERE id=?",(timestamp,row["id"]))
-                self._queue_deletion(db,row["id"],row["local_path"])
+                self._delete_artifact(db, row["id"], row["local_path"], timestamp)
             return len(rows)
 
     def trim_roam_artifacts(self, max_history, limit=100):
@@ -799,8 +802,7 @@ class Repository:
                 if row["liked"]:
                     db.execute("UPDATE artifacts SET roam_hidden_at=? WHERE id=?", (timestamp, row["id"]))
                 else:
-                    db.execute("UPDATE artifacts SET deleted_at=? WHERE id=?", (timestamp, row["id"]))
-                    self._queue_deletion(db, row["id"], row["local_path"])
+                    self._delete_artifact(db, row["id"], row["local_path"], timestamp)
             return len(rows)
 
     def cleanup_counts(self):

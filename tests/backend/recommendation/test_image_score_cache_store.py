@@ -3,6 +3,7 @@ from tests import ROOT
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from backend.recommendation.contracts import FeedbackUpdate, ScoreRequest
 from backend.recommendation.service import RecommendationService
@@ -100,6 +101,70 @@ class ImageScoreCacheSmoke(unittest.TestCase):
         self.assertEqual(mean.mean_score, mean.score)
         self.assertAlmostEqual(sampled.mean_score, mean.score)
         self.assertNotAlmostEqual(sampled.score, sampled.mean_score)
+
+    def deletion_fixture(self, roam=False):
+        ids = [self.job({} if roam else None)[0] for _ in range(4)]
+        self.repo.rate(ids[0], -1)
+        self.repo.rate(ids[1], 1)
+        with self.repo.connection() as db:
+            for day, iid in enumerate(ids, 1):
+                db.execute('UPDATE artifacts SET created_at=? WHERE id=?', (f'2026-01-0{day}T00:00:00Z', iid))
+        self.repo.save_image_scores([self.record(iid) for iid in ids], 0)
+        if roam:
+            self.repo.roam_view({'artifact_id': ids[-1], 'viewed_at': 1})
+        return ids
+
+    def check_deleted_scores(self, ids):
+        self.assertEqual(set(self.cache(ids)['scores']), set(ids[1:]))
+        # Late results and missing-image scores must not recreate deleted caches.
+        self.repo.save_image_scores([self.record(iid, .7) for iid in [*ids, 'missing']], 0)
+        self.assertEqual(set(self.cache([*ids, 'missing'])['scores']), set(ids[1:]))
+        with self.repo.connection() as db:
+            self.assertEqual(dict(db.execute('SELECT artifact_id,value FROM feedback')), {ids[0]: -1, ids[1]: 1})
+            self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0], 4)
+
+    def test_generated_deletion_clears_scores_but_hidden_likes_keep_them(self):
+        ids = self.deletion_fixture()
+        self.repo.clear_generated(ids[0])
+        self.repo.clear_generated(ids[1])
+        self.check_deleted_scores(ids)
+
+    def test_expiry_clears_scores_and_preserves_liked_and_recent_images(self):
+        ids = self.deletion_fixture()
+        self.repo.expire_artifacts('2026-01-02T00:00:00Z')
+        self.check_deleted_scores(ids)
+
+    def test_roam_trimming_clears_scores_but_hidden_likes_keep_them(self):
+        ids = self.deletion_fixture(roam=True)
+        self.repo.trim_roam_artifacts(1)
+        self.check_deleted_scores(ids)
+
+    def test_deletion_rolls_back_scores_and_tombstone_together(self):
+        ids = self.deletion_fixture()
+        with patch.object(Repository, '_queue_deletion', side_effect=RuntimeError('fixture failure')):
+            with self.assertRaises(RuntimeError):
+                self.repo.clear_generated(ids[0])
+        self.assertIsNotNone(self.repo.artifact(ids[0]))
+        self.assertEqual(set(self.cache(ids)['scores']), set(ids))
+
+    def test_reopening_repairs_legacy_scores_without_changing_other_data(self):
+        ids = self.deletion_fixture()
+        with self.repo.connection() as db:
+            db.execute("UPDATE artifacts SET deleted_at='2026-01-01' WHERE id=?", (ids[0],))
+            db.execute("UPDATE artifacts SET generated_hidden_at='2026-01-01',roam_hidden_at='2026-01-01' WHERE id=?", (ids[1],))
+
+        def retained_data():
+            with self.repo.connection() as db:
+                tables = [row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' "
+                          "AND name NOT LIKE 'sqlite_%' AND name != 'artifact_preference_scores'")]
+                return {name: [tuple(row) for row in db.execute('SELECT * FROM "'+name+'" ORDER BY rowid')]
+                        for name in tables}
+
+        original = retained_data()
+        for _ in range(2):
+            self.repo = Repository(self.path)
+            self.assertEqual(retained_data(), original)
+            self.assertEqual(set(self.cache(ids)['scores']), set(ids[1:]))
 
 
 if __name__ == '__main__':
