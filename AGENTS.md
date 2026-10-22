@@ -6,7 +6,7 @@ Applies throughout this repository. Paths are relative to its root; `main` holds
 
 ## Working agreements
 
-- Communicate concisely in Chinese by default. Prefer direct, positive descriptions of facts, goals, and actions.
+- Unless explicitly instructed otherwise, communicate concisely in the system's current language. Prefer direct, positive descriptions of facts, goals, and actions.
 - Start at [README](README.md). Consult [product scope](docs/guides/about.md), [architecture](docs/dev/architecture.md), [UI guidelines](docs/dev/design-system.md), [data layout](docs/dev/data-layout.md), and [development workflow](docs/dev/development.md) as needed. Evaluate features against the image exploration experience.
 - This is a proof of concept: favor the smallest complete solution and existing mechanisms. Use a few meaningful smoke checks rather than the full suite; avoid speculative abstractions, defensive layers, and migration compatibility.
 - Inspect Git status first. Implement on a separate branch; use separate worktrees, data directories, and ports for parallel work or running instances. Preserve unrelated changes and existing history; do not reset or stash without authorization. Delegate only worthwhile independent tasks, with explicit file ownership and coordinated interfaces.
