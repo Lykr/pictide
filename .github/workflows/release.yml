@@ -3,6 +3,20 @@ name: Portable release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing version tag to publish from verified artifacts
+        required: true
+        type: string
+      build_run:
+        description: Original release build run ID
+        required: true
+        type: string
+      macos_run:
+        description: Successful Apple Silicon validation run ID for the same source tag
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -13,6 +27,7 @@ concurrency:
 
 jobs:
   validate:
+    if: github.event_name == 'push'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -96,6 +111,7 @@ jobs:
           retention-days: 1
 
   build:
+    if: github.event_name == 'push'
     needs: validate
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
@@ -191,15 +207,17 @@ jobs:
           retention-days: 1
 
   publish:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: always() && ((github.event_name == 'push' && needs.build.result == 'success') || github.event_name == 'workflow_dispatch')
     needs: build
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ inputs.release_tag || github.ref }}
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -208,10 +226,50 @@ jobs:
           pattern: portable-*
           path: dev/build/release-assets
           merge-multiple: true
+          run-id: ${{ inputs.build_run || github.run_id }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: pictide-macos-apple-silicon-${{ inputs.macos_run }}
+          path: dev/build/macos-recovery
+          run-id: ${{ inputs.macos_run }}
+          github-token: ${{ github.token }}
+      - name: Verify recovery provenance and collect the missing platform
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUILD_RUN: ${{ inputs.build_run }}
+          MACOS_RUN: ${{ inputs.macos_run }}
+        shell: python
+        run: |
+          import hashlib, json, os, shutil, subprocess
+          from pathlib import Path
+          commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          def run_record(key):
+              run = os.environ[key]
+              assert run.isdecimal(), 'Invalid run ID'
+              return json.loads(subprocess.check_output(['gh', 'api', 'repos/' + os.environ['GH_REPO'] + '/actions/runs/' + run]))
+          assert run_record('BUILD_RUN')['head_sha'] == commit, 'Original build source differs'
+          assert run_record('MACOS_RUN')['conclusion'] == 'success', 'Mac validation did not pass'
+          source = Path('dev/build/macos-recovery')
+          provenance = json.loads((source / 'source.json').read_text())
+          assert provenance['commit'] == commit and provenance['architecture'] == 'apple-silicon'
+          archives = list(source.glob('*.zip'))
+          assert len(archives) == 1 and archives[0].name == provenance['archive']
+          with archives[0].open('rb') as stream:
+              assert hashlib.file_digest(stream, 'sha256').hexdigest() == provenance['sha256']
+          target = Path('dev/build/release-assets')
+          assert not (target / archives[0].name).exists(), 'Do not replace an existing platform asset'
+          shutil.copyfile(archives[0], target / archives[0].name)
+          for name in ('build-report', 'smoke-report'):
+              shutil.copyfile(source / (name + '.json'), target / (name + '-macos-arm64.json'))
       - name: Check assets, write checksums and publish
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         shell: python
         run: |
           import hashlib, json, os, subprocess, sys
@@ -232,7 +290,9 @@ jobs:
                   with path.open('rb') as source:
                       digest = hashlib.file_digest(source, 'sha256').hexdigest()
                   handle.write(digest + '  ' + path.name + '\n')
-          tag = os.environ['GITHUB_REF_NAME']
+          from backend import __version__
+          tag = os.environ['RELEASE_TAG']
+          assert tag == 'v' + __version__, 'Release tag differs from source version'
           command = ['gh', 'release', 'create', tag, '--verify-tag', '--generate-notes', '--draft', '--title', tag]
           if '-' in tag:
               command.append('--prerelease')

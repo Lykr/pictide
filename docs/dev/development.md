@@ -89,6 +89,8 @@ For Mac validation without publishing, manually run `.github/workflows/macos-val
 
 The optional `source_ref` selects an existing branch or tag; provenance records the checked-out commit. `previous_release` pins the older package and downloads it through authenticated GitHub CLI access, allowing upgrade checks for an existing tag without changing that tag. Normal release smoke jobs also use the workflow token for GitHub metadata queries to avoid shared-runner anonymous rate limits. Tokens remain confined to CI and are never bundled with the application.
 
+If Apple Silicon validation fails for an external download reason while the other three release builds succeed, validate the same tag with the manual Mac workflow. The release workflow's manual recovery accepts `release_tag`, the original `build_run`, and the successful `macos_run`. It collects the three original assets and the replacement Apple Silicon asset inside GitHub, verifies matching source commits and package hashes, and runs the same report, manifest, and checksum checks before publication. It refuses to replace an existing platform asset or an existing Release. This recovery path is explicitly triggered; ordinary branch pushes still do not start workflows.
+
 ## Verify and commit
 
 Choose a few meaningful checks for the affected behavior. Use `python scripts/check.py core|ui|corpus|browser`; `--list` shows the selected group's cases. Frontend changes also need type checking, a build, and focused interaction checks. See [testing](testing.md) for environments, browser setup, and the distinction between mocks and real generation.
