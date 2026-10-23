@@ -1,6 +1,7 @@
 """Progress processes exit after readiness; failures and no-tray fallback stay visible."""
 import os
 import asyncio
+import json
 import socket
 import subprocess
 from pathlib import Path
@@ -15,6 +16,38 @@ from backend import host
 
 
 class DesktopSocketSmoke(unittest.TestCase):
+    def test_macos_update_preserves_launcher_mode_including_empty_arguments(self):
+        cases = (
+            ([], []),
+            (['--lan', '--port', '8190'], ['--lan', '--port', '8190']),
+            (None, ['--cli', '--no-browser', '--port', '0']),
+        )
+        for original, expected in cases:
+            with self.subTest(original=original), tempfile.TemporaryDirectory() as directory:
+                paths = SimpleNamespace(root=Path(directory), tmp=Path(directory), configure_runtime=Mock())
+                app = host.web.Application()
+                app[host.APPLICATION] = SimpleNamespace(updates=SimpleNamespace(installation=None))
+                recorded = []
+
+                def serve(application, **options):
+                    recorded.append(application[host.UPDATE_START]['arguments'])
+                    record = json.loads((paths.tmp / 'service-instance.json').read_text())
+                    recorded.append(record['arguments'])
+
+                with patch.dict(os.environ), patch('backend.host.sys.platform', 'darwin'), \
+                        patch('backend.host.sys.stdout', Mock()), patch('backend.host.sys.stderr', Mock()), \
+                        patch('backend.host.DataPaths', return_value=paths), \
+                        patch('backend.host.PictideApplication.prepare_startup'), \
+                        patch('backend.host.create_app', return_value=app), \
+                        patch('backend.host.web.run_app', side_effect=serve):
+                    os.environ.pop('PICTIDE_DESKTOP_PARENT_PIPE', None)
+                    os.environ.pop('PICTIDE_DESKTOP_PARENT_PID', None)
+                    os.environ.pop('PICTIDE_DESKTOP_ARGUMENTS', None)
+                    if original is not None:
+                        os.environ['PICTIDE_DESKTOP_ARGUMENTS'] = json.dumps(original)
+                    host.main(['--desktop-worker', '--cli', '--no-browser', '--port', '0'])
+                self.assertEqual(recorded, [[*expected, '--data-dir', directory]] * 2)
+
     @unittest.skipIf(os.name == 'nt', 'Unix address reuse and TIME_WAIT behavior')
     def test_unix_desktop_can_restart_after_active_connection_and_rejects_another_owner(self):
         with reserve_desktop_socket('127.0.0.1', 0) as server:

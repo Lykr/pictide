@@ -11,6 +11,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 GROUPS = {
     'core': (
+        'tests.backend.desktop.test_desktop_launcher.DesktopSocketSmoke.test_macos_update_preserves_launcher_mode_including_empty_arguments',
         'tests.backend.candidate.test_cooccurrence_integration.CooccurrenceIntegrationSmoke.test_preset_preview_rounds_and_sqlite_roam',
         'tests.backend.task.test_task_window.TaskWindowSmoke.test_restart_releases_two_missing_unknown_jobs_without_resubmitting',
         'tests.backend.store.test_storage.RepositoryTests.test_existing_database_is_migrated_without_losing_images_or_feedback',

@@ -17,12 +17,33 @@ from aiohttp.test_utils import TestClient, TestServer
 from backend import host
 from backend.paths import DataPaths
 from backend.store.update_state import unfinished_jobs
-from backend.updates.apply import apply_plan, create_plan
+from backend.updates.apply import apply_plan, create_plan, restart
 from backend.updates.contracts import Installation, Release, PROGRAM_FILES
 from backend.updates.installation import extract_package, install_reason
 from backend.updates.releases import API, PAGE, read_release
 from backend.updates.service import UpdateService
 from backend.updates.lock import UpdateLease
+
+
+class RestartModeTests(unittest.TestCase):
+    def test_restart_preserves_desktop_cli_and_network_arguments(self):
+        cases = (
+            ('darwin', 'Pictide.app/Contents/MacOS/Pictide', []),
+            ('darwin', 'Pictide.app/Contents/MacOS/Pictide', ['--cli', '--no-browser']),
+            ('win32', 'Pictide.exe', ['--desktop']),
+            ('win32', 'Pictide.exe', ['--cli', '--no-browser']),
+            ('linux', 'data/runtime/pictide/Pictide', ['--cli', '--no-browser']),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            for platform, program, mode in cases:
+                with self.subTest(platform=platform, mode=mode):
+                    arguments = [*mode, '--lan', '--port', '8197', '--data-dir', str(Path(directory) / 'personal data')]
+                    installation = Installation(directory, platform, 'test', '0.6.1')
+                    plan = dict(restart_args=arguments, pids=[123, 456])
+                    with patch('backend.updates.apply.subprocess.Popen') as launch:
+                        restart(plan, installation)
+                    self.assertEqual(launch.call_args.args[0], [str(Path(directory) / program), *arguments])
+                    self.assertEqual(plan['restart_args'], arguments)
 
 
 def package_files(package, label, version='0.5.1'):

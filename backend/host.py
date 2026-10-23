@@ -565,7 +565,10 @@ def _main(argv=None):
         PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
         app = create_app(paths.root, allow_lan=host == "0.0.0.0")
         from .updates.runtime import save_instance, ready_instance, remove_instance
-        arguments = json.loads(os.environ.get('PICTIDE_DESKTOP_ARGUMENTS', 'null')) or list(sys.argv[1:] if argv is None else argv)
+        arguments = json.loads(os.environ.get('PICTIDE_DESKTOP_ARGUMENTS', 'null'))
+        # Finder launches have an empty argument list; worker CLI flags must not replace it.
+        if arguments is None:
+            arguments = list(sys.argv[1:] if argv is None else argv)
         arguments = [value for value in arguments if value not in ('--desktop-worker', '--setup')]
         # The macOS parent supplies its own original arguments instead of worker-only flags.
         pids = [os.getpid()]

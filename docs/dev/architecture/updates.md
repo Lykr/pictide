@@ -32,6 +32,10 @@ Backups under `data/backups/updates/` contain consistent SQLite snapshots and th
 
 After replacing program files, the helper runs the existing `--help` entry to check that the bundled runtime loads. This does not prepare data, download dependencies, or start services. It then starts the application once in its original mode. Replacement, runtime-check, or process-launch failures restore the program files and attempt to restart the previous version. Database snapshots are retained for manual recovery; the updater never restores or removes runtime databases.
 
+On macOS, the native launcher supplies its original arguments, including an empty list for a normal Finder launch. The host preserves that list instead of inheriting the service's internal `--cli --no-browser` flags, so a desktop update restarts the menu-bar launcher. The core regression check covers empty and explicit launcher arguments as well as ordinary CLI startup. The native cross-version smoke currently covers CLI restart and data preservation; it does not verify the visible macOS menu bar.
+
+Affected older releases may already have recorded worker flags as their restart arguments. Those records cannot reliably distinguish a desktop launch from an intentional CLI launch. After such an upgrade, quit `PictideService` in Activity Monitor and reopen `Pictide.app` from Finder. The corrected host records the intended mode for subsequent updates.
+
 The runtime check does not establish that business initialization or later operation will succeed. Normal HTTP readiness is verified by the native release smoke, rather than a special application mode or update-only endpoints. Detailed output and the result remain with the update plan. Backups are retained for recovery.
 
 After the user requests installation, the page waits up to two minutes for the service to reconnect. Individual status requests time out after five seconds. If the wait expires, polling stops and a floating notification points to the application log; it does not trigger another check, download, or installation. A later successful local SSE reconnection can still refresh the page.
