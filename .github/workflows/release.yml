@@ -150,6 +150,8 @@ jobs:
       - name: Build the native portable package
         run: python scripts/build_portable.py --prebuilt-library dev/cache/prebuilt
       - name: Smoke test the extracted package
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: python scripts/smoke_portable.py --archive releases/*.zip --report dev/verification/portable/smoke-report.json --previous-release
       - name: Preserve failure diagnostics

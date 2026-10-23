@@ -3,6 +3,14 @@ name: Validate macOS app
 on:
   workflow_dispatch:
     inputs:
+      source_ref:
+        description: Source branch or tag to validate (empty uses this workflow revision)
+        type: string
+        default: ''
+      previous_release:
+        description: Optional previous release tag to download with authentication
+        type: string
+        default: ''
       architecture:
         description: Mac architecture
         type: choice
@@ -20,6 +28,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ inputs.source_ref || github.ref }}
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -66,14 +75,40 @@ jobs:
       - name: Build the native app
         run: python scripts/build_portable.py --prebuilt-library dev/cache/prebuilt
       - name: Check the extracted app
-        run: python scripts/smoke_portable.py --archive releases/*.zip --report dev/verification/portable/smoke-report.json --previous-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_RELEASE: ${{ inputs.previous_release }}
+          GH_REPO: ${{ github.repository }}
+        shell: python
+        run: |
+          import os, re, subprocess, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from backend import __version__
+          archives = list(Path('releases').glob('*.zip'))
+          assert len(archives) == 1
+          archive = archives[0]
+          command = [sys.executable, 'scripts/smoke_portable.py', '--archive', str(archive),
+                     '--report', 'dev/verification/portable/smoke-report.json']
+          previous = os.environ['PREVIOUS_RELEASE']
+          if previous:
+              assert re.fullmatch(r'v\d+\.\d+\.\d+', previous), 'Use a stable release tag'
+              suffix = archive.name.removeprefix('pictide-' + __version__ + '-')
+              name = 'pictide-' + previous[1:] + '-' + suffix
+              destination = Path('dev/cache/previous-release')
+              destination.mkdir(parents=True)
+              subprocess.run(['gh', 'release', 'download', previous, '--pattern', name,
+                              '--dir', str(destination)], check=True)
+              command.extend(['--previous-archive', str(destination / name)])
+          else:
+              command.append('--previous-release')
+          subprocess.run(command, check=True)
       - name: Collect verified package and provenance
         env:
-          SOURCE_SHA: ${{ github.sha }}
           TARGET_ARCHITECTURE: ${{ inputs.architecture }}
         shell: python
         run: |
-          import hashlib, json, os, shutil
+          import hashlib, json, os, shutil, subprocess
           from pathlib import Path
           target = Path('dev/build/validation-assets')
           target.mkdir(parents=True)
@@ -85,7 +120,7 @@ jobs:
           shutil.copyfile(source, target / source.name)
           (target / 'SHA256SUMS').write_text(digest + '  ' + source.name + '\n')
           (target / 'source.json').write_text(json.dumps({
-              'commit': os.environ['SOURCE_SHA'], 'architecture': os.environ['TARGET_ARCHITECTURE'],
+              'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), 'architecture': os.environ['TARGET_ARCHITECTURE'],
               'archive': source.name, 'sha256': digest,
           }, indent=2) + '\n')
           for name in ('build-report', 'smoke-report'):

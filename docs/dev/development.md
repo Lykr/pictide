@@ -87,6 +87,8 @@ Ordinary branch pushes use local verification and do not trigger Actions. Resour
 
 For Mac validation without publishing, manually run `.github/workflows/macos-validation.yml` with the Intel or Apple Silicon target. It uses the release builder and startup smoke, retaining ZIPs, checksums, revision metadata, and reports as an Actions artifact for seven days. Transfer the same ZIP to the target Mac, verify its SHA-256, and record actual launcher and startup behavior separately from CI results.
 
+The optional `source_ref` selects an existing branch or tag; provenance records the checked-out commit. `previous_release` pins the older package and downloads it through authenticated GitHub CLI access, allowing upgrade checks for an existing tag without changing that tag. Normal release smoke jobs also use the workflow token for GitHub metadata queries to avoid shared-runner anonymous rate limits. Tokens remain confined to CI and are never bundled with the application.
+
 ## Verify and commit
 
 Choose a few meaningful checks for the affected behavior. Use `python scripts/check.py core|ui|corpus|browser`; `--list` shows the selected group's cases. Frontend changes also need type checking, a build, and focused interaction checks. See [testing](testing.md) for environments, browser setup, and the distinction between mocks and real generation.

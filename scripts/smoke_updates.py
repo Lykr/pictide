@@ -28,7 +28,11 @@ from backend.updates.releases import API, PAGE, read_json, version
 def download_previous(archive, destination):
     """CI-only: fetch the latest stable native archive if it precedes this build."""
     from backend import __version__
-    document = read_json(API)
+    # Shared runner IPs frequently exhaust GitHub's anonymous API quota.
+    # Keep authentication confined to CI tooling, never the running application.
+    document = (json.loads(subprocess.check_output(['gh', 'api', API], text=True))
+                if os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('GH_TOKEN')
+                else read_json(API))
     previous = document['tag_name'].removeprefix('v')
     if version(previous) >= version(__version__.split('-')[0]):
         return None
