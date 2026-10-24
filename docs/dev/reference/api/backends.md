@@ -21,6 +21,7 @@ The backend list is provided by Bootstrap's `backends`; there is no separate GET
 | `name` | Backend name |
 | `kind` | `comfyui / openai / gemini`; omitted means `comfyui` |
 | `prompt_type` | `danbooru / natural_language`; omitted means `danbooru`. Natural language uses the separate [prompt service](settings.md#prompt-llm-api). |
+| `llm_id` | Saved LLM API ID used for natural-language conversion. New natural-language configurations must select an existing connection; legacy configurations without this field use `legacy-prompt-api`. |
 | `base_url` | HTTP(S) service root; cloud URLs include the version path, such as `https://api.openai.com/v1` or `https://generativelanguage.googleapis.com/v1beta` |
 | `api_key` | Optional; omission preserves a saved key only for the same kind. Switching kinds clears it; an empty string also clears it. Never returned in plaintext. |
 | `model` | Required model ID for `openai` and `gemini`; entered manually |

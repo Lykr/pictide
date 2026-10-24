@@ -58,7 +58,11 @@ Once a request starts, local cancellation cannot guarantee remote cancellation o
 
 ## Natural-language prompts
 
-For models that work better with descriptions, choose **Natural language** as the image API's prompt type and save. Under **Prompt LLM API**, save a separate text service's Base URL, model ID, and key. It must support OpenAI-compatible Chat Completions with JSON output; the URL includes the API version, for example `https://api.openai.com/v1`.
+For models that work better with descriptions, add a connection under **Settings → LLM API**. Use an OpenAI-compatible text API with its Base URL, model ID, and key, or choose **ChatGPT** and continue through browser authorization. For an API key connection, the URL includes the API version, for example `https://api.openai.com/v1`; the service must support Chat Completions with JSON output.
+
+Then select **Natural language** in your **Image API** settings, choose the saved **LLM API**, and save. Several image APIs can share one LLM connection.
+
+For ChatGPT, sign in from the computer running Pictide using its localhost address, then load and save an available model. Eligible requests use your account's authorized plan allowance; image generation still uses the image API. Use **Manage usage** to review limits. If access or allowance is unavailable, Pictide stops conversion; it never silently switches to paid API usage. After setup, your other devices can use the saved connection.
 
 Continue choosing tags, presets, and anchors as usual. Pictide turns the chosen combination into a description before generating an image. Under **Prompts → Preview**, select that image API to see both tags and the final text. The text is read-only and can be copied.
 

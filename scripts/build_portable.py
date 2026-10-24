@@ -55,7 +55,7 @@ def export_resources(resources, seed):
 def copy_licenses(destination):
     """Keep licenses and versions for installed runtime dependencies."""
     from packaging.requirements import Requirement
-    todo = ['aiohttp', 'fastembed', 'numpy']
+    todo = ['aiohttp', 'fastembed', 'numpy', 'PyJWT', 'cryptography']
     if sys.platform == 'darwin':
         todo.append('truststore')
     seen = set()

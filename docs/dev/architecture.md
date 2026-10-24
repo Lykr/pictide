@@ -61,7 +61,7 @@ pictide/
     network.py                 Shared system proxy selection and synchronous resource transport
     candidate/                 Read-only co-occurrence libraries, presets, continuous-change budget, offline import
     recommendation/            Combination features, MiniLM, Bayesian scoring and learning
-    prompting/                 Stateless natural-language conversion through a text API
+    prompting/                 Natural-language conversion, text API protocols and ChatGPT sessions
     prompt_preparation.py      App-owned conversion reuse, serialization, and freshness checks
     task/                      Scheduling, recovery, cancellation, and result association
     generation/                Generation interface, ComfyUI workflows, OpenAI Images, and Gemini
@@ -110,7 +110,7 @@ pictide/
 - Candidate, Recommendation, and Task do not call or import one another directly. Contracts live with their owning modules: recommendation requests/results in `backend/recommendation/contracts.py`, candidate snapshots in `backend/candidate/contracts.py`, and persistence interfaces in `backend/store/contracts.py`. Importing recommendation contracts loads no service, encoder, or storage implementation; composition imports services and encoders explicitly.
 - Candidate reads online libraries and presets through storage interfaces injected by Host, without importing SQLite adapters. Offline download/import tools use SQLite independently and stay outside online startup and request paths.
 - Task depends on Generation and Store, handling submission of determined tasks, event verification, recovery, cancellation, and result association. Generation isolates protocol differences. ComfyUI returns a remote task reference; OpenAI Images and Gemini return completed outputs from one HTTP request. Unknown cloud submissions are not automatically retried.
-- For `natural_language` backends, App calls Prompting after selecting tags and before creating image tasks. Prompting neither chooses candidates nor accesses storage or image APIs. `PromptPreparation` coordinates its saved results through `PromptStore`; Candidate and Recommendation continue to receive tag snapshots. See [conversion flow](architecture/flows.md#natural-language-preparation).
+- For `natural_language` backends, App calls Prompting after selecting tags and before creating image tasks. Prompting neither chooses candidates nor calls image APIs; its ChatGPT adapter uses an injected protected credential store for OAuth sessions. `PromptPreparation` coordinates its saved results through `PromptStore`; Candidate and Recommendation continue to receive tag snapshots. See [conversion flow](architecture/flows.md#natural-language-preparation).
 - The browser manages presentation, input, and drafts through HTTP/SSE, without reading or writing configuration or databases directly. The prompt page is a view in the same frontend, with no additional site or iframe.
 - Store persists tasks, images, feedback, snapshots, and learning state. Feedback learning uses the actual generation snapshot; the current library does not overwrite historical meaning.
 

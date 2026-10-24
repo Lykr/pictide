@@ -16,7 +16,7 @@ The main business database stores application state, the personal preset databas
 | `pending_image_deletions` | Persistent reclamation queue for local images and JSON |
 | `roam_*` | Viewing position, prefetch ownership, settings, anchors, and pause state |
 | `general_settings` | Theme, language, and image transition effects |
-| `prompt_settings` / `prompt_preparations` | Shared text-service configuration and bounded conversion/retry records |
+| `llm_connections` / `prompt_preparations` | Named text-service configurations and bounded conversion/retry records |
 | `recommendation_*` | Model vectors, preference parameters, feedback evidence, and reset records |
 | `artifact_preference_scores` / `recommendation_score_range` | Raw image score cache, manual refresh time, and historical score range |
 
@@ -58,7 +58,9 @@ Image sections reuse task ownership: images linked through `roam_jobs` belong to
 
 ## Prompt Preparation
 
-`PromptStore` owns two tables in the main database. `prompt_settings` stores one configuration JSON (including the text API key) and a revision. `prompt_preparations` stores an ID, input digest, document, attempted flag, optional result JSON, and creation time. A successful conversion is saved before image submission; an attempted automatic conversion without a result requires explicit recovery rather than automatic repetition. The shared LLM key never enters an image backend revision or public response.
+`PromptStore` owns `llm_connections` (ID, revision, configuration JSON including API keys) and `prompt_preparations` (ID, input digest, document, attempted flag, optional result JSON, creation time). The old singleton `prompt_settings` is moved once into `legacy-prompt-api`, preserving its key and revision. Historical job and backend revisions are untouched. A successful conversion is saved before image submission; an attempted automatic conversion without a result requires explicit recovery. Text-service credentials never enter image backend revisions or public responses.
+
+ChatGPT registrations live separately under `data/credentials/`: `chatgpt.dpapi` uses Windows user-bound DPAPI; `chatgpt.json` uses owner-only file permissions on macOS/Linux. Atomic replacement and an interprocess file lock protect rotating refresh tokens. The record contains the stable host UUID and each connection's issued client ID, verified identity, scopes and tokens. Disconnect removes tokens while retaining registration mapping for reauthorization. Treat this directory as private account data; Windows records cannot be transferred to another user or computer by copying the file.
 
 The newest 500 preparation records are retained. Batch selection records are removed after the batch is committed; Roam selection and conversion records are removed after its job snapshot is saved. Preview and Generate conversion results remain reusable until evicted. This is bounded working history, not permanent idempotency for unsubmitted requests: expired previews return 409, and old unsubmitted requests may need fresh conversion. Submitted batches retain the existing `generation_batches` replay behavior.
 

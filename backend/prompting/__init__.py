@@ -44,12 +44,20 @@ include explanations, markdown, or instructions unrelated to depicting the image
 
 
 class PromptRenderer:
+    def __init__(self, chatgpt=None):
+        self.chatgpt = chatgpt
+
     async def render(self, config, candidate, *, mode='random', previous=None, negative_channel=True):
-        config = validate_settings(config)
         data = {key: candidate[key] for key in ('positive', 'negative')}
         data.update(mode=mode, negative_channel=negative_channel)
         if mode == 'along' and previous:
             data['previous'] = previous
+        if config.get('kind') == 'chatgpt':
+            if not self.chatgpt:
+                raise ValidationError('ChatGPT is not connected.')
+            result = await self.chatgpt.render(config, SYSTEM, data)
+            return validate_result(result, negative_channel)
+        config = validate_settings(config)
         payload = {'model': config['model'], 'stream': False,
                    'response_format': {'type': 'json_object'},
                    'messages': [{'role': 'system', 'content': SYSTEM},
@@ -78,9 +86,13 @@ class PromptRenderer:
             if isinstance(error, ValidationError):
                 raise
             raise ValidationError('LLM returned an invalid prompt JSON object.') from None
-        if not isinstance(result, dict) or any(not isinstance(result.get(k), str) or len(result[k]) > 20000
-                                               for k in ('positive', 'negative')) or not result['positive'].strip():
-            raise ValidationError('LLM returned empty or invalid prompt text.')
-        if not negative_channel and result['negative'].strip():
-            raise ValidationError('LLM returned a negative prompt for an API without a negative channel.')
-        return {key: result[key].strip() for key in ('positive', 'negative')}
+        return validate_result(result, negative_channel)
+
+
+def validate_result(result, negative_channel):
+    if not isinstance(result, dict) or any(not isinstance(result.get(k), str) or len(result[k]) > 20000
+                                           for k in ('positive', 'negative')) or not result['positive'].strip():
+        raise ValidationError('LLM returned empty or invalid prompt text.')
+    if not negative_channel and result['negative'].strip():
+        raise ValidationError('LLM returned a negative prompt for an API without a negative channel.')
+    return {key: result[key].strip() for key in ('positive', 'negative')}

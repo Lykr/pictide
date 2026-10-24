@@ -1,0 +1,53 @@
+import { test, expect } from './fixtures.mjs';
+
+test('ChatGPT connection, model selection and image API reference', async ({ page, context }) => {
+  await context.addInitScript(() => localStorage.setItem('pictide.first-run-guide.v1', JSON.stringify({ version: 1, status: 'dismissed' })));
+  let connected = false, welcomed = false;
+  await page.route('**/api/llm-apis', async route => {
+    const response = await route.fetch();
+    const rows = await response.json();
+    await route.fulfill({ json: rows.map(row => ({ ...row, account: connected ? { email: 'fixture@example.com', connected: true, plan_enabled: true, welcomed } : null })) });
+  });
+  await page.route(/\/api\/llm-apis\/[^/]+$/, async route => {
+    if (route.request().method() !== 'PUT') return route.continue();
+    const response = await route.fetch();
+    const rows = await response.json();
+    await route.fulfill({json: rows.map(row => ({...row, account: connected ? {email:'fixture@example.com',connected:true,plan_enabled:true,welcomed} : null}))});
+  });
+  await page.route('**/api/llm-apis/*/sign-in', route => route.fulfill({ json: { authorization_url: 'about:blank#fixture-sign-in' } }));
+  await page.route('**/api/llm-apis/*/status', route => { connected = true; return route.fulfill({ json: { status: 'connected' } }); });
+  await page.route('**/api/llm-apis/*/models', route => route.fulfill({ json: { models: [{value: 'account-model', label:'Account model'}] } }));
+  await page.route('**/api/llm-apis/*/welcome', route => { welcomed = true; return route.fulfill({json:{ok:true}}); });
+  await page.goto('/#settings/llm');
+  await page.locator('#llm-name').fill('My ChatGPT');
+  await page.locator('#llm-kind').click();
+  await page.getByRole('option', { name:'ChatGPT', exact:true }).click();
+  const popup = page.waitForEvent('popup');
+  await page.getByRole('button', { name:'Continue with ChatGPT' }).click();
+  const login = await popup;
+  await expect(page.getByRole('dialog')).toContainText('Using your ChatGPT plan');
+  await page.getByRole('button', { name:'Got it', exact:true }).click();
+  await expect(page.locator('#prompt-chatgpt-model')).toContainText('Account model');
+  await page.getByRole('button', { name:'Save LLM API', exact:true }).click();
+  await expect(page.locator('#prompt-chatgpt-model')).toContainText('Account model');
+  await page.getByRole('tab', { name:'Image API', exact:true }).click();
+  await page.locator('#backend-prompt-type').click();
+  await page.getByRole('option', { name:'Natural language', exact:true }).click();
+  await page.locator('#backend-llm').click();
+  await page.getByRole('option', { name:'My ChatGPT', exact:true }).click();
+  await page.locator('#save-backend').click();
+  await expect(page.locator('#save-backend')).toBeEnabled();
+  await page.getByRole('button', { name:'Manage LLM APIs' }).click();
+  await expect(page.locator('#settings-llm')).toContainText('fixture@example.com');
+  await expect(page.locator('#prompt-api-key')).toHaveCount(0);
+  await page.getByRole('button', { name:'Delete LLM API', exact:true }).click();
+  await page.getByRole('button', { name:'Confirm', exact:true }).click();
+  await expect(page.getByText('This LLM API is used by an image API. Change its selection first.', {exact:true})).toBeVisible();
+  await page.reload();
+  await expect(page.locator('#llm-name')).toHaveValue('My ChatGPT');
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(page.locator('#settings-llm')).toContainText('Connected');
+  await page.screenshot({path:'dev/verification/browser/llm-settings-390.png',fullPage:true});
+  await login.close();
+});

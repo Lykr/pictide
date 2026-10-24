@@ -18,7 +18,7 @@ If direct installation is unavailable, open the release notes and update manuall
 
 See [Roam](roam.md) to adjust exploration, or [Getting started](getting-started.md) to connect an image service.
 
-Under **Image API**, choose Danbooru or natural-language prompts for each connection. Natural language uses the shared **Prompt LLM API** configured below; see [setup](getting-started.md#natural-language-prompts).
+Under **LLM API**, manage named text-service connections using API keys or ChatGPT sign-in. Under **Image API**, choose Danbooru or natural language; natural-language connections select one of your saved LLM APIs. See [setup](getting-started.md#natural-language-prompts).
 
 ## Task records
 

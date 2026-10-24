@@ -204,6 +204,27 @@ async def prompt_settings(request):
         await body(request) if request.method == "PUT" else None))
 
 
+async def llm_connections(request):
+    application = request.app[APPLICATION]
+    identifier = request.match_info.get('id')
+    if request.method == 'PUT':
+        result = await application.save_llm(identifier, await body(request))
+    elif request.method == 'DELETE':
+        result = await application.delete_llm(identifier)
+    else:
+        result = await application.llm_connections()
+    return web.json_response(result)
+
+
+async def llm_action(request):
+    operation = request.match_info.get('operation', 'status')
+    if operation == 'sign-in':
+        # The OAuth loopback callback must return to the computer running Pictide.
+        if request.remote not in ('127.0.0.1', '::1') or urlsplit('http://' + request.host).hostname not in ('127.0.0.1', 'localhost', '::1'):
+            raise ValidationError('Open Pictide on the server computer using its localhost address to sign in to ChatGPT.')
+    return web.json_response(await request.app[APPLICATION].llm_action(request.match_info['id'], operation))
+
+
 async def general_settings(request):
     return web.json_response(await request.app[APPLICATION].general_settings(
         await body(request) if request.method == "PUT" else None))
@@ -416,7 +437,10 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         WorkflowLibrary(paths.workflows, tasks.connections.validate), roam, recommendation_store, GeneralSettings(paths))
     from .prompt_preparation import PromptPreparation
     from .store.prompting import PromptStore
-    app[APPLICATION].prompting = PromptPreparation(PromptStore(storage))
+    from .store.chatgpt import ChatGPTCredentials
+    from .prompting.chatgpt import ChatGPTClient
+    app[APPLICATION].chatgpt = ChatGPTClient(ChatGPTCredentials(paths.root), app[APPLICATION].llm_changed)
+    app[APPLICATION].prompting = PromptPreparation(PromptStore(storage), app[APPLICATION].chatgpt)
     from .updates.service import UpdateService
     application = app[APPLICATION]
     application.updates = UpdateService(paths, on_change=lambda: application.events.publish('updates'))
@@ -426,6 +450,10 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get("/api/bootstrap", bootstrap), web.get("/api/events", events),
         web.get('/api/updates', updates), web.post('/api/updates/{operation:check|download|install}', update_action),
         web.get("/api/settings/prompting", prompt_settings), web.put("/api/settings/prompting", prompt_settings),
+        web.get('/api/llm-apis', llm_connections), web.put('/api/llm-apis/{id}', llm_connections),
+        web.delete('/api/llm-apis/{id}', llm_connections),
+        web.get('/api/llm-apis/{id}/status', llm_action, name='llm-status'),
+        web.post('/api/llm-apis/{id}/{operation:sign-in|cancel|models|disconnect|welcome}', llm_action),
         web.get("/api/settings/general", general_settings), web.put("/api/settings/general", general_settings),
         web.get("/api/settings/history", history_settings), web.put("/api/settings/history", history_settings),
         web.get("/api/settings/roam", roam_settings), web.put("/api/settings/roam", roam_settings),

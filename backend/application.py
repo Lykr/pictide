@@ -104,6 +104,8 @@ class PictideApplication:
         self._request_learning()
 
     async def stop(self):
+        if getattr(self, 'chatgpt', None):
+            await self.chatgpt.close()
         self._learning_stopping = True
         self._learning_wake.set()
         if self._roam_preparation:
@@ -225,6 +227,76 @@ class PictideApplication:
             self.events.publish("roam_settings")
         return {**{k: current[k] for k in ("base_url", "model", "revision")}, "has_api_key": bool(current["api_key"])}
 
+    async def llm_changed(self, identifier):
+        async with self._roam_lock:
+            config = await asyncio.to_thread(self.prompting.store.settings, identifier)
+            if not config.get('revision'):
+                raise ValidationError('LLM API no longer exists.')
+            await asyncio.to_thread(self.prompting.store.save_connection, {k: v for k, v in config.items() if k != 'revision'})
+            await asyncio.to_thread(self.roam.invalidate)
+        self.events.publish('prompting')
+        self.events.publish('roam_settings')
+
+    async def llm_connections(self):
+        accounts = await self.chatgpt.accounts()
+        rows = await asyncio.to_thread(self.prompting.store.connections)
+        return [{**{k: row.get(k, '') for k in ('id', 'name', 'kind', 'base_url', 'model', 'revision')},
+                 'has_api_key': bool(row.get('api_key')), 'account': accounts.get(row['id'])} for row in rows]
+
+    async def save_llm(self, identifier, payload):
+        from .prompting import validate_settings
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', identifier):
+            raise ValidationError('Invalid LLM API identifier.')
+        current = await asyncio.to_thread(self.prompting.store.settings, identifier)
+        name, kind = payload.get('name', ''), payload.get('kind', 'openai')
+        if not isinstance(name, str) or not name.strip() or len(name) > 100 or kind not in ('openai', 'chatgpt'):
+            raise ValidationError('Enter an LLM API name and supported connection type.')
+        if current.get('revision') and current.get('kind') != kind:
+            raise ValidationError('Create a separate LLM API to change the connection type.')
+        if kind == 'openai':
+            config = validate_settings({**current, **{k: payload[k] for k in ('base_url', 'api_key', 'model') if k in payload}})
+        else:
+            model = payload.get('model', '')
+            if not isinstance(model, str) or len(model) > 200 or '\n' in model or '\r' in model:
+                raise ValidationError('Invalid ChatGPT model.')
+            config = {'model': model.strip(), 'base_url': '', 'api_key': ''}
+        config.update(id=identifier, name=name.strip(), kind=kind)
+        async with self._roam_lock:
+            await asyncio.to_thread(self.prompting.store.save_connection, config)
+            await asyncio.to_thread(self.roam.invalidate)
+        self.events.publish('prompting')
+        self.events.publish('roam_settings')
+        return await self.llm_connections()
+
+    async def delete_llm(self, identifier):
+        async with self._roam_lock:
+            await asyncio.to_thread(self.prompting.store.delete_connection, identifier)
+            await asyncio.to_thread(self.roam.invalidate)
+        confirmed = await self.chatgpt.disconnect(identifier)
+        self.events.publish('prompting')
+        self.events.publish('roam_settings')
+        return {'connections': await self.llm_connections(), 'revoked': confirmed}
+
+    async def llm_action(self, identifier, operation):
+        config = await asyncio.to_thread(self.prompting.store.settings, identifier)
+        if not config.get('revision') or config.get('kind') != 'chatgpt':
+            raise ValidationError('Save a ChatGPT LLM API first.')
+        if operation == 'sign-in':
+            return await self.chatgpt.start(identifier)
+        if operation == 'status':
+            return self.chatgpt.status(identifier)
+        if operation == 'cancel':
+            await self.chatgpt.cancel(identifier)
+        elif operation == 'models':
+            return {'models': await self.chatgpt.models(identifier)}
+        elif operation == 'disconnect':
+            await self.llm_changed(identifier)
+            confirmed = await self.chatgpt.disconnect(identifier)
+            return {'revoked': confirmed}
+        elif operation == 'welcome':
+            await self.chatgpt.welcome(identifier)
+        return {'ok': True}
+
     async def connection_draft(self, identifier, payload):
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", identifier):
             raise ValidationError("后端 ID 只能包含字母、数字、下划线和横线。")
@@ -239,16 +311,20 @@ class PictideApplication:
     async def save_backend(self, identifier, payload):
         previous_backend = await asyncio.to_thread(self.storage.backend, identifier)
         draft = await self.connection_draft(identifier, payload)
+        if draft.get('prompt_type') == 'natural_language' and 'llm_id' in payload:
+            selected = await asyncio.to_thread(self.prompting.store.settings, draft['llm_id'])
+            if not selected.get('revision'):
+                raise ValidationError('Select a saved LLM API for natural-language prompts.')
         draft = await self.tasks.connections.resolve_connection(draft)
         if draft.get("workflow_mode") == "custom" and any(
                 key in payload for key in ("workflow_name", "workflow_id", "workflow_revision")):
             document = {key: draft[key] for key in ("workflow", "bindings", "output_nodes")}
             document["name"] = payload.get("workflow_name")
             document.update({key: payload[key] for key in ("workflow_id", "workflow_revision") if key in payload})
-            saved = await asyncio.to_thread(self.workflows.save_and_apply, document, draft, self.storage.save_backend)
+            saved = await asyncio.to_thread(self.workflows.save_and_apply, document, draft, self.prompting.store.save_image_backend)
             self.events.publish("workflows")
         else:
-            saved = await asyncio.to_thread(self.storage.save_backend, draft)
+            saved = await asyncio.to_thread(self.prompting.store.save_image_backend, draft)
         self.events.publish("backends")
         async with self._roam_lock:
             roam = await asyncio.to_thread(self.roam.get)
@@ -342,7 +418,7 @@ class PictideApplication:
         validated = self.tasks.connections.validate(backend)
         natural = backend.get("prompt_type") == "natural_language"
         if natural:
-            llm_revision = (await asyncio.to_thread(self.prompting.store.settings))['revision']
+            llm_revision = (await asyncio.to_thread(self.prompting.store.settings, backend.get('llm_id', 'legacy-prompt-api')))['revision']
             pending = sum(j['status'] in ('queued', 'submitting', 'running') for j in await self.list_jobs())
             if pending + count * repetitions > 100:
                 raise ValidationError('The image queue is full. Wait before preparing more prompts.')
@@ -388,7 +464,7 @@ class PictideApplication:
                    "candidate_result": dict(rounds[-1], **({"rendered": rendered} if natural else {})) if candidate else None,
                    "rendered": rendered if natural else None, "next_candidate": next_candidate}
         async with self._roam_lock:
-            if natural and (await asyncio.to_thread(self.prompting.store.settings))['revision'] != llm_revision:
+            if natural and (await asyncio.to_thread(self.prompting.store.settings, backend.get('llm_id', 'legacy-prompt-api')))['revision'] != llm_revision:
                 raise ConflictError('LLM settings changed. Submit a new generation request.')
             result = await self.tasks.database(self.storage.commit_generation_plan, fields["request_id"], digest, plans, context, backend)
         if natural:

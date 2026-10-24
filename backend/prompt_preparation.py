@@ -13,14 +13,15 @@ def fingerprint(value):
 
 
 class PromptPreparation:
-    def __init__(self, store):
+    def __init__(self, store, chatgpt=None):
         self.store = store
-        self.renderer = PromptRenderer()
+        self.renderer = PromptRenderer(chatgpt)
         # One conversion per application at a time, shared by previews and generation.
         self.lock = asyncio.Lock()
 
     async def prepare(self, identifier, backend, candidate, *, mode='random', previous=None, preview_id=None, automatic=False):
-        settings = await asyncio.to_thread(self.store.settings)
+        llm_id = backend.get('llm_id', 'legacy-prompt-api')
+        settings = await asyncio.to_thread(self.store.settings, llm_id)
         signature = fingerprint({'backend': backend, 'llm_revision': settings['revision']})
         semantic = {key: candidate[key] for key in ('positive', 'negative')}
         if preview_id:
@@ -50,7 +51,7 @@ class PromptPreparation:
             await asyncio.to_thread(self.store.started, identifier)
             text = await self.renderer.render(settings, semantic, mode=mode, previous=reference,
                                              negative_channel=backend_capabilities(backend)['negative_prompt'])
-            current = await asyncio.to_thread(self.store.settings)
+            current = await asyncio.to_thread(self.store.settings, llm_id)
             if current['revision'] != settings['revision']:
                 raise ConflictError('LLM settings changed during prompt preparation. Retry with the new settings.')
             result = dict(text, preparation_id=identifier, signature=signature, prompt_type='natural_language')

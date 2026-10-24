@@ -66,13 +66,15 @@ Positive terms support PMI and cooccurrence inspection through the shared Toolti
 
 ## Settings
 
-Use General, Roam, Image API, and History tabs under a single Settings heading. Forms share a 780px content width, `.settings-field`, and `.settings-stack`: label rows at least 24px high, 8px to controls, 16px between related fields, and 24px between sections. Two-column groups stack on narrow screens. Default Input / Select height is 36px; units use InputGroup. Place save actions at the lower right and connection tests at the left.
+Use General, Roam, Image API, LLM API, and History tabs under a single Settings heading. Forms share a 780px content width, `.settings-field`, and `.settings-stack`: label rows at least 24px high, 8px to controls, 16px between related fields, and 24px between sections. Two-column groups stack on narrow screens. Default Input / Select height is 36px; units use InputGroup. Place save actions at the lower right and connection tests at the left.
 
 General uses aligned rows for language, theme, image transitions, onboarding, and data location. Show only the data directory path with a soft background and monospace body text; wrap long paths and stack label/value on narrow screens. Avoid nested decorative cards.
 
 Roam includes prefetching, history limit, backend, playback, preference scope, mode, and recommendation strength. The active prompt preset is selected on Prompts rather than duplicated in Settings. History limit is an integer from 0 to 100000, initially 0; help explains disabled limits, older-image counting, exclusion of current/prefetched images, oldest-first pruning, deletion of unliked local images/JSON, and retention of liked images outside Roam.
 
 Image API uses one editable workflow selection/name control. Node parameters use a shared, initially collapsed Collapsible, reset to collapsed when switching backends. Opening the heading remains visually light. JSON, import, loading defaults, and validation errors expand it as needed. Preserve all drafts while collapsed; group fields by node, with single fields full-width and multiple fields in two columns. Input bindings and output selection stack on narrow screens.
+
+LLM API independently manages named API-key or ChatGPT connections. Natural-language Image APIs show a selector referencing these configurations and a Manage LLM APIs action; Danbooru hides it. Configuration changes preserve drafts across tabs. ChatGPT uses an explicit browser sign-in, an account/model selector, a first-use plan dialog and a usage link. Only operation progress stays inline; errors and results use floating notifications.
 
 History combines task records with initially collapsed image cleanup. Keep task pagination at 15 items and preserve mounted forms across tabs. The sidebar has no independent tasks entry. The top-level availability indicator reflects read-only checks of saved backends at configuration load/save rather than periodic probing. Global Settings uses Lucide Settings; Roam options uses Settings2.
 

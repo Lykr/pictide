@@ -23,7 +23,10 @@ def validate_backend(config: dict) -> dict:
     prompt_type = config.get("prompt_type", "danbooru")
     if prompt_type not in ("danbooru", "natural_language"):
         raise BackendError("Prompt type must be danbooru or natural_language")
-    return dict(_BACKENDS[kind]["validate"](config), prompt_type=prompt_type)
+    llm_id = config.get('llm_id', 'legacy-prompt-api')
+    if not isinstance(llm_id, str) or len(llm_id) > 80:
+        raise BackendError('Invalid LLM API selection')
+    return dict(_BACKENDS[kind]["validate"](config), prompt_type=prompt_type, llm_id=llm_id)
 
 
 def create_backend(config, session) -> GenerationBackend:

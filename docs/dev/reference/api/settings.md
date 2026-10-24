@@ -1,4 +1,4 @@
-# General and History Settings
+# Application and LLM Settings
 
 [简体中文](../../../zh-CN/dev/reference/api/settings.md)
 
@@ -24,6 +24,24 @@ General settings support partial updates, preserving omitted fields. History cle
 
 ## Prompt LLM API
 
-`GET /api/settings/prompting` returns `{base_url,model,revision,has_api_key}`. `PUT` accepts partial `{base_url,model,api_key}` updates and returns the same public shape. The saved configuration must have an HTTP(S) base URL and nonempty model ID; the URL must not contain credentials, query, or fragment. Omitted keys retain their value; an empty `api_key` clears it. Keys are stored locally and never returned in plaintext.
+`GET /api/llm-apis` lists `{id,name,kind,base_url,model,revision,has_api_key,account}` records. `kind` is `openai` (OpenAI-compatible Chat Completions) or `chatgpt` (official plan-backed Responses). `account` contains only email, connection/plan status, and first-use acknowledgement. Credentials are never returned.
 
-The service is shared by natural-language image configurations and is independent of their image API keys/models. Saving creates a new revision and invalidates outstanding Roam preparation. Conversion appends `/chat/completions` to the base URL and requires JSON-object output. Saving does not contact the provider; an explicit natural-language preview tests conversion and may incur text-service charges.
+`PUT /api/llm-apis/{id}` saves `{name,kind,base_url,model,api_key}` and returns the list. IDs contain 1–80 letters, digits, underscores or hyphens. Names contain 1–100 characters. OpenAI-compatible configurations require an HTTP(S) URL without credentials, query or fragment and a nonempty model ID. Omitted keys retain their value; empty keys clear it. A saved connection's kind is immutable; create a new record to change it. ChatGPT records may initially omit a model to allow sign-in before discovery. Saving does not submit inference.
+
+`DELETE /api/llm-apis/{id}` rejects connections referenced by a natural-language image API; otherwise it removes configuration and disconnects its renewable session. It returns `{connections,revoked}`. An unconfirmed remote revocation is reported, while local tokens are removed.
+
+ChatGPT operations use `POST /api/llm-apis/{id}/{operation}` with an empty JSON object:
+
+| Operation | Result |
+| --- | --- |
+| `sign-in` | `{authorization_url}`; requires a loopback peer and localhost Host |
+| `cancel` | Cancels the pending login and closes its callback listener |
+| `models` | `{models:[{value,label}]}` from the account-specific catalog |
+| `disconnect` | `{revoked}`; clears local tokens, retaining registration identity |
+| `welcome` | Acknowledges the first-use plan message |
+
+`GET /api/llm-apis/{id}/status` returns `idle`, `pending`, `exchanging`, `connected`, `failed`, `cancelled`, or `expired`, with a safe error when applicable. Login expires after ten minutes; callbacks bind PKCE, state, nonce and issued client ID, validate signed identity, and never activate a mismatched returning account.
+
+The legacy `GET/PUT /api/settings/prompting` remains an alias for the migrated `legacy-prompt-api` configuration and retains `{base_url,model,revision,has_api_key}`. Old natural-language image configurations without `llm_id` resolve only this legacy ID. New selections are explicit; no arbitrary first connection or billing fallback is used.
+
+Saving creates a revision and invalidates preparation. Conversion resolves the image API's selected connection; its credentials never enter image jobs. Explicit natural-language previews contact the text service and consume its allowance or API usage.

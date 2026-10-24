@@ -1,4 +1,5 @@
 import { createBackendSettings } from './backend-settings.js';
+import { createPromptSettings } from './prompt-settings.js';
 import { createGenerationController } from './generation-controller.js';
 import { createModel } from '../shared/model.mjs';
 import { onSignal, emitSignal } from '../shared/signals.mjs';
@@ -168,6 +169,7 @@ function historyNotice(message, error = false, kind = 'success') {
 const generation = createGenerationController({ state, api, getRoamSettings: () => roamSettings, renderJobs, refresh });
 const { updateGenerationHints, updateRuleControls, loadRuleConfigs } = generation;
 const backendSettings = createBackendSettings({ state, api, generation, checkBackendAvailability, showBackendAvailability, renderRoamBackends, renderArtifacts, loadRoamSettings });
+const promptSettings = createPromptSettings(api);
 const { renderBackends, loadBackend, loadWorkflowLibrary } = backendSettings;
 
 function artifactsForView() { return state.view === 'liked' ? state.likedArtifacts : state.artifacts; }
@@ -188,7 +190,7 @@ function setView(route, updateUrl = true) {
   state.view = view;
   publishUiState({ route: view === 'settings' ? `settings/${section || state.settingsSection}` : view, ...(view !== 'feed' ? { waiting: false } : {}) });
   emitSignal('close-image-info');
-  if (view === 'settings' && ['general', 'backend', 'roam', 'history'].includes(section)) state.settingsSection = section;
+  if (view === 'settings' && ['general', 'backend', 'llm', 'roam', 'history'].includes(section)) state.settingsSection = section;
   const editor = view === 'prompts';
   changed();
   if (view !== 'feed') emitSignal('roam-options-close');
@@ -201,7 +203,7 @@ function setView(route, updateUrl = true) {
   pageScroll.restore(view);
 }
 function setSettingsSection(section, updateUrl = true) {
-  if (!['general', 'backend', 'roam', 'history'].includes(section)) section = 'general';
+  if (!['general', 'backend', 'llm', 'roam', 'history'].includes(section)) section = 'general';
   state.settingsSection = section;
   if (state.view === 'settings') publishUiState({ route: `settings/${section}` });
   changed();
@@ -632,7 +634,7 @@ const commands = {
   'liked-refresh': () => { if (state.likedSort === 'score') return likedRanking.load(state.likedTags, true); state.likedError = ''; return refresh(true); },
   'liked-feedback': value => feedbackGenerated(value.id, value.toggle !== false, 'liked'),
   'roam-playback-toggle': () => roamPlayback.toggle(),
-  'before-update': () => !(generation.dirty || backendSettings.dirty || roamDraftDirty() || getUiState().editorDirty),
+  'before-update': () => !(generation.dirty || backendSettings.dirty || promptSettings.model.data.dirty || promptSettings.model.data.signingIn || roamDraftDirty() || getUiState().editorDirty),
   'updating': () => { applicationUpdating = true; roamPlayback.pause(); },
   'update-finished': () => { applicationUpdating = false; return refresh(true); },
 };
@@ -709,6 +711,7 @@ function connectEvents() {
     try {
       const topic = JSON.parse(event.data).topic;
       if (topic === 'updates') { emitSignal('updates-changed'); return; }
+      if (topic === 'prompting') { void promptSettings.load(true); emitSignal('prompt-settings-changed'); }
       if (topic === 'roam_settings' || topic === 'candidate') loadRoamSettings({ preserveDraft: true });
       if (topic === 'candidate') emitSignal('candidate-library-changed');
       if (topic === 'general_settings') syncTheme();
@@ -738,11 +741,12 @@ disposers.push(onSignal('prompt-settings-changed', () => { generation.invalidate
 disposers.push(onSignal('language-changed', () => { changed(); generation.model.changed(); backendSettings.model.changed(); renderJobPage(jobPager.state); renderArtifacts(); }));
   return () => {
     disposed = true; abort.abort(); clearInterval(fallbackTimer); clearTimeout(feedbackMotionTimer);
+    promptSettings.dispose();
     roamPlayback.pause(); nextImageWait.cancel(); likedRanking.cancel(); eventSource?.close();
     for (const dispose of disposers.splice(0)) dispose();
   };
 }
-return { model, generation, backendSettings, mount, commands, setPrivacy, setView, setSettingsSection, openSettings, moveImage, feedback,
+return { model, generation, backendSettings, promptSettings, mount, commands, setPrivacy, setView, setSettingsSection, openSettings, moveImage, feedback,
   requestNextRoamImage, imageLoaded, imageFailed, cancelJob, jobPager, saveHistory, submitRoamSettings,
   editRoam(patch) { Object.assign(state.roamDraft, patch); changed(); },
   editHistory(value) { state.historyDraft = value; changed(); },

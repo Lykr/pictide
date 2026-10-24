@@ -13,7 +13,7 @@ Code paths in this section are relative to `web/` at the project root.
 - `src/editor.tsx`: React-managed workspaces for read-only libraries, generation presets, and previews; no separate page entry point.
 - `src/shared/notifications.mjs`, `src/components/notifications.tsx`: the shared floating notification layer for errors and operation results; behavior is defined in the [component guidelines](reference/design/components.md#floating-notifications).
 - `src/controllers/`: browser state, events, and API calls. The backend Candidate module handles preset validation, co-occurrence expansion, and continuous generation within a budget.
-- `src/controllers/app.js`: composes the page controllers and coordinates navigation, galleries, Roam, and realtime refresh. `backend-settings.js` owns Image API/workflow drafts and save/test actions; `generation-controller.js` owns the Generate form, prompt counters, and uncertain submissions. `components/job-history.tsx` renders task records from the pager state.
+- `src/controllers/app.js`: composes the page controllers and coordinates navigation, galleries, Roam, and realtime refresh. `backend-settings.js` owns Image API/workflow drafts and save/test actions; `prompt-settings.js` independently owns named LLM configurations and ChatGPT sign-in state; `generation-controller.js` owns the Generate form, prompt counters, and uncertain submissions. `components/job-history.tsx` renders task records from the pager state.
 - `src/components/ui/`, `src/styles/theme.css`: shared shadcn/ui components and design tokens. See [Design Guidelines](design-system.md).
 
 React owns page markup and controlled inputs. Feature services store ordinary draft data in small observable models (`shared/model.mjs`); `useModel` subscribes with `useSyncExternalStore`. Actions accept values and return results or promises. Use shared shadcn/Radix components directly; do not introduce hidden proxy controls, native property interception, or DOM-based business-state synchronization.
@@ -24,7 +24,7 @@ Frontend unit checks live in `web/tests/unit/`; real-page checks and fixtures li
 
 ## Pages and State
 
-Internal routes are `#feed`, `#generate`, `#liked`, `#prompts`, and `#settings/general|roam|backend|history`. Task records live in Settings' History section, with no separate Tasks section.
+Internal routes are `#feed`, `#generate`, `#liked`, `#prompts`, and `#settings/general|roam|backend|llm|history`. Task records live in Settings' History section, with no separate Tasks section.
 
 Each feature model owns its draft; React views remain mounted across navigation. Server refreshes update service data without replacing unsaved drafts. Image windows distinguish Generate and Roam by source; Liked spans sources. The backend saves the viewing position. The UI does not access files, SQLite, or Python modules directly; business algorithms run in the backend.
 
