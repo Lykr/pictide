@@ -16,7 +16,7 @@ from unittest.mock import patch
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from backend.domain import ValidationError
-from backend.prompting.chatgpt import ChatGPTClient, ISSUER, TOKEN_URL, PERMISSION, read_response
+from backend.prompting.chatgpt import ChatGPTClient, ISSUER, TOKEN_URL, PERMISSION, read_response, remote_error
 from backend.store.chatgpt import ChatGPTCredentials
 
 
@@ -146,6 +146,25 @@ class ChatGPTTests(unittest.IsolatedAsyncioTestCase):
         completed = {'type': 'response.completed', 'response': {'status': 'completed', 'output': [
             {'type': 'message', 'content': [{'type': 'output_text', 'text': json.dumps(result)}]}]}}
         self.assertEqual(await read_response(Stream([delta, completed])), result)
+        text_done = {'type': 'response.output_text.done', 'output_index': 1, 'content_index': 0,
+                     'text': json.dumps(result)}
+        part_done = {'type': 'response.content_part.done', 'output_index': 1, 'content_index': 0,
+                     'part': {'type': 'output_text', 'text': json.dumps(result)}}
+        item_done = {'type': 'response.output_item.done', 'output_index': 1,
+                     'item': {'type': 'message', 'content': [{'type': 'output_text', 'text': json.dumps(result)}]}}
+        empty_completed = {'type': 'response.completed', 'response': {'status': 'completed', 'output': []}}
+        for done in (text_done, part_done, item_done):
+            self.assertEqual(await read_response(Stream([delta, done, empty_completed])), result)
+            with self.assertRaisesRegex(ValidationError, 'ended before completion'):
+                await read_response(Stream([done]))
+            with self.assertRaisesRegex(ValidationError, 'usage limit'):
+                await read_response(Stream([done, {'type': 'response.failed', 'response': {
+                    'error': {'code': 'subscription_sharing_usage_limit_exceeded'}}}]))
+        self.assertEqual(await read_response(Stream([text_done, part_done, item_done, empty_completed])), result)
+        with self.assertRaisesRegex(ValidationError, 'without prompt text'):
+            await read_response(Stream([empty_completed]))
+        with self.assertRaisesRegex(ValidationError, 'invalid prompt JSON'):
+            await read_response(Stream([{**text_done, 'text': 'not JSON'}, empty_completed]))
 
     async def test_responses_transport_uses_plan_without_image_or_paid_fallback(self):
         await self.seed()
@@ -160,9 +179,20 @@ class ChatGPTTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsInstance(payload['input'], list)
             self.assertEqual(payload['model'], 'fixture-model')
             self.assertNotIn('messages', payload)
-            event = {'type': 'response.completed', 'response': {'status': 'completed', 'output': [
-                {'type': 'message', 'content': [{'type': 'output_text', 'text': json.dumps(result)}]}]}}
-            return web.Response(text='data: '+json.dumps(event)+'\n\n', content_type='text/event-stream')
+            format = payload['text']['format']
+            if format.get('type') != 'json_schema':
+                return web.json_response({'error': {'code': 'unsupported_value', 'param': 'text.format.type'}}, status=400)
+            self.assertIs(format['strict'], True)
+            schema = format['schema']
+            self.assertEqual(set(schema['required']), {'positive', 'negative'})
+            self.assertEqual(schema['properties'], {'positive': {'type': 'string'}, 'negative': {'type': 'string'}})
+            self.assertIs(schema['additionalProperties'], False)
+            events = [
+                {'type': 'response.output_text.done', 'output_index': 0, 'content_index': 0, 'text': json.dumps(result)},
+                {'type': 'response.completed', 'response': {'status': 'completed', 'output': []}},
+            ]
+            return web.Response(text=''.join('data: '+json.dumps(event)+'\n\n' for event in events),
+                                content_type='text/event-stream')
         app = web.Application()
         app.router.add_post('/responses', inference)
         server = TestServer(app)
@@ -172,3 +202,45 @@ class ChatGPTTests(unittest.IsolatedAsyncioTestCase):
             value = await self.client.render({'id':'personal','model':'fixture-model'}, 'Return JSON.', {'positive':'garden','negative':''})
         self.assertEqual(value, result)
         self.assertEqual(len(requests), 1)
+
+    async def test_request_error_preserves_safe_diagnostics_without_retry_or_signout(self):
+        await self.seed()
+        calls = 0
+        async def rejected(request):
+            nonlocal calls
+            calls += 1
+            return web.json_response({'error': {
+                'code': 'subscription_sharing_unsupported_capability', 'param': 'text.format',
+                'message': 'private prompt and secret-access must not be exposed'}},
+                status=400, headers={'x-request-id': 'req_fixture'})
+        app = web.Application()
+        app.router.add_post('/responses', rejected)
+        server = TestServer(app)
+        await server.start_server()
+        self.addAsyncCleanup(server.close)
+        with patch('backend.prompting.chatgpt.RESOURCE', str(server.make_url('/')).rstrip('/')):
+            with self.assertLogs('backend.prompting.chatgpt', level='WARNING') as logs:
+                with self.assertRaises(ValidationError) as raised:
+                    await self.client.render({'id': 'personal', 'model': 'fixture-model'}, 'Return JSON.', {})
+        message = str(raised.exception)
+        self.assertIn('HTTP 400', message)
+        self.assertIn('subscription_sharing_unsupported_capability', message)
+        self.assertIn('text.format', message)
+        self.assertNotIn('sign in again', message.lower())
+        self.assertIn('req_fixture', '\n'.join(logs.output))
+        self.assertNotIn('secret-access', message + str(logs.output))
+        self.assertNotIn('private prompt', message + str(logs.output))
+        self.assertEqual(calls, 1)
+        self.assertEqual(self.credentials.read()['accounts']['personal']['access_token'], 'secret-access')
+
+    def test_unknown_error_shapes_do_not_echo_bodies_or_ask_for_signin_on_400(self):
+        cases = [None, {'detail': 'secret-access'}, {'error': ['secret-access']},
+                 {'error': {'code': [], 'param': {'private': 'prompt'}, 'message': 'secret-access'}},
+                 {'error': {'code': 'Bearer secret-access', 'param': 'private prompt'}}]
+        for body in cases:
+            with self.subTest(body=body), self.assertLogs('backend.prompting.chatgpt', level='WARNING') as logs:
+                message = str(remote_error(400, body, 'Bearer secret-access'))
+            self.assertIn('HTTP 400', message)
+            self.assertNotIn('secret-access', message + str(logs.output))
+            self.assertNotIn('private prompt', message + str(logs.output))
+            self.assertNotIn('sign in again', message.lower())

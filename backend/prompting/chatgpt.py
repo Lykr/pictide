@@ -3,6 +3,8 @@ import asyncio
 import base64
 import hashlib
 import json
+import logging
+import re
 import secrets
 import time
 import uuid
@@ -30,15 +32,39 @@ def public_account(record):
             'welcomed': record.get('welcomed', False)}
 
 
-def remote_error(status, data):
-    code = data.get('error', {}) if isinstance(data, dict) else {}
-    code = code.get('code', '') if isinstance(code, dict) else code
+def remote_error(status, data, request_id=''):
+    error = data.get('error', data) if isinstance(data, dict) else {}
+    code = error.get('code', '') if isinstance(error, dict) else error
+    param = error.get('param', '') if isinstance(error, dict) else ''
+    # Keep bounded machine fields; provider messages/details can echo prompts or credentials.
+    def field(value, pattern):
+        return value if isinstance(value, str) and re.fullmatch(pattern, value) else ''
+    code = field(code, r'[a-z][a-z0-9_]{0,95}')
+    param = field(param, r'[a-z][a-zA-Z0-9_.\[\]]{0,127}')
+    request_id = field(request_id, r'req_[a-zA-Z0-9_-]{1,120}')
+    logging.getLogger(__name__).warning('ChatGPT request rejected: http_status=%s code=%s param=%s request_id=%s',
+                                       status, code or '-', param or '-', request_id or '-')
     messages = {
         'subscription_sharing_usage_limit_exceeded': 'ChatGPT usage limit reached. Manage usage in ChatGPT settings.',
         'subscription_sharing_user_not_eligible': 'ChatGPT plan usage is unavailable for this account or workspace.',
         'subscription_sharing_usage_unavailable': 'ChatGPT usage is temporarily unavailable. Retry later.',
+        'subscription_sharing_unsupported_capability': 'Check the selected ChatGPT model and request format.',
+        'subscription_sharing_route_not_supported': 'The ChatGPT request route is unsupported. Check the integration.',
+        'subscription_sharing_invalid_user': 'Check the selected ChatGPT account and granted plan permission.',
+        'chatpass_v2_scope_not_authorized': 'Check the ChatGPT client and granted plan permission.',
+        'chatpass_v2_invalid_authorization_context': 'Check the ChatGPT client and granted plan permission.',
+        'subscription_sharing_user_unavailable': 'ChatGPT account information is temporarily unavailable. Retry later.',
     }
-    return ValidationError(messages.get(code, f'ChatGPT request failed (HTTP {status}). Check the connection or sign in again.'))
+    if code in TERMINAL_REFRESH:
+        action = 'ChatGPT sign-in expired. Sign in again in LLM API settings.'
+    else:
+        action = messages.get(code, {
+            400: 'Check the selected ChatGPT model and request format.',
+            401: 'Check the selected ChatGPT account and granted plan permission.',
+            403: 'Check ChatGPT account eligibility and granted plan permission.',
+        }.get(status, 'Check the connection and retry explicitly.'))
+    details = ''.join(f' {label}: {value}.' for label, value in (('Code', code), ('Parameter', param)) if value)
+    return ValidationError(f'ChatGPT request failed (HTTP {status}). {action}{details}')
 
 
 class ChatGPTClient:
@@ -299,7 +325,11 @@ class ChatGPTClient:
             raise ValidationError('Choose a ChatGPT model in LLM API settings.')
         payload = {'model': config['model'], 'instructions': instructions,
                    'input': [{'role': 'user', 'content': json.dumps(data, ensure_ascii=False)}],
-                   'store': False, 'stream': True, 'text': {'format': {'type': 'json_object'}}}
+                   'store': False, 'stream': True, 'text': {'format': {
+                       'type': 'json_schema', 'name': 'image_prompts', 'strict': True,
+                       'schema': {'type': 'object', 'properties': {
+                           'positive': {'type': 'string'}, 'negative': {'type': 'string'}},
+                           'required': ['positive', 'negative'], 'additionalProperties': False}}}}
         url = RESOURCE + '/responses'
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120)) as session:
@@ -311,8 +341,8 @@ class ChatGPTClient:
                             error = json.loads(raw)
                         except ValueError:
                             error = {}
-                        raise remote_error(response.status, error)
-                    return await read_response(response.content)
+                        raise remote_error(response.status, error, response.headers.get('x-request-id', ''))
+                    return await read_response(response.content, response.headers.get('x-request-id', ''))
         except (aiohttp.ClientError, asyncio.TimeoutError):
             raise ValidationError('ChatGPT request was interrupted. Retry explicitly; no image was submitted.') from None
 
@@ -321,9 +351,17 @@ class ChatGPTClient:
             await self.cancel(identifier)
 
 
-async def read_response(content):
+async def read_response(content, request_id=''):
     """Bound SSE input and accept only a terminal completed response."""
     buffer, size, lines = b'', 0, []
+    completed_parts = {}
+
+    def retain_text(output_index, content_index, text):
+        if (type(output_index) is not int or type(content_index) is not int
+                or not 0 <= output_index <= 2048 or not 0 <= content_index <= 2048 or not isinstance(text, str)):
+            raise ValidationError('ChatGPT returned invalid prompt data.')
+        completed_parts[output_index, content_index] = text
+
     async for chunk in content.iter_chunked(16384):
         size += len(chunk)
         if size > 2 * 1024 * 1024:
@@ -343,15 +381,31 @@ async def read_response(content):
                 event = json.loads(raw)
                 kind = event.get('type')
                 if kind in ('response.failed', 'response.incomplete', 'error'):
-                    raise remote_error(200, event.get('response', event))
-                if kind == 'response.completed':
+                    raise remote_error(200, event.get('response', event), request_id)
+                if kind == 'response.output_text.done':
+                    retain_text(event['output_index'], event['content_index'], event['text'])
+                elif kind == 'response.content_part.done' and event.get('part', {}).get('type') == 'output_text':
+                    retain_text(event['output_index'], event['content_index'], event['part']['text'])
+                elif kind == 'response.output_item.done' and event.get('item', {}).get('type') == 'message':
+                    for index, part in enumerate(event['item'].get('content', [])):
+                        if part.get('type') == 'output_text':
+                            retain_text(event['output_index'], index, part['text'])
+                elif kind == 'response.completed':
                     response = event['response']
                     if response.get('status') != 'completed':
                         raise ValidationError('ChatGPT did not complete the prompt.')
                     text = ''.join(part['text'] for item in response.get('output', [])
                                    if item.get('type') == 'message' for part in item.get('content', [])
                                    if part.get('type') == 'output_text')
-                    return json.loads(text)
+                    # Stateless streams may omit output from the terminal response.
+                    if not text:
+                        text = ''.join(completed_parts[key] for key in sorted(completed_parts))
+                    if not text:
+                        raise ValidationError('ChatGPT completed without prompt text.')
+                    try:
+                        return json.loads(text)
+                    except ValueError:
+                        raise ValidationError('ChatGPT returned invalid prompt JSON.') from None
             except (ValueError, KeyError, TypeError, AttributeError) as error:
                 if isinstance(error, ValidationError):
                     raise
