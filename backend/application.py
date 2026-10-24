@@ -707,6 +707,11 @@ class PictideApplication:
                     raise ValidationError("停泊时暂不可编辑画面锚点。")
                 document = await asyncio.to_thread(self.roam.save, count, backend_id, preset_id, max_history,
                                                    payload.get("playback_interval_seconds"), payload.get("liked_tags_only"), payload.get("prompt_mode"), payload.get("candidate_count"), recommendation, anchors)
+                saved_state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
+                if saved_state["paused"]:
+                    # A full save is an explicit retry even when unchanged options retain the epoch.
+                    document = await asyncio.to_thread(self.roam.save, document["prefetch_count"], document["backend_id"],
+                                                       document["preset_id"], document["max_history_images"])
                 if document["epoch"] != previous["epoch"]:
                     await self.clean_history(force=True, roam_only=True)
                 self.events.publish("roam_settings")

@@ -19,6 +19,7 @@ GROUPS = {
         'tests.backend.generation.test_cloud_backends.CloudProtocolTests.test_openai_base64_and_actual_request_fields',
         'tests.backend.generation.test_cloud_backends.CloudProtocolTests.test_gemini_interactions_only_final_images_and_stateless',
         'tests.backend.application.test_natural_prompts.NaturalPromptTests.test_stay_skips_llm_and_feedback_uses_semantic_snapshot',
+        'tests.backend.application.test_natural_prompts.NaturalPromptTests.test_full_roam_settings_save_retries_failed_conversion_without_api_save',
         'tests.backend.application.test_llm_connections.LLMConnectionTests.test_named_connections_select_independently_and_protect_references',
         'tests.backend.application.test_chatgpt.ChatGPTTests.test_registration_pkce_state_signature_and_replay',
     ),

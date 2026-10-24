@@ -17,7 +17,7 @@ Use Python 3.12 to match release CI.
 
 | Group | Checks | Requirements |
 | --- | --- | --- |
-| `core` (default) | Ten smokes: macOS update restart mode, preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests, natural-language Anchor reuse, named LLM references, and OAuth callback verification | Application Python dependencies |
+| `core` (default) | Eleven smokes: macOS update restart mode, preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests, natural-language Anchor reuse and explicit prefetch retry, named LLM references, and OAuth callback verification | Application Python dependencies |
 | `ui` | Seven Node test files: tour state and placement, generation drafts, notifications, theme/language races, API key editing, HTTP-compatible request IDs | Node.js |
 | `corpus` | Three offline smokes: post filtering, stale/corrupt prebuilt rejection, vocabulary editions | Python environment with `corpus/requirements.txt` |
 | `browser` | Real-page flows: shared layouts and safe areas, notifications, tours, API forms, explicit updates, Roam feedback and autoplay, standalone request IDs, and desktop/mobile natural-language configuration and preview | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |

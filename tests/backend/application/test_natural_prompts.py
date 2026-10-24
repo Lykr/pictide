@@ -159,6 +159,45 @@ class NaturalPromptTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.renderer.calls), 1)
         self.assertEqual(self.app.storage.jobs(), [])
 
+    async def test_full_roam_settings_save_retries_failed_conversion_without_api_save(self):
+        self.renderer.failure = True
+        await self.app.ensure_roam({'anchor_id': None})
+        await self.app._roam_preparation
+        paused = await self.app.ensure_roam({'anchor_id': None})
+        self.assertTrue(paused['paused'])
+        self.assertEqual(len(self.renderer.calls), 1)
+        backend = self.app.storage.backend('local')
+        settings = await self.app.roam_settings()
+        fields = ('prefetch_count', 'max_history_images', 'backend_id', 'preset_id',
+                  'playback_interval_seconds', 'liked_tags_only', 'prompt_mode', 'candidate_count',
+                  'recommendation_strength', 'strong_candidate_multiplier')
+        payload = {key: settings[key] for key in fields}
+        response = await self.client.put('/api/settings/roam', json={'playback_interval_seconds': settings['playback_interval_seconds']})
+        self.assertTrue((await response.json())['paused'])
+        self.assertEqual(len(self.renderer.calls), 1)
+        self.renderer.failure = False
+        response = await self.client.put('/api/settings/roam', json=payload)
+        self.assertEqual(response.status, 200)
+        saved = await response.json()
+        self.assertFalse(saved['paused'], saved)
+        self.assertNotIn('error', saved)
+        self.assertEqual({key: saved[key] for key in fields}, payload)
+        self.assertEqual(self.app.storage.backend('local'), backend)
+        self.assertEqual(len(self.renderer.calls), 1)
+        self.assertEqual(self.app.storage.jobs(), [])
+        await self.app.ensure_roam({'anchor_id': None})
+        await self.app._roam_preparation
+        self.assertEqual(len(self.renderer.calls), 2)
+        self.assertEqual(len(self.app.storage.jobs()), 1)
+        self.assertFalse((await self.app.roam_settings())['paused'])
+        epoch = self.app.roam.get()['epoch']
+        jobs = self.app.storage.jobs()
+        response = await self.client.put('/api/settings/roam', json=payload)
+        self.assertFalse((await response.json())['paused'])
+        self.assertEqual(self.app.roam.get()['epoch'], epoch)
+        self.assertEqual(self.app.storage.jobs(), jobs)
+        self.assertEqual(len(self.renderer.calls), 2)
+
     async def test_settings_secrets_stale_preview_and_danbooru(self):
         public = await self.app.prompt_settings()
         self.assertTrue(public['has_api_key'])
