@@ -32,7 +32,7 @@ export function WorkflowNodeFields() {
 export function WorkflowOutputs() {
   const { backendSettings: service } = useApplication();
   const state = useModel(service.model);
-  return <div id="output-nodes" role="group" aria-label={t('输出节点')} className="grid w-full min-w-0 max-h-44 gap-1.5 overflow-y-auto p-1">{state.outputs.map((item: any) => <Label key={item.value}>
+  return <div id="output-nodes" role="group" aria-label={t('输出节点')} className="grid auto-rows-max w-full min-w-0 max-h-44 gap-1.5 overflow-y-auto p-1">{state.outputs.map((item: any) => <Label key={item.value}>
     <Checkbox checked={state.draft.outputs.includes(item.value)} onCheckedChange={checked => service.edit('outputs', checked ? [...state.draft.outputs, item.value] : state.draft.outputs.filter((value: string) => value !== item.value))} /><span className="min-w-0 wrap-anywhere leading-normal">{item.label}</span>
   </Label>)}</div>;
 }

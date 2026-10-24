@@ -82,9 +82,12 @@ for (const width of [1365, 390]) test(`workflow output choices align and retain 
       const range = document.createRange();
       range.selectNodeContents(row.lastChild);
       const text = range.getBoundingClientRect();
-      return { checkboxRight: checkbox.right, textLeft: text.left, checkboxCenter: checkbox.y + checkbox.height / 2, textCenter: text.y + text.height / 2, height: row.getBoundingClientRect().height };
+      const bounds = row.getBoundingClientRect();
+      return { checkboxRight: checkbox.right, textLeft: text.left, checkboxCenter: checkbox.y + checkbox.height / 2, textCenter: text.y + text.height / 2, height: bounds.height, rowTop: bounds.top, rowBottom: bounds.bottom, textTop: text.top, textBottom: text.bottom };
     });
     expect(geometry.checkboxRight).toBeLessThan(geometry.textLeft);
+    expect(geometry.textTop).toBeGreaterThanOrEqual(geometry.rowTop);
+    expect(geometry.textBottom).toBeLessThanOrEqual(geometry.rowBottom);
     expect(Math.abs(geometry.checkboxCenter - geometry.textCenter)).toBeLessThan(1);
     if (width === 390) expect(geometry.height).toBeGreaterThanOrEqual(44);
   }
