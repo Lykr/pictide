@@ -1,3 +1,4 @@
+import { NaturalPrompt } from '../components/natural-prompt';
 import { t } from '../i18n/index.mjs';
 import { useApplication, useModel } from '../shared/application-context';
 import { IconButton, HelpTip } from '../components/actions';
@@ -17,6 +18,7 @@ export function GenerationForm() {
   const genInput = (key: string) => ({ value: draft[key], onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => generation.edit(key, event.target.value) });
   const genSelect = (key: string) => ({ value: draft[key], onValueChange: (value: string) => generation.edit(key, value) });
   const capabilities = backendCapabilities(state.backends.find((item: any) => item.id === draft.backendId));
+  const natural = state.backends.find((item: any) => item.id === draft.backendId)?.prompt_type === 'natural_language';
   const rules = ruleVisibility(draft.source, draft.mode, draft.automatic);
   return <div className="generation-form-panel">
 {"\n      "}<div className="compose-heading">
@@ -81,14 +83,15 @@ export function GenerationForm() {
   <p id="rule-generation-note" className="hint" role="status" data-tooltip={t(draft.automatic ? "计数已更新为下次值，当前提示词可直接编辑。" : "抽取报告对应编辑前的结果，重新勾选自动抽取可恢复共现生成。")} hidden={!gen.promptNote}>{gen.promptNote?.()}</p>
   <Disclosure id="rule-report" className="rule-report" hidden={!gen.report} title={t("抽取报告")}><pre id="rule-report-content">{JSON.stringify(gen.report, null, 2)}</pre></Disclosure>
 </fieldset>
-{"\n        "}<Label>{t("正向提示词")}<Textarea id="positive" {...genInput("positive")} rows={8} placeholder={t("描述你想看到的画面…")} required={rules.positiveRequired}>
+{"\n        "}<Label>{t(natural ? "正向标签" : "正向提示词")}<Textarea id="positive" {...genInput("positive")} rows={8} placeholder={t("描述你想看到的画面…")} required={rules.positiveRequired}>
 </Textarea>
 </Label>
-{"\n        "}<Label id="negative-field" hidden={capabilities.cloud && !capabilities.negative_prompt}>{t("负向提示词")}<Textarea id="negative" {...genInput("negative")} rows={4} placeholder={t("不希望出现的内容（可选）")} disabled={capabilities.cloud && !capabilities.negative_prompt}>
+{"\n        "}<Label id="negative-field" hidden={!natural && capabilities.cloud && !capabilities.negative_prompt}>{t(natural ? "负向标签" : "负向提示词")}<Textarea id="negative" {...genInput("negative")} rows={4} placeholder={t("不希望出现的内容（可选）")} disabled={!natural && capabilities.cloud && !capabilities.negative_prompt}>
 </Textarea>
-<small id="negative-binding-note" hidden={!state.backends.length || capabilities.negative_prompt || capabilities.cloud}>{t("当前生图 API 未绑定负向输入，请保持为空，或在生图 API 设置中绑定。")}</small>
+<small id="negative-binding-note" hidden={natural || !state.backends.length || capabilities.negative_prompt || capabilities.cloud}>{t("当前生图 API 未绑定负向输入，请保持为空，或在生图 API 设置中绑定。")}</small>
 </Label>
-<p id="generation-capability-note" className="hint" hidden={!capabilities.cloud}>{t("此生图 API 不支持负向提示词和图像种子；本次仅发送正向提示词，原输入保留。候选预设中的负向词仍需移除。")}</p>
+<NaturalPrompt prompt={gen.rendered} />
+<p id="generation-capability-note" className="hint" hidden={!capabilities.cloud || natural}>{t("此生图 API 不支持负向提示词和图像种子；本次仅发送正向提示词，原输入保留。候选预设中的负向词仍需移除。")}</p>
 <p id="generation-cloud-note" className="hint" hidden={!capabilities.cloud}>{t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")}</p>
 {"\n        "}<div className="generation-plan-fields"><Label id="seed-field" hidden={capabilities.cloud && !capabilities.seed}><span className="field-caption">{t("图像种子")}<HelpTip id="seed-note" text={t(capabilities.seed ? "-1 每个任务随机；非负值按任务递增，跨轮延续。实际种子随图片保存。" : "未绑定种子输入，将使用工作流自身的种子设置。")} /></span><Input id="seed" {...genInput("seed")} type="number" min="-1" max="9007199254740991" step="1" disabled={!capabilities.seed} />
 

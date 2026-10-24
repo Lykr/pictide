@@ -17,10 +17,10 @@ Use Python 3.12 to match release CI.
 
 | Group | Checks | Requirements |
 | --- | --- | --- |
-| `core` (default) | Seven smokes: macOS update restart mode, preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests | Application Python dependencies |
+| `core` (default) | Eight smokes: macOS update restart mode, preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests, natural-language Anchor reuse and semantic feedback | Application Python dependencies |
 | `ui` | Seven Node test files: tour state and placement, generation drafts, notifications, theme/language races, API key editing, HTTP-compatible request IDs | Node.js |
 | `corpus` | Three offline smokes: post filtering, stale/corrupt prebuilt rejection, vocabulary editions | Python environment with `corpus/requirements.txt` |
-| `browser` | Fifteen real-page flows: notifications and explicit update-check results without layout shifts, modal retry, mobile tour, Roam keyboard/swipe feedback, API-save-to-Generate, manual update actions with draft protection, mobile update/error presentation, bounded restart waiting, three shared-layout scenarios across image viewers and settings, nonzero safe areas through image-viewer rotation, and standalone actions without `crypto.randomUUID` | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
+| `browser` | Real-page flows: shared layouts and safe areas, notifications, tours, API forms, explicit updates, Roam feedback and autoplay, standalone request IDs, and desktop/mobile natural-language configuration and preview | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
 
 `ui` and `browser` also have frontend shortcuts: `pnpm --dir web test` and `pnpm --dir web run test:browser`. The shared Python entry point passes its own interpreter to the browser fixture; the frontend shortcut uses `python` on `PATH`.
 
@@ -46,6 +46,8 @@ Failures retain screenshots, traces and a JSON report in `dev/verification/brows
 Application-update changes additionally use `python -m unittest tests.backend.updates.test_updates -v` and `web/tests/browser/updates.spec.mjs`. They cover explicit actions, equal/older published versions, unsaved drafts, version reload, bounded restart waiting, and mobile manual-update/error presentation. Release CI adds `--previous-release` to the portable smoke: the actual previous stable package prepares settings and data, a replacement failure restores the old program, and a successful upgrade must serve the target version while preserving data and models. Use `--previous-archive PATH` for an already downloaded older ZIP. Only a successful cross-version native smoke enables direct installation; same-version self-replacement is reported separately.
 
 Controlled-form coverage lives in `web/tests/unit/generation-draft.test.mjs` and `web/tests/browser/react-forms.spec.mjs`. It checks uncertain-submit request IDs, duplicate submission, draft retention, workflow node/JSON editing, validation, and stale workflow responses. Browser task-history checks retain metadata and disclosure state across navigation.
+
+Natural-language changes use `python -m unittest tests.backend.application.test_natural_prompts -v` and `web/tests/browser/natural-prompts.spec.mjs`. They cover tag/text separation, historical feedback, Drift/Flow/Anchor behavior, preview reuse, partial batch recovery, settings invalidation, interrupted automatic requests, cloud negative-channel constraints, JSON protocol validation, masked credentials, and read-only previews at desktop/phone widths. The LLM and image API are mocked; semantic fidelity and sentence-structure stability still require separately authorized real-service verification.
 
 ## Release checks
 

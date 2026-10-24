@@ -24,6 +24,11 @@ class BrowserBackend(FakeBackend):
         return result
 
 
+class BrowserPromptRenderer:
+    async def render(self, config, candidate, **options):
+        return {'positive': 'A quiet garden under a blue sky.', 'negative': ''}
+
+
 async def main():
     workspace = ROOT / 'dev/verification/browser'
     workspace.mkdir(parents=True, exist_ok=True)
@@ -36,6 +41,7 @@ async def main():
         backend = BrowserBackend()
         app = host.create_app(data, lambda config, session: backend)
         application = app[APPLICATION]
+        application.prompting.renderer = BrowserPromptRenderer()
         application.recommendation = RecommendationService(application.recommendation_store, CPUEncoder())
         application.storage.save_backend({**configuration(), 'id': 'fixture', 'name': 'Browser fixture'})
         preset = application.candidates.save_preset({'name': 'Browser fixture', 'document': {

@@ -58,10 +58,13 @@ The number of fixed positive terms must not exceed max_tags. Newly added positiv
 | `max_steps` | Integer 1–1000000; 100 when omitted; expansion search limit for all modes |
 | `seed_control` / `step_control` | `fixed / increment / decrement / randomize`; default fixed |
 | `document` | Optional preset draft that overrides the saved preset contents |
+| `backend_id` | Optional saved image API for preview conversion. Omit to generate tags only; a natural-language backend adds `rendered`. This is App orchestration, not a Candidate algorithm parameter. |
 
 Post-generation controls advance the parameters for the next round during multi-round job generation. A single preview returns the current result without advancing automatically. random_each_run creates a new prompt seed on every generation; the image seed is configured separately in the job request.
 
 The response includes `positive,negative,seed,selected_tags,candidate_id,source_id,preset_id,mode,report`. Each selected_tags item contains `id,text,categories,channel,source_id`. `report` is `{stop_reason,tag_count,unrecognized_fixed}`; sequence additionally includes `{seed,step,change_budget,changes}`.
+
+Natural-language previews keep those tag fields unchanged and add `rendered:{positive,negative,preparation_id,signature,prompt_type}`. Explicit preview calls contact the configured LLM; reading historical results does not. The preparation ID can be supplied to [job submission](jobs.md) with the same tags to reuse the exact text. A changed configuration or expired preparation returns 409 rather than silently replacing a preview. A standalone preview does not carry prior natural-language wording between calls.
 
 The target length is sampled uniformly between the lower and upper bounds. When co-occurrence is insufficient or the search limit is reached, the current combination is returned; failing to reach the target length does not cause an error. Possible stop_reason values are `target_length,search_limit,no_eligible_tags,budget_zero`. Data that is not ready and invalid parameters still produce errors.
 

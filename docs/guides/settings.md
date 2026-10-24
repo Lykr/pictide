@@ -18,6 +18,8 @@ If direct installation is unavailable, open the release notes and update manuall
 
 See [Roam](roam.md) to adjust exploration, or [Getting started](getting-started.md) to connect an image service.
 
+Under **Image API**, choose Danbooru or natural-language prompts for each connection. Natural language uses the shared **Prompt LLM API** configured below; see [setup](getting-started.md#natural-language-prompts).
+
 ## Task records
 
 Open History to check generation progress, inspect failures, or cancel tasks you no longer need. Generate also lets you cancel all its tasks that have not started; tasks already running in the image service continue.

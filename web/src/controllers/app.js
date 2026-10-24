@@ -103,6 +103,7 @@ const refillRoam = createRefillCoordinator({
   anchor: () => state.activeId || null,
   request: anchor_id => api('/api/roam/ensure', { method: 'POST', body: JSON.stringify({ anchor_id, demand: !!nextImageWait.current }) }),
   result: result => {
+    state.preparingPrompt = !!result.preparing_prompt; changed();
     roamAnchorRetried = false;
     if (Number.isInteger(result.prefetch_count)) roamSettings.prefetch_count = result.prefetch_count;
     if (result.job && !state.jobs.some(job => job.id === result.job.id)) { state.jobs.unshift(result.job); renderJobs(); }
@@ -234,7 +235,7 @@ function renderArtifacts() {
     cancelImageTransition(elements.image); roamImageSwitchPending = false; immersive.leave(); state.currentImage = null; state.imageReady = false;
     publishUiState({ imageInfo: null }); syncRoamPlayback(); changed(); return;
   }
-  publishUiState({ imageInfo: { id: artifact.id, seed: artifact.seed_applied === false ? imageSeedLabel(artifact) : String(artifact.seed ?? '—'), positive: artifact.positive || '', negative: artifact.negative || '' } });
+  publishUiState({ imageInfo: { id: artifact.id, seed: artifact.seed_applied === false ? imageSeedLabel(artifact) : String(artifact.seed ?? '—'), sourcePositive: artifact.source_prompts?.positive ?? artifact.positive ?? '', positive: artifact.positive || '', negative: artifact.negative || '' } });
   if (state.currentImage !== artifact.id) {
     clearFeedbackNotice(); cancelImageTransition(elements.image); roamImageSwitchPending = state.currentImage !== null;
     state.currentImage = artifact.id; state.imageFailed = false; state.imageReady = false; dismissNotification('roam-image-error');
@@ -731,6 +732,7 @@ fallbackTimer = setInterval(() => { if (!realtimeConnected) refresh(); }, 2000);
 
 // Preset changes refresh selectors without resetting generator counters or manual drafts.
 disposers.push(onSignal('candidate-presets-changed', () => { loadRuleConfigs(); }));
+disposers.push(onSignal('prompt-settings-changed', () => { generation.invalidatePrompt(); }));
 
 
 disposers.push(onSignal('language-changed', () => { changed(); generation.model.changed(); backendSettings.model.changed(); renderJobPage(jobPager.state); renderArtifacts(); }));

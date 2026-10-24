@@ -16,6 +16,7 @@ The main business database stores application state, the personal preset databas
 | `pending_image_deletions` | Persistent reclamation queue for local images and JSON |
 | `roam_*` | Viewing position, prefetch ownership, settings, anchors, and pause state |
 | `general_settings` | Theme, language, and image transition effects |
+| `prompt_settings` / `prompt_preparations` | Shared text-service configuration and bounded conversion/retry records |
 | `recommendation_*` | Model vectors, preference parameters, feedback evidence, and reset records |
 | `artifact_preference_scores` / `recommendation_score_range` | Raw image score cache, manual refresh time, and historical score range |
 
@@ -54,6 +55,14 @@ Generation batches and individual tasks share SQLite; there is no separate batch
 The batch and all tasks are written in one transaction. Network retries retrieve the original batch by request ID. Each task still references its submission-time backend revision; artifacts remain linked through `artifacts.job_id`.
 
 Image sections reuse task ownership: images linked through `roam_jobs` belong to Roam; all others belong to Generate. Queries naturally place manual images created before the upgrade in Generate, without rewriting, moving, or deleting existing images or prompt JSON, or changing feedback. Liked retains images across sources, and history cleanup settings apply to both image types.
+
+## Prompt Preparation
+
+`PromptStore` owns two tables in the main database. `prompt_settings` stores one configuration JSON (including the text API key) and a revision. `prompt_preparations` stores an ID, input digest, document, attempted flag, optional result JSON, and creation time. A successful conversion is saved before image submission; an attempted automatic conversion without a result requires explicit recovery rather than automatic repetition. The shared LLM key never enters an image backend revision or public response.
+
+The newest 500 preparation records are retained. Batch selection records are removed after the batch is committed; Roam selection and conversion records are removed after its job snapshot is saved. Preview and Generate conversion results remain reusable until evicted. This is bounded working history, not permanent idempotency for unsubmitted requests: expired previews return 409, and old unsubmitted requests may need fresh conversion. Submitted batches retain the existing `generation_batches` replay behavior.
+
+Nullable `jobs.prompt_snapshot` contains the original `positive`/`negative` concepts for natural-language jobs and is exposed as `source_prompts` on jobs and images. Actual submitted text remains in `jobs.positive`/`negative`. Roam's candidate JSON retains structured tags and a `rendered` object with the final text, preparation ID, and configuration signature. Historical scoring checks both snapshots; it never parses generated prose as tag lists. Older jobs without the column's value use their original text.
 
 ## Configuration Revisions
 

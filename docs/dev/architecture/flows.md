@@ -32,11 +32,25 @@ sequenceDiagram
 - App obtains the candidate set, requests recommendation scores, selects a complete combination, and submits a task. It does not return scores to Candidate to rebuild prompts. Task receives only a determined generation request. If recommendation is unavailable, App selects from existing valid combinations using the default policy.
 - Generation records preserve the selected combination, actual tag content, and versions. App associates feedback with the historical record before passing it to Recommendation. The latest tag library does not reinterpret history, and a like does not directly mean that every tag is liked. Withdrawing a like is distinct from a dislike.
 
+## Natural-language Preparation
+
+Each image backend selects `danbooru` (default) or `natural_language`. App still scores complete tag combinations. For natural language, it sends only the selected combination to `PromptPreparation`, which serializes conversions through `backend/prompting/` and saves successful text before creating an image task. Task and image adapters receive final strings and never call the LLM. No new runtime dependency is required.
+
+The text service uses [Chat Completions](https://developers.openai.com/api/reference/python/resources/chat/subresources/completions/methods/create) with `stream:false` and `response_format:{type:"json_object"}`. It must return `positive` and `negative` strings with `finish_reason:stop`. Transport uses shared proxy/TLS behavior, a 120-second timeout, no redirects, a bounded response, and no automatic retries. Provider error bodies and credentials are not exposed.
+
+Drift has no previous-text context. Flow supplies the previous tags and text and asks for minimal wording changes; identical tags reuse compatible text. Anchor reuses exact text when its tag inputs and image/LLM configuration signature match; otherwise it initializes once. References come from the latest selected combination in the prefetch chain, falling back to the current image. LLM instructions encourage semantic fidelity and stable structure; validation checks shape and size, not actual meaning.
+
+Roam prepares asynchronously outside its settings lock and reports `preparing_prompt:true`. Repeated ensures share the same active preparation. Before enqueueing, App checks the epoch and image configuration again. Failure pauses that epoch; saving Roam settings explicitly allows another attempt. A persisted attempted conversion without a result is not automatically repeated after restart. Completed conversion results can be recovered without calling the service again.
+
+Generate prepares all rounds before committing any image jobs. It saves the selected rounds and each completed conversion so an explicit retry of the same request can resume without redrawing completed work. Images within one round share text; candidate rounds get separate conversions. A supplied preview ID must match the tag strings and current configuration. Preparation results are bounded disposable history, so an expired preview returns a conflict. Completed batches use the existing durable batch replay mechanism.
+
+Image/job prompt fields hold the actual submitted text. `source_prompts` holds the original positive/negative concepts; Roam's candidate snapshot also retains its structured terms and rendered text. Anchors, liked-tag filters, scoring validation, and feedback use those historical tags. Existing records without a separate source snapshot keep their original behavior. Natural-language text is read-only in the UI; users edit tags and anchors.
+
 ## Manual Generation Batches
 
 App receives the count per round and number of rounds, calls Candidate to produce complete text for each round when needed, then validates and saves the whole batch at once. Task executes determined generation requests without resampling tags. Prompts are shared within a round; image seeds are independently random per task or incremented in sequence when the backend supports seeds. Cloud adapters reject nonempty negative prompts and explicit image seeds; candidate seeds remain local prompt-selection controls.
 
-Batch idempotency and capacity checks run within the storage transaction; insufficient capacity rejects the whole batch. Retrying the same request_id restores the original plan without resampling. A new plan allows at most 100 pending tasks. Legacy submissions without repetitions/candidate retain the 10-task queue threshold. See [Task API](../reference/api/jobs.md) for fields.
+Batch idempotency and capacity checks run within the storage transaction; insufficient capacity rejects the whole batch. Retrying the same request_id restores the original plan without resampling. A new plan allows at most 100 pending tasks. Legacy Danbooru submissions without repetitions/candidate retain the 10-task queue threshold. Natural-language submissions also preflight capacity before conversion and recheck LLM configuration before committing. See [Task API](../reference/api/jobs.md) for fields.
 
 ## Roam Prefetch and Image Generation
 

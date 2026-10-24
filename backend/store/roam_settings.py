@@ -137,6 +137,16 @@ class RoamSettings:
     def history_limit(self):
         return self.get()["max_history_images"]
 
+    def invalidate(self):
+        """Discard prefetch when a selected service configuration changes."""
+        with self.lock, self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            document = self._get(db)
+            document["epoch"] = uuid.uuid4().hex
+            Repository.discard_roam_prefetch(db)
+            self._save_settings(db, document)
+        return document
+
     def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None):
         document = {"prefetch_count": prefetch_count(count), "backend_id": selection(backend_id, "生图后端"),
                     "max_history_images": max_history_images(max_history),

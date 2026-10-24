@@ -50,11 +50,21 @@ The model has a [non-commercial license](https://huggingface.co/circlestone-labs
 2. Enter an API key, an image-capable model ID, and a Base URL. Official URLs are `https://api.openai.com/v1` and `https://generativelanguage.googleapis.com/v1beta`, respectively.
 3. Test the connection and save, then generate one image on Generate. The connection test does not generate images or incur generation charges; a successful image confirms that your account and model work.
 
-Cloud connections use positive prompts; leave the negative prompt empty in your roaming preset.
+In Danbooru mode, cloud connections use positive prompts; leave the negative prompt empty in your roaming preset. Natural-language mode can include avoidance instructions in the positive description.
 
 Images, likes, and preferences stay local. Prompts and generation options go to your chosen service under its billing and data policies. When Roam first switches to a cloud API, automatic prefetch starts at `0`. Increasing it generates images ahead of time and incurs charges; requesting the next image still generates one with prefetch off.
 
 Once a request starts, local cancellation cannot guarantee remote cancellation or prevent charges. If a request times out or its result is uncertain, check your provider's activity before retrying.
+
+## Natural-language prompts
+
+For models that work better with descriptions, choose **Natural language** as the image API's prompt type and save. Under **Prompt LLM API**, save a separate text service's Base URL, model ID, and key. It must support OpenAI-compatible Chat Completions with JSON output; the URL includes the API version, for example `https://api.openai.com/v1`.
+
+Continue choosing tags, presets, and anchors as usual. Pictide turns the chosen combination into a description before generating an image. Under **Prompts → Preview**, select that image API to see both tags and the final text. The text is read-only and can be copied.
+
+This sends the selected concepts to the text service and may incur additional charges. Drift composes fresh text, Flow asks for minimal wording changes, and Anchor reuses prepared text. If preparation fails, no image is submitted; check the service and retry. Model quality determines how faithfully the text and image follow your tags. Real-service prompt conversion has not yet been validated.
+
+Keep **Danbooru** to use tags directly without an LLM.
 
 ## Network proxy
 

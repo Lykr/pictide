@@ -1,3 +1,4 @@
+import { PromptSettings } from './prompt-settings';
 import { t } from '../i18n/index.mjs';
 import { useMemo, useRef } from 'react';
 import { useApplication, useModel } from '../shared/application-context';
@@ -21,7 +22,7 @@ export function ApiSettings() {
   const apiInput = (key: string) => ({ value: apiDraft[key], onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => api.edit(key, event.target.value) });
   const apiSelect = (key: string) => ({ value: apiDraft[key], onValueChange: (value: string) => api.edit(key, value) });
   const cloud = apiDraft.kind !== 'comfyui', custom = apiDraft.workflowMode !== 'default';
-  return <form id="settings-form" ref={targets["api.form"]} inert={settings.pending.saving} onInvalidCapture={event => {
+  return <><form id="settings-form" ref={targets["api.form"]} inert={settings.pending.saving} onInvalidCapture={event => {
     const field = event.target as HTMLInputElement;
     if (field.closest('#node-parameter-fields')) {
       event.preventDefault();
@@ -36,8 +37,10 @@ export function ApiSettings() {
 </div>
 <div className="settings-field"><Label htmlFor="backend-name">{t("API 名称")}</Label><Input id="backend-name" {...apiInput("name")} required placeholder={t("本机 ComfyUI")} /></div>
 <div className="settings-field"><Label htmlFor="backend-kind">{t("API 类型")}</Label><FormSelect id="backend-kind" {...apiSelect("kind")}><option value="comfyui">ComfyUI</option><option value="openai">OpenAI Images</option><option value="gemini">Gemini</option></FormSelect></div>
+<div className="settings-field"><Label htmlFor="backend-prompt-type">{t("提示词类型")}</Label><FormSelect id="backend-prompt-type" {...apiSelect("prompt_type")} options={[{ value: "danbooru", label: "Danbooru" }, { value: "natural_language", label: t("自然语言") }]} /></div>
 <div className="settings-field"><Label htmlFor="backend-url">{t("API 地址")}</Label><Input id="backend-url" {...apiInput("url")} type="url" required /></div>
 </div>
+<p className="hint" hidden={apiDraft.prompt_type !== "natural_language"}>{t("请在下方配置自然语言提示词服务。")}</p>
 <div className="settings-field">
 <Label htmlFor="backend-key"><span className="field-caption">API Key<HelpTip id="key-state" text={t("可选。保留遮罩不修改密钥，清空并保存可移除。")} /></span></Label>
 <Input id="backend-key" {...apiInput("key")} type="password" autoComplete="new-password" onFocus={event => { if (settings.hasSavedApiKey) event.target.select(); }} />
@@ -92,5 +95,5 @@ export function ApiSettings() {
 </div>
 </fieldset>
 <div className="dialog-footer"><Button id="test-backend" ref={targets["api.test"]} type="button" className="quiet" variant="outline" onClick={api.testBackend} disabled={settings.pending.test}>{t("测试连接")}</Button><Button id="save-backend" ref={targets["api.save"]} type="submit" className="primary" variant="default" disabled={settings.pending.saving}>{t("保存 API")}</Button></div>
-</form>;
+</form><PromptSettings /></>;
 }

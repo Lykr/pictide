@@ -88,7 +88,9 @@ def record_feedback(db, artifact_id, user_id, value):
     if row:
         try:
             candidate = _decode(row["candidate"])
-            if candidate.positive != row["positive"] or candidate.negative != row["negative"]:
+            snapshot = json.loads(row["candidate"])
+            actual = snapshot.get("rendered", snapshot)
+            if actual.get("positive") != row["positive"] or actual.get("negative") != row["negative"]:
                 candidate = None
         except (ValueError, TypeError, KeyError, AttributeError):
             pass

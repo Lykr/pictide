@@ -19,7 +19,7 @@ class RoamModesSmoke(unittest.IsolatedAsyncioTestCase):
         self.static_patch = patch("backend.host.STATIC", static)
         self.static_patch.start()
         self.addCleanup(self.static_patch.stop)
-        store = SQLiteCandidateStore(self.root / "candidate.sqlite3")
+        store = SQLiteCandidateStore(self.root / "libraries" / "neutral.sqlite3")
         with store.connect() as db:
             names = ["illustration", "garden", "sunlight", "night", "blue_sky"]
             db.executemany("INSERT INTO tags VALUES(?,?,?)", [(i+1, name, 100) for i, name in enumerate(names)])

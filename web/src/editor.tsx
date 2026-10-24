@@ -1,3 +1,6 @@
+import { useApplication, useModel } from './shared/application-context';
+import { FormSelect } from './components/form-select';
+import { NaturalPrompt, type RenderedPrompt } from './components/natural-prompt';
 import { emitSignal, onSignal, offSignal } from './shared/signals.mjs';
 import { runUiCommand, publishUiState } from './shared/ui-state.mjs';
 import { useErrorNotice } from "./components/notifications";
@@ -32,7 +35,7 @@ type TagPage = { tags: Tag[]; total: number; page: number; page_size: number };
 type PresetDocument = { base_positive: string[]; base_negative: string[]; blocked_keywords: string[]; min_tags: number; max_tags: number; pmi_threshold: number; min_cooccurrence: number; change_budget: number };
 type Preset = { id: string; name: string; document: PresetDocument };
 type Mode = "random_each_run" | "fixed_seed" | "sequence";
-type Result = { candidate_id: string; positive: string; negative: string; seed: number; selected_tags: PreviewTerm[]; sequence?: { seed?: number; step?: number; changes?: number; change_budget?: number }; report: Record<string, unknown> };
+type Result = { rendered?: RenderedPrompt; candidate_id: string; positive: string; negative: string; seed: number; selected_tags: PreviewTerm[]; sequence?: { seed?: number; step?: number; changes?: number; change_budget?: number }; report: Record<string, unknown> };
 const defaults: PresetDocument = { base_positive: [], base_negative: [], blocked_keywords: [], min_tags: 10, max_tags: 30, pmi_threshold: 0, min_cooccurrence: 10, change_budget: 2 };
 function withCooccurrenceFloor(preset: Preset, floor: number): Preset {
   const value = preset.document.min_cooccurrence;
@@ -154,6 +157,8 @@ function FixedTags({ label, values, onChange, disabled, positive = false }: { la
 }
 
 export function EditorWorkspace() {
+  const application = useApplication(), appState = useModel(application.model);
+  const [previewBackend, setPreviewBackend] = useState("");
   const [tab, setTab] = useState("library");
   const [presets, setPresets] = useState<{ id: string; name: string }[]>([]);
   const [preset, setPreset] = useState<Preset>({ id: "", name: t("新预设"), document: { ...defaults } });
@@ -189,6 +194,13 @@ export function EditorWorkspace() {
   useErrorNotice(notice, { id: "preset-operation", visible });
   useErrorNotice(libraryError, { id: "preset-library", visible });
   useErrorNotice(tagError, { id: "preset-tags", visible: visible && tab === "library", retry: () => setRefresh(value => value + 1) });
+  const previewConfig = JSON.stringify(appState.backends.find((item: any) => item.id === previewBackend));
+  useEffect(() => { setResult(null); }, [JSON.stringify(preset.document), previewConfig]);
+  useEffect(() => {
+    const invalidate = () => setResult(null);
+    onSignal('prompt-settings-changed', invalidate);
+    return () => offSignal('prompt-settings-changed', invalidate);
+  }, []);
   const dirty = JSON.stringify(preset) !== saved;
   const minCooccurrence = typeof dataset.min_cooccurrence === "number" ? dataset.min_cooccurrence : defaults.min_cooccurrence;
   const updateDataset = (info: Record<string, unknown>) => {
@@ -326,7 +338,7 @@ export function EditorWorkspace() {
     try {
       const draft = withCooccurrenceFloor(preset, cooccurrenceFloor.current);
       setPreset(draft); validate(draft);
-      const next = await api<Result>("/api/candidate/generate", { method: "POST", body: JSON.stringify({ preset_id: draft.id || "draft", document: draft.document, mode, seed, sequence_step: mode === "sequence" ? step : 0, max_steps: maxSteps }) });
+      const next = await api<Result>("/api/candidate/generate", { method: "POST", body: JSON.stringify({ backend_id: previewBackend || undefined, preset_id: draft.id || "draft", document: draft.document, mode, seed, sequence_step: mode === "sequence" ? step : 0, max_steps: maxSteps }) });
       setResult(next);
       if (mode !== "random_each_run") setSeed(counterAfter(mode === "sequence" ? next.sequence?.seed ?? seed : next.seed, seedControl, Number.MAX_SAFE_INTEGER));
       if (mode === "sequence") setStep(counterAfter(step, stepControl, 1000));
@@ -415,6 +427,7 @@ export function EditorWorkspace() {
           </Collapsible>
           <button type="submit" hidden />
         </form> : <section className="cooc-preview">
+          <Field label={t("生图 API")}><FormSelect aria-label={t("预览生图 API")} value={previewBackend} disabled={busy} onValueChange={value => { setPreviewBackend(value); setResult(null); }} options={[{ value: "", label: t("仅预览标签") }, ...appState.backends.map((item: any) => ({ value: item.id, label: item.name }))]} /></Field>
           <Collapsible className="cooc-preview-options">
             <div className="cooc-preview-toolbar">
               <Field label={t("生成模式")}>
@@ -446,7 +459,8 @@ export function EditorWorkspace() {
               {result.sequence && <span className="cooc-preview-meta">{tr`帧 ${result.sequence.step ?? step} · 变化 ${result.sequence.changes ?? 0} / ${result.sequence.change_budget ?? preset.document.change_budget}`}</span>}
             </div>
             {Array.isArray(result.report.unrecognized_fixed) && result.report.unrecognized_fixed.length > 0 && <p className="text-xs text-muted-foreground" role="status">{tr`未参与共现计算：${result.report.unrecognized_fixed.join(", ")}`}</p>}
-            <PreviewPrompts key={result.candidate_id} terms={result.selected_tags} positive={result.positive} negative={result.negative} />
+            <PreviewPrompts asTags={!!result.rendered} key={result.candidate_id} terms={result.selected_tags} positive={result.positive} negative={result.negative} />
+            <NaturalPrompt prompt={result.rendered} />
             <Collapsible className="cooc-preview-report">
               <CollapsibleTrigger asChild><Button variant="ghost" size="sm" className="group"><ChevronRight className="size-4 transition-transform group-data-[state=open]:rotate-90" />{t("生成报告")}</Button></CollapsibleTrigger>
               <CollapsibleContent><pre className="cooc-report">{JSON.stringify({ selected_tags: result.selected_tags, sequence: result.sequence, ...result.report }, null, 2)}</pre></CollapsibleContent>

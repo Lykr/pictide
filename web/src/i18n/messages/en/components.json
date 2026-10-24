@@ -184,5 +184,20 @@
   "输入完整提示词并回车添加；自定义词不参与 PMI 计算。": "Enter a complete prompt and press Enter to add it. Custom terms do not take part in PMI calculations.",
   "通知": "Notification",
   "关闭通知": "Dismiss notification",
-  "通知（{hotkey}）": "Notifications ({hotkey})"
+  "通知（{hotkey}）": "Notifications ({hotkey})",
+  "提示词类型": "Prompt type",
+  "自然语言": "Natural language",
+  "自然语言提示词": "Natural-language prompt",
+  "自然语言提示词服务": "Prompt LLM API",
+  "文本模型": "Text model",
+  "保存提示词服务": "Save prompt service",
+  "提示词服务已保存。": "Prompt service saved.",
+  "使用 OpenAI-compatible 文本 API，将标签转换为生图描述。标签会发送给此服务，调用可能产生费用。": "Use an OpenAI-compatible text API to turn tags into image descriptions. Tags are sent to this service; API charges may apply.",
+  "预览生图 API": "Preview image API",
+  "仅预览标签": "Tags only",
+  "正向标签": "Positive tags",
+  "负向标签": "Negative tags",
+  "正在准备提示词…": "Preparing prompt…",
+  "请在下方配置自然语言提示词服务。": "Configure the prompt LLM API below.",
+  "预览当前标签与最终生图提示词。": "Preview the tags and the final image prompt."
 }

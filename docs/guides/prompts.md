@@ -10,11 +10,13 @@ Save a subject or style as a preset and let Pictide fill out the prompts for you
 
 A library supplies tags to combine; a preset saves your fixed terms and how those combinations are made.
 
-In Arrange, select a preset and add positive terms you want to keep. Put things you want to avoid in the negative prompt. Fixed terms can be library tags or your own complete descriptions. The initial preset includes `general` as a positive term; you can remove or replace it. Leave the negative prompt empty when using OpenAI Images or Gemini.
+In Arrange, select a preset and add positive terms you want to keep. Put things you want to avoid in the negative prompt. Fixed terms can be library tags or your own complete descriptions. The initial preset includes `general` as a positive term; you can remove or replace it. When using OpenAI Images or Gemini with Danbooru prompts, leave the negative prompt empty.
 
 Use Preview to try combinations before generating images: it produces prompt text only. Save when you are happy with it. The selected preset is shared by Roam and Generate; edits take effect after saving. Text already entered on Generate stays as it is, and the next preset-based prompt request uses the new selection.
 
 Edit the preset name directly, or copy a preset to keep separate settings for different subjects.
+
+For a [natural-language image API](getting-started.md#natural-language-prompts), select it in Preview to see the tags and their generated description together. This calls your text service; choose **Tags only** to explore combinations without it. Change tags or presets to guide the result—the generated description can be copied, but not edited.
 
 ## Adjust combinations
 

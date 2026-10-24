@@ -65,6 +65,9 @@ class PictideApplication:
         self.updates = None
         self.update_installing = False
         self.active_writes = 0
+        self.prompting = None
+        self._generation_lock = asyncio.Lock()
+        self._roam_preparation = None
 
     async def prepare_update(self, arguments, pids):
         from .store.update_state import unfinished_jobs
@@ -76,7 +79,9 @@ class PictideApplication:
         self.update_installing = True
         try:
             async with self._roam_lock:
-                if self.active_writes or await asyncio.to_thread(unfinished_jobs, self.paths.database):
+                if (self.active_writes or self._generation_lock.locked()
+                        or (self._roam_preparation and not self._roam_preparation.done())
+                        or await asyncio.to_thread(unfinished_jobs, self.paths.database)):
                     raise ConflictError('Finish running or queued tasks and pending edits before installing the update.')
                 async with self.updates.lock:
                     self.updates.publish(phase='preparing', error=None)
@@ -101,6 +106,9 @@ class PictideApplication:
     async def stop(self):
         self._learning_stopping = True
         self._learning_wake.set()
+        if self._roam_preparation:
+            self._roam_preparation.cancel()
+            await asyncio.gather(self._roam_preparation, return_exceptions=True)
         await self.tasks.stop()
         if self._learning_task is not None:
             await self._learning_task
@@ -206,6 +214,17 @@ class PictideApplication:
         self.events.publish("recommendation")
         return asdict(result)
 
+    async def prompt_settings(self, payload=None):
+        from .prompting import validate_settings
+        current = await asyncio.to_thread(self.prompting.store.settings)
+        if payload is not None:
+            config = validate_settings({**current, **{k: payload[k] for k in ("base_url", "api_key", "model") if k in payload}})
+            async with self._roam_lock:
+                current = await asyncio.to_thread(self.prompting.store.save_settings, config)
+                await asyncio.to_thread(self.roam.invalidate)
+            self.events.publish("roam_settings")
+        return {**{k: current[k] for k in ("base_url", "model", "revision")}, "has_api_key": bool(current["api_key"])}
+
     async def connection_draft(self, identifier, payload):
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", identifier):
             raise ValidationError("后端 ID 只能包含字母、数字、下划线和横线。")
@@ -241,6 +260,8 @@ class PictideApplication:
                     roam = await asyncio.to_thread(self.roam.save, 0, roam["backend_id"],
                                                    roam["preset_id"], roam["max_history_images"])
                     self.events.publish("roam_settings")
+                if previous_backend != saved:
+                    roam = await asyncio.to_thread(self.roam.invalidate)
                 state = await asyncio.to_thread(self.storage.ensure_roam, roam["epoch"], None, 0)
                 if state["paused"]:
                     # A new epoch isolates old failures, retaining all options and queued work.
@@ -280,9 +301,14 @@ class PictideApplication:
         return await asyncio.to_thread(self.storage.job_page, int(digits))
 
     async def submit_job(self, payload):
+        async with self._generation_lock:
+            return await self._submit_job(payload)
+
+    async def _submit_job(self, payload):
         if self.update_installing:
             raise ConflictError('Pictide is updating; generation is temporarily paused.')
-        if "repetitions" in payload or "candidate" in payload:
+        backend = await asyncio.to_thread(self.storage.backend, payload.get("backend_id", ""))
+        if "repetitions" in payload or "candidate" in payload or (backend and backend.get("prompt_type") == "natural_language"):
             result = await self._submit_generation_plan(payload)
         else:
             fields = generation_fields(payload)
@@ -314,13 +340,38 @@ class PictideApplication:
         if backend is None:
             raise ValidationError("生图后端不存在，请先保存后端配置。")
         validated = self.tasks.connections.validate(backend)
-        if candidate:
-            rounds, next_candidate = await asyncio.to_thread(self.candidates.prepare_rounds, candidate, repetitions)
+        natural = backend.get("prompt_type") == "natural_language"
+        if natural:
+            llm_revision = (await asyncio.to_thread(self.prompting.store.settings))['revision']
+            pending = sum(j['status'] in ('queued', 'submitting', 'running') for j in await self.list_jobs())
+            if pending + count * repetitions > 100:
+                raise ValidationError('The image queue is full. Wait before preparing more prompts.')
+        saved = await asyncio.to_thread(self.prompting.store.get, "batch-" + fields["request_id"], digest) if natural else None
+        if saved:
+            from .prompt_preparation import fingerprint
+            if saved["document"]["backend"] != fingerprint(backend):
+                raise ConflictError("Image API changed. Submit a new generation request.")
+            rounds, next_candidate = saved["document"]["rounds"], saved["document"]["next_candidate"]
         else:
-            rounds = [{"positive": fields["positive"], "negative": fields["negative"]}] * repetitions
-            next_candidate = None
+            if candidate:
+                rounds, next_candidate = await asyncio.to_thread(self.candidates.prepare_rounds, candidate, repetitions)
+            else:
+                rounds = [{"positive": fields["positive"], "negative": fields["negative"]}] * repetitions
+                next_candidate = None
+            if natural:
+                from .prompt_preparation import fingerprint
+                await asyncio.to_thread(self.prompting.store.reserve, "batch-" + fields["request_id"], digest,
+                                        {"backend": fingerprint(backend), "rounds": rounds, "next_candidate": next_candidate})
         plans = []
-        for round_result in rounds:
+        previous_prompt = None
+        for round_index, source in enumerate(rounds):
+            round_result = source
+            if natural:
+                rendered = await self.prompting.prepare("generate-" + fields["request_id"] + "-" + str(round_index),
+                    backend, source, mode="along" if candidate and candidate.get("mode") == "sequence" else "random",
+                    previous=previous_prompt, preview_id=payload.get("preparation_id") if not candidate else None)
+                round_result = dict(source, **{k: rendered[k] for k in ("positive", "negative")})
+                previous_prompt = dict(source, rendered=rendered)
             validate_generation_options(validated, {**fields, **round_result})
             if round_result["negative"] and not validated.get("bindings", {}).get("negative"):
                 raise ValidationError("当前后端未绑定负向输入，请清空负向提示词或配置负向绑定。")
@@ -329,10 +380,21 @@ class PictideApplication:
                 plan = {**fields, "positive": round_result["positive"], "negative": round_result["negative"],
                         "request_id": fields["request_id"] if index == 0 else "round-" + uuid.uuid4().hex,
                         "seed": -1 if fields["seed"] == -1 else (fields["seed"] + index) % 2**53}
-                plans.append(generation_fields(plan))
+                prepared = generation_fields(plan)
+                if natural:
+                    prepared["prompt_snapshot"] = {k: source[k] for k in ("positive", "negative")}
+                plans.append(prepared)
         context = {"next_seed": -1 if fields["seed"] == -1 else (fields["seed"] + len(plans)) % 2**53,
-                   "candidate_result": rounds[-1] if candidate else None, "next_candidate": next_candidate}
-        return await self.tasks.database(self.storage.commit_generation_plan, fields["request_id"], digest, plans, context, backend)
+                   "candidate_result": dict(rounds[-1], **({"rendered": rendered} if natural else {})) if candidate else None,
+                   "rendered": rendered if natural else None, "next_candidate": next_candidate}
+        async with self._roam_lock:
+            if natural and (await asyncio.to_thread(self.prompting.store.settings))['revision'] != llm_revision:
+                raise ConflictError('LLM settings changed. Submit a new generation request.')
+            result = await self.tasks.database(self.storage.commit_generation_plan, fields["request_id"], digest, plans, context, backend)
+        if natural:
+            # The atomic batch now owns replay and the exact submitted prompts.
+            await asyncio.to_thread(self.prompting.store.remove, ["batch-" + fields["request_id"]])
+        return result
 
     async def cancel_pending_jobs(self, payload):
         if payload:
@@ -413,9 +475,9 @@ class PictideApplication:
             for channel in ("positive", "negative"):
                 actual = artifact[channel]
                 joined = ", ".join(t.text.strip().strip(",").strip() for t in terms if t.channel == channel)
-                if snapshot[channel] != actual or unicodedata.normalize("NFC", actual) != unicodedata.normalize("NFC", joined):
+                if snapshot.get("rendered", snapshot).get(channel) != actual or unicodedata.normalize("NFC", snapshot[channel]) != unicodedata.normalize("NFC", joined):
                     return None
-            return ScoreCandidate(artifact["id"], artifact["positive"], artifact["negative"], terms)
+            return ScoreCandidate(artifact["id"], snapshot["positive"], snapshot["negative"], terms)
         except (KeyError, TypeError, AttributeError):
             return None
 
@@ -661,6 +723,8 @@ class PictideApplication:
             if enabled:
                 await self.clean_history()
             state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], anchor if enabled else None, target)
+            if self._roam_preparation and not self._roam_preparation.done():
+                return base | state | {"preparing_prompt": True}
             if not enabled or not roam_can_enqueue(state, target):
                 return base | state
             try:
@@ -679,6 +743,12 @@ class PictideApplication:
                 base["preference_learning"] = await self._learning_available()
                 if self._recommendation_error:
                     base["recommendation_error"] = self._recommendation_error
+                backend = await asyncio.to_thread(self.storage.backend, backend_id)
+                if backend.get("prompt_type") == "natural_language":
+                    previous = await asyncio.to_thread(self.storage.roam_prompt_reference, document["epoch"], anchor)
+                    self._roam_preparation = asyncio.create_task(
+                        self._prepare_roam_prompt(context, backend, snapshot, previous, target), name="roam-prompt")
+                    return base | state | {"preparing_prompt": True}
                 fields = generation_fields({"backend_id": backend_id, "request_id": "roam-" + uuid.uuid4().hex,
                                             "positive": chosen.positive, "negative": chosen.negative, "seed": -1})
                 backend = await asyncio.to_thread(self.storage.backend, backend_id)
@@ -695,6 +765,40 @@ class PictideApplication:
                 self.events.publish("jobs")
             return base | state
 
+    async def _prepare_roam_prompt(self, context, backend, snapshot, previous, target):
+        """Do network preparation outside the settings lock; check freshness before enqueueing."""
+        from .prompt_preparation import fingerprint
+        identity = fingerprint({'epoch': context['epoch'], 'previous': (previous or {}).get('job_id'), 'backend': backend})
+        preparation_id = 'roam-' + identity
+        selection_id = 'selection-' + identity
+        try:
+            saved = await asyncio.to_thread(self.prompting.store.reserve, selection_id, identity, snapshot)
+            snapshot = saved['document']
+            rendered = await self.prompting.prepare(preparation_id, backend, snapshot,
+                mode=context["prompt_mode"], previous=previous, automatic=True)
+            async with self._roam_lock:
+                document = await asyncio.to_thread(self.roam.get)
+                if document["epoch"] != context["epoch"] or backend != await asyncio.to_thread(self.storage.backend, backend["id"]):
+                    return
+                fields = generation_fields({"backend_id": backend["id"], "request_id": rendered["preparation_id"] + "-" + uuid.uuid4().hex[:8],
+                    "positive": rendered["positive"], "negative": rendered["negative"], "seed": -1})
+                fields["prompt_snapshot"] = {k: snapshot[k] for k in ("positive", "negative")}
+                validate_generation_options(backend, fields)
+                state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], context["anchor_id"], target,
+                                               fields, dict(snapshot, rendered=rendered))
+                if state.get('job'):
+                    await asyncio.to_thread(self.prompting.store.remove, [selection_id, preparation_id])
+                self.tasks.wake.set()
+        except asyncio.CancelledError:
+            await asyncio.to_thread(self.storage.pause_roam, context['epoch'],
+                                    'Prompt preparation was interrupted. Save Roam settings to retry.')
+            raise
+        except Exception as error:
+            message = str(error) if isinstance(error, ValidationError) else "Natural-language prompt preparation failed. Save Roam settings to retry."
+            await asyncio.to_thread(self.storage.pause_roam, context["epoch"], message)
+        finally:
+            self.events.publish("jobs")
+
     async def image(self, identifier):
         await self.clean_history()
         path = await self.tasks.cache_image(identifier)
@@ -707,7 +811,7 @@ class PictideApplication:
         artifact = await asyncio.to_thread(self.storage.artifact, identifier)
         if not artifact:
             raise NotFoundError()
-        return {"positive": artifact["positive"], "negative": artifact["negative"]}
+        return {key: artifact[key] for key in ("positive", "negative", "source_prompts") if key in artifact}
 
     async def candidate_library(self, action, payload=None, upload_path=None, filename=None):
         if action == "add":
@@ -753,7 +857,17 @@ class PictideApplication:
                           else await asyncio.to_thread(self.candidates.delete_preset, identifier))
                 await self._refresh_roam_anchors()
         elif action == "generate":
-            return await asyncio.to_thread(self.candidates.generate, data)
+            result = await asyncio.to_thread(self.candidates.generate, {k: v for k, v in data.items() if k not in ("backend_id", "request_id")})
+            if data.get("backend_id"):
+                backend = await asyncio.to_thread(self.storage.backend, data["backend_id"])
+                if backend is None:
+                    raise ValidationError("Image API no longer exists.")
+                if backend.get("prompt_type") == "natural_language":
+                    rendered = await self.prompting.prepare("preview-" + uuid.uuid4().hex, backend, result)
+                    if backend != await asyncio.to_thread(self.storage.backend, data["backend_id"]):
+                        raise ConflictError("Image API changed during preview. Try again.")
+                    result["rendered"] = rendered
+            return result
         else:
             raise NotFoundError()
         self.events.publish("candidate")

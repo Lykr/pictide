@@ -27,7 +27,7 @@ function tone(relation: Relation | undefined, anchorKnown: boolean | undefined) 
   return relation.pmi! > 0 ? "positive" : relation.pmi! < 0 ? "negative" : "neutral";
 }
 
-export function PreviewPrompts({ terms, positive, negative }: { terms: PreviewTerm[]; positive: string; negative: string }) {
+export function PreviewPrompts({ terms, positive, negative, asTags = false }: { terms: PreviewTerm[]; positive: string; negative: string; asTags?: boolean }) {
   const positiveTerms = terms.filter(term => term.channel === "positive");
   const [active, setActive] = useState<number | null>(null);
   const [queries, setQueries] = useState(new Map<string, Query>());
@@ -54,7 +54,7 @@ export function PreviewPrompts({ terms, positive, negative }: { terms: PreviewTe
   const relations = new Map(query?.data?.relations.map(relation => [normalized(relation.text), relation]));
   return <TooltipProvider delayDuration={200}><div className="cooc-preview-grid">
     {(["positive", "negative"] as const).map(channel => {
-      const label = channel === "positive" ? t("正向提示词") : t("负向提示词");
+      const label = channel === "positive" ? t(asTags ? "正向标签" : "正向提示词") : t(asTags ? "负向标签" : "负向提示词");
       const items = terms.map((term, index) => ({ term, index })).filter(({ term }) => term.channel === channel);
       return <section key={channel}><div className="cooc-section-heading"><h2>{label}</h2><HelpTip text={channel === "positive" ? t("悬停正向词可查看它与其他正向词的共现相关性。") : t("用于生图；共现扩展跳过同名词，不参与 PMI 计算。")} /><span className="spacer" /><CopyText text={channel === "positive" ? positive : negative} label={label} /></div>
         <p className={channel === "negative" ? "cooc-prompt cooc-negative-prompt rounded-xl bg-muted/50" : "cooc-prompt rounded-xl bg-muted/50"}>{channel === "negative" ? negative || "—" : items.length ? items.map(({ term, index }, position) => <span key={`${channel}:${index}`}>

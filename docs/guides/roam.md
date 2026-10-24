@@ -20,6 +20,8 @@ Open Roam options at the top right:
 - **Flow**: gradually vary the current combination to follow a direction you enjoy.
 - **Anchor**: keep the entire prompt and try other images with different random seeds.
 
+With [natural-language prompts](getting-started.md#natural-language-prompts), Drift can vary the wording, Flow asks the text service to preserve the structure, and Anchor reuses the exact prepared text. A first conversion is needed when no compatible text exists yet.
+
 Preference scope offers All, which explores the full vocabulary, or Liked, which draws tags from images you have liked. Standard recommendation strength is the default; try Strong to focus more on your existing preferences.
 
 ## Anchors

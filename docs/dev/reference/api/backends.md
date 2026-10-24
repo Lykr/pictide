@@ -20,6 +20,7 @@ The backend list is provided by Bootstrap's `backends`; there is no separate GET
 | --- | --- |
 | `name` | Backend name |
 | `kind` | `comfyui / openai / gemini`; omitted means `comfyui` |
+| `prompt_type` | `danbooru / natural_language`; omitted means `danbooru`. Natural language uses the separate [prompt service](settings.md#prompt-llm-api). |
 | `base_url` | HTTP(S) service root; cloud URLs include the version path, such as `https://api.openai.com/v1` or `https://generativelanguage.googleapis.com/v1beta` |
 | `api_key` | Optional; omission preserves a saved key only for the same kind. Switching kinds clears it; an empty string also clears it. Never returned in plaintext. |
 | `model` | Required model ID for `openai` and `gemini`; entered manually |
@@ -38,7 +39,7 @@ Example bindings: `{"positive":{"node_id":"2","input":"text"},"negative":{"node_
 
 Workflow fields, checkpoint discovery, and the template route belong to ComfyUI. Cloud `/models` returns the configured model rather than discovering a catalog. Cloud `/check` performs a read-only lookup of the selected model and never submits generation; it does not prove image-output entitlement or validate generation quality.
 
-Public configurations include `capabilities` with `negative_prompt`, `seed`, `models`, `events`, `cancel`, `recovery`, and `cloud`. OpenAI Images and Gemini do not support negative prompts, explicit image seeds, remote events, cancellation, or recovery in this integration. Nonempty negative prompts, including candidate preset output, and explicit image seeds are rejected rather than silently discarded. A candidate seed controls local prompt selection only. The UI uses capabilities to show available controls.
+Public configurations include `capabilities` with `negative_prompt`, `seed`, `models`, `events`, `cancel`, `recovery`, and `cloud`. OpenAI Images and Gemini do not support a negative prompt channel, explicit image seeds, remote events, cancellation, or recovery in this integration. Danbooru mode rejects nonempty negative prompts, including candidate preset output. Natural-language preparation instead asks the LLM to express avoidance constraints in the positive text and return an empty negative string. Explicit image seeds are rejected. A candidate seed controls local prompt selection only. The UI uses capabilities to show available controls.
 
 OpenAI appends `/images/generations` to its Base URL and Gemini appends `/interactions`. Gemini sends `model`, `input`, `response_format` with image output options, and `store:false`, authenticating with `x-goog-api-key`. These are single-turn text-to-image adapters; `generateContent`, Imagen, image editing, and third-party service presets are outside this release. Successful responses may contain Base64 or image URLs; outputs are saved locally before being exposed as Pictide artifacts. API keys are used by the backend, never by the browser to contact the provider directly.
 

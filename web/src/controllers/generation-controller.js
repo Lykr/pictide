@@ -10,10 +10,11 @@ import { notify, notifyError, dismissNotification } from '../shared/notification
 /** Own the Generate form, prompt counters, and uncertain submissions. */
 export function createGenerationController({ state, api, getRoamSettings, renderJobs, refresh }) {
   const uncertainRequests = new Map();
-  const model = createModel({ draft: { backendId: '', source: 'manual', presetId: '', mode: 'random_each_run', ruleSeed: '0', step: '0', seedControl: 'fixed', stepControl: 'increment', maxSteps: '100', automatic: true, positive: '', negative: '', seed: '-1', count: '1', repetitions: '1' }, presets: [], busy: false, loadingPresets: false, report: null, promptNote: null, feedback: {} });
+  const model = createModel({ draft: { backendId: '', source: 'manual', presetId: '', mode: 'random_each_run', ruleSeed: '0', step: '0', seedControl: 'fixed', stepControl: 'increment', maxSteps: '100', automatic: true, positive: '', negative: '', seed: '-1', count: '1', repetitions: '1' }, presets: [], busy: false, loadingPresets: false, report: null, rendered: null, promptNote: null, feedback: {} });
   const { draft } = model.data;
   const changed = model.changed;
   let composeBusy = false, composeDirty = false, ruleConfigsLoaded = false;
+  let backendSignature;
   const feedback = name => ({ show(kind, label, message) {
     model.data.feedback[name] = kind === 'pending' ? { kind, label } : null; changed();
     if (kind !== 'pending') notify(message || label, { id: `generate-${name}`, kind });
@@ -21,6 +22,9 @@ export function createGenerationController({ state, api, getRoamSettings, render
   const generateFeedback = feedback('submit'), cancelPendingFeedback = feedback('cancel'), promptFeedback = feedback('prompts'), configFeedback = feedback('presets');
   function updateGenerationHints() {
     if (!state.backends.some(item => item.id === draft.backendId)) draft.backendId = state.backends[0]?.id || '';
+    const signature = JSON.stringify(state.backends.find(item => item.id === draft.backendId));
+    if (signature !== backendSignature) model.data.rendered = null;
+    backendSignature = signature;
     changed();
   }
   function updateRuleControls() { changed(); }
@@ -65,6 +69,7 @@ export function createGenerationController({ state, api, getRoamSettings, render
 
   function presentRulePrompts(result, counters, current) {
     if (typeof result.positive !== 'string' || typeof result.negative !== 'string') throw new Error(t("候选服务没有返回完整的正负提示词。"));
+    model.data.rendered = result.rendered || null;
     draft.positive = result.positive; draft.negative = result.negative;
     draft.ruleSeed = String(counters.seed); draft.step = String(counters.step);
 
@@ -78,7 +83,7 @@ export function createGenerationController({ state, api, getRoamSettings, render
   async function generateRulePrompts() {
     const { current, payload } = readRuleGeneration();
     model.data.promptNote = null; changed();
-    const result = await api('/api/candidate/generate', { method: 'POST', body: JSON.stringify(payload) });
+    const result = await api('/api/candidate/generate', { method: 'POST', body: JSON.stringify({ ...payload, backend_id: draft.backendId }) });
     const counters = nextRuleCounters(current, result);
     presentRulePrompts(result, counters, current);
     composeDirty = true;
@@ -93,6 +98,8 @@ export function createGenerationController({ state, api, getRoamSettings, render
     try {
       const backend = state.backends.find((item) => item.id === draft.backendId);
       const capabilities = backendCapabilities(backend);
+      const natural = backend?.prompt_type === "natural_language";
+      if (natural) generateFeedback.show("pending", t("正在准备提示词…"));
       const seed = capabilities.cloud && !capabilities.seed ? -1 : Number(draft.seed);
       if (!(capabilities.cloud && !capabilities.seed) && (!draft.seed.trim() || !Number.isSafeInteger(seed) || seed < -1)) throw new Error(t("种子须为 -1 或非负安全整数。"));
       const count = generationCount(draft.count);
@@ -100,13 +107,14 @@ export function createGenerationController({ state, api, getRoamSettings, render
       const automatic = draft.source === 'rules' && draft.automatic;
       const rule = automatic ? readRuleGeneration() : null;
       const fromRules = draft.source === 'rules';
-      const negative = capabilities.cloud && !capabilities.negative_prompt && !fromRules ? '' : draft.negative;
-      if (!automatic && capabilities.cloud && negative.trim()) throw new Error(t('此生图 API 不支持负向提示词，请在候选预设中移除负向词，或改用手动正向提示词。'));
+      const negative = !natural && capabilities.cloud && !capabilities.negative_prompt && !fromRules ? '' : draft.negative;
+      if (!natural && !automatic && capabilities.cloud && negative.trim()) throw new Error(t('此生图 API 不支持负向提示词，请在候选预设中移除负向词，或改用手动正向提示词。'));
       const payload = { backend_id: draft.backendId, positive: draft.positive, negative, seed, count, repetitions,
+        ...(!automatic && natural && model.data.rendered ? { preparation_id: model.data.rendered.preparation_id } : {}),
         ...(rule ? { candidate: { ...rule.payload, seed_control: rule.current.seedControl, step_control: rule.current.stepControl } } : {}) };
       if (!payload.positive.trim() && !automatic) throw new Error(t("请输入正向提示词，或使用共现候选生成提示词。"));
       const decision = submissionDecision(payload, uncertainRequests, automatic);
-      if (!automatic && payload.negative.trim() && !capabilities.negative_prompt) throw new Error(t("当前生图 API 未绑定负向输入。请清空负向提示词，或在生图 API 设置中指定负向绑定。"));
+      if (!natural && !automatic && payload.negative.trim() && !capabilities.negative_prompt) throw new Error(t("当前生图 API 未绑定负向输入。请清空负向提示词，或在生图 API 设置中指定负向绑定。"));
       operation = decision.retry || requestIdentity(payload, uncertainRequests, createRequestId);
       const hasOtherUncertain = uncertainRequests.size && !uncertainRequests.has(operation.key);
       uncertainRequests.set(operation.key, operation);
@@ -116,6 +124,7 @@ export function createGenerationController({ state, api, getRoamSettings, render
         presentRulePrompts(result.candidate_result, { seed: result.next_candidate.seed, step: result.next_candidate.sequence_step },
           { mode: operation.payload.candidate.mode, seed: operation.payload.candidate.seed, step: operation.payload.candidate.sequence_step });
       }
+      model.data.rendered = result.rendered || null;
       if (capabilities.seed && Number.isSafeInteger(result.next_seed)) draft.seed = String(result.next_seed);
       composeDirty = false;
       const submitted = result.jobs || [result.job];
@@ -145,13 +154,15 @@ export function createGenerationController({ state, api, getRoamSettings, render
   }
   async function drawPrompts() {
     if (composeBusy) return; setComposeBusy(true);
-    promptFeedback.show('pending', t("正在抽取…"));
+    promptFeedback.show('pending', t(state.backends.find(item => item.id === draft.backendId)?.prompt_type === "natural_language" ? "正在准备提示词…" : "正在抽取…"));
     try { await generateRulePrompts(); promptFeedback.show('success', t("已抽取")); }
     catch (error) { model.data.promptNote = null; promptFeedback.show('error', t("抽取失败 · 重试"), tr`抽取失败：${error.message}`); }
     finally { setComposeBusy(false); }
   }
   function edit(key, value) {
     draft[key] = value; composeDirty = true;
+    if (['backendId', 'positive', 'negative', 'presetId', 'source', 'mode'].includes(key)) model.data.rendered = null;
+    if (key === 'backendId') updateGenerationHints();
     if (['positive', 'negative'].includes(key)) {
       const wasAutomatic = draft.source === 'rules' && draft.automatic;
       draft.automatic = afterPromptEdit(draft.source, draft.automatic);
@@ -163,8 +174,9 @@ export function createGenerationController({ state, api, getRoamSettings, render
 
   return {
     model, edit, submit, cancelPending, drawPrompts, updateGenerationHints, updateRuleControls, loadRuleConfigs,
-    selectPreset(id) { draft.presetId = id || model.data.presets[0]?.id || ''; changed(); },
-    selectBackend(id) { draft.backendId = id; changed(); },
+    invalidatePrompt() { model.data.rendered = null; changed(); },
+    selectPreset(id) { model.data.rendered = null; draft.presetId = id || model.data.presets[0]?.id || ''; changed(); },
+    selectBackend(id) { draft.backendId = id; model.data.rendered = null; updateGenerationHints(); },
     observeJobs() {
       for (const [key, request] of uncertainRequests) {
         if (request.payload.repetitions === undefined && state.jobs.some(job => job.request_id === request.payload.request_id)) uncertainRequests.delete(key);

@@ -22,6 +22,6 @@ export function artifactPath(view, cursor = null, tags = []) {
 }
 
 export function matchesLikedTags(artifact, tags = []) {
-  const terms = new Set(String(artifact.positive || '').split(',').map(text => text.trim()).filter(Boolean));
+  const terms = new Set(String(artifact.source_prompts?.positive ?? artifact.positive ?? '').split(',').map(text => text.trim()).filter(Boolean));
   return tags.every(tag => terms.has(tag));
 }

@@ -34,7 +34,7 @@ export function mergeArtifacts(existing, incoming, append = false) {
 }
 
 export function requestKey(payload) {
-  return JSON.stringify([payload.backend_id, payload.positive, payload.negative, payload.seed, payload.count ?? 1, payload.repetitions ?? 1, payload.candidate ?? null]);
+  return JSON.stringify([payload.backend_id, payload.positive, payload.negative, payload.seed, payload.count ?? 1, payload.repetitions ?? 1, payload.candidate ?? null, payload.preparation_id ?? null]);
 }
 
 export function requestIdentity(payload, pending, createId) {

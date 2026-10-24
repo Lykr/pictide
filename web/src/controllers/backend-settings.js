@@ -1,3 +1,4 @@
+import { createPromptSettings } from './prompt-settings.js';
 import { createRequestId } from '../shared/request-id.mjs';
 import { t, tr } from '../i18n/index.mjs';
 import { publishUiState } from '../shared/ui-state.mjs';
@@ -14,8 +15,9 @@ import { backendDefaults, cloudConfigFields } from './backend-controls.mjs';
 /** Own Image API and workflow drafts; the app coordinates other pages. */
 export function createBackendSettings({ state, api, checkBackendAvailability, showBackendAvailability,
   generation, renderRoamBackends, renderArtifacts, loadRoamSettings }) {
+  const prompting = createPromptSettings(api);
   const updateGenerationHints = generation.updateGenerationHints;
-  const model = createModel({ draft: { selectedId: '__new__', name: '', kind: 'comfyui', url: 'http://127.0.0.1:8188', key: '', model: '', size: '', quality: '', aspect_ratio: '', image_size: '', workflowMode: 'default', workflowName: '', workflowJson: '', checkpoint: '', positive: '', negative: '', seed: '', outputs: [] }, pending: {}, models: [], textInputs: [], seedInputs: [], outputs: [], nodes: [], nodeErrors: {}, nodeDrafts: {}, nodeParametersOpen: false, editorMode: 'parameters', workflowValid: true, workflowMessage: null, hasSavedApiKey: false });
+  const model = createModel({ draft: { selectedId: '__new__', prompt_type: 'danbooru', name: '', kind: 'comfyui', url: 'http://127.0.0.1:8188', key: '', model: '', size: '', quality: '', aspect_ratio: '', image_size: '', workflowMode: 'default', workflowName: '', workflowJson: '', checkpoint: '', positive: '', negative: '', seed: '', outputs: [] }, pending: {}, models: [], textInputs: [], seedInputs: [], outputs: [], nodes: [], nodeErrors: {}, nodeDrafts: {}, nodeParametersOpen: false, editorMode: 'parameters', workflowValid: true, workflowMessage: null, hasSavedApiKey: false });
   const { draft } = model.data;
   const changed = model.changed;
   function pending(name, value) { model.data.pending[name] = value; changed(); }
@@ -65,6 +67,7 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
     backendTypeDrafts.clear();
     workflowInputOptions = {};
     draft.name = backend?.name || t("本机 ComfyUI"); draft.kind = backend?.kind || 'comfyui';
+    draft.prompt_type = backend?.prompt_type || 'danbooru';
     draft.url = backend?.base_url || 'http://127.0.0.1:8188';
     settingsBackendKind = backend?.kind || 'comfyui';
     for (const key of cloudFields) draft[key] = backend?.[key] || '';
@@ -204,7 +207,7 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
     finally { if (workflowLoadRevision === revision) pending('workflow', false); }
   }
   function connectionDraft() {
-    const payload = { name: draft.name.trim(), kind: draft.kind, base_url: draft.url.trim() };
+    const payload = { name: draft.name.trim(), kind: draft.kind, base_url: draft.url.trim(), prompt_type: draft.prompt_type };
     if (!payload.name || !payload.base_url) throw new Error(t('请填写 API 名称和 API 地址。'));
     Object.assign(payload, apiKeyFields(draft.key, hasSavedApiKey)); return payload;
   }
@@ -346,8 +349,8 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
   }
 
   return {
-    model, edit, editNode, setNodeParametersExpanded, setWorkflowPanelMode, editDefaultParameters, reloadWorkflows, deleteWorkflow, deleteBackend, importWorkflow, loadModels, testBackend, save, renderBackends, loadBackend, loadWorkflowLibrary,
+    model, prompting, edit, editNode, setNodeParametersExpanded, setWorkflowPanelMode, editDefaultParameters, reloadWorkflows, deleteWorkflow, deleteBackend, importWorkflow, loadModels, testBackend, save, renderBackends, loadBackend, loadWorkflowLibrary,
     get initialized() { return settingsInitialized; },
-    get dirty() { return settingsDirty; },
+    get dirty() { return settingsDirty || prompting.model.data.dirty; },
   };
 }

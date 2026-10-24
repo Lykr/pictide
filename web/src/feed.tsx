@@ -81,7 +81,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 {"\n      "}<div className="section-heading">
 <div className="view-heading">
 <h1 id="view-title">{t(titles[state.view])}</h1>
-<span id="roam-loading" ref={targets["roam.pending"]} className="roam-loading" role="status" hidden={state.view !== "feed" || !waiting}><LoaderCircle aria-hidden="true" /><span id="roam-loading-label" className="sr-only">{t("正在生成漫游图片")}</span></span>
+<span id="roam-loading" ref={targets["roam.pending"]} className="roam-loading" role="status" hidden={state.view !== "feed" || !waiting}><LoaderCircle aria-hidden="true" /><span id="roam-loading-label" className="sr-only">{t(state.preparingPrompt ? "正在准备提示词…" : "正在生成漫游图片")}</span></span>
 </div>
 <div className="roam-heading-actions">
 <span id="liked-privacy-controls" hidden={state.view !== "liked"} ref={ref.likedPrivacy} />

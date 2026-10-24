@@ -54,3 +54,27 @@ test('duplicate clicks during submission do not start a second request', async (
   await submitted;
   assert.equal(service.model.data.busy, false);
 });
+
+test('natural-language results survive unchanged API refreshes and are invalidated by edits', async () => {
+  const state = { backends: [{ id: 'tags' }, { id: 'text', kind: 'comfyui', prompt_type: 'natural_language' }], jobs: [] };
+  const requests = [];
+  const rendered = { positive: 'A sunlit garden.', negative: '', preparation_id: 'prepared-result' };
+  const service = createGenerationController({ state, api: async (_, options) => {
+    requests.push(JSON.parse(options.body));
+    return { jobs: [{ id: 'image' }], rendered };
+  }, getRoamSettings: () => ({}), renderJobs() {}, refresh() {} });
+  service.updateGenerationHints();
+  service.edit('backendId', 'text');
+  service.edit('positive', 'garden');
+  await service.submit();
+  service.updateGenerationHints();
+  assert.equal(service.model.data.rendered, rendered);
+  await service.submit();
+  assert.equal(requests[1].preparation_id, 'prepared-result');
+  state.backends[1] = { ...state.backends[1], model: 'changed' };
+  service.updateGenerationHints();
+  assert.equal(service.model.data.rendered, null);
+  service.model.data.rendered = rendered;
+  service.edit('positive', 'forest');
+  assert.equal(service.model.data.rendered, null);
+});

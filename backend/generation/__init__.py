@@ -20,7 +20,10 @@ def validate_backend(config: dict) -> dict:
     kind = config.get("kind", "comfyui")
     if not isinstance(kind, str) or kind not in _BACKENDS:
         raise BackendError("Unsupported generation backend kind")
-    return _BACKENDS[kind]["validate"](config)
+    prompt_type = config.get("prompt_type", "danbooru")
+    if prompt_type not in ("danbooru", "natural_language"):
+        raise BackendError("Prompt type must be danbooru or natural_language")
+    return dict(_BACKENDS[kind]["validate"](config), prompt_type=prompt_type)
 
 
 def create_backend(config, session) -> GenerationBackend:

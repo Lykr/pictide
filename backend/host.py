@@ -199,6 +199,11 @@ async def clear_generated(request):
         request.match_info.get("id"), await body(request)))
 
 
+async def prompt_settings(request):
+    return web.json_response(await request.app[APPLICATION].prompt_settings(
+        await body(request) if request.method == "PUT" else None))
+
+
 async def general_settings(request):
     return web.json_response(await request.app[APPLICATION].general_settings(
         await body(request) if request.method == "PUT" else None))
@@ -409,6 +414,9 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         CandidateService(candidate_store, libraries), recommendation,
         history, LazyCleanup(storage, paths, history.retention, max_roam_history=roam.history_limit),
         WorkflowLibrary(paths.workflows, tasks.connections.validate), roam, recommendation_store, GeneralSettings(paths))
+    from .prompt_preparation import PromptPreparation
+    from .store.prompting import PromptStore
+    app[APPLICATION].prompting = PromptPreparation(PromptStore(storage))
     from .updates.service import UpdateService
     application = app[APPLICATION]
     application.updates = UpdateService(paths, on_change=lambda: application.events.publish('updates'))
@@ -417,6 +425,7 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
     app.add_routes([
         web.get("/api/bootstrap", bootstrap), web.get("/api/events", events),
         web.get('/api/updates', updates), web.post('/api/updates/{operation:check|download|install}', update_action),
+        web.get("/api/settings/prompting", prompt_settings), web.put("/api/settings/prompting", prompt_settings),
         web.get("/api/settings/general", general_settings), web.put("/api/settings/general", general_settings),
         web.get("/api/settings/history", history_settings), web.put("/api/settings/history", history_settings),
         web.get("/api/settings/roam", roam_settings), web.put("/api/settings/roam", roam_settings),

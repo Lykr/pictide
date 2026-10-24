@@ -40,7 +40,7 @@ function CopyValue({ title, text, disabled = false }: { title: string; text: str
   </span>;
 }
 
-function DetailField({ title, text, disabled = false }: { title: string; text: string; disabled?: boolean }) {
+export function DetailField({ title, text, disabled = false }: { title: string; text: string; disabled?: boolean }) {
   return <section className="image-prompt-section" aria-label={title}>
     <div className="image-detail-heading">
       <h3>{title}</h3>

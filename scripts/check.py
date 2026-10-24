@@ -18,6 +18,7 @@ GROUPS = {
         'tests.backend.recommendation.test_recommendation_application.RecommendationApplicationTests.test_signed_http_feedback_is_exclusive_reversible_and_idempotent',
         'tests.backend.generation.test_cloud_backends.CloudProtocolTests.test_openai_base64_and_actual_request_fields',
         'tests.backend.generation.test_cloud_backends.CloudProtocolTests.test_gemini_interactions_only_final_images_and_stateless',
+        'tests.backend.application.test_natural_prompts.NaturalPromptTests.test_stay_skips_llm_and_feedback_uses_semantic_snapshot',
     ),
     'corpus': (
         'tests.corpus.test_importer.ImportSmoke.test_post_filter_matches_any_tag_and_keeps_only_surviving_population',

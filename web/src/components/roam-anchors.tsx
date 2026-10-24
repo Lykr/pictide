@@ -24,7 +24,7 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
   const immersive = facts.roamImmersive === true;
   const value = useUiFact("roamOptions");
   const settings: AnchorSettings = { pinned_positive: value?.pinned_positive ?? [], preset_base_positive: value?.preset_base_positive ?? [], prompt_mode: value?.prompt_mode ?? "random" };
-  const positive = useUiFact("imageInfo")?.positive ?? "";
+  const positive = useUiFact("imageInfo")?.sourcePositive ?? "";
   const [query, setQuery] = useState("");
   const ready = !!value;
   const [open, setOpen] = useState(false);

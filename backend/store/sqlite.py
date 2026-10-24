@@ -99,6 +99,8 @@ class Repository:
             """)
             if "context" not in {row["name"] for row in db.execute("PRAGMA table_info(generation_batches)")}:
                 db.execute("ALTER TABLE generation_batches ADD COLUMN context TEXT")
+            if "prompt_snapshot" not in {row["name"] for row in db.execute("PRAGMA table_info(jobs)")}:
+                db.execute("ALTER TABLE jobs ADD COLUMN prompt_snapshot TEXT")
             initialize_recommendation(db)
             # Repair caches left by versions that only marked images as deleted.
             db.execute("DELETE FROM artifact_preference_scores WHERE artifact_id IN "
@@ -163,6 +165,9 @@ class Repository:
         if "seed_applied" in result:
             result["seed_applied"] = bool(result["seed_applied"])
         result.pop("config", None)
+        snapshot = result.pop("prompt_snapshot", None)
+        if snapshot:
+            result["source_prompts"] = json.loads(snapshot)
         result.pop("payload_hash", None)
         result.pop("backend_pending", None)
         return result
@@ -260,6 +265,8 @@ class Repository:
             (id,request_id,payload_hash,backend_id,revision_id,status,positive,negative,seed,created_at,updated_at)
             VALUES (?,?,?,?,?,'queued',?,?,?,?,?)""",
             (iid,payload["request_id"],digest,payload["backend_id"],backend["revision_id"],payload["positive"],payload["negative"],actual_seed(payload["seed"]),timestamp,timestamp))
+        if payload.get("prompt_snapshot") is not None:
+            db.execute("UPDATE jobs SET prompt_snapshot=? WHERE id=?", (encode(payload["prompt_snapshot"]), iid))
         return iid
 
     @staticmethod
@@ -375,21 +382,22 @@ class Repository:
     def roam_prompt_reference(self, epoch, anchor_id):
         with self.connection() as db:
             db.execute("BEGIN")
-            row = db.execute("SELECT r.candidate,j.positive,j.negative FROM roam_jobs r JOIN jobs j ON j.id=r.job_id "
+            row = db.execute("SELECT r.candidate,j.id AS job_id,j.positive,j.negative FROM roam_jobs r JOIN jobs j ON j.id=r.job_id "
                              "WHERE r.epoch=? AND r.discarded_at IS NULL AND j.status IN ('queued','submitting','running','completed') "
                              "ORDER BY j.created_at DESC,j.id DESC LIMIT 1", (epoch,)).fetchone()
             if row is None:
                 if anchor_id is None:
                     saved = db.execute("SELECT artifact_id FROM roam_view WHERE actor_id='local'").fetchone()
                     anchor_id = saved["artifact_id"] if saved else None
-                row = db.execute("SELECT r.candidate,j.positive,j.negative FROM artifacts a JOIN jobs j ON j.id=a.job_id "
+                row = db.execute("SELECT r.candidate,j.id AS job_id,j.positive,j.negative FROM artifacts a JOIN jobs j ON j.id=a.job_id "
                                  "JOIN roam_jobs r ON r.job_id=j.id WHERE a.id=? AND a.deleted_at IS NULL "
                                  "AND a.roam_hidden_at IS NULL AND r.discarded_at IS NULL", (anchor_id,)).fetchone()
             if row is None:
                 return None
             snapshot = json.loads(row["candidate"])
-            return {"candidate_id": snapshot.get("candidate_id", ""), "positive": row["positive"],
-                    "negative": row["negative"], "terms": snapshot.get("terms", [])}
+            return {"candidate_id": snapshot.get("candidate_id", ""), "positive": snapshot["positive"],
+                    "negative": snapshot["negative"], "terms": snapshot.get("terms", []),
+                    "rendered": snapshot.get("rendered", {}), "job_id": row["job_id"]}
 
     def dispatch_jobs(self, limit=2):
         with self.connection() as db:
@@ -489,6 +497,9 @@ class Repository:
     @staticmethod
     def _artifact(row):
         result = dict(row)
+        snapshot = result.pop("prompt_snapshot", None)
+        if snapshot:
+            result["source_prompts"] = json.loads(snapshot)
         result["seed_applied"] = bool(result.get("seed_applied"))
         result["image_url"] = f"/api/artifacts/{result['id']}/image"
         result.pop("descriptor", None)
@@ -551,7 +562,7 @@ class Repository:
 
     def liked_positive_prompts(self, actor_id="local"):
         with self.connection() as db:
-            rows = db.execute("SELECT DISTINCT j.positive FROM feedback f "
+            rows = db.execute("SELECT DISTINCT COALESCE(json_extract(j.prompt_snapshot,'$.positive'),j.positive) AS positive FROM feedback f "
                               "JOIN artifacts a ON a.id=f.artifact_id JOIN jobs j ON j.id=a.job_id "
                               "WHERE f.actor_id=? AND f.value=1 AND a.deleted_at IS NULL "
                               "ORDER BY j.positive", (actor_id,)).fetchall()
@@ -560,7 +571,7 @@ class Repository:
     def liked_tags(self):
         with self.connection() as db:
             counts = Counter()
-            rows = db.execute("SELECT j.positive FROM feedback f "
+            rows = db.execute("SELECT COALESCE(json_extract(j.prompt_snapshot,'$.positive'),j.positive) AS positive FROM feedback f "
                               "JOIN artifacts a ON a.id=f.artifact_id JOIN jobs j ON j.id=a.job_id "
                               "WHERE f.actor_id='local' AND f.value=1 AND a.deleted_at IS NULL")
             for row in rows:
@@ -623,7 +634,7 @@ class Repository:
             where_tags = "1"
             if selected_tags:
                 db.create_function("has_prompt_tags", 1, lambda positive: selected_tags <= prompt_tags(positive), deterministic=True)
-                where_tags = "has_prompt_tags(j.positive)"
+                where_tags = "has_prompt_tags(COALESCE(json_extract(j.prompt_snapshot,'$.positive'),j.positive))"
             where_source = "1" if source == "all" else ("EXISTS" if source == "roam" else "NOT EXISTS") + " (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id)"
             # Keep hidden/deleted markers usable for stable pagination, but never
             # return them as generated results (all/liked still retain hidden likes).
@@ -642,7 +653,7 @@ class Repository:
                                       (anchor["created_at"], anchor["created_at"], anchor["id"])).fetchone()[0]
                     available = db.execute("SELECT count(*) FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL").fetchone()[0]
                     offset = max(0, min(rank - limit // 2, available - limit))
-            rows = db.execute(f"""SELECT a.*,j.positive,j.negative,j.seed,f.value AS feedback,
+            rows = db.execute(f"""SELECT a.*,j.positive,j.negative,j.prompt_snapshot,j.seed,f.value AS feedback,
                 CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id) THEN 'roam' ELSE 'generate' END AS source,
                 COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied
                 FROM artifacts a JOIN jobs j ON j.id=a.job_id
@@ -702,14 +713,14 @@ class Repository:
         with self.connection() as db:
             db.execute("BEGIN")
             db.create_function("has_prompt_tags", 1, lambda positive: selected <= prompt_tags(positive), deterministic=True)
-            rows = db.execute("""SELECT a.*,j.positive,j.negative,j.seed,f.value AS feedback,
+            rows = db.execute("""SELECT a.*,j.positive,j.negative,j.prompt_snapshot,j.seed,f.value AS feedback,
                 CASE WHEN rj.job_id IS NULL THEN 'generate' ELSE 'roam' END AS source,
                 COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied,rj.candidate AS scoring_snapshot
                 FROM artifacts a JOIN jobs j ON j.id=a.job_id
                 JOIN backend_revisions r ON r.id=j.revision_id
                 JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local' AND f.value=1
                 LEFT JOIN roam_jobs rj ON rj.job_id=a.job_id
-                WHERE a.deleted_at IS NULL AND has_prompt_tags(j.positive)
+                WHERE a.deleted_at IS NULL AND has_prompt_tags(COALESCE(json_extract(j.prompt_snapshot,'$.positive'),j.positive))
                 ORDER BY a.created_at DESC,a.id DESC""").fetchall()
             items = []
             for row in rows:
@@ -727,7 +738,7 @@ class Repository:
             return self._read_artifact(db, iid)
 
     def _read_artifact(self, db, iid):
-        row = db.execute("""SELECT a.*,j.positive,j.negative,j.seed,f.value AS feedback,
+        row = db.execute("""SELECT a.*,j.positive,j.negative,j.prompt_snapshot,j.seed,f.value AS feedback,
             CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id) THEN 'roam' ELSE 'generate' END AS source,
             COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied
             FROM artifacts a JOIN jobs j ON j.id=a.job_id
