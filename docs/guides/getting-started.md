@@ -66,7 +66,7 @@ For ChatGPT, sign in from the computer running Pictide using its localhost addre
 
 Continue choosing tags, presets, and anchors as usual. Pictide turns the chosen combination into a description before generating an image. Under **Prompts → Preview**, select that image API to see both tags and the final text. The text is read-only and can be copied.
 
-This sends the selected concepts to the text service and may incur additional charges. Drift composes fresh text, Flow asks for minimal wording changes, and Anchor reuses prepared text. If preparation fails, no image is submitted; check the service and retry. Model quality determines how faithfully the text and image follow your tags. Real-service prompt conversion has not yet been validated.
+This sends the selected concepts to the text service and may incur additional charges. Drift composes fresh text, Flow asks for minimal wording changes, and Anchor reuses prepared text. If preparation fails, no image is submitted; check the service and retry. Model quality determines how faithfully the text and image follow your tags.
 
 Keep **Danbooru** to use tags directly without an LLM.
 

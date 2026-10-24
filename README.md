@@ -10,9 +10,6 @@ Pictide is a local generative image explorer that learns your preferences. No pr
 
 ## User guide
 
-> [!IMPORTANT]
-> Use Danbooru tags directly, or connect a [prompt LLM API](docs/guides/getting-started.md#natural-language-prompts) to turn them into natural-language descriptions for your image model.
-
 ### Quick start
 
 1. Download and extract the portable package for your system from [GitHub Releases](https://github.com/Lykr/pictide/releases).

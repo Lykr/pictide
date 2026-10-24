@@ -12,9 +12,6 @@
 
 ## 用户指南
 
-> [!IMPORTANT]
-> Pictide 目前的体验依赖于生图模型对 Danbooru 标签提示词的支持程度。自然语言提示词支持正在计划中。
-
 ### 快速开始
 
 1. 从 [GitHub Releases](https://github.com/Lykr/pictide/releases) 下载并解压适合系统的便携包。
