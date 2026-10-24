@@ -63,6 +63,9 @@ jobs:
           assert manager.startswith('pnpm@')
           subprocess.run([shutil.which('npm'), 'install', '--global', manager], check=True)
       - name: Install packaging dependencies
+        env:
+          # Intel macOS builds cryptography from source; isolate its OpenSSL from Python's dylibs.
+          OPENSSL_STATIC: '1'
         run: python -m pip install --no-cache-dir -r backend/requirements-release.txt
       - name: Check desktop lifecycle
         run: >-

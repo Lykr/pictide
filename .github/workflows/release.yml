@@ -14,7 +14,7 @@ on:
         required: true
         type: string
       macos_run:
-        description: Successful Apple Silicon validation run ID for the same source tag
+        description: Successful macOS validation run ID for the same source tag
         required: true
         type: string
 
@@ -162,6 +162,9 @@ jobs:
           assert manager.startswith('pnpm@')
           subprocess.run([shutil.which('npm'), 'install', '--global', manager], check=True)
       - name: Install packaging dependencies
+        env:
+          # Intel macOS builds cryptography from source; isolate its OpenSSL from Python's dylibs.
+          OPENSSL_STATIC: '1'
         run: python -m pip install --no-cache-dir -r backend/requirements-release.txt
       - name: Build the native portable package
         run: python scripts/build_portable.py --prebuilt-library dev/cache/prebuilt
@@ -231,7 +234,8 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: github.event_name == 'workflow_dispatch'
         with:
-          name: pictide-macos-apple-silicon-${{ inputs.macos_run }}
+          pattern: pictide-macos-*-${{ inputs.macos_run }}
+          merge-multiple: true
           path: dev/build/macos-recovery
           run-id: ${{ inputs.macos_run }}
           github-token: ${{ github.token }}
@@ -255,7 +259,8 @@ jobs:
           assert run_record('MACOS_RUN')['conclusion'] == 'success', 'Mac validation did not pass'
           source = Path('dev/build/macos-recovery')
           provenance = json.loads((source / 'source.json').read_text())
-          assert provenance['commit'] == commit and provenance['architecture'] == 'apple-silicon'
+          assert provenance['commit'] == commit, 'Mac validation source differs'
+          platform = {'apple-silicon': 'macos-arm64', 'intel': 'macos-x64'}[provenance['architecture']]
           archives = list(source.glob('*.zip'))
           assert len(archives) == 1 and archives[0].name == provenance['archive']
           with archives[0].open('rb') as stream:
@@ -264,7 +269,7 @@ jobs:
           assert not (target / archives[0].name).exists(), 'Do not replace an existing platform asset'
           shutil.copyfile(archives[0], target / archives[0].name)
           for name in ('build-report', 'smoke-report'):
-              shutil.copyfile(source / (name + '.json'), target / (name + '-macos-arm64.json'))
+              shutil.copyfile(source / (name + '.json'), target / (name + '-' + platform + '.json'))
       - name: Check assets, write checksums and publish
         env:
           GH_TOKEN: ${{ github.token }}
