@@ -174,6 +174,7 @@
 .feed-page #settings-form .node-input-field:only-child { grid-column: 1 / -1; }
 .feed-page #settings-form .validation { margin: 0; }
 .feed-page #settings-form .binding-inputs { display: grid; min-width: 0; gap: 16px; }
+.feed-page #output-nodes > label { display: flex; margin: 0; }
 .feed-page .settings-content .dialog-footer { margin: 0; justify-content: flex-end; }
 .feed-page #test-backend { margin-right: auto; }
 .feed-page .settings-content .notice { margin: 0; }

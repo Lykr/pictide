@@ -55,3 +55,54 @@ test('a stale default workflow response cannot overwrite a changed API draft', a
   await expect(page.locator('#backend-url')).toHaveValue('http://127.0.0.1:9999');
   await expect(page.locator('#custom-workflow')).toBeHidden();
 });
+
+for (const width of [1365, 390]) test(`workflow output choices align and retain selection at ${width}px`, async ({ page, context }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  await context.addInitScript(() => localStorage.setItem('pictide.first-run-guide.v1', JSON.stringify({ version: 1, status: 'dismissed' })));
+  await page.request.put('/api/settings/general', { data: { theme: 'dark', language: 'zh-CN' } });
+  await page.goto('/#settings/backend');
+  await expect(page.locator('#backend-name')).toHaveValue('Browser fixture');
+  await page.locator('#toggle-node-parameters').click();
+  await page.locator('#toggle-workflow-json').click();
+  const workflow = JSON.parse(await page.locator('#workflow-json').inputValue());
+  workflow['6']._meta = { title: 'CLIP Text Encode (Positive Prompt)' };
+  workflow['7']._meta = { title: 'Negative Prompt (unused at CFG 1)' };
+  workflow['9']._meta = { title: 'SaveImage_' + 'LongNodeName'.repeat(12) };
+  for (let id = 10; id < 18; id++) workflow[id] = { class_type: 'VAEDecode', inputs: {}, _meta: { title: `${id} VAE解码` } };
+  await page.locator('#workflow-json').fill(JSON.stringify(workflow));
+  await page.locator('#toggle-workflow-json').click();
+  const outputs = page.locator('#output-nodes');
+  await outputs.scrollIntoViewIfNeeded();
+  const dimensions = await outputs.evaluate(group => ({ width: group.clientWidth, scrollWidth: group.scrollWidth, height: group.clientHeight, scrollHeight: group.scrollHeight }));
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.width);
+  expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.height);
+  for (const label of await outputs.locator('label').all()) {
+    const geometry = await label.evaluate(row => {
+      const checkbox = row.querySelector('[role=checkbox]').getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(row.lastChild);
+      const text = range.getBoundingClientRect();
+      return { checkboxRight: checkbox.right, textLeft: text.left, checkboxCenter: checkbox.y + checkbox.height / 2, textCenter: text.y + text.height / 2, height: row.getBoundingClientRect().height };
+    });
+    expect(geometry.checkboxRight).toBeLessThan(geometry.textLeft);
+    expect(Math.abs(geometry.checkboxCenter - geometry.textCenter)).toBeLessThan(1);
+    if (width === 390) expect(geometry.height).toBeGreaterThanOrEqual(44);
+  }
+  const positive = outputs.getByRole('checkbox', { name: '6 · CLIP Text Encode (Positive Prompt)', exact: true });
+  await positive.check();
+  await positive.focus();
+  await page.keyboard.press('Space');
+  await expect(positive).not.toBeChecked();
+  await outputs.locator('label').filter({ hasText: '6 · CLIP Text Encode (Positive Prompt)' }).click();
+  await expect(positive).toBeChecked();
+  const saved = page.waitForResponse(response => response.url().endsWith('/api/backends/fixture') && response.request().method() === 'PUT');
+  await page.locator('#save-backend').click();
+  const response = await saved;
+  expect(response.ok()).toBe(true);
+  expect(response.request().postDataJSON().output_nodes).toEqual(expect.arrayContaining(['6', '9']));
+  await outputs.scrollIntoViewIfNeeded();
+  await outputs.evaluate(group => { group.scrollTop = 0; });
+  const path = testInfo.outputPath('workflow-outputs.png');
+  await outputs.screenshot({ path });
+  await testInfo.attach('workflow-outputs', { path, contentType: 'image/png' });
+});
