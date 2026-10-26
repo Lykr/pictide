@@ -1,5 +1,7 @@
 """Real lightweight service processes verify lifecycle without ComfyUI, models or GPU requests."""
 import asyncio
+from contextlib import redirect_stdout
+import io
 import json
 from pathlib import Path
 import socket
@@ -132,6 +134,26 @@ class LifecycleTests(unittest.TestCase):
         self.assertFalse(alive(pid))
         self.assertIsNone(unrelated.poll())
         self.assertIsNone(probe(self.config['base_url']))
+
+    def test_startup_shows_waiting_and_sanitized_output_before_actual_readiness(self):
+        script = (self.install / 'main.py').read_text(encoding='utf-8')
+        script = script.replace('if args.hang: time.sleep(120)',
+            "print('Loading custom nodes token=never-display-this', flush=True); time.sleep(.6)\nif args.hang: time.sleep(120)")
+        (self.install / 'main.py').write_text(script, encoding='utf-8')
+        self.service.save(self.payload)
+        output = io.StringIO()
+        with patch.dict(__import__('os').environ, {'PICTIDE_STARTUP_ANIMATION': '1'}), \
+             patch('backend.desktop.text.system_language', return_value='en'), redirect_stdout(output):
+            self.service.start()
+        text = output.getvalue()
+        self.assertEqual(self.service.settings()['status']['phase'], 'running')
+        self.assertIn('Waiting for ComfyUI', text)
+        self.assertIn('ComfyUI is ready', text)
+        self.assertLess(text.index('Waiting for ComfyUI'), text.index('ComfyUI is ready'))
+        self.assertIn('Loading custom nodes', text)
+        self.assertNotIn('never-display-this', text)
+        self.assertNotIn('%', text)
+        self.assertIsNotNone(self.service.child)
 
     def test_running_external_service_is_reused_and_survives_exit(self):
         external = self.external()

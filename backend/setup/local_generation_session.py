@@ -184,7 +184,6 @@ class ManagedComfy(ComfyProcess):
                    '--output-directory', str(output)]
         if self.state['profile_id'] == 'cpu':
             command.append('--cpu')
-        announce('Starting local ComfyUI…', '正在启动本地 ComfyUI…')
         self.launch(command, install, self.url)
         self.state['port'] = port
         write_state(self.paths, self.state)

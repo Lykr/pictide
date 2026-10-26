@@ -10,6 +10,7 @@ import threading
 import time
 
 from .comfy_discovery import probe
+from ..desktop.startup_progress import ANIMATION_ENV, COLUMNS_ENV, StartupProgress
 
 log = logging.getLogger('backend.setup.local_generation')
 
@@ -82,11 +83,12 @@ def external_runtime_dlls():
 
 
 class _ManagedOutput:
-    """Drain one owned process into a bounded, independently rotating log."""
+    """Drain owned output into a bounded log and retain its latest startup line."""
     def __init__(self, pipe, target):
         from ..runtime_logging import make_log_handler
 
         self.pipe = pipe
+        self.latest = ''
         self.logger = logging.Logger('backend.comfyui', level=logging.INFO)
         self.logger.propagate = False
         self.handler = make_log_handler(target)
@@ -102,6 +104,7 @@ class _ManagedOutput:
             while chunk := self.pipe.readline(16 * 1024):
                 message = decoder.decode(chunk).rstrip('\r\n')
                 if message:
+                    self.latest = message
                     self.logger.info('%s', message)
             trailing = decoder.decode(b'', final=True)
             if trailing:
@@ -122,7 +125,7 @@ def external_environment():
     environment = os.environ.copy()
     for key in ('PYTHONHOME', 'PYTHONPATH', 'VIRTUAL_ENV', '__PYVENV_LAUNCHER__',
                 '_PYI_APPLICATION_HOME_DIR', '_PYI_ARCHIVE_FILE',
-                '_PYI_PARENT_PROCESS_LEVEL', '_PYI_SPLASH_IPC'):
+                '_PYI_PARENT_PROCESS_LEVEL', '_PYI_SPLASH_IPC', ANIMATION_ENV, COLUMNS_ENV):
         environment.pop(key, None)
     if getattr(sys, 'frozen', False) and sys.platform.startswith('linux'):
         original = environment.pop('LD_LIBRARY_PATH_ORIG', None)
@@ -146,6 +149,8 @@ class ComfyProcess:
         if self.process is not None:
             raise RuntimeError('ComfyUI is already owned by this session')
         self.url = url
+        progress = StartupProgress(self.paths.logs / 'comfyui.log')
+        progress.start()
         try:
             with self.lock:
                 if self.stopping.is_set():
@@ -166,15 +171,18 @@ class ComfyProcess:
                     raise InterruptedError('ComfyUI startup was cancelled')
                 if probe(url, headers=headers) is not None and not self.stopping.is_set() and process.poll() is None:
                     log.info('Managed ComfyUI ready at %s, pid=%s', url, process.pid)
+                    progress.finish('ready')
                     return url
                 if time.monotonic() >= deadline:
                     raise TimeoutError('ComfyUI startup timed out; see logs/comfyui.log')
                 if time.monotonic() - last >= 10:
                     log.info('ComfyUI is still starting; see logs/comfyui.log')
                     last = time.monotonic()
+                progress.tick(self.output.latest if self.output else '')
                 time.sleep(.2)
             raise RuntimeError('ComfyUI could not start; see logs/comfyui.log')
-        except BaseException:
+        except BaseException as error:
+            progress.finish('cancelled' if self.stopping.is_set() or isinstance(error, KeyboardInterrupt) else 'failed')
             self.close()
             raise
 

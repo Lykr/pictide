@@ -39,7 +39,7 @@ class DesktopTextSmoke(unittest.TestCase):
 
     def test_catalogs_have_matching_keys_and_parameter_templates(self):
         parameters = dict(directory='/model', path='model.onnx', percent=50, received=1,
-                          total=2, attempt=1, error='SHA-256 mismatch', address='http://localhost:8189')
+                          total=2, attempt=1, error='SHA-256 mismatch', address='http://localhost:8189', elapsed='00:12')
         self.assertEqual(desktop_text._TEXT['en'].keys(), desktop_text._TEXT['zh-CN'].keys())
         for language in ('en', 'zh-CN'):
             with patch.object(desktop_text, 'system_language', return_value=language):

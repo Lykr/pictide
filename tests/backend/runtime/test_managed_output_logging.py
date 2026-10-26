@@ -8,7 +8,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from backend.setup.local_generation_session import ManagedComfy, _ManagedOutput
+from backend.setup.local_generation_session import ManagedComfy
+from backend.setup.comfy_process import _ManagedOutput
 from backend.paths import DataPaths
 
 
@@ -61,7 +62,7 @@ class ManagedOutputSmoke(unittest.TestCase):
                 "from http.server import BaseHTTPRequestHandler, HTTPServer\n"
                 "class Handler(BaseHTTPRequestHandler):\n"
                 " def do_GET(self):\n"
-                "  data = json.dumps({'system': {}}).encode()\n"
+                "  data = json.dumps({'system': {'comfyui_version': 'fixture'}}).encode()\n"
                 "  self.send_response(200); self.end_headers(); self.wfile.write(data)\n"
                 " def log_message(self, *args): pass\n"
                 "print('fixture stdout', flush=True)\n"
@@ -79,7 +80,7 @@ class ManagedOutputSmoke(unittest.TestCase):
                 return real_popen([sys.executable, '-u', str(script), port], **kwargs)
 
             try:
-                with patch('backend.setup.local_generation_session.subprocess.Popen', side_effect=fake_service):
+                with patch('backend.setup.comfy_process.subprocess.Popen', side_effect=fake_service):
                     with self.assertLogs('backend.setup.local_generation', level='INFO') as events:
                         address = managed.start()
                 child, output = managed.process, managed.output

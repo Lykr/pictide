@@ -26,6 +26,8 @@ In General settings, enable **Start and stop with Pictide**, select a saved loca
 
 If ComfyUI is already running, Pictide reuses it. Otherwise it starts the configured environment and waits for readiness. Exiting Pictide stops only the process it started; closing the browser leaves Pictide and its service running. Startup failures remain visible in settings with a log location, so you can correct the configuration.
 
+While ComfyUI starts, the terminal shows a moving waiting bar, elapsed time, and recent startup output. The log path stays visible for troubleshooting. The waiting bar completes when the service is ready.
+
 Configure this on the computer running Pictide using its localhost address. Remote image services keep their existing lifecycle. Pictide-installed Windows environments keep their automatic startup unless you disable this setting.
 
 ## Task records

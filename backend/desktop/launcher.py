@@ -2,12 +2,14 @@
 import os
 import codecs
 import socket
+import shutil
 from pathlib import Path
 import subprocess
 import sys
 import time
 
 from .text import translate
+from .startup_progress import ANIMATION_ENV, COLUMNS_ENV
 from ..runtime_logging import LOG_MAX_BYTES, close_application_log, finish_desktop_output, trim_startup_logs
 
 STATUS_ENV = 'PICTIDE_DESKTOP_STATUS'
@@ -91,6 +93,10 @@ def launch_desktop(arguments, paths):
         command += ['-m', 'backend.host']
     command += [*arguments, '--data-dir', str(paths.root), '--desktop-worker']
     environment = dict(os.environ, **{STATUS_ENV: str(status)})
+    # The worker writes through our pipe; only this parent knows whether a real
+    # terminal will render carriage-return animation or needs plain log lines.
+    environment[ANIMATION_ENV] = '1' if sys.stdout and sys.stdout.isatty() else '0'
+    environment[COLUMNS_ENV] = str(shutil.get_terminal_size().columns)
     close_application_log()
     process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT, env=environment,
