@@ -12,7 +12,7 @@ Download and extract a portable package, then follow the startup steps for [Wind
 
 Windows preparation can download ComfyUI and the recommended Anima model, then connect its default workflow automatically; see the [Windows guide](setup/windows.md#portable-edition). Packages keep image generation models as optional downloads.
 
-For an existing local ComfyUI installation or an OpenAI Images or Gemini cloud service, connect it under Settings → Image API. Start an independently installed ComfyUI yourself; Pictide starts and stops the copy it prepares for you.
+For an existing local ComfyUI installation or an OpenAI Images or Gemini cloud service, connect it under Settings → Image API. To let Pictide start and stop an existing local ComfyUI installation, enable [local startup](settings.md#start-and-stop-local-comfyui) in General settings. Pictide-installed Windows environments retain their automatic startup.
 
 Previous portable packages passed native builds and startup checks on Windows, Linux, and macOS. The new desktop packaging is described in the platform guides; Mac desktop behavior still needs verification. Live cloud image generation remains unverified.
 
