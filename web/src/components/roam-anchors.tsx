@@ -1,17 +1,18 @@
 import { emitSignal } from '../shared/signals.mjs';
 import { useUiFact } from '../shared/application-context';
+import { useVocabularySearch } from '../shared/use-vocabulary-search';
 import { runUiCommand } from '../shared/ui-state.mjs';
 import { useErrorNotice } from "./notifications";
 import { getUiState, publishUiState, subscribeUiState } from "../shared/ui-state.mjs";
 import { uiTarget } from "../shared/ui-targets";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactElement, type ReactNode } from "react";
 import { Anchor, LoaderCircle, LockKeyhole, Plus, Trash2, X } from "lucide-react";
-import { t } from "../i18n/index.mjs";
+import { t, tr } from "../i18n/index.mjs";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Input } from "./ui/input";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
-import { Popover, PopoverTrigger } from "./ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { ImageToolbarPopover } from "./image-toolbar-popover";
 import { HelpTip } from "./actions";
 import { anchorTerms } from "../controllers/roam-anchors.mjs";
@@ -29,6 +30,8 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
   const ready = !!value;
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const navigating = useRef(false);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState("");
   useErrorNotice(error, { id: "roam-anchors" });
@@ -44,6 +47,14 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
   const pinned = new Set(pins);
   const terms: string[] = anchorTerms(positive, pins, settings.preset_base_positive);
   const locked = settings.prompt_mode === "stay";
+  const disabled = !ready || locked || pending !== null;
+  const suggestionsOpen = searchOpen && open && !disabled && facts.route === "feed";
+  const { matches, error: searchError, loading } = useVocabularySearch(query, suggestionsOpen);
+  useErrorNotice(searchError ? `${t("词库暂不可用，仍可输入提示词并回车添加")} · ${searchError}` : "", { id: "anchor-tag-search", visible: suggestionsOpen });
+  const excluded = new Set([...settings.preset_base_positive, ...pins].map(text => normalize(text).toLowerCase()));
+  const options = matches.filter(tag => !excluded.has(normalize(tag.name).toLowerCase()));
+  const custom = query.trim() && !excluded.has(normalize(query).toLowerCase()) && !matches.some(tag => normalize(tag.name).toLowerCase() === normalize(query).toLowerCase());
+  useEffect(() => { setSearchOpen(false); navigating.current = false; }, [open, immersive]);
   const signature = JSON.stringify(pins);
   useEffect(() => {
     if (ready && previousPins.current !== signature) {
@@ -54,7 +65,7 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
   }, [open, ready, locked, pending, signature]);
   const save = async (text: string | null, addOnly = false) => {
     if (!ready || locked || pending !== null) return false;
-    if (addOnly && text !== null && (fixed.has(text) || pinned.has(text))) return true;
+    if (addOnly && text !== null && excluded.has(normalize(text).toLowerCase())) return true;
     const next = text === null ? [] : pinned.has(text) ? pins.filter(value => value !== text) : [...pins, text];
     setPending(text ?? ""); setError("");
     try {
@@ -63,9 +74,9 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
     } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); return false; }
     finally { setPending(null); }
   };
-  const add = async () => {
-    const text = normalize(query);
-    if (text && await save(text, true)) { setQuery(""); setAdding(false); }
+  const add = async (value = query) => {
+    const text = normalize(value);
+    if (text && await save(text, true)) { setQuery(""); setAdding(false); setSearchOpen(false); navigating.current = false; }
   };
   const triggerButton = <Button ref={triggerTarget} variant={open ? "secondary" : "ghost"} size="icon-sm" className="roam-anchor-trigger" aria-label={t("锚点")} aria-pressed={open} data-tooltip={t("锚点")} onClick={() => { if (!open) emitSignal("close-image-info"); }}>
       <Anchor aria-hidden="true" />{pins.length > 0 && <span className="roam-anchor-count">{pins.length}</span>}
@@ -82,23 +93,48 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
         <Button variant="ghost" size="icon-sm" aria-label={t("收起锚点")} data-tooltip={t("收起锚点")} onClick={() => { setOpen(false); triggerRef.current?.focus({ preventScroll: true }); }}><X aria-hidden="true" /></Button>
       </div>
     </div>
-    <div className="roam-anchor-add flex items-center gap-2 px-2 pt-2" data-open={adding}>
-      <Input ref={inputRef} className="min-w-0 flex-1" value={query} onChange={event => setQuery(event.target.value)}
-        aria-label={t("添加锚点")} placeholder={t("输入提示词，回车添加")}
-        data-tooltip={t("输入完整提示词并回车添加；自定义词不参与 PMI 计算。")}
-        disabled={!ready || locked || pending !== null} onKeyDown={event => {
-          if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-            event.preventDefault(); event.stopPropagation(); void add();
-          }
-        }} />
-      <Button variant="ghost" size="icon-sm" aria-label={t("添加锚点")} data-tooltip={t("添加锚点")}
-        disabled={!ready || locked || pending !== null} onClick={() => { if (query.trim()) void add(); else { setAdding(true); inputRef.current?.focus(); } }}>
-        {pending !== null && pending === normalize(query) ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}
-      </Button>
-      {pins.length > 0 && <Button ref={targets.mobileClear} className="roam-anchor-mobile-clear" variant="ghost" size="icon-sm" aria-label={t("清空锚点")} data-tooltip={t("清空锚点")} disabled={!ready || locked || pending !== null} onClick={() => save(null)}>
-        {pending === "" ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-      </Button>}
-    </div>
+    <Command shouldFilter={false} loop className="roam-anchor-add h-auto w-auto overflow-visible bg-transparent p-0" data-open={adding}>
+      <Popover open={suggestionsOpen} onOpenChange={setSearchOpen}>
+        <PopoverAnchor asChild><div className="roam-anchor-entry">
+          <div className="roam-anchor-query min-w-0 flex-1"><CommandInput ref={inputRef} value={query}
+            onValueChange={text => { setQuery(text); setSearchOpen(true); navigating.current = false; }}
+            onFocus={() => setSearchOpen(true)} onClick={() => setSearchOpen(true)} aria-expanded={suggestionsOpen}
+            aria-label={t("添加锚点")} placeholder={t("输入提示词，回车添加")}
+            data-tooltip={t("输入完整提示词并回车添加，也可选择词库匹配项。")}
+            disabled={disabled} onKeyDown={event => {
+              if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+                if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); }
+                return;
+              }
+              if (event.key === "ArrowDown" || event.key === "ArrowUp") { navigating.current = true; setSearchOpen(true); }
+              if (event.key === "Enter" && query.trim() && (!navigating.current || !suggestionsOpen || !options.length)) {
+                event.preventDefault(); event.stopPropagation(); void add();
+              }
+            }} /></div>
+          <Button variant="ghost" size="icon-sm" aria-label={t("添加锚点")} data-tooltip={t("添加锚点")}
+            disabled={disabled} onClick={() => { if (query.trim()) void add(); else { setAdding(true); inputRef.current?.focus(); } }}>
+            {pending !== null && pending === normalize(query) ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}
+          </Button>
+          {pins.length > 0 && <Button ref={targets.mobileClear} className="roam-anchor-mobile-clear" variant="ghost" size="icon-sm" aria-label={t("清空锚点")} data-tooltip={t("清空锚点")} disabled={disabled} onClick={() => save(null)}>
+            {pending === "" ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+          </Button>}
+        </div></PopoverAnchor>
+        <PopoverContent className="roam-anchor-suggestions gap-0 p-0" align="start" side={immersive ? "top" : "bottom"} collisionPadding={12}
+          container={immersive ? inputRef.current?.closest<HTMLElement>(".image-card") : undefined}
+          onOpenAutoFocus={event => event.preventDefault()} onCloseAutoFocus={event => event.preventDefault()}
+          onInteractOutside={event => { if (event.target instanceof Element && event.target.closest(".roam-anchor-entry")) event.preventDefault(); }}
+          onEscapeKeyDown={event => { event.preventDefault(); event.stopPropagation(); setSearchOpen(false); }}
+          onMouseDown={event => event.preventDefault()}>
+          <CommandList label={t("锚点匹配项")}>
+            {loading ? <div role="status" className="px-3 py-2 text-sm text-muted-foreground">{t("搜索中…")}</div> : <CommandEmpty>{t("没有匹配标签")}</CommandEmpty>}
+            <CommandGroup>
+              {custom && <CommandItem value="__custom" onSelect={() => void add()}><span className="min-w-0 flex-1 break-words">{tr`添加：${query}`}</span></CommandItem>}
+              {options.map(tag => <CommandItem key={tag.id} value={String(tag.id)} onSelect={() => void add(tag.name)}><span className="min-w-0 flex-1 break-words">{tag.name}</span></CommandItem>)}
+            </CommandGroup>
+          </CommandList>
+        </PopoverContent>
+      </Popover>
+    </Command>
     <div ref={targets.terms} className="roam-anchor-terms">
       {terms.map(text => {
         const fromPreset = fixed.has(text), selected = pinned.has(text);
@@ -115,7 +151,7 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
     onInteractOutside={event => {
       const target = event.target instanceof Element ? event.target : null;
       // Keep editing while navigating/rating images from the same toolbar.
-      if (target?.closest(".image-toolbar") && !target.closest(".image-info")) event.preventDefault();
+      if (target?.closest(".roam-anchor-suggestions") || (target?.closest(".image-toolbar") && !target.closest(".image-info"))) event.preventDefault();
     }}>{content}</ImageToolbarPopover> : <>
     {open && <AnchorDivider />}
     <CollapsibleContent className="roam-anchors" role="region" aria-label={t("锚点")}>{content}</CollapsibleContent>

@@ -24,7 +24,7 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
   const anchorPopoverOpen = () => !!card.querySelector?.('.roam-anchor-popover[data-state=open]');
   const anchorsOpen = () => !!card.matches?.('.roam-image-card[data-state=open]') || anchorPopoverOpen();
   const imageInfoOpen = () => !!card.querySelector?.('.image-info-popover[data-state=open]');
-  const inControls = node => toolbars.some(bar => bar.contains(node)) || ['.roam-anchors', '.roam-anchor-divider', '.image-info-popover'].some(selector => card.querySelector?.(selector)?.contains(node));
+  const inControls = node => toolbars.some(bar => bar.contains(node)) || ['.roam-anchors', '.roam-anchor-suggestions', '.roam-anchor-divider', '.image-info-popover'].some(selector => card.querySelector?.(selector)?.contains(node));
   const controls = createAutoHideControls({
     held: () => hovered || anchorsOpen() || imageInfoOpen() || (keyboard && inControls(doc.activeElement)),
     visible: show => {

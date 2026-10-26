@@ -4,7 +4,7 @@ export function bindTouchNavigation(element, { navigate, adjustFeedback = null, 
   const cancel = () => { gesture = null; };
   const start = event => {
     cancel();
-    if (!enabled() || event.touches.length !== 1 || event.target?.closest?.('button,a,input,textarea,select,[role="button"],[contenteditable="true"]')) return;
+    if (!enabled() || event.touches.length !== 1 || event.target?.closest?.('button,a,input,textarea,select,[role="button"],[role="listbox"],[contenteditable="true"]')) return;
     const touch = event.touches[0];
     gesture = { id: touch.identifier, x: touch.clientX, y: touch.clientY, started: event.timeStamp, axis: null };
   };

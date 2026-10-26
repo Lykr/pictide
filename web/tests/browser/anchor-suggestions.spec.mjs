@@ -1,0 +1,202 @@
+import { test, expect } from './fixtures.mjs';
+
+const dismissTour = context => context.addInitScript(() => localStorage.setItem('pictide.first-run-guide.v1', JSON.stringify({ version: 1, status: 'dismissed' })));
+const pins = async page => (await (await page.request.get('/api/settings/roam')).json()).pinned_positive;
+async function openAnchors(page, context, width = 1365) {
+  await page.setViewportSize({ width, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await dismissTour(context);
+  await page.goto('/#feed');
+  await expect(page.locator('#empty-generate:visible, #image-card:visible').first()).toBeVisible();
+  if (await page.locator('#empty-generate').isVisible()) await page.locator('#empty-generate').click();
+  await expect(page.locator('#main-image')).toHaveAttribute('src', /\/api\/artifacts\/.+\/image/);
+  await page.locator('.roam-anchor-trigger').click();
+  await expect(page.locator('.roam-anchors')).toBeVisible();
+}
+async function entry(page) {
+  const input = page.getByRole('combobox', { name: 'Add anchor', exact: true });
+  if (!await input.isVisible()) await page.locator('.roam-anchor-add').getByRole('button', { name: 'Add anchor', exact: true }).click();
+  await input.click();
+  return input;
+}
+async function capture(page, testInfo, name) {
+  await page.evaluate(() => document.fonts.ready);
+  const path = testInfo.outputPath(`${name}.png`);
+  await page.screenshot({ path, animations: 'disabled' });
+  await testInfo.attach(name, { path, contentType: 'image/png' });
+}
+async function withinViewport(page, popup) {
+  const box = await popup.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+}
+
+for (const width of [1365, 390]) test(`anchor library selection, free text and fullscreen at ${width}px`, async ({ page, context }, testInfo) => {
+  await openAnchors(page, context, width);
+  const image = await page.locator('#main-image').getAttribute('src');
+  const generation = [];
+  page.on('request', request => { if (request.method() === 'POST' && /\/api\/(jobs|roam\/ensure)$/.test(new URL(request.url()).pathname)) generation.push(request.url()); });
+  let input = await entry(page);
+  await input.fill('blue');
+  const sky = page.getByRole('option', { name: 'blue_sky', exact: true });
+  await expect(sky).toBeVisible();
+  await expect(page.getByRole('option', { name: 'garden', exact: true })).toHaveCount(0);
+  await withinViewport(page, page.locator('.roam-anchor-suggestions'));
+  const inputBox = await input.boundingBox();
+  const addBox = await page.locator('.roam-anchor-add').getByRole('button', { name: 'Add anchor', exact: true }).boundingBox();
+  expect(Math.abs(inputBox.y + inputBox.height / 2 - addBox.y - addBox.height / 2)).toBeLessThan(2);
+  await capture(page, testInfo, `suggestions-${width}`);
+  await sky.click();
+  await expect.poll(() => pins(page)).toEqual(['blue sky']);
+  await expect(page.locator('.roam-anchor-suggestions')).toBeHidden();
+  if (width <= 640) await expect(input).toBeHidden();
+  input = await entry(page);
+  await input.fill('BLUE_SKY');
+  await expect(page.getByRole('listbox', { name: 'Anchor suggestions' })).toContainText('No matching tags');
+  await input.press('Enter');
+  await expect.poll(() => pins(page)).toEqual(['blue sky']);
+  input = await entry(page);
+  await input.fill('quiet evening light');
+  await input.press('Enter');
+  await expect.poll(() => pins(page)).toEqual(['blue sky', 'quiet evening light']);
+  await page.locator('.roam-anchor-trigger').click();
+  await page.locator('#roam-immersive').click();
+  const card = page.locator('#image-card');
+  await expect(card).toHaveClass(/immersive/);
+  await card.locator('.roam-anchor-trigger').click();
+  input = await entry(page);
+  await input.fill('gard');
+  await expect(page.getByRole('option', { name: 'garden', exact: true })).toBeVisible();
+  const suggestions = card.locator('.roam-anchor-suggestions');
+  await expect(suggestions).toBeVisible();
+  expect(await suggestions.evaluate(el => !document.fullscreenElement || document.fullscreenElement.contains(el))).toBe(true);
+  await withinViewport(page, suggestions);
+  await capture(page, testInfo, `immersive-suggestions-${width}`);
+  await input.press('ArrowDown');
+  await input.press('Enter');
+  await expect.poll(() => pins(page)).toEqual(['blue sky', 'quiet evening light', 'garden']);
+  await expect(card.locator('.roam-anchor-popover')).toBeVisible();
+  await expect(card).toHaveClass(/immersive/);
+  input = await entry(page);
+  await input.fill('blue');
+  await expect(suggestions).toBeVisible();
+  await input.press('Escape');
+  await expect(suggestions).toBeHidden();
+  await expect(card.locator('.roam-anchor-popover')).toBeVisible();
+  await expect(input).toBeFocused();
+  await input.press('Escape');
+  await expect(card.locator('.roam-anchor-popover')).toBeHidden();
+  await expect(card).toHaveClass(/immersive/);
+  await page.keyboard.press('Escape');
+  await expect(card).not.toHaveClass(/immersive/);
+  await expect(page.locator('#main-image')).toHaveAttribute('src', image);
+  expect(generation).toEqual([]);
+});
+
+test('anchor search ignores stale responses, handles IME and keeps drafts on failures', async ({ page, context }) => {
+  await openAnchors(page, context);
+  let releaseOld;
+  const old = new Promise(resolve => { releaseOld = resolve; });
+  let oldStarted;
+  const started = new Promise(resolve => { oldStarted = resolve; });
+  await page.route('**/api/candidate/tags?*', async route => {
+    const query = new URL(route.request().url()).searchParams.get('query');
+    if (query === 'blue') { oldStarted(); await old; return route.fulfill({ json: { tags: [{ id: 1, name: 'blue_sky' }] } }); }
+    if (query === 'fail') return route.fulfill({ status: 503, json: { error: 'Library unavailable' } });
+    await route.continue();
+  });
+  const input = await entry(page);
+  await input.fill('blue');
+  await started;
+  await input.fill('garden');
+  await expect(page.getByRole('option', { name: 'garden', exact: true })).toBeVisible();
+  releaseOld();
+  await expect(page.getByRole('option', { name: 'blue_sky', exact: true })).toHaveCount(0);
+  await input.fill('花园');
+  let saves = 0;
+  page.on('request', request => { if (request.method() === 'PUT' && request.url().endsWith('/api/settings/roam')) saves++; });
+  await input.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', isComposing: true });
+  await input.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 229 });
+  expect(saves).toBe(0);
+  await expect(input).toHaveValue('花园');
+  await input.press('Enter');
+  await expect.poll(() => pins(page)).toEqual(['花园']);
+  await input.click();
+  await input.fill('fail');
+  await expect(page.locator('.notification-card[data-state=open]')).toContainText('Library unavailable');
+  await input.press('Enter');
+  await expect.poll(() => pins(page)).toEqual(['花园', 'fail']);
+  await input.click();
+  await input.fill('garden');
+  await expect(page.getByRole('option', { name: 'garden', exact: true })).toBeVisible();
+  await page.route('**/api/settings/roam', route => route.request().method() === 'PUT' ? route.fulfill({ status: 503, json: { error: 'Save failed' } }) : route.continue());
+  await page.getByRole('option', { name: 'garden', exact: true }).click();
+  await expect(page.locator('.notification-card[data-state=open]')).toContainText('Save failed');
+  await expect(input).toHaveValue('garden');
+  await expect(input).toBeEnabled();
+  await page.unroute('**/api/settings/roam');
+  await input.press('Enter');
+  await expect.poll(() => pins(page)).toEqual(['花园', 'fail', 'garden']);
+});
+
+test('preset fixed terms share search and remain excluded from anchor suggestions', async ({ page, context }) => {
+  await dismissTour(context);
+  await page.goto('/#prompts');
+  await page.getByRole('tab', { name: 'Arrange', exact: true }).click();
+  const fixed = page.getByRole('combobox', { name: 'Add Fixed positive terms', exact: true });
+  await fixed.fill('blue');
+  await page.getByRole('option', { name: 'blue_sky', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Fixed positive terms, item 1', exact: true })).toHaveValue('blue sky');
+  await page.getByRole('button', { name: 'Negative prompt', exact: true }).click();
+  const negative = page.getByRole('combobox', { name: 'Add Fixed negative terms', exact: true });
+  await negative.fill('garden');
+  await page.getByRole('option', { name: 'garden', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Fixed negative terms, item 1', exact: true })).toHaveValue('garden');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+  await page.locator('[data-view=feed]').click();
+  await expect(page.locator('#empty-generate:visible, #image-card:visible').first()).toBeVisible();
+  if (await page.locator('#empty-generate').isVisible()) await page.locator('#empty-generate').click();
+  await expect(page.locator('#main-image')).toHaveAttribute('src', /\/api\/artifacts\/.+\/image/);
+  await page.locator('.roam-anchor-trigger').click();
+  const input = await entry(page);
+  await input.fill('BLUE SKY');
+  await expect(page.getByRole('listbox', { name: 'Anchor suggestions' })).toContainText('No matching tags');
+  await input.press('Enter');
+  await expect.poll(() => pins(page)).toEqual([]);
+  await expect(page.locator('.roam-anchor-term').filter({ hasText: 'blue sky' })).toBeDisabled();
+});
+
+test('long vocabulary suggestions scroll inside a narrow fullscreen viewport', async ({ page, context }, testInfo) => {
+  await openAnchors(page, context, 390);
+  await page.locator('.roam-anchor-trigger').click();
+  await page.setViewportSize({ width: 390, height: 640 });
+  await page.locator('#roam-immersive').click();
+  await page.locator('.roam-anchor-trigger').click();
+  const tags = Array.from({ length: 12 }, (_, id) => ({ id: id + 10, name: `long_${id}_${'uninterrupted'.repeat(7)}`, post_count: 5000 - id }));
+  await page.route('**/api/candidate/tags?*', route => route.fulfill({ json: { tags } }));
+  const input = await entry(page);
+  await input.fill('long');
+  const popup = page.locator('.roam-anchor-suggestions');
+  const list = page.getByRole('listbox', { name: 'Anchor suggestions' });
+  await expect(list.getByRole('option')).toHaveCount(13);
+  await withinViewport(page, popup);
+  expect(await list.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  expect(await list.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  const longText = list.getByRole('option', { name: tags[0].name, exact: true }).locator('span');
+  expect(await longText.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  const popupBox = await popup.boundingBox();
+  const inputBox = await input.boundingBox();
+  expect(popupBox.y + popupBox.height).toBeLessThan(inputBox.y);
+  await capture(page, testInfo, 'long-suggestions-phone');
+  const last = list.getByRole('option', { name: tags.at(-1).name, exact: true });
+  await last.scrollIntoViewIfNeeded();
+  await last.click();
+  await expect.poll(() => pins(page)).toEqual([tags.at(-1).name.replaceAll('_', ' ')]);
+  await expect(page.locator('.roam-anchor-popover')).toBeVisible();
+  await expect(page.locator('#image-card')).toHaveClass(/immersive/);
+});

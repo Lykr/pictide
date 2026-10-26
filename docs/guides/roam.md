@@ -26,7 +26,7 @@ Preference scope offers All, which explores the full vocabulary, or Liked, which
 
 ## Anchors
 
-To keep an element from the current image, open Anchors at the bottom right, select a prompt term, or enter your own description. It carries into later roaming prompts while other elements can change. How closely an image follows it depends on the model.
+To keep an element from the current image, open Anchors at the bottom right, select a prompt term, or enter your own description. It carries into later roaming prompts while other elements can change. The input suggests matching tags from the selected vocabulary; click one, or use ↑ / ↓ and Enter to select it. Direct Enter still adds your full text, including custom descriptions. How closely an image follows it depends on the model.
 
 After editing, move to the next image to continue in the new direction. Anchors are remembered between visits; deselect one to remove it. Locked terms come from your [preset](prompts.md#libraries-and-presets) and can be edited on Prompts. Anchor mode keeps the entire prompt; switch modes to edit individual anchors.
 

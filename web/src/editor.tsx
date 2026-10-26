@@ -1,4 +1,5 @@
 import { useApplication, useModel } from './shared/application-context';
+import { useVocabularySearch } from './shared/use-vocabulary-search';
 import { FormSelect } from './components/form-select';
 import { NaturalPrompt, type RenderedPrompt } from './components/natural-prompt';
 import { emitSignal, onSignal, offSignal } from './shared/signals.mjs';
@@ -69,12 +70,10 @@ function usePromptsVisible() {
 function FixedTags({ label, values, onChange, disabled, positive = false }: { label: string; values: string[]; onChange: (values: string[]) => void; disabled: boolean; positive?: boolean }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [matches, setMatches] = useState<Tag[]>([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [origins, setOrigins] = useState<Map<string, boolean>>(new Map());
   const [originError, setOriginError] = useState(false);
   const visible = usePromptsVisible();
+  const { matches, error, loading } = useVocabularySearch(query, open && visible && !disabled);
   useErrorNotice(error ? `${t("词库暂不可用，仍可输入提示词并回车添加")} · ${error}` : "", { id: "preset-tag-search", visible: visible && open });
   useErrorNotice(originError ? t("词库识别暂不可用，尚未确定来源；编辑词项可重试") : "", { id: "preset-tag-origin", visible });
   const originCache = useRef(new Map<string, boolean>());
@@ -107,16 +106,6 @@ function FixedTags({ label, values, onChange, disabled, positive = false }: { la
     if (!list.current || disabled) return;
     return sortFixedTags(list.current, move);
   }, [values, disabled, onChange]);
-  useEffect(() => {
-    if (!open) return;
-    const abort = new AbortController();
-    setLoading(true); setMatches([]); setError("");
-    const timer = setTimeout(() => {
-      api<TagPage>(`/api/candidate/tags?query=${encodeURIComponent(query)}&page=1&page_size=12`, { signal: abort.signal })
-        .then(data => { setMatches(data.tags); setError(""); }).catch(error => { if (!abort.signal.aborted) { setMatches([]); setError(message(error)); } }).finally(() => { if (!abort.signal.aborted) setLoading(false); });
-    }, 180);
-    return () => { clearTimeout(timer); abort.abort(); };
-  }, [query, open]);
   const add = (text: string) => {
     const value = text.trim().replaceAll("_", " ");
     if (!value || values.some(item => normalized(item) === normalized(value))) return;
@@ -132,7 +121,7 @@ function FixedTags({ label, values, onChange, disabled, positive = false }: { la
         if (event.key === "ArrowDown" || event.key === "ArrowUp") navigating.current = true;
         if (event.key === "Enter" && query.trim() && (!navigating.current || !options.length)) { event.preventDefault(); event.stopPropagation(); add(query); }
       }} /></div><PopoverTrigger asChild><IconButton disabled={disabled} icon={ChevronsUpDown} label={tr`展开${label}匹配项；点击或用方向键选择后回车添加`} /></PopoverTrigger></div></PopoverAnchor>
-      <PopoverContent className="min-w-72 p-0" align="start" onOpenAutoFocus={event => event.preventDefault()}><CommandList aria-label={tr`${label}匹配项`}>
+      <PopoverContent className="min-w-72 p-0" align="start" onOpenAutoFocus={event => event.preventDefault()}><CommandList label={tr`${label}匹配项`}>
         <CommandEmpty>{loading ? t("搜索中…") : t("输入完整提示词并回车添加")}</CommandEmpty>
         <CommandGroup>{custom && <CommandItem value="__custom" onSelect={() => add(query)}>{tr`添加：${query}`}</CommandItem>}
           {options.map(tag => <CommandItem key={tag.id} value={String(tag.id)} onSelect={() => add(tag.name)}><span className="break-words">{tag.name}</span></CommandItem>)}</CommandGroup>
