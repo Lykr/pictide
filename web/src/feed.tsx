@@ -57,7 +57,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
   const privacyLabel = privacyBlur ? t("关闭毛玻璃，显示图片") : t("开启毛玻璃，模糊图片");
   return <div className={`feed-page${privacyBlur ? " privacy-blurred" : ""}`}>
 {"\n  "}<header className="topbar">
-<a className="brand" href="/" aria-label={t("Pictide 图片工作台")}>
+<a className="brand" href="/" aria-label={t("Pictide 图片漫游")}>
 <span className="brand-mark" aria-hidden="true"><img src={`${import.meta.env.BASE_URL}icons/pictide.svg?v=wave-v1`} alt="" /></span>
 <div>
 <strong>Pictide</strong>

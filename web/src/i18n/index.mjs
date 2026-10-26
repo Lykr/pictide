@@ -33,7 +33,7 @@ export function tr(strings, ...values) {
 function publish() {
   if (typeof document !== 'undefined') {
     document.documentElement.lang = locale();
-    document.title = t('Pictide · 本地图片工作台');
+    document.title = t('Pictide · 图片漫游');
   }
   for (const listener of listeners) listener();
   if (typeof document !== 'undefined') emitSignal("language-changed");
