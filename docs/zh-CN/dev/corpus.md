@@ -35,7 +35,15 @@ python -m pip install -r corpus/requirements.txt
 
 本地 `scripts/build_portable.py` 默认使用 `corpus/profiles/compact.json` 对应的 `filtered` 版，可处理原始数据，也可通过 `--prebuilt-library DIR` 复用已导出的词库。两种路径都使用独立构建环境，不读写开发应用的 `data/`。本机步骤见 [Windows](setup/windows.md#构建便携包)、[Linux](setup/linux.md#构建便携包) 或 [macOS](setup/macos.md#构建便携包)。
 
-原始分片与 `download.sqlite3` 长期保存在 `dev/datasets/danbooru-2026/`；仅按固定源版本补齐缺失分片。统计中间结果与成品词库放在 `dev/cache/portable/`。清理构建缓存保留原始数据，可直接本地重新统计；有效词库缓存可离线准备发行词库。通过 `--dataset-dir`、`--cache-dir` 或 `--profile` 调整目录和处理配置。Corpus 只准备词库；MiniLM 改为[应用启动前准备](../guides/getting-started.md#推荐依赖准备)。指纹与文件校验规则见[构建缓存记录](issues/portable-build-cache.md)。下文保留其他词库规格的手动处理入口。
+原始分片与 `download.sqlite3` 长期保存在 `dev/datasets/danbooru-2026/`；仅按固定源版本补齐缺失分片。统计中间结果与成品词库放在 `dev/cache/portable/`。清理构建缓存保留原始数据，可直接本地重新统计；有效词库缓存可离线准备发行词库。通过 `--dataset-dir`、`--cache-dir` 或 `--profile` 调整目录和处理配置。Corpus 只准备词库；MiniLM 改为[应用启动前准备](../guides/getting-started.md#推荐依赖准备)。指纹与文件校验规则见[缓存校验](#缓存校验)。下文保留其他词库规格的手动处理入口。
+
+### 缓存校验
+
+`corpus/portable.py` 对规范化 JSON 身份计算哈希，身份包括固定数据集修订与文件元数据、规范化处理选项、导入器 SHA-256，以及生产时 NumPy/SciPy/PyArrow 版本。指纹决定 `dev/cache/portable/libraries/<fingerprint>/`；任一输入变化都会选择其他缓存项。
+
+复用要求报告身份匹配、词库体积与 SHA-256 一致、SQLite `quick_check` 通过，且 dataset 行为 `ready`。缓存缺失或无效时，使用保留的原始分片与可续传统计重新构建。原始数据和构建缓存必须放在不同目录树。
+
+消费预构建资源时，还需校验资源锁中的两个文件、指纹、发行标签及报告一致性。源数据、处理配置和导入器必须匹配当前检出，生产依赖版本仅作为来源记录。校验失败即终止预构建流程，不在 runner 上回退下载原始数据。
 
 ### 预构建词库
 
@@ -233,7 +241,7 @@ python -m corpus.importer dev/datasets/danbooru-2026/raw dev/datasets/danbooru-2
 python -m unittest discover -s tests/corpus -p test_importer.py -v
 ```
 
-应用侧验证入口见[候选冒烟](../tests/candidate/README.md)。
+应用侧验证入口见[候选冒烟检查](../../../tests/backend/candidate/README.md)。
 
 | 记录 | 范围 |
 | --- | --- |

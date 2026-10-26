@@ -6,7 +6,7 @@
 
 `web/src/components/ui/` 中的基础组件采用并调整了 [shadcn/ui](https://github.com/shadcn-ui/ui) 的组件源码。项目按 Pictide 的紧凑布局、共享主题和现有页面行为进行了适配。
 
-交互控件使用官方 `radix-luma` registry 的 Select、Checkbox、Dialog、AlertDialog、Collapsible、Tabs、ToggleGroup、Command、Popover、InputGroup 和 Tooltip 源码。源码保持上游样式配方，转换本地导入别名、替换官方图标占位符为预设 Lucide 图标，并移除本地 Vite 单页应用无需的 RSC 指令。Tooltip 额外接受 portal 容器参数，使帮助提示保持在当前弹窗内。`control-bridge.tsx` 仅连接现有控制器的隐藏表单状态与这些组件，不实现新的菜单或弹窗交互。Command 使用 cmdk（MIT），由依赖包自带许可证分发。
+交互控件使用官方 `radix-luma` registry 的 Select、Checkbox、Dialog、AlertDialog、Collapsible、Tabs、ToggleGroup、Command、Popover、InputGroup 和 Tooltip 源码。源码保持上游样式配方，转换本地导入别名、替换官方图标占位符为预设 Lucide 图标，并移除本地 Vite 单页应用无需的 RSC 指令。Tooltip 额外接受 portal 容器参数，使帮助提示保持在当前弹窗内。React 功能组件通过草稿值与回调直接使用这些控件。Command 使用 cmdk（MIT），由依赖包自带许可证分发。
 
 上游许可证：[MIT License](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md)。下列声明随组件源码与构建分发保留：
 

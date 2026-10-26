@@ -10,6 +10,7 @@ Pictide 当前已实现的 HTTP API 统一入口。先阅读通用约定，再�
 | --- | --- |
 | 初始化页面、订阅状态变化 | [初始化与实时事件](reference/api/events.md) |
 | 修改语言、主题、清理期限 | [通用与历史设置](reference/api/settings.md) |
+| 配置自然语言提示词使用的文本服务 | [提示词 LLM API](reference/api/settings.md#提示词-llm-api) |
 | 配置漫游、保存观看位置、补足预取 | [漫游](reference/api/roam.md) |
 | 接入生图后端、检查连接、管理工作流 | [生图后端与工作流](reference/api/backends.md) |
 | 创建、分页查看和取消任务 | [生成任务](reference/api/jobs.md) |
@@ -71,6 +72,7 @@ events.addEventListener('change', (event) => {
 - [应用编排与 HTTP 返回对象](../../../backend/application.py)
 - [候选参数与结果](../../../backend/candidate/service.py)、[种子和序列参数](../../../backend/candidate/rounds.py)
 - [推荐模块内部契约](../../../backend/recommendation/contracts.py)
+- [手动更新接口与生命周期](architecture/updates.md)
 - [任务存储与分页模型](../../../backend/store/sqlite.py)
 
 本文是 HTTP 参考，不将模块内部的评分、学习等 Python 方法作为额外公开 HTTP 接口；当前没有 OpenAPI / Swagger 页面。新增、删除或调整路由时同步维护对应章节和导航。

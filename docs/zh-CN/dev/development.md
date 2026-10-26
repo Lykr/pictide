@@ -1,114 +1,139 @@
-# Git 开发流程
+# 开发流程
 
 [English](../../dev/development.md)
 
-包含 `README.md`、`backend/`、`web/` 与启动脚本的目录是仓库根目录，独立管理 Pictide 源码、测试、文档和工作流模板。`main` 保存验证后的集成结果；远程 `origin` 为 `git@github.com:Lykr/pictide.git`。
+[开发文档](README.md) · [针对性检查](testing.md)
 
-按步骤阅读：[开始任务](#开始任务) → [准备环境](#首次准备检出目录) → [验证提交](#验证与提交) → [集成发布](#集成与发布)。接口、架构和界面规则分别见[文档导航](../../dev/README.md)。
+仓库根目录包含 `README.md`、`backend/`、`web/` 与启动脚本。`main` 保存已验证的集成结果，`origin` 为 `git@github.com:Lykr/pictide.git`。
+
+按[开始任务](#开始任务) → [准备环境](#首次准备检出目录) → [验证](#验证与提交) → [集成](#集成与部署)推进。
 
 ## 开始任务
 
-先检查当前工作，不覆盖用户或其他任务的改动：
+修改前检查现有工作：
 
 ```shell
 git status --short --branch
 git diff
 ```
 
-实现任务使用 `feat/<topic>`、`fix/<topic>` 或 `chore/<topic>` 分支。运行中的主目录用于集成和服务，开发与并行 agent 优先在独立 worktree 工作：
+使用独立任务分支。Codex 使用 `codex/<topic>`，其他贡献者可使用 `feat/`、`fix/` 或 `chore/`。并行任务或涉及运行实例的改动使用独立 worktree、数据目录与端口：
 
 ```shell
-git worktree add ../pictide-example -b feat/example main
+git worktree add ../pictide-example -b codex/example main
 cd ../pictide-example
 ```
 
-分支名和目录名按实际任务替换，开始前核对是否已存在。无需复制整个生产目录；Git 管理源码，忽略的 `data/` 和依赖不会自动复制。独立任务交给 subagent 时明确 worktree、分支、文件边界和交付要求，共享接口由主管协调。简单文档修改可直接在干净工作区完成。
+先确认分支和目录是否存在。Git 保存源码，忽略的数据与依赖分别准备。简单文档修改可直接使用干净检出。委派独立工作时，先明确文件归属、共享接口和交付要求。
+
+## 设计确认与数据保护
+
+改动架构、跨模块调用或数据流、公开模块接口前，说明这三方面的变化并取得用户确认。使用中文[设计模板](design-template.md)，重点解释改动。复用已批准边界不重复确认，UI 细节和内部实现自主推进。
+
+保留无关修改与已有历史，未经授权不 reset、stash 或改写历史。只委派值得独立处理的任务，并明确文件归属及接口协作。
+
+直接修改既有用户数据前先备份。历史数据删除应提供可审核清单并取得用户确认。保留图片、任务、喜欢和偏好记录，验证使用临时数据，遵循[数据目录](data-layout.md)与[备份步骤](../guides/backup.md)。
 
 ## 首次准备检出目录
 
-源码环境由开发者按本节准备。便携发行流程交付运行环境、前端成品和词库，MiniLM 按[启动前模型准备设计](issues/minilm-startup-download.md)在用户启动时下载并校验完成后再启动服务。旧版 Windows x64、Linux x64、macOS ARM64/Intel 目录包已通过原生 CI 构建及隔离启动冒烟，见[多平台验证记录](issues/github-releases.md#2026-10-19-多平台验证)。新 Windows EXE 与 macOS `.app` 分发的实现、验证及未验证项单独记录在[桌面分发](issues/desktop-distribution.md)。
+源码开发需要 Git、Python 3.10+、Node.js 20.19+ 或 22.12+，以及 `web/package.json` 声明的 pnpm 版本。运行依赖在 `backend/requirements.txt`，离线处理依赖在 `corpus/requirements.txt`；前端按锁文件安装。
 
-需要 Git、Python 3.10+、Node.js 20.19+（或 22.12+）和 `web/package.json` 指定的 pnpm。Python 运行依赖放在 `backend/requirements.txt`，离线数据处理工具与依赖集中在 [`corpus/`](corpus.md)；前端依赖由 `web/package.json` 管理。依赖安装遵循锁文件，不复制或提交 `node_modules`。
+按系统准备环境：
 
-按当前系统准备环境和构建前端：
+- [Windows](setup/windows.md#从源码准备)
+- [Linux](setup/linux.md#从源码准备)
+- [macOS](setup/macos.md#从源码准备)
 
-- [Windows：从源码准备](setup/windows.md#从源码准备)
-- [Linux：从源码准备](setup/linux.md#从源码准备)
-- [macOS：从源码准备](setup/macos.md#从源码准备)
+使用页面或静态资源检查前，先构建被 Git 忽略的 `web/dist/`。每个检出在自己的 `data/` 保存运行数据，开发依赖、数据集、缓存和验证结果放在 `dev/`，见[数据目录](data-layout.md)。
 
-`web/dist/` 不提交，首次构建后才能使用页面和静态资源测试。运行数据与启动环境放在各自检出目录的 `data/`；开发依赖、缓存、临时文件与验证材料放在根目录 `dev/`。
+验证使用独立端口和临时数据，优先中性夹具及模拟生成服务。真实 ComfyUI 先做只读连接检查，再按明确范围执行 GPU 测试。模拟结果确认编排行为，不代表画面质量或 GPU 兼容性。
 
-浏览器验证按各系统页面的「端口与数据目录」步骤使用独立实例。每个并行实例使用不同端口，不共用主实例的 SQLite、词库或图片目录。默认使用模拟后端与中性样例；真实 ComfyUI 接入先只读检查，不为普通回归测试提交 GPU 任务。新启动脚本的 Git 执行位与换行约定见仓库属性；POSIX 启动脚本通过 `exec` 交接应用进程。
+MiniLM 在 HTTP 服务启动前准备。便携包包含推理运行环境与固定模型清单，模型文件在首次启动下载，见[推荐依赖准备](../guides/getting-started.md#推荐依赖准备)。
 
-## 构建便携发行包
+## 构建便携包
 
-按本机系统一次准备 Python、Node.js、pnpm 与独立构建环境：[Windows](setup/windows.md#构建便携包) · [Linux](setup/linux.md#构建便携包) · [macOS](setup/macos.md#构建便携包)。推荐使用 Python 3.12，应用运行要求仍为 Python 3.10+。独立的 `dev/runtime/builder/` 环境安装 `backend/requirements-release.txt`；本地需要处理原始数据时另装 `corpus/requirements.txt`（Python 3.11+）。此后只需使用该环境执行 `scripts/build_portable.py`，自动运行 `pnpm install --frozen-lockfile`、类型检查和前端构建，再准备资源、完成 PyInstaller 目录式打包与 ZIP 归档。前端构建输出到 `dev/build/` 下的临时目录，保留运行中的 `web/dist/`。准备发行包无需先启动应用，也不读写开发运行目录 `data/`。
+按 [Windows](setup/windows.md#构建便携包)、[Linux](setup/linux.md#构建便携包) 或 [macOS](setup/macos.md#构建便携包) 准备原生构建环境，推荐 Python 3.12。在 `dev/runtime/builder/` 安装 `backend/requirements-release.txt`；本地处理原始元数据时另装 `corpus/requirements.txt`，此路径要求 Python 3.11+。
 
-构建默认按 `corpus/profiles/compact.json` 准备词库，仅携带 `backend/recommendation/model.json` 固定模型清单，保留 FastEmbed、ONNX Runtime、tokenizers 等推理依赖。构建不下载或打包 MiniLM。原始分片和下载清单长期保存在 `dev/datasets/danbooru-2026/`；统计中间结果与成品词库放在 `dev/cache/portable/`。有效词库缓存可离线准备发行资源；缺失时补充下载并处理。清理构建缓存保留原始数据，直接本地重新统计。指纹、校验和恢复规则见[独立发行资源与构建缓存](issues/portable-build-cache.md)。
+用该环境运行 `scripts/build_portable.py`，按锁文件安装前端依赖、检查类型、构建临时前端、准备资源、生成 PyInstaller 目录包并检查 ZIP。临时产物在 `dev/build/`，保留正在运行检出的 `web/dist/` 和应用 `data/`；无需先启动应用。
 
-通过 `--dataset-dir`、`--cache-dir` 和 `--profile` 可分别指定原始数据目录、缓存目录与处理配置。指定 `--prebuilt-library DIR` 时，`DIR` 必须包含匹配当前源数据版本、配置和处理代码的 `vocabulary.sqlite3` 与 `report.json`；校验失败即终止，不回退到原始数据处理。该路径无需安装 PyArrow、SciPy 等离线处理依赖。源码和便携启动共用 `prepare_startup`，在创建 HTTP 服务、打开页面前校验并补齐所选数据目录下的 MiniLM；失败终止启动，重启后续传。词库导出、清单与指纹规则见[预构建词库](corpus.md#预构建词库)。
+默认词库配置为 `corpus/profiles/compact.json`，原始分片和下载清单长期放在 `dev/datasets/danbooru-2026/`，中间统计与已验证词库在 `dev/cache/portable/`。有效缓存支持离线准备；缺失资源按需下载和处理。清理构建缓存保留原始数据。
 
-便携构建默认只向 `releases/` 输出最终 `pictide-版本-平台-架构.zip`，无需手工创建输出目录，文件名不含日期。`--output-dir DIR` 可指定已有的最终包收集目录。本地重复构建在归档检查完成后原子替换同名 ZIP，保留其他版本，失败时保留已有最终包。`dev/build/` 下的临时前端、PyInstaller 工作区与展开目录在成功或失败后自动回收；构建报告保存到 `dev/verification/portable/版本-平台-架构/build-report.json`，失败时也保留。运行用户解压 ZIP 后启动 Pictide，词库初始化沿用[便携发行方案](issues/automatic-startup.md)，模型下载与离线准备见[安装与接入](../guides/getting-started.md#推荐依赖准备)。
+通过 `--dataset-dir`、`--cache-dir` 和 `--profile` 选择目录及处理配置。`--prebuilt-library DIR` 使用与数据集修订、配置和处理代码匹配且已验证的 `vocabulary.sqlite3`、`report.json`。资源无效即停止，不回退原始统计，也不要求 PyArrow 或 SciPy，见[预构建词库](corpus.md#预构建词库)。
 
-Windows 新构建包解压后以最外层 `Pictide.exe` 启动，依赖置于 `_internal/`，个人数据置于 `data/`。macOS 构建需要 Xcode Command Line Tools，编译系统 AppKit 原生入口并封装 `Pictide.app`；默认数据在用户 Application Support，构建采用 ad-hoc 签名，不接入 Developer ID 或公证。Linux 保持 ZIP 与 `start.sh` 终端入口。具体职责与验证状态见[桌面分发](issues/desktop-distribution.md)。
+构建保留 FastEmbed、ONNX Runtime、tokenizers 和 `backend/recommendation/model.json`，不下载或打包 MiniLM 权重。启动在开放 HTTP 前校验所选数据目录的模型文件；失败停止启动，下次恢复保留的分段下载。
+
+`releases/` 只放最终 `pictide-VERSION-PLATFORM-ARCH.zip`，`--output-dir DIR` 可选择其他已有目录。归档检查通过后，重复本地构建会原子替换同名 ZIP；其他版本及上次成功输出不受失败构建影响。临时前端、PyInstaller 和展开包在成功/失败时清理，报告保留在 `dev/verification/portable/VERSION-PLATFORM-ARCH/build-report.json`。
+
+Windows 包在 `_internal/` 旁提供 `Pictide.exe`，默认数据位置为旁边的 `data/`。macOS 包含原生 AppKit 启动器 `Pictide.app`，默认使用用户 Application Support 目录，采用 ad-hoc 签名，不含 Developer ID 签名或公证。Linux ZIP 使用 `start.sh`。ComfyUI 与生图权重为可选运行时下载，独立于便携包。
 
 ## GitHub Actions 发版
 
-`.github/workflows/release.yml` 在推送 `v*` 标签时构建 Windows x64、Linux x64、macOS ARM64 和 macOS Intel 便携包。各平台使用原生 runner、Python 3.12 与 Node.js 22，标签去掉 `v` 后必须与 `backend/__init__.py` 和 `web/package.json` 中的版本一致。Linux/macOS 的实际兼容范围以对应平台的构建和启动冒烟结果为准。
+`.github/workflows/release.yml` 在推送 `v*` 标签时运行，使用原生 runner、Python 3.12 与 Node.js 22，构建 Windows x64、Linux x64、macOS ARM64 和 macOS Intel 包。标签去掉 `v` 后必须与 `backend/__init__.py`、`web/package.json` 的版本一致。
 
-每次发版按以下顺序操作：
-
-1. 本地按[预构建词库步骤](corpus.md#预构建词库)生成资源，上传到 `corpus-<fingerprint>` 资源 Release。该标签避开应用的 `v*` 触发规则；已有资源保持不变。
-2. 将生成的 `corpus/prebuilt.json` 资源锁与版本变更一起提交、推送。源数据、精简配置或处理代码发生变化时，先重新准备并上传匹配的词库。
-3. 确认标签所指提交包含工作流与资源锁，再推送版本标签。例如源码版本均为 `0.4.0` 时：
+1. 准备并将[预构建词库](corpus.md#预构建词库)发布为 `corpus-<fingerprint>` 资源 Release 的不可变资产，此标签不触发应用发行。
+2. 将 `corpus/prebuilt.json` 与版本变更一起提交、推送；源数据修订、配置或处理器变化时重新准备资源。
+3. 确认标签提交包含工作流、资源锁及一致版本，再创建并推送标签。例如两个源码版本均为 `0.5.0`：
 
 ```shell
-git tag v0.4.0
-git push origin v0.4.0
+git tag v0.5.0
+git push origin v0.5.0
 ```
 
-工作流从资源锁指定的 Release 下载词库并校验文件大小、SHA-256、报告与数据库；始终显式使用 `--prebuilt-library`，不在 runner 下载原始数据或进行统计。CI 准备构建环境后执行同一个 `scripts/build_portable.py` 入口，再独立自动执行隔离启动冒烟。所有平台构建并通过冒烟后，统一发布 ZIP、`update.json`、`SHA256SUMS`、构建与冒烟报告。`scripts/update-policy.json` 声明目标版本支持的来源版本范围；目标版本负责正常启动时需要的数据初始化或迁移。跨版本原生升级冒烟通过后才启用直接安装，见[应用更新架构](architecture/updates.md)。带预发布后缀的版本发布为 prerelease；已发布版本和资源不覆盖。
+每次发行使用新版本，保留已有发布版本与资源。
 
-工作流只在推送 `v*` 版本标签时触发；日常分支与 commit 推送使用本地验证。资源 Release 保存固定词库，应用 Release 保存用户下载的便携包；Actions cache 只用于加速，资源可用性由资源锁和 Release 保证。
+工作流校验锁定资源的大小、SHA-256、来源、报告与数据库，使用 `--prebuilt-library`，不在 runner 下载或统计原始数据。core、ui 和 browser 检查是原生打包门禁，每个原生包另做独立启动冒烟。所有平台通过后统一发布 ZIP、`SHA256SUMS` 和报告；带预发布后缀的版本标为 prerelease。
 
-需要在 Mac 实机验证当前源码时，可手动运行 `.github/workflows/macos-validation.yml` 并选择 Intel 或 Apple Silicon。它复用发行构建与隔离冒烟，只保存 ZIP、校验和、源码版本和报告到保留 7 天的 Actions artifact，不创建 Release；日常推送不会触发。将同一 ZIP 传到目标 Mac、核对 SHA-256 后运行，详见 [macOS 实机验证](issues/macos-native-validation.md)。
+日常分支推送使用本地验证，不触发 Actions。资源 Release 长期保存词库，Actions cache 仅加速构建；验证准备与覆盖限制见[发版检查](testing.md#发版检查)。
+
+只修正 CI 后需要完整重跑时，从 `main` 手动触发 `release.yml`，传入已有 `release_tag`，将 `build_run`、`macos_run` 留空。验证与四平台构建均检出该标签，沿用相同原生冒烟和发布门禁，从而固定应用源码并使用修正的工作流。HTTP 核心夹具检查前先准备空 `web/dist/`，浏览器检查使用完整编译的隔离产物；不覆盖已有 Release。
+
+不发布的 Mac 验证使用 `.github/workflows/macos-validation.yml`，选择 Intel 或 Apple Silicon，复用发行构建与启动冒烟，保留 ZIP、校验值、修订元数据和报告为七天期 Actions artifact。传到目标 Mac 核对 SHA-256 后，单独记录实际启动器与启动行为，不能用 CI 结果替代。
+
+可选 `source_ref` 指定已有分支或标签，来源记录保存实际检出提交；`previous_release` 固定旧版本，经认证的 GitHub CLI 下载，允许在不改标签的情况下验证升级。普通发行冒烟也使用工作流 token 查询 GitHub 元数据，避免共享 runner 匿名限额。令牌仅存在 CI，不随应用分发。
+
+若一个 macOS 构建失败、其他三个发行构建成功，可用手动 Mac 工作流验证同标签的失败架构。两种 macOS 构建均静态链接从源码构建的 cryptography，避免包内 OpenSSL dylib 冲突。发行恢复接收 `release_tag`、原 `build_run` 与成功的 `macos_run`，在 GitHub 内收集三份原产物和匹配的 Mac 替代产物，核对应用源码提交及包哈希，沿用报告、清单和校验步骤后发布。工作流修正可运行在 `main`，`source_ref` 将应用固定在原标签；拒绝替换已有平台资源或 Release。此恢复必须明确触发，普通分支推送仍不启动工作流。
 
 ## 验证与提交
 
-遵循 [项目协作约定](../../../AGENTS.md#验证与发布) 的概念验证原则，只选少数冒烟场景确认本次主要路径，不运行完整回归。后端改动可针对具体接口或用例验证；前端改动执行类型检查和构建，再检查受影响的页面交互与资源加载。复用已有测试时只运行相关的少数用例，不以整套测试数量作为交付目标。
+按影响范围选择少量有意义的检查，使用 `python scripts/check.py core|ui|corpus|browser`，`--list` 查看分组用例。前端变更还需类型检查、构建和针对性交互验证；环境、浏览器及模拟/真实生成的区别见[验证说明](testing.md)。
 
-统一入口为 `python scripts/check.py core|ui|corpus|browser`，按改动选择一个分组；`--list` 查看清单。环境要求、浏览器准备和标签发版门禁见[分组冒烟检查](testing.md)。发行流程在原生构建前运行核心业务、界面逻辑与浏览器检查，日常推送保持不触发 Actions。
+纯文档变更检查内容、链接与差异，准确报告已验证范围及限制。当前规则维护在所属主题；中文提案与交付记录留在 `docs/zh-CN/dev/issues/`，遵循[文档维护策略](README.md#文档维护)。
 
-纯文档与 Git 规则修改只需检查内容、链接、忽略规则和差异。报告实际通过、失败和未验证的范围；行为变化同步更新所属文档。需求设计、功能变更及交付记录放入 `docs/zh-CN/dev/issues/`；当前说明按指南、架构和参考主题维护；入口见[文档导航](../../dev/README.md#documentation-maintenance)。
-
-提交前运行 `git diff --check`，核对 `git diff`，按明确路径暂存本任务文件，再核对 `git diff --cached` 后提交。不要把运行数据、密钥、依赖、构建结果或其他任务的文件带入提交。
+提交前运行 `git diff --check`、审查差异、按明确任务路径暂存，再审查 `git diff --cached`。保留无关修改，不提交运行数据、密钥、依赖或构建产物。
 
 ### Commit 规范
 
-- 提交标题与正文统一使用英文。格式为 `type: short summary`；需要标明模块时使用 `type(scope): short summary`，如 `fix(roam): defer prefetch after anchor changes`。
-- 类型使用 `feat`（功能）、`fix`（修复）、`docs`（文档）、`refactor`（重构）、`perf`（性能）、`test`（测试）、`chore`（工具与依赖）或 `revert`（回退）。
-- 一次提交围绕一个完整目的，标题说明具体变化；复杂变更可在正文补充原因与验证结果。既有历史保留原样。
-- 任务交付前将新提交推送到 `origin`。已集成的任务推送 `main`；尚未集成的任务推送对应任务分支，首次使用 `git push -u origin <分支名>` 建立跟踪。
-- 推送失败时保留本地提交，报告原因与待推送分支；通过合并处理远程分歧，不强制推送。交付时区分已提交、已推送与已发布。
+- 标题与正文使用英文，格式为 `type: short summary` 或 `type(scope): short summary`，如 `fix(roam): defer prefetch after anchor changes`。
+- 类型为 `feat`、`fix`、`docs`、`refactor`、`perf`、`test`、`chore` 或 `revert`。
+- 每次提交围绕一个完整目的，按需在正文解释原因和验证。
+- 交付前推送任务提交到 `origin`，新分支用 `git push -u origin <分支名>`，集成结果推送 `origin/main`。
+- 推送失败保留本地提交并报告待推送分支，通过合并解决分歧，保留历史；区分已提交、已推送与已发布。
 
-## 集成与发布
+## 集成与部署
 
-任务交付包含分支、提交、关键变更及验证结果。主管确认主工作区无待保护的改动后统一集成：
+确认主检出没有需要保护的修改，再集成已验证分支：
 
 ```shell
 git switch main
-git merge --ff-only feat/example
+git merge --ff-only codex/example
 git push origin main
 ```
 
-如果主分支已前进，在任务 worktree 合并最新 `main`，解决冲突并补做受影响验证，再回主目录快进合并。不要用 reset、强制覆盖或未经授权的历史改写处理分歧。
+`main` 已前进时，先在任务分支合并它，解决冲突并重新验证受影响部分，再集成。
 
-前端发布使用对应提交验证后的构建产物。运行中的实例先备份旧 `web/dist/` 到 `data/backups/`，先复制新 chunks 和其他资源，再替换入口，保留旧 chunks 供未刷新的标签页使用。不要在正在提供页面的目录直接执行会清空 `dist/` 的构建。后端变化需在核对进程和任务状态后提前说明重启，保留草稿与运行任务；发布不覆盖生产 `data/`。未运行的检出目录可直接执行常规构建。
+发布与源码对应的前端产物。运行中的实例先将旧 `web/dist/` 备份到 `data/backups/`，复制新 chunks 与资源，最后替换入口；保留旧 chunks 供未刷新的页面使用。服务运行期间在隔离输出目录构建。重启后端前检查进程与任务，提前说明，保留草稿和执行中工作；部署保留所选运行数据目录。
 
-任务完成后关闭自己的验证实例和标签页。确认 worktree 的工作已合并、没有未提交改动或需要保留的忽略文件，再执行 `git worktree remove <路径>`；保留必要数据后才清理，不能用强制移除跳过检查。分支是否删除按实际后续需要处理。
+结束后关闭自己的验证实例和标签页。仅在工作已集成、受跟踪文件干净且必要忽略数据已保留时移除 worktree。
+
+集成并成功推送 `origin/main` 后，删除已完成的本地任务分支及已发布的远端任务分支。先确认提交已包含在 `main`；cherry-pick 后还需检查补丁等价。先完成 worktree 清理再删分支，保留仍有工作或独立未合并变更的分支。`main` 保持集成分支，版本标签与 Release 独立于任务分支继续存在。
+
+```shell
+git branch -d codex/example
+git push origin --delete codex/example
+```
 
 ## 版本管理范围
 
-跟踪源码、测试样例、文档、锁文件、图标素材及手工维护的工作流模板。`docs/dev/` 纳入版本管理；`.gitignore` 排除 `data/`、`dev/`、`releases/`、虚拟环境与依赖、构建产物、缓存与测试报告、日志与临时文件、环境密钥、SQLite 及辅助文件、模型权重和原始 Parquet 数据。保留 `.env.example` / `.env.template`（含分环境示例）及 VS Code 的共享 settings / extensions / tasks / launch 配置，示例中只填占位值；不要按图片、JSON 或锁文件扩展名整体忽略。新增规则不会自动停止跟踪已有文件，调整时用 `git ls-files -ci --exclude-standard` 核对。下载素材按现有脚本恢复，不把 Git 当作用户数据备份。换行由 `.gitattributes` 统一：源码使用 LF，Windows 启动脚本使用 CRLF。
+跟踪源码、中性测试样例、文档、锁文件、图标和维护的工作流模板。忽略 `data/`、`dev/`、`releases/`、环境、依赖、构建产物、缓存、报告、日志、密钥、SQLite、模型权重与原始 Parquet。保留只含占位值的 `.env.example` / `.env.template` 及共享 VS Code 配置，不按 JSON、图片等扩展名整体忽略。修改忽略规则时用 `git ls-files -ci --exclude-standard` 检查已跟踪的忽略文件。
 
-本地初始化时保留现有文件并建立源码快照；日常提交与推送按上述流程执行，托管 CI 按需配置。
+下载资源通过准备脚本恢复，换行由 `.gitattributes` 规定：源码 LF，Windows 启动脚本 CRLF。

@@ -28,6 +28,8 @@ flowchart TD
     Host <--> App
     App <--> Rules
     App <--> Rec
+    App --> Prompt["提示词转换：所选标签转为自然语言"]
+    Prompt --> LLM["OpenAI-compatible 文本 API"]
     App <--> Jobs
     Jobs --> Backend
     Backend --> Comfy
@@ -62,6 +64,8 @@ pictide/
     recommendation/            组合特征、MiniLM、贝叶斯评分与学习
     task/                      调度、恢复、取消与结果关联
     generation/                生图接口、ComfyUI 工作流、OpenAI Images 与 Gemini
+    prompting/                 自然语言转换、文本 API 协议与 ChatGPT 会话
+    prompt_preparation.py      App 所有的转换复用、串行处理与新鲜度检查
     store/                     SQLite、图片/JSON、清理策略及回收
     updates/                   手动检查、下载、校验、替换与恢复
     update_cli.py              普通启动前的命令行更新编排
@@ -101,6 +105,7 @@ pictide/
 - Candidate、Recommendation、Task 不直接相互调用或导入。共享推荐请求/结果位于 `backend/recommendation/contracts.py`，候选快照位于 `backend/candidate/contracts.py`。
 - Candidate 通过 Host 注入的存储接口读取在线词库和预设，不导入 SQLite 适配器；离线下载、导入工具独立使用 SQLite，不放入在线启动或请求链。
 - Task 依赖 Generation 和 Store，负责确定任务的提交、事件核实、恢复、取消与结果关联；Generation 隔离协议差异；ComfyUI 返回远端任务引用，OpenAI Images 与 Gemini 在一次 HTTP 请求中返回完整结果。云端结果不确定的提交不自动重试。
+- 对 `natural_language` 后端，App 在选定标签后、创建图片任务前调用 Prompting。Prompting 不选择候选，也不调用生图 API；其 ChatGPT 适配器通过注入的受保护凭据存储管理 OAuth 会话。`PromptPreparation` 经 `PromptStore` 协调已保存结果，Candidate 与 Recommendation 继续接收标签快照。详见[转换流程](architecture/flows.md#自然语言准备)。
 - 浏览器通过 HTTP/SSE 管理展示、输入和草稿，不直接读写配置或数据库。提示词页是同一前端中的视图，没有额外站点或 iframe。
 - Store 持久化任务、图片、反馈、快照和学习状态。反馈学习依据实际生成快照，不用当前词库覆盖历史语义。
 
@@ -121,6 +126,12 @@ Windows 首次本地生图准备已实现，当前 NVIDIA 便携环境已验证�
 Windows 启动入口选择 `--desktop`：临时进度进程以 `CREATE_NO_WINDOW` 启动服务、转发启动输出，托盘注册成功后退出，兼容由 Windows Terminal 承载的启动终端。`backend/desktop/session.py` 在准备资源前取得数据目录锁并预留 HTTP 端口，HTTP 就绪后注册原生托盘并打开浏览器。启动失败时保留错误信息，托盘不可用时回退到原终端。托盘线程使用 Per-Monitor V2 DPI 感知，按任务栏 DPI 加载图标，不修改系统设置。托盘只负责打开网页、应用日志和请求 Host 正常退出，不承载业务状态。启动进度和托盘文案按系统显示语言使用简体中文或英文。`--cli` 与 `--no-browser` 保留终端模式；Linux 沿用既有终端入口。详见[桌面生命周期设计](issues/desktop-launcher.md)。
 
 macOS `.app` 使用从 `scripts/macos_launcher.swift` 编译的轻量系统 AppKit 入口。`Contents/MacOS/Pictide` 负责准备窗口、菜单栏、数据目录会话锁和服务子进程；`PictideService` 以 `--cli --no-browser` 运行现有 Host。准备输出更新窗口，HTTP 就绪后打开浏览器；退出时向自己拥有的服务发送正常停止信号并等待结束。CLI 参数委托引擎处理，不新增业务 API 或 GUI 运行时。`backend/paths.py` 将 macOS 包的默认数据目录解析到用户的 Application Support，显式路径与环境变量继续优先。Windows 包通过最外层的 `Pictide.exe` 直接使用既有桌面生命周期。详见[桌面分发设计与验证状态](issues/desktop-distribution.md)。
+
+可选的本地 ComfyUI 生命周期管理位于 `backend/setup/comfy_lifecycle.py`。Host 注入只读后端查询并负责启动和关闭；仅 localhost 可用的设置与识别接口不会把进程管理交给生图协议或 Task。`runtime/comfyui-lifecycle.json` 的显式配置将一个直接访问本机回环 HTTP 地址的已保存 ComfyUI API，关联到 Python、`main.py`、工作目录与参数列表，下次启动时生效。没有显式配置时，原有 Windows 托管安装继续保留自动模型/工作流交接，其他安装默认关闭。
+
+`comfy_discovery.py` 只读检查已验证的便携/虚拟环境布局、Comfy Desktop 安装记录和 `/system_stats` 启动信息，不修改环境。识别保留模型与输入/输出参数，监听地址由关联 API 决定。生命周期服务先探测地址，复用可识别的已运行 ComfyUI，不取得其进程所有权。端口占用、路径无效和达到启动等待上限等错误会被报告，同时保持 Pictide 页面可访问。`comfy_process.py` 与原有安装器托管服务共用干净的子进程环境、有界日志、Windows Job Object 所有权和 POSIX 进程组清理。应用关闭后只停止本次会话创建的子进程；识别、保存设置和读取状态都不启动进程或提交生成任务。
+
+ComfyUI 启动沿用 stdout 交接，显示不代表确定百分比的终端等待条、已用时间和最近一条经过截断与脱敏的日志。`backend/desktop/startup_progress.py` 只负责渲染，不根据耗时或日志推测完成百分比；成功仍以 `/system_stats` 就绪为准。Windows 启动器将实际终端能力与宽度传给隐藏 worker，使重定向输出保持纯文本并限频；直接 CLI 终端可原地动画。就绪、失败或取消都会正常结束等待行。进程所有权、启动顺序、HTTP 契约与日志保留继续由原有模块负责。
 
 ## 对外网络请求
 

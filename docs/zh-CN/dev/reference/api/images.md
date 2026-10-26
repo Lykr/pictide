@@ -54,4 +54,4 @@
 - `love_score`：按历史评分范围转换的 0–100 相对值：`100 × (score-score_min)/(score_max-score_min)`；范围不可用或相等时为 null，不代表喜欢概率。
 - `state_revision,feature_version`：该缓存分数的学习状态与特征版本；无法评分时相关字段为 null，`reason` 提供说明。
 
-分数持久缓存到图片信息；普通读取只补缺失缓存，不因每次学习而重算历史图片。主动 refresh 重算所选范围，更新 `refreshed_at`；普通读取不更新该时间。重置偏好会清除评分缓存。推荐暂不可用时仍可能展示已有缓存；刷新失败保留旧缓存，检查 `scoring_available,error`。详情见[评分缓存](../../issues/image-score-cache.md)。
+分数持久缓存到图片信息；普通读取只补缺失缓存，不因每次学习而重算历史图片。主动 refresh 重算所选范围，更新 `refreshed_at`；普通读取不更新该时间。重置偏好会清除评分缓存。推荐暂不可用时仍可能展示已有缓存；刷新失败保留旧缓存，检查 `scoring_available,error`。

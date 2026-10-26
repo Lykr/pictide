@@ -24,12 +24,10 @@
 
 ## 技术与维护入口
 
-- 基础组件采用 [shadcn/ui](https://github.com/shadcn-ui/ui) 的源码组件，保存在 `web/src/components/ui/`；页面使用 React、TypeScript 与 Tailwind CSS，由 Vite 编译为静态资源。
-- `web/src/styles/theme.css` 是颜色、字体、尺寸与基础交互样式的唯一维护入口；页面布局分别放在 `web/src/styles/feed.css` 和 `web/src/styles/editor.css`。
-- Feed 与编辑器共用页面入口 `web/src/main.tsx`，内部视图组件为 `web/src/feed.tsx`、`web/src/editor.tsx`。现有 JavaScript 控制器继续处理业务状态、接口、动态列表与表单；动态 DOM 通过 `web/src/dom-primitives.ts` 复用共享组件的样式配方。这次统一包含 React 页面壳层和组件接入，尚未把全部业务控制器改写为 React。
-- 可见下拉菜单、复选框、单选、分段切换、弹窗及折叠区域复用官方 `radix-luma` 源码组件和 Radix 行为，不使用原生菜单或自行开发交互。DOM 控制器通过共享状态适配层接入组件；隐藏状态接口不是可见 UI。新控件同时验证展开样式、键盘、表单提交、焦点与禁用继承。
-- Node.js 仅用于开发构建。发布的静态资源由现有 aiohttp 应用提供；正常启动不需要 Node 服务、CDN、远程字体或额外前端进程。
+React、TypeScript、Tailwind 和共享 shadcn 组件使用唯一的 `web/index.html → web/src/main.tsx` 入口。React 功能组件负责布局与页面结构，功能模型负责草稿和动作；修改展示时保留语义目标、草稿值和保存行为。见[前端职责](web.md#代码入口)。
 
-新增基础组件先查现有源码，再按 [官方 Vite 接入说明](https://ui.shadcn.com/docs/installation/vite) 引入需要的组件。引入时使用 `radix-luma` 样式，保留预设配方，并更新 [第三方声明](../../../web/src/THIRD_PARTY_NOTICES.md)。不要手工编辑构建产物。
+可见 Select、Checkbox、Radio、Toggle、Dialog 和 Collapsible 使用共享 Radix 组件，直接传值与回调，不通过隐藏原生控件镜像状态。保留键盘焦点、禁用状态、表单约束和校验。
 
-项目使用 pnpm，按 `package.json` 的 `packageManager` 版本和 `pnpm-lock.yaml` 安装。重新应用预设先在副本运行 `pnpm dlx shadcn@4.21.4 apply --preset b1VlIttI -y` 并核对差异；保留动态 DOM 所需的样式配方导出，不直接覆盖业务适配。新增组件可运行 `pnpm dlx shadcn@latest add <组件名>`；检查生成的别名，将共享工具导入统一为 `@/lib/utils`，避免升级生成器时引入第二套工具函数或主题。
+Node.js 是开发构建依赖，运行时由 aiohttp 提供构建产物，字体随包，不依赖 CDN 或 Node 进程。第三方声明位于 `web/src/THIRD_PARTY_NOTICES.md`，可读[中文译文](../web/src/THIRD_PARTY_NOTICES.md)。
+
+引入基础组件前先检查共享库和官方 shadcn Vite 说明。在隔离检出中应用预设，审查差异并复用共享组件配方；使用锁定的 pnpm 版本并提交锁文件。构建与产物发布按[开发流程](development.md)执行。

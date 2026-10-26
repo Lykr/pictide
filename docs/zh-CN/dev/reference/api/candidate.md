@@ -12,7 +12,7 @@
 | POST | `/api/candidate/library` | multipart/form-data，字段 `file`，`.sqlite3` 或 `.sqlite3.gz` | 201，`{filename,tag_count,relation_count,bytes}` |
 | PUT | `/api/candidate/library` | JSON `{filename}` | `{selected}`，立即使用 |
 
-文件放在所选数据目录的 `libraries/`。GET 刷新目录和所选文件状态；有效文件需要 tags、correlations、dataset 表，来源为 ready，dataset.min_cooccurrence 是词库保留关系的正整数下限。上传和 gzip 解压各支持最大 2 GiB，同名自动编号，仅复制统计表。页面在上传成功后调用 PUT 自动选用。选择保存到个人配置库，已有预设、任务和预取保留，状态变化复用 candidate 事件。详情见[词库管理](../../issues/library-selection.md)。
+文件放在所选数据目录的 `libraries/`。GET 刷新目录和所选文件状态；有效文件需要 tags、correlations、dataset 表，来源为 ready，dataset.min_cooccurrence 是词库保留关系的正整数下限。上传和 gzip 解压各支持最大 2 GiB，同名自动编号，仅复制统计表。页面在上传成功后调用 PUT 自动选用。选择保存到个人配置库，已有预设、任务和预取保留，状态变化复用 candidate 事件。
 
 ## 候选词库、预设与预览
 
@@ -58,11 +58,14 @@
 | `max_steps` | 整数 1–1000000，省略时 100；所有模式的扩展搜索上限 |
 | `seed_control` / `step_control` | `fixed / increment / decrement / randomize`，默认 fixed |
 | `document` | 可选预设草稿，覆盖已保存预设内容 |
+| `backend_id` | 可选，预览转换使用的已保存生图 API；省略时只生成标签，自然语言后端会增加 `rendered`。这是 App 编排参数，不属于 Candidate 算法参数 |
 
 生成后控制用于任务多轮生成时推进下一轮参数；单次预览返回当前结果，不自动推进。random_each_run 每次生成新的提示词种子；图像种子在任务请求中单独设置。
 
 响应包括 `positive,negative,seed,selected_tags,candidate_id,source_id,preset_id,mode,report`。selected_tags 每项含 `id,text,categories,channel,source_id`。`report` 为 `{stop_reason,tag_count,unrecognized_fixed}`；sequence 另有 `{seed,step,change_budget,changes}`。
 
+自然语言预览保留原有标签字段，增加 `rendered:{positive,negative,preparation_id,signature,prompt_type}`。主动预览会调用配置的 LLM，读取历史结果不会。向[任务提交](jobs.md)传入准备 ID 与相同标签，可复用完全一致的文本；配置变化或准备记录过期时返回 409，不会静默替换预览结果。独立预览调用之间不沿用之前的自然语言措辞。
+
 目标长度在上下限内均匀抽取，共现不足或搜索上限到达时返回当前组合，不因未达到目标长度报错。stop_reason 可能为 `target_length,search_limit,no_eligible_tags,budget_zero`。数据未 ready 或参数无效仍返回错误。
 
-Relations 仅查询当前词项关系，不创建生成任务；已知词对缺记录表示未保留统计，pmi/count 为 null；当前试用词库按共现 ≥1,000 次保留关系；自定义词 known=false，无统计。不能将 null 当作零共现或 PMI=0。统计口径见[PMI 数据设计](../../issues/candidate-pmi.md)。
+Relations 仅查询当前词项关系，不创建生成任务；已知词对缺记录表示未保留统计，pmi/count 为 null；当前试用词库按共现 ≥1,000 次保留关系；自定义词 known=false，无统计。不能将 null 当作零共现或 PMI=0。

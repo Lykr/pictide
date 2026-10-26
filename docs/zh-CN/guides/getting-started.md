@@ -12,7 +12,7 @@
 
 Windows 准备引导可下载 ComfyUI 与推荐的 Anima 模型，自动接入默认工作流；步骤见 [Windows 指南](setup/windows.md#便携版本)。生图模型按需下载，发行包保持轻量。
 
-已有本地 ComfyUI，或希望使用 OpenAI Images、Gemini 云端服务时，在「设置 → 生图 API」接入。独立安装的 ComfyUI 需自行启动；由 Pictide 准备的版本会随 Pictide 启停。
+已有本地 ComfyUI，或希望使用 OpenAI Images、Gemini 云端服务时，在「设置 → 生图 API」接入。希望已有的本地 ComfyUI 随 Pictide 启停时，可在通用设置中开启[本地启动](settings.md#本地-comfyui-启停)。由 Pictide 安装的 Windows 环境保留原有自动启动行为。
 
 旧版 Windows、Linux 和 macOS 便携包已通过原生构建与启动检查。新桌面分发方式见各平台指南，Mac 桌面体验仍待实机验证；云端服务真实出图尚待验证。
 

@@ -20,6 +20,8 @@
 | --- | --- |
 | `name` | 后端名称 |
 | `kind` | `comfyui / openai / gemini`，省略时为 `comfyui` |
+| `prompt_type` | `danbooru / natural_language`，省略时为 `danbooru`；自然语言模式使用独立的[提示词服务](settings.md#提示词-llm-api) |
+| `llm_id` | 自然语言转换使用的已保存 LLM API ID；新配置必须选择已有连接，缺少此字段的旧配置使用 `legacy-prompt-api` |
 | `base_url` | 生图服务 HTTP(S) 根地址；云端包含版本路径，如 `https://api.openai.com/v1` 或 `https://generativelanguage.googleapis.com/v1beta` |
 | `api_key` | 可选；同类型配置省略时保留已有密钥，切换类型或传入空串时清除；不会返回明文 |
 | `model` | `openai` 与 `gemini` 必填模型 ID，手动输入 |
@@ -38,7 +40,7 @@
 
 工作流字段、checkpoint 发现及模板路由归 ComfyUI 使用。云端 `/models` 返回已配置的模型，不发现模型目录；`/check` 只读查询所选模型，不提交生图，也不能证明账号具有图片输出权限或验证生成质量。
 
-公开配置包含 `capabilities`，字段为 `negative_prompt`、`seed`、`models`、`events`、`cancel`、`recovery` 和 `cloud`。本次 OpenAI Images 与 Gemini 接入不支持负向提示词、指定图像种子、远端事件、取消或恢复；非空负向提示词（包括候选预设输出）与指定图像种子会明确拒绝，不静默丢弃。候选种子只在本地控制抽词。界面按能力显示可用控件。
+公开配置包含 `capabilities`，字段为 `negative_prompt`、`seed`、`models`、`events`、`cancel`、`recovery` 和 `cloud`。本次 OpenAI Images 与 Gemini 接入不支持负向提示词通道、指定图像种子、远端事件、取消或恢复。Danbooru 模式拒绝非空负向提示词，包括候选预设输出；自然语言准备则要求 LLM 把规避要求融入正向描述，并返回空的负向字符串。指定图像种子仍会拒绝，候选种子只在本地控制抽词。界面按能力显示可用控件。
 
 OpenAI 在 Base URL 后追加 `/images/generations`，Gemini 追加 `/interactions`。Gemini 使用 `x-goog-api-key` 认证，发送 `model`、`input`、含图片输出选项的 `response_format` 和 `store:false`。这两个适配器只负责单轮文生图；`generateContent`、Imagen、图像编辑及第三方服务预设不在本次范围。成功结果可为 Base64 或图片 URL，先保存到本地再作为 Pictide 产物提供。API Key 由后端调用服务使用，浏览器不直接向服务商发请求。
 

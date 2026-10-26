@@ -20,7 +20,7 @@
 
 原生包在 `resources/installation.json` 中记录 schema、版本、平台和架构。发布器根据兼容策略、压缩包、构建报告和成功的原生冒烟报告生成 `update.json`。每个资源包含文件名、压缩与展开体积、SHA-256 和原生验证状态，并与 GitHub 资源元数据核对。缺失或未验证时提供手动更新。
 
-`scripts/smoke_portable.py` 同时运行 `scripts/smoke_updates.py`。发行 CI 使用 `--previous-release` 下载并启动上一稳定版的同平台包，用旧版保存设置，验证替换失败后的恢复，再升级到新版。检查实际服务版本、HTTP 就绪、既有设置和数据库记录、备份、个人文件及 MiniLM 权重。`--previous-archive PATH` 可使用本地旧包。没有旧版时仍验证同版本替换，但不会启用 `install_verified`。发行仍只由版本标签推送触发。
+`scripts/smoke_portable.py` 同时运行 `scripts/smoke_updates.py`。发行 CI 使用 `--previous-release` 下载并启动上一稳定版的同平台包，用旧版保存设置，验证替换失败后的恢复，再升级到新版。检查实际服务版本、HTTP 就绪、既有设置和数据库记录、备份、个人文件及 MiniLM 权重。`--previous-archive PATH` 可使用本地旧包。没有旧版时仍验证同版本替换，但不会启用 `install_verified`。版本标签推送会自动构建发行；工作流修正后，可通过[手动重跑发布](../development.md#github-actions-发版)重新构建同一固定标签。
 
 ## 安装与恢复
 
@@ -35,6 +35,10 @@
 运行库检查不保证后续业务初始化或运行成功；正常 HTTP 就绪由原生发行冒烟验证，不增加更新专用模式或接口。详细输出、结果和备份保留供排查恢复。
 
 安装后页面最多等待两分钟重连，单次状态请求超时为五秒。超时后停止轮询，以悬浮通知提示查看应用日志，不再次触发检查、下载或安装；后续本地 SSE 成功重连仍可刷新页面。
+
+macOS 原生启动器提供原始参数，正常从 Finder 启动时也明确传入空列表。Host 保留此列表，不继承服务内部的 `--cli --no-browser`，使桌面更新重启菜单栏启动器。核心回归覆盖空参数、显式启动器参数和普通 CLI 启动。原生跨版本冒烟目前验证 CLI 重启与数据保留，不验证可见的 macOS 菜单栏。
+
+受影响的旧版本可能已经把 worker 参数保存为重启参数，无法据此可靠地区分桌面启动和有意的 CLI 启动。发生这种升级后，在活动监视器退出 `PictideService`，再从 Finder 打开 `Pictide.app`；修正后的 Host 会为后续更新记录原定模式。
 
 ## 验证
 

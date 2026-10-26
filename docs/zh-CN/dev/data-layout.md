@@ -28,7 +28,8 @@ Windows 可交互入口在应用初始化和下载前确认数据位置，并在
 | `history-cleanup.json` | 历史图片保留天数，缺省 1 天 |
 | `runtime/` | 源码 Python 环境；现有 Linux 包也在此保存随包程序。新 Windows 与 macOS 包的程序依赖位于用户数据之外 |
 | `runtime/comfyui/` | Pictide 在 Windows 准备的 ComfyUI 与便携 Python 环境 |
-| `runtime/local-generation.json` | 本地准备选择、安装版本、启动设置与安装状态 |
+| `runtime/local-generation.json` | 本地准备选择、安装版本与安装状态 |
+| `runtime/comfyui-lifecycle.json` | 可选本地 ComfyUI 启停开关、关联生图 API、安装/Python/入口路径、工作目录与参数；独立于安装器状态 |
 | `cache/` | Python、pip 等运行缓存，可重新生成 |
 | `cache/downloads/` | 本地生图安装归档与可续传的下载分段；模型权重放入 `models/generation/` |
 | `cache/updates/` | 用户手动下载并校验的更新包 |
