@@ -6,38 +6,43 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing version tag to publish from verified artifacts
+        description: Existing version tag to build or recover
         required: true
         type: string
       build_run:
-        description: Original release build run ID
-        required: true
+        description: Recovery only; original release build run ID (pair with macos_run)
+        required: false
+        default: ''
         type: string
       macos_run:
-        description: Successful macOS validation run ID for the same source tag
-        required: true
+        description: Recovery only; successful macOS run ID (pair with build_run)
+        required: false
+        default: ''
         type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: portable-release-${{ github.ref }}
+  group: portable-release-${{ inputs.release_tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   validate:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.build_run == '' && inputs.macos_run == '')
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ inputs.release_tag || github.ref }}
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
       - name: Validate versions and resource lock
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         shell: python
         run: |
           import json, os, re
@@ -46,10 +51,9 @@ jobs:
           exec(Path('backend/__init__.py').read_text(encoding='utf-8'), namespace)
           version = namespace['__version__']
           assert version == json.loads(Path('web/package.json').read_text())['version'], 'Backend/frontend versions differ'
-          if os.environ['GITHUB_EVENT_NAME'] == 'push':
-              tag = os.environ['GITHUB_REF_NAME']
-              assert re.fullmatch(r'v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', tag), 'Use a vMAJOR.MINOR.PATCH tag'
-              assert tag == 'v' + version, 'Tag and application versions differ'
+          tag = os.environ['RELEASE_TAG']
+          assert re.fullmatch(r'v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', tag), 'Use a vMAJOR.MINOR.PATCH tag'
+          assert tag == 'v' + version, 'Tag and application versions differ'
           lock = json.loads(Path('corpus/prebuilt.json').read_text(encoding='utf-8'))
           assert re.fullmatch(r'corpus-[0-9a-f]{64}', lock['release_tag']), 'Invalid corpus release tag'
           assert lock['release_tag'] == 'corpus-' + lock['fingerprint']
@@ -78,7 +82,10 @@ jobs:
       - name: Install application dependencies for core smokes
         run: python -m pip install --no-cache-dir -r backend/requirements.txt
       - name: Check core business behavior before native builds
-        run: python scripts/check.py core
+        run: |
+          # HTTP core fixtures register static routes before the frontend is built.
+          mkdir -p web/dist
+          python scripts/check.py core
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
@@ -111,7 +118,7 @@ jobs:
           retention-days: 1
 
   build:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.build_run == '' && inputs.macos_run == '')
     needs: validate
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
@@ -128,6 +135,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ inputs.release_tag || github.ref }}
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -210,7 +218,7 @@ jobs:
           retention-days: 1
 
   publish:
-    if: always() && ((github.event_name == 'push' && needs.build.result == 'success') || github.event_name == 'workflow_dispatch')
+    if: always() && (needs.build.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.build_run != '' && inputs.macos_run != ''))
     needs: build
     runs-on: ubuntu-22.04
     permissions:
@@ -232,7 +240,7 @@ jobs:
           run-id: ${{ inputs.build_run || github.run_id }}
           github-token: ${{ github.token }}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.build_run != '' && inputs.macos_run != ''
         with:
           pattern: pictide-macos-*-${{ inputs.macos_run }}
           merge-multiple: true
@@ -240,7 +248,7 @@ jobs:
           run-id: ${{ inputs.macos_run }}
           github-token: ${{ github.token }}
       - name: Verify recovery provenance and collect the missing platform
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.build_run != '' && inputs.macos_run != ''
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

@@ -85,6 +85,8 @@ The workflow checks locked resource sizes, SHA-256 hashes, provenance, report, a
 
 Ordinary branch pushes use local verification and do not trigger Actions. Resource Releases persist the vocabulary; Actions caches only accelerate builds. For check preparation and coverage limits, see [release checks](testing.md#release-checks).
 
+To rerun the complete release after a CI-only correction, dispatch `release.yml` from `main` with the existing `release_tag` and leave `build_run` and `macos_run` empty. Validation and all four builds check out that tag, then use the same native smoke and publication gates. This keeps the application source pinned while using the corrected workflow. Core HTTP fixtures receive an empty `web/dist/` before their checks; browser checks use the fully compiled isolated assets. An existing Release is never replaced.
+
 For Mac validation without publishing, manually run `.github/workflows/macos-validation.yml` with the Intel or Apple Silicon target. It uses the release builder and startup smoke, retaining ZIPs, checksums, revision metadata, and reports as an Actions artifact for seven days. Transfer the same ZIP to the target Mac, verify its SHA-256, and record actual launcher and startup behavior separately from CI results.
 
 The optional `source_ref` selects an existing branch or tag; provenance records the checked-out commit. `previous_release` pins the older package and downloads it through authenticated GitHub CLI access, allowing upgrade checks for an existing tag without changing that tag. Normal release smoke jobs also use the workflow token for GitHub metadata queries to avoid shared-runner anonymous rate limits. Tokens remain confined to CI and are never bundled with the application.

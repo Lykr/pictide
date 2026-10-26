@@ -51,7 +51,7 @@ Natural-language changes use `python -m unittest tests.backend.application.test_
 
 ## Release checks
 
-The tag-triggered release workflow runs `core`, `ui` and `browser` once before the four native builds. The offline `corpus` group remains available separately when data processing changes. Each native build retains its own extracted-package startup smoke.
+The release workflow runs `core`, `ui` and `browser` once before the four native builds, both on version-tag pushes and on a manual full rerun of an existing tag. It creates the static directory required by HTTP core fixtures before compiling the isolated browser frontend. The offline `corpus` group remains available separately when data processing changes. Each native build retains its own extracted-package startup smoke.
 
 Ordinary branch pushes do not trigger Actions. This update applies to subsequent version tags; it does not rebuild v0.5.0.
 
