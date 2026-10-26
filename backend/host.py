@@ -230,6 +230,34 @@ async def general_settings(request):
         await body(request) if request.method == "PUT" else None))
 
 
+def local_generation_access(request):
+    try:
+        return (ipaddress.ip_address(request.remote or '').is_loopback and
+                urlsplit('http://' + request.host).hostname in ('127.0.0.1', 'localhost', '::1'))
+    except ValueError:
+        return False
+
+
+async def local_generation_settings(request):
+    if not local_generation_access(request):
+        if request.method == 'GET':
+            return web.json_response({'can_configure': False})
+        raise web.HTTPForbidden(text='Configure local ComfyUI on the Pictide computer using localhost.')
+    service = request.app[LOCAL_GENERATION]
+    if request.method == 'PUT':
+        result = await asyncio.to_thread(service.save, await body(request))
+        request.app[APPLICATION].events.publish('local_generation')
+    else:
+        result = await asyncio.to_thread(service.settings)
+    return web.json_response(result)
+
+
+async def local_generation_detect(request):
+    if not local_generation_access(request):
+        raise web.HTTPForbidden(text='Detect local ComfyUI on the Pictide computer using localhost.')
+    return web.json_response(await asyncio.to_thread(request.app[LOCAL_GENERATION].detect, await body(request)))
+
+
 async def history_settings(request):
     return web.json_response(await request.app[APPLICATION].history_settings(
         await body(request) if request.method == "PUT" else None))
@@ -444,6 +472,8 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
     from .updates.service import UpdateService
     application = app[APPLICATION]
     application.updates = UpdateService(paths, on_change=lambda: application.events.publish('updates'))
+    from .setup.comfy_lifecycle import LocalComfyLifecycle
+    app[LOCAL_GENERATION] = LocalComfyLifecycle(paths, storage.backend, storage.backends)
     app.cleanup_ctx.append(lifecycle)
     app.on_shutdown.append(shutdown)
     app.add_routes([
@@ -455,6 +485,9 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get('/api/llm-apis/{id}/status', llm_action, name='llm-status'),
         web.post('/api/llm-apis/{id}/{operation:sign-in|cancel|models|disconnect|welcome}', llm_action),
         web.get("/api/settings/general", general_settings), web.put("/api/settings/general", general_settings),
+        web.get('/api/settings/local-generation', local_generation_settings),
+        web.put('/api/settings/local-generation', local_generation_settings),
+        web.post('/api/settings/local-generation/detect', local_generation_detect),
         web.get("/api/settings/history", history_settings), web.put("/api/settings/history", history_settings),
         web.get("/api/settings/roam", roam_settings), web.put("/api/settings/roam", roam_settings),
         web.get("/api/recommendation/preferences", preferences),
@@ -633,11 +666,6 @@ def _main(argv=None):
                 from .desktop.launcher import notify_launcher
                 notify_launcher('ready')
             app.on_startup.append(notify_worker_ready)
-        if sys.platform == 'win32':
-            from .setup.local_generation_session import ManagedComfy, read_state
-            local_state = read_state(paths)
-            if local_state and local_state.get('mode') == 'managed':
-                app[LOCAL_GENERATION] = ManagedComfy(paths, local_state)
         if (desktop is not None or frozen) and not (args.no_browser or args.cli):
             browser_task = None
             async def launch_browser(app):

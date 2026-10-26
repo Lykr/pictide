@@ -1,20 +1,15 @@
 """Windows preparation decisions and ownership of a local ComfyUI service."""
 import asyncio
-import codecs
 from contextlib import contextmanager
 import json
 import logging
-import os
 from pathlib import Path
 import socket
-import subprocess
 import sys
 import tempfile
-import threading
-import time
-from urllib.request import ProxyHandler, build_opener
 
 from ..desktop.text import system_language
+from .comfy_process import ComfyProcess, _WindowsJob
 
 log = logging.getLogger('backend.setup.local_generation')
 
@@ -162,116 +157,10 @@ def available_port(preferred=8190):
         return listener.getsockname()[1]
 
 
-class _WindowsJob:
-    """Kill our ComfyUI tree if its owning Pictide process exits unexpectedly."""
-    def __init__(self, process):
-        import ctypes as c
-        from ctypes import wintypes as w
-
-        class Basic(c.Structure):
-            _fields_ = [('process_time', c.c_longlong), ('job_time', c.c_longlong), ('flags', w.DWORD),
-                        ('min_working_set', c.c_size_t), ('max_working_set', c.c_size_t),
-                        ('active_processes', w.DWORD), ('affinity', c.c_size_t),
-                        ('priority', w.DWORD), ('scheduling', w.DWORD)]
-
-        class IO(c.Structure):
-            _fields_ = [(name, c.c_ulonglong) for name in ('reads', 'writes', 'other', 'read_bytes', 'write_bytes', 'other_bytes')]
-
-        class Extended(c.Structure):
-            _fields_ = [('basic', Basic), ('io', IO), ('process_memory', c.c_size_t),
-                        ('job_memory', c.c_size_t), ('peak_process', c.c_size_t), ('peak_job', c.c_size_t)]
-
-        self.kernel = c.WinDLL('kernel32', use_last_error=True)
-        self.kernel.CreateJobObjectW.argtypes = [c.c_void_p, w.LPCWSTR]
-        self.kernel.CreateJobObjectW.restype = w.HANDLE
-        self.kernel.SetInformationJobObject.argtypes = [w.HANDLE, c.c_int, c.c_void_p, w.DWORD]
-        self.kernel.SetInformationJobObject.restype = w.BOOL
-        self.kernel.AssignProcessToJobObject.argtypes = [w.HANDLE, w.HANDLE]
-        self.kernel.AssignProcessToJobObject.restype = w.BOOL
-        self.kernel.CloseHandle.argtypes = [w.HANDLE]
-        self.kernel.CloseHandle.restype = w.BOOL
-        self.handle = self.kernel.CreateJobObjectW(None, None)
-        if not self.handle:
-            raise c.WinError(c.get_last_error())
-        limits = Extended()
-        limits.basic.flags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-        if not (self.kernel.SetInformationJobObject(self.handle, 9, c.byref(limits), c.sizeof(limits))
-                and self.kernel.AssignProcessToJobObject(self.handle, int(process._handle))):
-            error = c.get_last_error()
-            self.close()
-            raise c.WinError(error)
-
-    def close(self):
-        if self.handle:
-            self.kernel.CloseHandle(self.handle)
-            self.handle = None
-
-
-@contextmanager
-def external_runtime_dlls():
-    """An embedded ComfyUI Python must load its own DLLs, not PyInstaller's."""
-    if sys.platform != 'win32' or not getattr(sys, 'frozen', False):
-        yield
-        return
-    import ctypes
-    from ctypes import wintypes
-    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
-    kernel.GetDllDirectoryW.argtypes = [wintypes.DWORD, wintypes.LPWSTR]
-    kernel.GetDllDirectoryW.restype = wintypes.DWORD
-    kernel.SetDllDirectoryW.argtypes = [wintypes.LPCWSTR]
-    kernel.SetDllDirectoryW.restype = wintypes.BOOL
-    previous = ctypes.create_unicode_buffer(32768)
-    kernel.GetDllDirectoryW(len(previous), previous)
-    if not kernel.SetDllDirectoryW(None):
-        raise ctypes.WinError(ctypes.get_last_error())
-    try:
-        yield
-    finally:
-        kernel.SetDllDirectoryW(previous.value or None)
-
-
-class _ManagedOutput:
-    """Drain one owned process into a bounded, independently rotating log."""
-    def __init__(self, pipe, target):
-        from ..runtime_logging import make_log_handler
-
-        self.pipe = pipe
-        self.logger = logging.Logger('backend.comfyui', level=logging.INFO)
-        self.logger.propagate = False
-        self.handler = make_log_handler(target)
-        self.logger.addHandler(self.handler)
-        self.thread = threading.Thread(target=self._read, name='pictide-comfyui-output', daemon=True)
-        self.thread.start()
-
-    def _read(self):
-        decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
-        try:
-            # ComfyUI may print progress with carriage returns or very long lines.
-            # Limit each read so even output without newlines stays bounded.
-            while chunk := self.pipe.readline(16 * 1024):
-                message = decoder.decode(chunk).rstrip('\r\n')
-                if message:
-                    self.logger.info('%s', message)
-            trailing = decoder.decode(b'', final=True)
-            if trailing:
-                self.logger.info('%s', trailing)
-        except (OSError, ValueError):
-            log.exception('Could not read managed ComfyUI output')
-        finally:
-            self.pipe.close()
-            self.logger.removeHandler(self.handler)
-            self.handler.close()
-
-    def close(self):
-        # The owning process is stopped before joining; drain its final output.
-        self.thread.join()
-
-
-class ManagedComfy:
+class ManagedComfy(ComfyProcess):
     def __init__(self, paths, state):
-        self.paths, self.state = paths, dict(state)
-        self.process = self.job = self.output = None
-        self.url = None
+        super().__init__(paths)
+        self.state = dict(state)
 
     def start(self):
         install = Path(self.state['install_dir']).resolve()
@@ -295,66 +184,11 @@ class ManagedComfy:
                    '--output-directory', str(output)]
         if self.state['profile_id'] == 'cpu':
             command.append('--cpu')
-        environment = os.environ.copy()
-        for key in ('PYTHONHOME', 'PYTHONPATH', 'VIRTUAL_ENV', '_PYI_APPLICATION_HOME_DIR',
-                    '_PYI_ARCHIVE_FILE', '_PYI_PARENT_PROCESS_LEVEL', '_PYI_SPLASH_IPC'):
-            environment.pop(key, None)
-        environment['PYTHONIOENCODING'] = 'utf-8'
-        environment['PYTHONUNBUFFERED'] = '1'
         announce('Starting local ComfyUI…', '正在启动本地 ComfyUI…')
-        try:
-            with external_runtime_dlls():
-                self.process = subprocess.Popen(command, cwd=install, env=environment, stdin=subprocess.DEVNULL,
-                                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-            if sys.platform == 'win32':
-                self.job = _WindowsJob(self.process)
-            self.output = _ManagedOutput(self.process.stdout, self.paths.logs / 'comfyui.log')
-            log.info('Managed ComfyUI started, pid=%s, address=%s', self.process.pid, self.url)
-            opener = build_opener(ProxyHandler({}))
-            deadline = time.monotonic() + 120
-            last = time.monotonic()
-            while self.process.poll() is None:
-                try:
-                    with opener.open(self.url + '/system_stats', timeout=1) as response:
-                        if response.status == 200 and 'system' in json.load(response):
-                            self.state['port'] = port
-                            write_state(self.paths, self.state)
-                            log.info('Managed ComfyUI ready at %s, pid=%s', self.url, self.process.pid)
-                            return self.url
-                except (OSError, ValueError):
-                    pass
-                if time.monotonic() > deadline:
-                    raise TimeoutError('ComfyUI startup timed out; see data/logs/comfyui.log')
-                if time.monotonic() - last > 10:
-                    announce('ComfyUI is still starting; see the startup log for details.',
-                             'ComfyUI 正在启动，详情可查看启动日志。')
-                    last = time.monotonic()
-                time.sleep(.2)
-            raise RuntimeError('ComfyUI could not start; see data/logs/comfyui.log')
-        except BaseException:
-            self.close()
-            raise
-
-    def close(self):
-        if self.job is not None:
-            self.job.close()
-            self.job = None
-        if self.process is not None and self.process.poll() is None:
-            self.process.terminate()
-            try:
-                self.process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.wait()
-        if self.output is not None:
-            self.output.close()
-            self.output = None
-        elif self.process is not None and self.process.stdout is not None:
-            self.process.stdout.close()
-        if self.process is not None:
-            log.info('Managed ComfyUI exited, pid=%s, exit_code=%s', self.process.pid, self.process.returncode)
-            self.process = None
+        self.launch(command, install, self.url)
+        self.state['port'] = port
+        write_state(self.paths, self.state)
+        return self.url
 
     async def configure(self, application, session):
         """Use existing configuration contracts before bootstrap becomes reachable."""

@@ -28,7 +28,8 @@ The following paths are relative to the selected data directory:
 | `history-cleanup.json` | Historical image retention in days; defaults to 1 day |
 | `runtime/` | Source Python environment; the existing Linux package also keeps its bundled program here. New Windows and macOS packages keep program dependencies outside user data |
 | `runtime/comfyui/` | ComfyUI and its portable Python environment prepared by Pictide on Windows |
-| `runtime/local-generation.json` | Local preparation selection, installed versions, startup settings, and installation state |
+| `runtime/local-generation.json` | Local preparation selection, installed versions, and installation state |
+| `runtime/comfyui-lifecycle.json` | Optional local ComfyUI startup switch, linked image API, installation/Python/entry paths, working directory and arguments; separate from installer state |
 | `cache/` | Regenerable runtime caches for Python, pip, and related tools |
 | `cache/downloads/` | Local generation installation archives and resumable partial downloads; model weights belong under `models/generation/` |
 | `tmp/` | Runtime temporary files |

@@ -1,0 +1,8 @@
+.local-generation-settings { align-items: start; }
+.local-generation-settings > .settings-row-caption { padding-top: 8px; }
+@media (max-width: 640px) {
+  .local-generation-settings > .settings-row-caption { padding-top: 0; }
+}
+@media (max-width: 640px), (pointer: coarse) {
+  .feed-page .local-generation-settings label[for="local-generation-enabled"] { min-height: 44px; }
+}

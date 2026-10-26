@@ -1,3 +1,4 @@
+import { LocalGenerationSettings } from "./local-generation-settings";
 import { onSignal, offSignal } from '../shared/signals.mjs';
 import { SettingsRow } from "./settings-row";
 import { useErrorNotice } from "./notifications";
@@ -77,6 +78,7 @@ export function GeneralSettings({ initialError = "" }: { initialError?: string }
       <div className="settings-row-checkbox"><Checkbox id="image-transitions" aria-label={t("图片切换动效")} checked={effects} disabled={!!saving} onCheckedChange={next => changeEffects(next === true)} /></div>
     </SettingsRow>
     <SettingsRow separated label={t("新手引导")}><Button variant="outline" type="button" onClick={() => requestUiAction("onboarding.restart")}><Compass aria-hidden="true" />{t("开始引导")}</Button></SettingsRow>
+    <LocalGenerationSettings />
     <ApplicationUpdates />
   </div>;
 }

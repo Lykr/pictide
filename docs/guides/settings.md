@@ -20,6 +20,14 @@ See [Roam](roam.md) to adjust exploration, or [Getting started](getting-started.
 
 Under **LLM API**, manage named text-service connections using API keys or ChatGPT sign-in. Under **Image API**, choose Danbooru or natural language; natural-language connections select one of your saved LLM APIs. See [setup](getting-started.md#natural-language-prompts).
 
+## Start and stop local ComfyUI
+
+In General settings, enable **Start and stop with Pictide**, select a saved local ComfyUI image API, then choose **Detect installation** or enter its installation folder. Review the detected Python and options under **Advanced startup settings**, then choose **Save startup settings**. Changes apply the next time Pictide starts.
+
+If ComfyUI is already running, Pictide reuses it. Otherwise it starts the configured environment and waits for readiness. Exiting Pictide stops only the process it started; closing the browser leaves Pictide and its service running. Startup failures remain visible in settings with a log location, so you can correct the configuration.
+
+Configure this on the computer running Pictide using its localhost address. Remote image services keep their existing lifecycle. Pictide-installed Windows environments keep their automatic startup unless you disable this setting.
+
 ## Task records
 
 Open History to check generation progress, inspect failures, or cancel tasks you no longer need. Generate also lets you cancel all its tasks that have not started; tasks already running in the image service continue.

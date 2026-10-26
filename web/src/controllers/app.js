@@ -1,3 +1,4 @@
+import { createLocalGeneration } from './local-generation.js';
 import { createBackendSettings } from './backend-settings.js';
 import { createPromptSettings } from './prompt-settings.js';
 import { createGenerationController } from './generation-controller.js';
@@ -170,6 +171,7 @@ const generation = createGenerationController({ state, api, getRoamSettings: () 
 const { updateGenerationHints, updateRuleControls, loadRuleConfigs } = generation;
 const backendSettings = createBackendSettings({ state, api, generation, checkBackendAvailability, showBackendAvailability, renderRoamBackends, renderArtifacts, loadRoamSettings });
 const promptSettings = createPromptSettings(api);
+const localGeneration = createLocalGeneration(api);
 const { renderBackends, loadBackend, loadWorkflowLibrary } = backendSettings;
 
 function artifactsForView() { return state.view === 'liked' ? state.likedArtifacts : state.artifacts; }
@@ -634,7 +636,7 @@ const commands = {
   'liked-refresh': () => { if (state.likedSort === 'score') return likedRanking.load(state.likedTags, true); state.likedError = ''; return refresh(true); },
   'liked-feedback': value => feedbackGenerated(value.id, value.toggle !== false, 'liked'),
   'roam-playback-toggle': () => roamPlayback.toggle(),
-  'before-update': () => !(generation.dirty || backendSettings.dirty || promptSettings.model.data.dirty || promptSettings.model.data.signingIn || roamDraftDirty() || getUiState().editorDirty),
+  'before-update': () => !(localGeneration.model.data.dirty || localGeneration.model.data.busy || generation.dirty || backendSettings.dirty || promptSettings.model.data.dirty || promptSettings.model.data.signingIn || roamDraftDirty() || getUiState().editorDirty),
   'updating': () => { applicationUpdating = true; roamPlayback.pause(); },
   'update-finished': () => { applicationUpdating = false; return refresh(true); },
 };
@@ -705,11 +707,13 @@ function syncTheme() {
 function connectEvents() {
   if (!window.EventSource || eventSource) return;
   eventSource = new EventSource('/api/events');
-  eventSource.addEventListener('open', () => { realtimeConnected = true; emitSignal('updates-changed'); if (applicationUpdating) return; syncTheme(); loadRoamSettings({ preserveDraft: true }); refresh(true); });
+  eventSource.addEventListener('open', () => { realtimeConnected = true; emitSignal('updates-changed'); void localGeneration.load(); if (applicationUpdating) return; syncTheme(); loadRoamSettings({ preserveDraft: true }); refresh(true); });
   // Queue another refresh if a change arrives while the current read is in flight.
   eventSource.addEventListener('change', event => {
     try {
       const topic = JSON.parse(event.data).topic;
+      if (topic === 'local_generation') { void localGeneration.load(); return; }
+      if (topic === 'backends') void localGeneration.load();
       if (topic === 'updates') { emitSignal('updates-changed'); return; }
       if (topic === 'prompting') { void promptSettings.load(true); emitSignal('prompt-settings-changed'); }
       if (topic === 'roam_settings' || topic === 'candidate') loadRoamSettings({ preserveDraft: true });
@@ -741,12 +745,12 @@ disposers.push(onSignal('prompt-settings-changed', () => { generation.invalidate
 disposers.push(onSignal('language-changed', () => { changed(); generation.model.changed(); backendSettings.model.changed(); renderJobPage(jobPager.state); renderArtifacts(); }));
   return () => {
     disposed = true; abort.abort(); clearInterval(fallbackTimer); clearTimeout(feedbackMotionTimer);
-    promptSettings.dispose();
+    promptSettings.dispose(); localGeneration.dispose();
     roamPlayback.pause(); nextImageWait.cancel(); likedRanking.cancel(); eventSource?.close();
     for (const dispose of disposers.splice(0)) dispose();
   };
 }
-return { model, generation, backendSettings, promptSettings, mount, commands, setPrivacy, setView, setSettingsSection, openSettings, moveImage, feedback,
+return { model, generation, backendSettings, promptSettings, localGeneration, mount, commands, setPrivacy, setView, setSettingsSection, openSettings, moveImage, feedback,
   requestNextRoamImage, imageLoaded, imageFailed, cancelJob, jobPager, saveHistory, submitRoamSettings,
   editRoam(patch) { Object.assign(state.roamDraft, patch); changed(); },
   editHistory(value) { state.historyDraft = value; changed(); },

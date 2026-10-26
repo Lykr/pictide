@@ -17,8 +17,8 @@ Use Python 3.12 to match release CI.
 
 | Group | Checks | Requirements |
 | --- | --- | --- |
-| `core` (default) | Eleven smokes: macOS update restart mode, preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests, natural-language Anchor reuse and explicit prefetch retry, named LLM references, and OAuth callback verification | Application Python dependencies |
-| `ui` | Seven Node test files: tour state and placement, generation drafts, notifications, theme/language races, API key editing, HTTP-compatible request IDs | Node.js |
+| `core` (default) | Twelve smokes: local ComfyUI lifecycle, macOS update restart mode, preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests, natural-language Anchor reuse and explicit prefetch retry, named LLM references, and OAuth callback verification | Application Python dependencies |
+| `ui` | Eight Node test files: local ComfyUI startup drafts, tour state and placement, generation drafts, notifications, theme/language races, API key editing, HTTP-compatible request IDs | Node.js |
 | `corpus` | Three offline smokes: post filtering, stale/corrupt prebuilt rejection, vocabulary editions | Python environment with `corpus/requirements.txt` |
 | `browser` | Real-page flows: shared layouts and safe areas, notifications, tours, API forms, explicit updates, Roam feedback and autoplay, standalone request IDs, and desktop/mobile natural-language configuration and preview | Application Python dependencies, frontend dependencies, compiled test frontend and a browser |
 
@@ -58,3 +58,5 @@ Ordinary branch pushes do not trigger Actions. This update applies to subsequent
 The group lists live in `scripts/check.py` and `web/scripts/test.mjs`. Keep them focused on user-visible outcomes and durable data behavior. Run individual existing tests when a change needs more specific coverage. Playwright setup and browser options follow the [official documentation](https://playwright.dev/docs/browsers).
 
 LLM connection changes additionally run `tests.backend.application.test_llm_connections`, `tests.backend.application.test_chatgpt`, and `web/tests/browser/llm-connections.spec.mjs`. OAuth tests sign local identity fixtures, exercise the actual loopback callback, and mock all provider endpoints. Real account eligibility and provider authorization are separate manual verification; no paid inference is used in automated checks.
+
+Local ComfyUI lifecycle changes use `python -m unittest tests.backend.setup.test_comfy_lifecycle tests.backend.setup.test_local_generation_session tests.backend.desktop.test_desktop_launcher -v` and `web/tests/browser/local-generation.spec.mjs`. They cover explicit next-start saves, real lightweight child-service startup/reuse/shutdown, process-tree ownership, disabled/legacy configurations, failure/timeout recovery, loopback-only configuration, read-only installation discovery, drafts, multiple candidates and desktop/mobile layouts. Fixtures submit no image jobs and load no GPU models. Cross-platform lifecycle code still needs native verification on each claimed platform; simulated services do not establish compatibility with every ComfyUI distribution.

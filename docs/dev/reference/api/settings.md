@@ -22,6 +22,20 @@
 
 General settings support partial updates, preserving omitted fields. History cleanup applies to unliked images, including unrated and disliked images; liked images are preserved. `cleanup` contains cleanup statistics; see [Data layout](../../data-layout.md).
 
+## Local ComfyUI lifecycle
+
+| Method | Path | Request | Response |
+| --- | --- | --- | --- |
+| GET | `/api/settings/local-generation` | None | `{can_configure,config,choices,status,restart_required}` on localhost; `{can_configure:false}` elsewhere |
+| PUT | `/api/settings/local-generation` | At least one configuration field | Same as GET after validation and atomic save |
+| POST | `/api/settings/local-generation/detect` | `{backend_id,install_dir?}` | `{candidates:[{install_dir,python,entry,cwd,args,source}]}` |
+
+Configuration contains `enabled` (boolean), `backend_id`, `install_dir`, `python`, `entry`, `cwd` (strings), and `args` (an array of separate argument strings). PUT accepts partial updates and rejects unknown fields. Enabled configurations require a saved ComfyUI connection with a direct loopback HTTP URL and valid local Python, `main.py`, and working directory. A recognizable portable or virtual environment can fill omitted launch paths; an omitted installation can be detected when there is exactly one candidate. Disabling remains possible when launch paths or the linked connection have disappeared. Argument lists contain at most 256 strings and 32768 characters in total; paths/arguments reject NUL and line breaks.
+
+`choices` exposes only eligible connection IDs, names and addresses, never API keys. `status` includes `phase` (`disabled`, `starting`, `running`, `external`, `failed`, or `stopped`), `owned`, `url`, `error`, and `log_path`. It describes this Pictide session; `restart_required` compares saved settings with the startup configuration. A save publishes the existing SSE change event with topic `local_generation`, takes effect on the next process startup, and starts neither ComfyUI nor an image job. Discovery is read-only; multiple candidates require user selection. Linked API addresses and ports override conflicting ComfyUI listen/port arguments at launch.
+
+Both a loopback peer and a localhost Host are required to read launch configuration, save it, or discover installations; write/detect requests elsewhere return 403, in addition to existing same-origin protections. LAN callers receive no local paths from GET. Normal startup reuses an already-ready service without ownership; shutdown stops only this session's child process tree. Startup failure does not prevent HTTP/bootstrap from opening so settings can be repaired.
+
 ## Prompt LLM API
 
 `GET /api/llm-apis` lists `{id,name,kind,base_url,model,revision,has_api_key,account}` records. `kind` is `openai` (OpenAI-compatible Chat Completions) or `chatgpt` (official plan-backed Responses). `account` contains only email, connection/plan status, and first-use acknowledgement. Credentials are never returned.

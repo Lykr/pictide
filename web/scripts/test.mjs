@@ -8,7 +8,7 @@ const [group = 'ui', ...options] = process.argv.slice(2);
 if (!['ui', 'browser'].includes(group) || options.some(option => option !== '--list')) {
   throw new Error('Usage: node web/scripts/test.mjs [ui|browser] [--list]');
 }
-const files = ['onboarding', 'onboarding-placement', 'generation-draft', 'notifications', 'theme', 'settings-controls', 'request-id']
+const files = ['onboarding', 'onboarding-placement', 'generation-draft', 'notifications', 'theme', 'settings-controls', 'request-id', 'local-generation']
   .map(name => resolve(root, `web/tests/unit/${name}.test.mjs`));
 let command;
 if (group === 'ui') {
