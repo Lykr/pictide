@@ -6,7 +6,8 @@ Applies throughout the repository. English is the authoritative source.
 
 ## Core principles
 
-- Unless instructed otherwise, use the system's current language and lead with results and judgments. Keep only information useful for understanding, decisions, or action; avoid defensive assumptions, self-justification, boilerplate disclaimers, and repetitive updates.
+- Unless instructed otherwise, use the system's current language.
+- Lead with results and judgments. Keep only information useful for understanding, decisions, or action; avoid defensive assumptions, self-justification, boilerplate disclaimers, and repetitive updates.
 - Prioritize the image exploration experience. This is a proof of concept: choose the smallest complete solution and reuse existing mechanisms; avoid speculative complexity.
 - Protect user data, unrelated work, and existing history. Keep development and verification isolated from the user's running application.
 - Respect established ownership and module boundaries. Carry out approved work autonomously; seek confirmation for boundary changes under the development workflow.
