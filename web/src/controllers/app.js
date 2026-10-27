@@ -241,7 +241,7 @@ function renderArtifacts() {
     cancelImageTransition(elements.image); roamImageSwitchPending = false; immersive.leave(); state.currentImage = null; state.imageReady = false;
     publishUiState({ imageInfo: null }); syncRoamPlayback(); changed(); return;
   }
-  publishUiState({ imageInfo: { id: artifact.id, seed: artifact.seed_applied === false ? imageSeedLabel(artifact) : String(artifact.seed ?? '—'), sourcePositive: artifact.source_prompts?.positive ?? artifact.positive ?? '', positive: artifact.positive || '', negative: artifact.negative || '' } });
+  publishUiState({ imageInfo: { id: artifact.id, seed: artifact.seed_applied === false ? imageSeedLabel(artifact) : String(artifact.seed ?? '—'), width: artifact.width, height: artifact.height, sourcePositive: artifact.source_prompts?.positive ?? artifact.positive ?? '', positive: artifact.positive || '', negative: artifact.negative || '' } });
   if (state.currentImage !== artifact.id) {
     clearFeedbackNotice(); cancelImageTransition(elements.image); roamImageSwitchPending = state.currentImage !== null;
     state.currentImage = artifact.id; state.imageFailed = false; state.imageReady = false; dismissNotification('roam-image-error');
@@ -510,7 +510,8 @@ async function applyRoamSettings(settings, savedFields = []) {
     generation.selectPreset(next.preset_id);
   }
   const switched = roamSettingsLoaded && roamGenerationChanged(roamSettings, next);
-  if (roamSettingsLoaded && JSON.stringify(roamSettings.pinned_positive ?? []) !== JSON.stringify(next.pinned_positive ?? [])) {
+  if (roamSettingsLoaded && (JSON.stringify(roamSettings.pinned_positive ?? []) !== JSON.stringify(next.pinned_positive ?? [])
+      || JSON.stringify(roamSettings.pinned_canvas ?? null) !== JSON.stringify(next.pinned_canvas ?? null))) {
     // Saving anchors still discards the old window, but editing must not launch
     // replacements through settings/SSE/page refresh events. Next navigation resumes it.
     anchorPrefetchDeferred = true;
@@ -667,6 +668,7 @@ commands['liked-sort'] = value => {
 function setPrivacy(view, value) { state.privacy[view] = value; changed(); }
 function imageLoaded() {
   state.imageReady = true; state.imageFailed = false;
+  publishUiState({ imagePixels: { id: state.currentImage, width: elements.image.naturalWidth, height: elements.image.naturalHeight } });
   if (roamImageSwitchPending) { roamImageSwitchPending = false; playImageTransition(elements.image); }
   syncRoamPlayback(); changed();
 }

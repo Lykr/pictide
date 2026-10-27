@@ -18,7 +18,7 @@ from .domain import ConflictError, GoneError, NotFoundError, ValidationError, fe
 from .events import EventHub
 from .generation import backend_capabilities, available_canvas_sizes
 from .store.contracts import Storage
-from .store.roam_settings import max_history_images, prefetch_count, selection, recommendation_options
+from .store.roam_settings import max_history_images, prefetch_count, selection, recommendation_options, pinned_canvas_value
 
 
 def public_backend(config):
@@ -257,7 +257,7 @@ class PictideApplication:
             document = await asyncio.to_thread(self.roam.get)
             active_id = document['backend_id'] or (backends[0]['id'] if backends else '')
             active = next((backend for backend in backends if backend['id'] == active_id), {})
-            if (active.get('canvas_pool_id') == identifier and document['use_canvas_pool']
+            if (active.get('canvas_pool_id') == identifier and document['use_canvas_pool'] and not document['pinned_canvas']
                     and (previous is None or previous['sizes'] != config['sizes'])):
                 await asyncio.to_thread(self.roam.invalidate)
         self.events.publish('canvas_pools')
@@ -271,6 +271,9 @@ class PictideApplication:
         return rows
 
     async def _roam_dimensions(self, backend, document):
+        if document.get('pinned_canvas'):
+            validate_generation_options(backend, document['pinned_canvas'])
+            return dict(document['pinned_canvas'])
         identifier = backend.get('canvas_pool_id')
         if not document.get('use_canvas_pool', True) or not identifier:
             return {}
@@ -688,8 +691,9 @@ class PictideApplication:
         # A deleted explicit preset remains invalid for generation, but must not prevent startup.
         if preset_id not in identifiers:
             preset_id = ""
-        return await asyncio.to_thread(self.candidates.normalize_roam_anchors, preset_id,
-                                       document["pinned_positive"] if pinned is None else pinned)
+        anchors = await asyncio.to_thread(self.candidates.normalize_roam_anchors, preset_id,
+                                          document["pinned_positive"] if pinned is None else pinned)
+        return anchors | {'pinned_canvas': document.get('pinned_canvas')}
 
     async def _refresh_roam_anchors(self):
         document = await asyncio.to_thread(self.roam.get)
@@ -719,11 +723,21 @@ class PictideApplication:
             from .store.roam_settings import candidate_count_value
             candidate_count_value(payload["candidate_count"])
         async with self._roam_lock:
+            if payload is not None and 'pinned_canvas' in payload:
+                canvas = pinned_canvas_value(payload['pinned_canvas'])
+                payload = payload | {'pinned_canvas': canvas}
+                if canvas:
+                    saved = await asyncio.to_thread(self.roam.get)
+                    backends = await asyncio.to_thread(self.storage.backends)
+                    identifier = payload.get('backend_id', saved['backend_id']) or (backends[0]['id'] if backends else '')
+                    backend = next((item for item in backends if item['id'] == identifier), {})
+                    validate_generation_options(backend, canvas)
             if payload is None:
                 document = await self._refresh_roam_anchors()
-            elif payload and set(payload) <= {"playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "use_canvas_pool"}:
+            elif payload and set(payload) <= {"playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "use_canvas_pool", "pinned_canvas"}:
                 previous = await asyncio.to_thread(self.roam.get)
-                anchors = await self._normalized_roam_anchors(previous, payload.get("pinned_positive"))
+                anchors = await self._normalized_roam_anchors(
+                    previous | {'pinned_canvas': payload.get('pinned_canvas', previous['pinned_canvas'])}, payload.get("pinned_positive"))
                 if ("pinned_positive" in payload and previous["prompt_mode"] == "stay"
                         and anchors["pinned_positive"] != previous["pinned_positive"]):
                     raise ValidationError("停泊时暂不可编辑画面锚点。")
@@ -753,7 +767,8 @@ class PictideApplication:
                         raise ValidationError("漫游生图后端不存在，请重新选择。")
                     if preset_id and preset_id not in {item["id"] for item in (await asyncio.to_thread(self.candidates.list_presets))["presets"]}:
                         raise ValidationError("漫游候选预设不存在，请重新选择。")
-                anchors = await self._normalized_roam_anchors(previous | {"preset_id": preset_id}, payload.get("pinned_positive"))
+                anchors = await self._normalized_roam_anchors(previous | {"preset_id": preset_id,
+                    'pinned_canvas': payload.get('pinned_canvas', previous['pinned_canvas'])}, payload.get("pinned_positive"))
                 if ("pinned_positive" in payload and previous["prompt_mode"] == "stay"
                         and anchors["pinned_positive"] != previous["pinned_positive"]):
                     raise ValidationError("停泊时暂不可编辑画面锚点。")
@@ -768,7 +783,7 @@ class PictideApplication:
                     await self.clean_history(force=True, roam_only=True)
                 self.events.publish("roam_settings")
             state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
-            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "preset_base_positive", "use_canvas_pool")} | {
+            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "preset_base_positive", "use_canvas_pool", "pinned_canvas")} | {
                 "artifact_revision": await asyncio.to_thread(self.storage.artifact_revision),
                 "paused": state["paused"], "preference_learning": await self._learning_available(),
                 **({"error": state["error"]} if state.get("error") else {})}

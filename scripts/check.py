@@ -23,6 +23,7 @@ GROUPS = {
         'tests.backend.application.test_natural_prompts.NaturalPromptTests.test_full_roam_settings_save_retries_failed_conversion_without_api_save',
         'tests.backend.application.test_llm_connections.LLMConnectionTests.test_named_connections_select_independently_and_protect_references',
         'tests.backend.application.test_canvas_pools.CanvasPoolTests.test_roam_records_pixel_choice_and_preserves_it_after_pool_edit_and_restart',
+        'tests.backend.application.test_canvas_anchors.CanvasAnchorTests.test_pin_overrides_pool_and_fixed_mode_then_clear_restores_selection',
         'tests.backend.application.test_generation_sizes.GenerationSizeTests.test_generate_batch_sizes_survive_replay_and_config_changes',
         'tests.backend.application.test_chatgpt.ChatGPTTests.test_registration_pkce_state_signature_and_replay',
     ),

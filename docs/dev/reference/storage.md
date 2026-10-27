@@ -30,7 +30,7 @@ SQLite initialization adds roam tables with `CREATE TABLE IF NOT EXISTS`, preser
 | `roam_jobs` | `job_id` is the primary key and references `jobs`; also stores `epoch`, `candidate` JSON, and `created_at`. Candidate JSON contains `candidate_id`, `preset_id`, `policy`, positive/negative text, `features`, and `terms`. Tags include source, ID, text/category/polarity at that time, and `content_revision`. |
 | `roam_settings` | Prefetch count, history limit, backend/preset, mode, liked scope, canvas-pool mode, and epoch. |
 | `roam_playback_settings` / `roam_candidate_settings` | Autoplay interval and candidate combination count. |
-| `roam_recommendation_settings` / `roam_anchor_settings` | Recommendation strength/Strong multiplier and pinned_positive/preset_base_positive. |
+| `roam_recommendation_settings` / `roam_anchor_settings` | Recommendation strength/Strong multiplier and pinned_positive/preset_base_positive plus nullable `pinned_canvas` JSON. The canvas field is added on initialization without invalidating existing prefetch. |
 | `roam_runs` | `epoch` is the primary key; `error` is this version's pause reason. An existing record means paused. |
 | `roam_view` | Viewing position for the single local user. `actor_id` is fixed to `local` and is the primary key; nullable `artifact_id` references `artifacts`; `viewed_at` is a nonnegative safe-integer timestamp in milliseconds. Only strictly newer saves replace the value, preventing out-of-order requests from moving it backward. |
 

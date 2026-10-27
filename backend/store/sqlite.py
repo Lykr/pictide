@@ -661,7 +661,7 @@ class Repository:
                                       (anchor["created_at"], anchor["created_at"], anchor["id"])).fetchone()[0]
                     available = db.execute("SELECT count(*) FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL").fetchone()[0]
                     offset = max(0, min(rank - limit // 2, available - limit))
-            rows = db.execute(f"""SELECT a.*,j.positive,j.negative,j.prompt_snapshot,j.seed,f.value AS feedback,
+            rows = db.execute(f"""SELECT a.*,j.positive,j.negative,j.prompt_snapshot,j.seed,j.width,j.height,f.value AS feedback,
                 CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id) THEN 'roam' ELSE 'generate' END AS source,
                 COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied
                 FROM artifacts a JOIN jobs j ON j.id=a.job_id
@@ -721,7 +721,7 @@ class Repository:
         with self.connection() as db:
             db.execute("BEGIN")
             db.create_function("has_prompt_tags", 1, lambda positive: selected <= prompt_tags(positive), deterministic=True)
-            rows = db.execute("""SELECT a.*,j.positive,j.negative,j.prompt_snapshot,j.seed,f.value AS feedback,
+            rows = db.execute("""SELECT a.*,j.positive,j.negative,j.prompt_snapshot,j.seed,j.width,j.height,f.value AS feedback,
                 CASE WHEN rj.job_id IS NULL THEN 'generate' ELSE 'roam' END AS source,
                 COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied,rj.candidate AS scoring_snapshot
                 FROM artifacts a JOIN jobs j ON j.id=a.job_id
@@ -746,7 +746,7 @@ class Repository:
             return self._read_artifact(db, iid)
 
     def _read_artifact(self, db, iid):
-        row = db.execute("""SELECT a.*,j.positive,j.negative,j.prompt_snapshot,j.seed,f.value AS feedback,
+        row = db.execute("""SELECT a.*,j.positive,j.negative,j.prompt_snapshot,j.seed,j.width,j.height,f.value AS feedback,
             CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id) THEN 'roam' ELSE 'generate' END AS source,
             COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied
             FROM artifacts a JOIN jobs j ON j.id=a.job_id

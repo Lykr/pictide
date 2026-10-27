@@ -64,6 +64,13 @@ def selection(value, label):
     return value.strip()
 
 
+def pinned_canvas_value(value):
+    if value is not None and (not isinstance(value, dict) or set(value) != {'width', 'height'} or any(
+            type(value[key]) is not int or not 1 <= value[key] <= 16384 for key in ('width', 'height'))):
+        raise ValidationError('Specify both width and height as integers from 1 to 16384 pixels.')
+    return {key: value[key] for key in ('width', 'height')} if value is not None else None
+
+
 class RoamSettings:
     def __init__(self, paths):
         self.paths = paths
@@ -89,6 +96,8 @@ class RoamSettings:
 
             db.execute("CREATE TABLE IF NOT EXISTS roam_anchor_settings (id INTEGER PRIMARY KEY CHECK(id=1), "
                        "pinned_positive TEXT NOT NULL, preset_base_positive TEXT NOT NULL)")
+            if 'pinned_canvas' not in {row[1] for row in db.execute('PRAGMA table_info(roam_anchor_settings)')}:
+                db.execute("ALTER TABLE roam_anchor_settings ADD COLUMN pinned_canvas TEXT NOT NULL DEFAULT 'null'")
 
     @contextmanager
     def connect(self):
@@ -101,7 +110,7 @@ class RoamSettings:
 
     @staticmethod
     def defaults():
-        return {"prefetch_count": 2, "max_history_images": 20, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 8, "liked_tags_only": False, "use_canvas_pool": True, "prompt_mode": "random", "candidate_count": 10, "pinned_positive": [], "preset_base_positive": [], **RECOMMENDATION_DEFAULTS}
+        return {"prefetch_count": 2, "max_history_images": 20, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 8, "liked_tags_only": False, "use_canvas_pool": True, "prompt_mode": "random", "candidate_count": 10, "pinned_positive": [], "preset_base_positive": [], "pinned_canvas": None, **RECOMMENDATION_DEFAULTS}
 
     @classmethod
     def _get(cls, db):
@@ -118,9 +127,10 @@ class RoamSettings:
         recommendation = db.execute("SELECT recommendation_strength,strong_candidate_multiplier "
                                     "FROM roam_recommendation_settings WHERE id=1").fetchone()
         document.update(dict(recommendation) if recommendation else RECOMMENDATION_DEFAULTS)
-        anchors = db.execute("SELECT pinned_positive,preset_base_positive FROM roam_anchor_settings WHERE id=1").fetchone()
+        anchors = db.execute("SELECT pinned_positive,preset_base_positive,pinned_canvas FROM roam_anchor_settings WHERE id=1").fetchone()
         document["pinned_positive"] = json.loads(anchors[0]) if anchors else []
         document["preset_base_positive"] = json.loads(anchors[1]) if anchors else []
+        document['pinned_canvas'] = json.loads(anchors[2]) if anchors else None
         return document
 
     def get(self):
@@ -171,16 +181,17 @@ class RoamSettings:
             document["liked_tags_only"] = previous["liked_tags_only"] if liked_tags_only is None else liked_tags_only
             document["prompt_mode"] = previous["prompt_mode"] if prompt_mode is None else prompt_mode
             document['use_canvas_pool'] = previous['use_canvas_pool'] if use_canvas_pool is None else use_canvas_pool
+            document['pinned_canvas'] = previous['pinned_canvas']
             if anchors is not None:
                 document.update(anchors)
             else:
                 document.update({key: previous[key] for key in ("pinned_positive", "preset_base_positive")})
             same_settings = all(document[key] == previous[key] for key in
-                ("prefetch_count", "max_history_images", "backend_id", "preset_id", "liked_tags_only", "prompt_mode", "pinned_positive", "preset_base_positive", "use_canvas_pool"))
+                ("prefetch_count", "max_history_images", "backend_id", "preset_id", "liked_tags_only", "prompt_mode", "pinned_positive", "preset_base_positive", "use_canvas_pool", "pinned_canvas"))
             same_interval = playback_interval is None or playback_interval == previous["playback_interval_seconds"]
             if (candidate_count is not None or recommendation or anchors is not None) and same_settings and same_interval:
                 document["epoch"] = previous["epoch"]
-            if any(document[key] != previous[key] for key in ("liked_tags_only", "prompt_mode", "backend_id", "preset_id", "pinned_positive", "preset_base_positive", "use_canvas_pool")):
+            if any(document[key] != previous[key] for key in ("liked_tags_only", "prompt_mode", "backend_id", "preset_id", "pinned_positive", "preset_base_positive", "use_canvas_pool", "pinned_canvas")):
                 Repository.discard_roam_prefetch(db)
             self._save_settings(db, document)
             self._save_anchors(db, document)
@@ -212,9 +223,12 @@ class RoamSettings:
 
     @staticmethod
     def _save_anchors(db, document):
-        db.execute("INSERT INTO roam_anchor_settings VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET "
-                   "pinned_positive=excluded.pinned_positive,preset_base_positive=excluded.preset_base_positive",
-                   tuple(json.dumps(document[key], ensure_ascii=False) for key in ("pinned_positive", "preset_base_positive")))
+        db.execute("INSERT INTO roam_anchor_settings (id,pinned_positive,preset_base_positive,pinned_canvas) "
+                   "VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET "
+                   "pinned_positive=excluded.pinned_positive,preset_base_positive=excluded.preset_base_positive,"
+                   "pinned_canvas=excluded.pinned_canvas",
+                   tuple(json.dumps(document.get(key), ensure_ascii=False)
+                         for key in ('pinned_positive', 'preset_base_positive', 'pinned_canvas')))
 
     def save_options(self, liked_tags_only=None, playback_interval=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None, use_canvas_pool=None):
         if use_canvas_pool is not None and type(use_canvas_pool) is not bool:
@@ -237,6 +251,7 @@ class RoamSettings:
                        or (prompt_mode is not None and prompt_mode != document["prompt_mode"])
                        or (anchors is not None and (
                            anchors["pinned_positive"] != document["pinned_positive"]
+                           or anchors.get('pinned_canvas', document['pinned_canvas']) != document['pinned_canvas']
                            or (has_anchor_snapshot and anchors["preset_base_positive"] != document["preset_base_positive"]))))
             if changed:
                 if anchors is not None:
@@ -253,7 +268,7 @@ class RoamSettings:
                 self._save_anchors(db, document)
             elif anchors is not None:
                 # First install records the current preset baseline without discarding valid images.
-                self._save_anchors(db, anchors)
+                self._save_anchors(db, document | anchors)
             if playback_interval is not None:
                 self._save_playback(db, playback_interval)
             if candidate_count is not None:

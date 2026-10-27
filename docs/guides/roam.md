@@ -30,6 +30,8 @@ To keep an element from the current image, open Anchors at the bottom right, sel
 
 After editing, move to the next image to continue in the new direction. Anchors are remembered between visits; deselect one to remove it. Locked terms come from your [preset](prompts.md#libraries-and-presets) and can be edited on Prompts. Anchor mode keeps the entire prompt; switch modes to edit individual anchors.
 
+The independent Canvas size row below the prompt terms can pin a size from the current image API's pool or pin the current image's size. Later images use that size until you clear it; clearing restores your Roam canvas setting. The current image stays visible, and the choice is remembered between visits. Canvas pins remain editable in Anchor mode.
+
 ## Browsing and autoplay
 
 Turn on autoplay for relaxed browsing and adjust each image's display time in Roam options. Playback waits if generation is unfinished. Liking an image pauses on it; moving to the next resumes playback. Leaving Roam pauses playback.

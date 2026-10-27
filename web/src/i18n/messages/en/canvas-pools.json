@@ -52,5 +52,14 @@
   "在生图 API 中关联画幅池后，可选择像素尺寸。": "Link a canvas pool in Image API settings to choose pixel sizes.",
   "请选择有效的画幅尺寸。": "Choose a valid canvas size.",
   "当前生图 API 不支持所选像素尺寸。": "This image API does not support the requested pixel size.",
-  "请同时提供 1–16384 之间的整数宽度和高度。": "Specify both width and height as integers from 1 to 16384 pixels."
+  "请同时提供 1–16384 之间的整数宽度和高度。": "Specify both width and height as integers from 1 to 16384 pixels.",
+  "跟随漫游": "Follow Roam",
+  "已固定": "Pinned",
+  "固定画幅": "Pin canvas size",
+  "清除画幅固定": "Clear canvas pin",
+  "恢复漫游画幅设置": "Restore Roam canvas settings",
+  "固定当前": "Pin current",
+  "固定当前图片的画幅：{0}": "Pin current image size: {0}",
+  "图片载入后可固定当前画幅": "Load an image to pin its size",
+  "当前生图 API 不支持像素画幅。": "This image API does not support pixel canvas sizes."
 }

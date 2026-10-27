@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collap
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { ImageToolbarPopover } from "./image-toolbar-popover";
 import { HelpTip } from "./actions";
+import { RoamCanvas } from "./roam-canvas";
 import { anchorTerms } from "../controllers/roam-anchors.mjs";
 
 type AnchorSettings = { pinned_positive: string[]; preset_base_positive: string[]; prompt_mode: string };
@@ -145,13 +146,14 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
         </Button>;
       })}
     </div>
+    <RoamCanvas />
   </>;
   const panel = immersive ? <ImageToolbarPopover immersive triggerRef={triggerRef}
     className="roam-anchors roam-anchor-popover" aria-label={t("锚点")}
     onInteractOutside={event => {
       const target = event.target instanceof Element ? event.target : null;
       // Keep editing while navigating/rating images from the same toolbar.
-      if (target?.closest(".roam-anchor-suggestions") || (target?.closest(".image-toolbar") && !target.closest(".image-info"))) event.preventDefault();
+      if (target?.closest(".roam-anchor-suggestions, .roam-canvas-options") || (target?.closest(".image-toolbar") && !target.closest(".image-info"))) event.preventDefault();
     }}>{content}</ImageToolbarPopover> : <>
     {open && <AnchorDivider />}
     <CollapsibleContent className="roam-anchors" role="region" aria-label={t("锚点")}>{content}</CollapsibleContent>
