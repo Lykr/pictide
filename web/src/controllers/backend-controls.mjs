@@ -8,7 +8,7 @@ export const backendDefaults = {
 
 export function backendCapabilities(backend) {
   const cloud = ['openai', 'gemini'].includes(backend?.kind);
-  return { negative_prompt: !cloud && !!backend?.bindings?.negative, seed: !cloud && !!backend?.bindings?.seed, cloud, ...backend?.capabilities };
+  return { negative_prompt: !cloud && !!backend?.bindings?.negative, seed: !cloud && !!backend?.bindings?.seed, dimensions: backend?.kind === 'openai' || !cloud && !!backend?.bindings?.width && !!backend?.bindings?.height, cloud, ...backend?.capabilities };
 }
 
 export function imageSeedLabel(item) {

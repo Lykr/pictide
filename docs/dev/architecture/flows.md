@@ -36,7 +36,7 @@ sequenceDiagram
 
 Host composes `store/canvas_pools.py` beside the other configuration stores. App exposes its CRUD use cases and validates `canvas_pool_id` references from image APIs. Generation owns size capability/filtering rules and explicit ComfyUI width/height bindings; Store owns persistence and reference protection.
 
-For Roam pool mode, App obtains the selected API's usable pixel pairs, draws one uniformly, then includes `width,height` in the determined task. Natural-language preparation completes before this choice. SQLite persists the pair with the job and its backend revision. Task forwards the stored pair to Generation: ComfyUI injects only the bound inputs, and OpenAI sets `size=WIDTHxHEIGHT`. Recovery uses that same pair. Fixed mode and Generate retain saved workflow/API dimensions. Candidate, Recommendation and Prompting do not depend on pools.
+For Roam pool mode, App obtains the selected API's usable pixel pairs, draws one uniformly, then includes `width,height` in the determined task. Natural-language preparation completes before this choice. SQLite persists the pair with the job and its backend revision. Task forwards the stored pair to Generation: ComfyUI injects only the bound inputs, and OpenAI sets `size=WIDTHxHEIGHT`. Recovery uses that same pair. Roam fixed mode and Generate without an explicit size retain saved workflow/API dimensions. Generate can choose a concrete pool entry and pass optional `width,height` through the existing generation request; App validates support before LLM preparation, and every job in the batch stores the same pair. Pool definitions do not participate in durable replay of those explicit requests. Candidate, Recommendation and Prompting do not depend on pools.
 
 ## Natural-language Preparation
 

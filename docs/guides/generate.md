@@ -6,6 +6,12 @@
 
 Try several images around an idea and compare the results in Generate. Use a preset to compose prompts automatically, or write your own.
 
+## Canvas size
+
+Choose an image API, then pick **Canvas size** from its linked [canvas pool](settings.md#canvas-pools). Choices show exact pixel widths and heights. **API default size** uses the saved workflow or service settings.
+
+Every task in the batch uses the chosen size. Navigation and pool refreshes retain the current choice; switching APIs selects that API's default. Retrying an uncertain submission keeps the same request ID and dimensions.
+
 ## Batch generation and seeds
 
 **Images per round** sets how many images share a prompt; **Generation rounds** sets how often to repeat. For example, 2 images per round and 3 rounds submit 6 generation requests. With automatic prompt generation enabled, each round uses a fresh prompt.

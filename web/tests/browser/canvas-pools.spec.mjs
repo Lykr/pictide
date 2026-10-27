@@ -20,6 +20,12 @@ for (const scenario of [{width: 1365, language: 'en'}, {width: 390, language: 'z
     const pool = (await response.json())[0];
     expect(pool.sizes).toEqual([{width: 1024, height: 1024}, {width: 768, height: 1024}]);
     await expect(page.locator('#save-canvas-pool')).toBeDisabled();
+    const widthInput = page.locator('[data-canvas-size]').first().getByRole('spinbutton').first();
+    await widthInput.focus();
+    const catalogRefresh = page.waitForResponse(response => response.url().endsWith('/api/canvas-pools') && response.request().method() === 'GET');
+    expect((await page.request.put('/api/canvas-pools/unused', {data: {name: 'Unused', sizes: [{width: 1024, height: 1024}]}})).ok()).toBe(true);
+    await catalogRefresh;
+    await expect(widthInput).toBeFocused();
     await page.locator('#canvas-pool-name').fill('Unsaved draft');
     await page.locator('[data-settings-section=backend]').click();
     await expect(page.locator('#backend-name')).toHaveValue('Browser fixture');

@@ -46,5 +46,11 @@
   "请同时绑定宽度和高度输入。": "Bind both width and height inputs.",
   "种子、宽度和高度必须绑定到不同的输入。": "Seed, width and height bindings must target different inputs.",
   "ComfyUI 宽高须为 8–16384 之间的 8 的倍数。": "ComfyUI width and height must be multiples of 8 from 8 to 16384 pixels.",
-  "此 API 需要有效的像素宽度和高度。": "This API needs a valid pixel width and height."
+  "此 API 需要有效的像素宽度和高度。": "This API needs a valid pixel width and height.",
+  "画幅尺寸": "Canvas size",
+  "API 默认尺寸": "API default size",
+  "在生图 API 中关联画幅池后，可选择像素尺寸。": "Link a canvas pool in Image API settings to choose pixel sizes.",
+  "请选择有效的画幅尺寸。": "Choose a valid canvas size.",
+  "当前生图 API 不支持所选像素尺寸。": "This image API does not support the requested pixel size.",
+  "请同时提供 1–16384 之间的整数宽度和高度。": "Specify both width and height as integers from 1 to 16384 pixels."
 }

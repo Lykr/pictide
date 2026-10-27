@@ -48,8 +48,13 @@ def generation_fields(payload: dict) -> dict:
         raise ValidationError("请选择生图后端。")
     if not isinstance(request_id, str) or not 8 <= len(request_id) <= 100:
         raise ValidationError("需要有效的 request_id。")
+    dimensions = {}
+    if any(key in payload for key in ('width', 'height')):
+        if any(type(payload.get(key)) is not int or not 1 <= payload[key] <= 16384 for key in ('width', 'height')):
+            raise ValidationError('Specify both width and height as integers from 1 to 16384 pixels.')
+        dimensions = {key: payload[key] for key in ('width', 'height')}
     return {"backend_id": backend_id, "request_id": request_id,
-            "positive": positive, "negative": negative, "seed": seed}
+            "positive": positive, "negative": negative, "seed": seed, **dimensions}
 
 
 def actual_seed(seed: int) -> int:

@@ -3,14 +3,14 @@ import { t, tr } from '../i18n/index.mjs';
 import { createModel } from '../shared/model.mjs';
 import { requestIdentity } from './feed-controls.mjs';
 import { ruleVisibility, nextRuleCounters, submissionDecision, afterPromptEdit } from './rule-controls.mjs';
-import { generationCount, generationRepetitions } from './generation-controls.mjs';
+import { generationCount, generationRepetitions, generationSizeFields } from './generation-controls.mjs';
 import { backendCapabilities } from './backend-controls.mjs';
 import { notify, notifyError, dismissNotification } from '../shared/notifications.mjs';
 
 /** Own the Generate form, prompt counters, and uncertain submissions. */
 export function createGenerationController({ state, api, getRoamSettings, renderJobs, refresh }) {
   const uncertainRequests = new Map();
-  const model = createModel({ draft: { backendId: '', source: 'manual', presetId: '', mode: 'random_each_run', ruleSeed: '0', step: '0', seedControl: 'fixed', stepControl: 'increment', maxSteps: '100', automatic: true, positive: '', negative: '', seed: '-1', count: '1', repetitions: '1' }, presets: [], busy: false, loadingPresets: false, report: null, rendered: null, promptNote: null, feedback: {} });
+  const model = createModel({ draft: { backendId: '', canvasSize: '', source: 'manual', presetId: '', mode: 'random_each_run', ruleSeed: '0', step: '0', seedControl: 'fixed', stepControl: 'increment', maxSteps: '100', automatic: true, positive: '', negative: '', seed: '-1', count: '1', repetitions: '1' }, presets: [], busy: false, loadingPresets: false, report: null, rendered: null, promptNote: null, feedback: {} });
   const { draft } = model.data;
   const changed = model.changed;
   let composeBusy = false, composeDirty = false, ruleConfigsLoaded = false;
@@ -21,7 +21,7 @@ export function createGenerationController({ state, api, getRoamSettings, render
   } });
   const generateFeedback = feedback('submit'), cancelPendingFeedback = feedback('cancel'), promptFeedback = feedback('prompts'), configFeedback = feedback('presets');
   function updateGenerationHints() {
-    if (!state.backends.some(item => item.id === draft.backendId)) draft.backendId = state.backends[0]?.id || '';
+    if (!state.backends.some(item => item.id === draft.backendId)) { draft.backendId = state.backends[0]?.id || ''; draft.canvasSize = ''; }
     const signature = JSON.stringify(state.backends.find(item => item.id === draft.backendId));
     if (signature !== backendSignature) model.data.rendered = null;
     backendSignature = signature;
@@ -110,6 +110,7 @@ export function createGenerationController({ state, api, getRoamSettings, render
       const negative = !natural && capabilities.cloud && !capabilities.negative_prompt && !fromRules ? '' : draft.negative;
       if (!natural && !automatic && capabilities.cloud && negative.trim()) throw new Error(t('此生图 API 不支持负向提示词，请在候选预设中移除负向词，或改用手动正向提示词。'));
       const payload = { backend_id: draft.backendId, positive: draft.positive, negative, seed, count, repetitions,
+        ...generationSizeFields(draft.canvasSize, backend),
         ...(!automatic && natural && model.data.rendered ? { preparation_id: model.data.rendered.preparation_id } : {}),
         ...(rule ? { candidate: { ...rule.payload, seed_control: rule.current.seedControl, step_control: rule.current.stepControl } } : {}) };
       if (!payload.positive.trim() && !automatic) throw new Error(t("请输入正向提示词，或使用共现候选生成提示词。"));
@@ -160,6 +161,7 @@ export function createGenerationController({ state, api, getRoamSettings, render
     finally { setComposeBusy(false); }
   }
   function edit(key, value) {
+    if (key === 'backendId' && value !== draft.backendId) draft.canvasSize = '';
     draft[key] = value; composeDirty = true;
     if (['backendId', 'positive', 'negative', 'presetId', 'source', 'mode'].includes(key)) model.data.rendered = null;
     if (key === 'backendId') updateGenerationHints();
@@ -176,7 +178,7 @@ export function createGenerationController({ state, api, getRoamSettings, render
     model, edit, submit, cancelPending, drawPrompts, updateGenerationHints, updateRuleControls, loadRuleConfigs,
     invalidatePrompt() { model.data.rendered = null; changed(); },
     selectPreset(id) { model.data.rendered = null; draft.presetId = id || model.data.presets[0]?.id || ''; changed(); },
-    selectBackend(id) { draft.backendId = id; model.data.rendered = null; updateGenerationHints(); },
+    selectBackend(id) { if (id !== draft.backendId) draft.canvasSize = ''; draft.backendId = id; model.data.rendered = null; updateGenerationHints(); },
     observeJobs() {
       for (const [key, request] of uncertainRequests) {
         if (request.payload.repetitions === undefined && state.jobs.some(job => job.request_id === request.payload.request_id)) uncertainRequests.delete(key);

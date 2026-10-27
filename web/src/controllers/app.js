@@ -434,7 +434,7 @@ async function refresh(force = false) {
   const rankedLiked = view === 'liked' && state.likedSort === 'score';
   const anchor = galleryCursors.get('feed');
   try {
-    const [jobs, artifacts] = await Promise.all([api('/api/jobs'), rankedLiked ? Promise.resolve(null) : api(view === 'feed' ? roamArtifactPath(anchor) : artifactPath(view, null, state.likedTags)), viewingHistory() ? jobPager.load() : Promise.resolve()]);
+    const [jobs, artifacts] = await Promise.all([api('/api/jobs'), rankedLiked ? Promise.resolve(null) : api(view === 'feed' ? roamArtifactPath(anchor) : artifactPath(view, null, state.likedTags)), viewingHistory() ? jobPager.load() : Promise.resolve(), canvasPools.load(true)]);
     state.jobs = jobs.jobs;
     // Multi-round counters must come from the idempotent response, even if jobs
     // already appear in events. Retain the original request for a safe retry.
@@ -717,7 +717,6 @@ function connectEvents() {
       if (topic === 'local_generation') { void localGeneration.load(); return; }
       if (topic === 'backends') void localGeneration.load();
       if (topic === 'updates') { emitSignal('updates-changed'); return; }
-      if (topic === 'canvas_pools') void canvasPools.load(true);
       if (topic === 'prompting') { void promptSettings.load(true); emitSignal('prompt-settings-changed'); }
       if (topic === 'roam_settings' || topic === 'candidate') loadRoamSettings({ preserveDraft: true });
       if (topic === 'candidate') emitSignal('candidate-library-changed');

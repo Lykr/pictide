@@ -1,0 +1,76 @@
+import {test, expect} from './fixtures.mjs';
+
+for (const scenario of [{width: 1365, language: 'en'}, {width: 390, language: 'zh-CN'}]) {
+  test(`Generate pixel choices, replay and drafts at ${scenario.width}px`, async ({page, context}, testInfo) => {
+    await page.setViewportSize({width: scenario.width, height: 900});
+    await context.addInitScript(() => localStorage.setItem('pictide.first-run-guide.v1', JSON.stringify({version: 1, status: 'dismissed'})));
+    await page.request.put('/api/settings/general', {data: {theme: 'dark', language: scenario.language}});
+    const sizes = [{width: 1024, height: 1024}, {width: 768, height: 1024}];
+    expect((await page.request.put('/api/canvas-pools/common', {data: {name: 'Common', sizes}})).ok()).toBe(true);
+    const bootstrap = await (await page.request.get('/api/bootstrap')).json();
+    const backend = bootstrap.backends[0];
+    backend.workflow['4'] = {class_type: 'EmptyLatentImage', inputs: {width: 832, height: 1216}};
+    backend.bindings.width = {node_id: '4', input: 'width'};
+    backend.bindings.height = {node_id: '4', input: 'height'};
+    backend.canvas_pool_id = 'common';
+    expect((await page.request.put('/api/backends/fixture', {data: backend})).ok()).toBe(true);
+    expect((await page.request.put('/api/backends/cloud', {data: {name: 'Other API', kind: 'openai',
+      model: 'fixture-model', base_url: 'http://127.0.0.1:1/v1', size: '1024x1024'}})).ok()).toBe(true);
+    await page.goto('/#generate');
+    await expect(page.locator('#generate-backend')).toContainText('Browser fixture');
+    await page.locator('#generation-canvas-size').click();
+    await page.getByRole('option', {name: '768×1024', exact: true}).click();
+    await page.locator('#positive').fill('garden, blue sky');
+    await page.locator('#generation-count').fill('2');
+    await page.locator('#generation-repetitions').fill('2');
+    await page.locator('[data-view=settings]').click();
+    await page.locator('[data-view=generate]').click();
+    await expect(page.locator('#generation-canvas-size')).toContainText('768×1024');
+    await expect(page.locator('#positive')).toHaveValue('garden, blue sky');
+    await page.locator('#generate-backend').scrollIntoViewIfNeeded();
+    const box = await page.locator('#generation-canvas-size').boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(scenario.width + 1);
+    expect(box.width).toBeGreaterThanOrEqual(140);
+    expect(await page.locator('#generation-canvas-size [data-slot=select-value]').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const screenshot = testInfo.outputPath('generation-size.png');
+    await page.screenshot({path: screenshot, fullPage: true});
+    await testInfo.attach('generation-size', {path: screenshot, contentType: 'image/png'});
+    const requests = [], replies = [];
+    await page.route('**/api/jobs', async route => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      requests.push(route.request().postDataJSON());
+      const response = await route.fetch(); replies.push(await response.json());
+      if (requests.length === 1) return route.fulfill({status: 503, json: {error: 'Lost size response'}});
+      return route.fulfill({response});
+    });
+    await page.locator('#generate').click();
+    await expect(page.locator('.notification-card[data-state=open]').filter({hasText: 'Lost size response'})).toBeVisible();
+    const refreshed = page.waitForResponse(response => response.url().endsWith('/api/canvas-pools') && response.request().method() === 'GET');
+    expect((await page.request.put('/api/canvas-pools/common', {data: {name: 'Common', sizes: [sizes[0], {width: 1024, height: 768}]}})).ok()).toBe(true);
+    await refreshed;
+    await expect(page.locator('#generation-canvas-size')).toContainText('768×1024');
+    await page.locator('#generate').click();
+    await expect(page.locator('#generate')).toBeEnabled();
+    await expect.poll(() => replies.length).toBe(2);
+    expect(requests[0].request_id).toBe(requests[1].request_id);
+    expect(replies[1].jobs.map(job => job.id)).toEqual(replies[0].jobs.map(job => job.id));
+    expect(replies[1].jobs).toHaveLength(4);
+    expect(replies[1].jobs.every(job => job.width === 768 && job.height === 1024)).toBe(true);
+    await expect(page.locator('#compose .generated-card')).toHaveCount(4);
+    await page.locator('#generation-canvas-size').click();
+    await page.getByRole('option', {name: '1024×768', exact: true}).click();
+    await page.locator('#generate').click();
+    await expect.poll(() => replies.length).toBe(3);
+    expect(requests[2].request_id).not.toBe(requests[1].request_id);
+    expect(replies[2].jobs.every(job => job.width === 1024 && job.height === 768)).toBe(true);
+    await expect(page.locator('#generate')).toBeEnabled();
+    await page.locator('#generate-backend').click();
+    await page.getByRole('option', {name: 'Other API', exact: true}).click();
+    await expect(page.locator('#generation-canvas-size')).toContainText(scenario.language === 'en' ? 'API default size' : 'API 默认尺寸');
+    await page.locator('#generation-count').fill('1'); await page.locator('#generation-repetitions').fill('1');
+    await page.locator('#generate').click(); await expect.poll(() => replies.length).toBe(4);
+    expect(requests[3]).not.toHaveProperty('width'); expect(requests[3]).not.toHaveProperty('height');
+    expect(replies[3].job.width).toBeNull(); expect(replies[3].job.height).toBeNull();
+  });
+}

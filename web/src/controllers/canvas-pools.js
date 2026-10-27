@@ -21,9 +21,11 @@ export function createCanvasPools(api) {
     try {
       const pools = await api('/api/canvas-pools');
       if (disposed || current !== revision) return;
+      if (state.loaded && JSON.stringify(pools) === JSON.stringify(state.pools)) return;
+      const selectedRevision = state.pools.find(pool => pool.id === state.draft.id)?.revision;
       state.pools = pools;
       if (!state.loaded) { if (!state.dirty) select(pools[0]?.id || '__new__'); }
-      else if (!state.dirty && !state.busy) select(state.draft.id);
+      else if (!state.dirty && !state.busy && pools.find(pool => pool.id === state.draft.id)?.revision !== selectedRevision) select(state.draft.id);
       state.loaded = true; model.changed();
     } catch (error) { if (!disposed) notifyError(error.message); }
   }

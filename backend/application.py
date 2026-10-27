@@ -30,6 +30,8 @@ def public_backend(config):
 
 def validate_generation_options(config, fields):
     capabilities = backend_capabilities(config)
+    if 'width' in fields and not available_canvas_sizes(config, [{key: fields[key] for key in ('width', 'height')}]):
+        raise ValidationError('This image API does not support the requested pixel size.')
     if capabilities["cloud"]:
         if fields.get("negative"):
             raise ValidationError("此生图接口不支持负向提示词，请清空负向提示词，或选择负向词为空的候选预设。")
@@ -462,6 +464,8 @@ class PictideApplication:
         if backend is None:
             raise ValidationError("生图后端不存在，请先保存后端配置。")
         validated = self.tasks.connections.validate(backend)
+        # Request-level options must be valid before any external text preparation.
+        validate_generation_options(validated, {**fields, 'negative': ''})
         natural = backend.get("prompt_type") == "natural_language"
         if natural:
             llm_revision = (await asyncio.to_thread(self.prompting.store.settings, backend.get('llm_id', 'legacy-prompt-api')))['revision']

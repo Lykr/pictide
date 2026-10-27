@@ -21,7 +21,7 @@ The backend list is provided by Bootstrap's `backends`; there is no separate GET
 | `name` | Backend name |
 | `kind` | `comfyui / openai / gemini`; omitted means `comfyui` |
 | `prompt_type` | `danbooru / natural_language`; omitted means `danbooru`. Natural language uses the separate [prompt service](settings.md#prompt-llm-api). |
-| `canvas_pool_id` | Optional saved pixel-size pool ID; an empty string uses the fixed API size. Roam selects sizes from this pool when enabled; Generate keeps fixed settings. |
+| `canvas_pool_id` | Optional saved pixel-size pool ID; an empty string uses the fixed API size. Roam selects sizes from this pool when enabled; Generate can submit an explicit pixel pair for the batch, or omit it to keep fixed settings. |
 | `llm_id` | Saved LLM API ID used for natural-language conversion. New natural-language configurations must select an existing connection; legacy configurations without this field use `legacy-prompt-api`. |
 | `base_url` | HTTP(S) service root; cloud URLs include the version path, such as `https://api.openai.com/v1` or `https://generativelanguage.googleapis.com/v1beta` |
 | `api_key` | Optional; omission preserves a saved key only for the same kind. Switching kinds clears it; an empty string also clears it. Never returned in plaintext. |
@@ -74,4 +74,4 @@ IDs use the same format as backend IDs. Names contain 1–100 characters after t
 
 `capabilities.dimensions` identifies adapters that accept pixel-size plans: OpenAI Images and ComfyUI workflows with both size bindings. ComfyUI excludes sizes not divisible by 8; save validation requires at least one usable entry for each linked API. OpenAI's service/model may impose additional size restrictions, checked by that service at generation time. Gemini does not support these pixel plans and rejects a nonempty `canvas_pool_id`.
 
-App serializes pool mutations with image-API reference saves and Roam enqueueing. Changing sizes in the active pool invalidates subsequent Roam prefetch when pool mode is enabled; edits to unused pools and name-only changes preserve it. A `canvas_pools` SSE topic refreshes the shared list without replacing unsaved drafts. Existing jobs retain their selected widths and heights independently of later pool changes.
+App serializes pool mutations with image-API reference saves and Roam enqueueing. Changing sizes in the active pool invalidates subsequent Roam prefetch when pool mode is enabled; edits to unused pools and name-only changes preserve it. The shared pool list participates in ordinary resource refreshes, including fallback polling and reconnects: coalesced SSE notifications do not have to retain a particular topic. Refreshes retain unsaved drafts and keep the selected editor stable when its revision is unchanged. Existing jobs retain their selected widths and heights independently of later pool changes.

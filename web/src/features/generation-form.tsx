@@ -10,6 +10,7 @@ import { FormSelect } from '../components/form-select';
 import { Checkbox } from '../components/ui/checkbox';
 import { RefreshCw, Sparkles, CircleSlash, LoaderCircle } from 'lucide-react';
 import { backendCapabilities } from '../controllers/backend-controls.mjs';
+import { generationSizes } from '../controllers/generation-controls.mjs';
 import { ruleVisibility } from '../controllers/rule-controls.mjs';
 import { Disclosure } from '../components/disclosure';
 export function GenerationForm() {
@@ -17,7 +18,14 @@ export function GenerationForm() {
   const generation = app.generation, gen = useModel(generation.model), draft = gen.draft;
   const genInput = (key: string) => ({ value: draft[key], onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => generation.edit(key, event.target.value) });
   const genSelect = (key: string) => ({ value: draft[key], onValueChange: (value: string) => generation.edit(key, value) });
-  const capabilities = backendCapabilities(state.backends.find((item: any) => item.id === draft.backendId));
+  const backend = state.backends.find((item: any) => item.id === draft.backendId);
+  const capabilities = backendCapabilities(backend);
+  const pools = useModel(app.canvasPools.model);
+  const sizes = generationSizes(backend, pools.pools);
+  const sizeOptions = [{value: '', label: t('API 默认尺寸')}, ...sizes];
+  if (draft.canvasSize && !sizes.some((size: any) => size.value === draft.canvasSize)) {
+    sizeOptions.push({value: draft.canvasSize, label: draft.canvasSize.replace('x', '×')});
+  }
   const natural = state.backends.find((item: any) => item.id === draft.backendId)?.prompt_type === 'natural_language';
   const rules = ruleVisibility(draft.source, draft.mode, draft.automatic);
   return <div className="generation-form-panel">
@@ -25,14 +33,16 @@ export function GenerationForm() {
 <h2>{t("图像生成")}</h2>
 </div>
 {"\n      "}<form id="generate-form" inert={gen.busy} onSubmit={event => { event.preventDefault(); void generation.submit(); }}>
-{"\n        "}<Label>{t("生图 API")}<FormSelect options={state.backends.length ? state.backends.map((item: any) => ({ value: item.id, label: item.name })) : [{ value: "", label: t("请先配置生图 API") }]} id="generate-backend" aria-label={t("生图 API")} {...genSelect("backendId")} required size="sm">
+{"\n        "}<Label className="col-span-full">{t("生图 API")}<FormSelect options={state.backends.length ? state.backends.map((item: any) => ({ value: item.id, label: item.name })) : [{ value: "", label: t("请先配置生图 API") }]} id="generate-backend" aria-label={t("生图 API")} {...genSelect("backendId")} required size="sm">
 </FormSelect>
 </Label>
+<Label htmlFor="generation-canvas-size">{t('画幅尺寸')}<FormSelect id="generation-canvas-size" {...genSelect('canvasSize')} options={sizeOptions} size="sm" disabled={!sizes.length && !draft.canvasSize} /></Label>
 {"\n        "}<Label>{t("提示词来源")}<FormSelect id="prompt-source" aria-label={t("提示词来源")} {...genSelect("source")} size="sm">
 <option value="manual">{t("手动输入")}</option>
 <option value="rules">{t("共现候选")}</option>
 </FormSelect>
 </Label>
+{!sizes.length && !draft.canvasSize && capabilities.dimensions && <p className="hint col-span-full">{t('在生图 API 中关联画幅池后，可选择像素尺寸。')}</p>}
 <fieldset id="rule-section" className="rule-section" hidden={!rules.rules} disabled={!rules.rules}>
   <div className="rule-primary-fields">
     <div className="rule-field">
