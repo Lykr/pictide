@@ -25,3 +25,17 @@ test('JSON edits keep valid bindings and outputs while removing stale or differe
   assert.equal(bindings.negative.node_id, '3');
   assert.equal(bindings.seed.input, 'seed');
 });
+
+
+test('dimension bindings survive integer edits and are cleared when inputs become links', () => {
+  const workflow = graph();
+  workflow['4'] = {class_type: 'EmptyLatentImage', inputs: {width: 1024, height: 768}};
+  const bindings = {width: {node_id: '4', input: 'width'}, height: {node_id: '4', input: 'height'}};
+  let retained = retainedWorkflowBindings(workflow, bindings);
+  assert.deepEqual(retained.bindings.width, bindings.width);
+  assert.deepEqual(retained.bindings.height, bindings.height);
+  workflow['4'].inputs.width = ['10', 0];
+  retained = retainedWorkflowBindings(workflow, bindings);
+  assert.equal(retained.bindings.width, null);
+  assert.deepEqual(retained.bindings.height, bindings.height);
+});

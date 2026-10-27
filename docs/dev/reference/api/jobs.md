@@ -36,7 +36,7 @@ For a natural-language backend, input `positive`/`negative` are source concepts.
 
 ### Job
 
-Main fields: `id,request_id,backend_id,revision_id,status,positive,negative,seed,backend_prompt_id,error,created_at,updated_at`. Lists also provide `source` (`roam / generate`) and `backend_name,backend_kind,seed_applied`. Configuration snapshots containing secrets are not returned.
+Main fields: `id,request_id,backend_id,revision_id,status,positive,negative,seed,backend_prompt_id,error,created_at,updated_at`. Jobs also provide nullable `width,height`: selected requested pixels for pool-generated Roam jobs; null retains fixed workflow/API settings. They remain unchanged across pool edits, restart, and submission recovery. They describe requested inputs, not any later workflow upscaling. Lists also provide `source` (`roam / generate`) and `backend_name,backend_kind,seed_applied`. Configuration snapshots containing secrets are not returned.
 
 `positive`/`negative` contain actual image-service text. Natural-language jobs, their artifacts, and the image-prompts endpoint also expose `source_prompts:{positive,negative}` with the original concepts; older/Danbooru records omit this field. These sources support tag-based anchors, filtering, and historical feedback without interpreting prose as tags.
 

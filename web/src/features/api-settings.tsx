@@ -16,6 +16,7 @@ export function ApiSettings() {
   const app = useApplication(), state = useModel(app.model);
   const api = app.backendSettings, settings = useModel(api.model), apiDraft = settings.draft;
   const llms = useModel(app.promptSettings.model);
+  const pools = useModel(app.canvasPools.model);
   const nodeParametersOpen = settings.nodeParametersOpen, setNodeParametersOpen = api.setNodeParametersExpanded;
   const file = useRef<HTMLInputElement>(null);
   const targets = useMemo(() => Object.fromEntries(['api.form', 'api.test', 'api.save'].map(key => [key, uiTarget(key)])), []);
@@ -92,11 +93,19 @@ export function ApiSettings() {
 <div className="binding-inputs">
 <div className="settings-field"><Label htmlFor="binding-positive">{t("正向提示词输入")}</Label><FormSelect id="binding-positive" {...apiSelect("positive")} options={[{ value: "", label: t("选择正向 text 输入") }, ...settings.textInputs]}><option value="">{t("先导入工作流")}</option></FormSelect></div>
 <div className="settings-field"><Label htmlFor="binding-negative">{t("负向提示词输入")}</Label><FormSelect id="binding-negative" {...apiSelect("negative")} options={[{ value: "", label: t("选择负向 text 输入") }, ...settings.textInputs]}><option value="">{t("选择负向 text 输入")}</option></FormSelect></div>
+<div className="settings-field"><Label htmlFor="binding-width">{t('宽度输入（可选）')}</Label><FormSelect id="binding-width" {...apiSelect('width')} options={[{value: '', label: t('不绑定')}, ...settings.seedInputs]} /></div>
+<div className="settings-field"><Label htmlFor="binding-height">{t('高度输入（可选）')}</Label><FormSelect id="binding-height" {...apiSelect('height')} options={[{value: '', label: t('不绑定')}, ...settings.seedInputs]} /></div>
 <div className="settings-field"><Label htmlFor="binding-seed">{t("图像种子输入（可选）")}</Label><FormSelect id="binding-seed" {...apiSelect("seed")} options={[{ value: "", label: t("不绑定") }, ...settings.seedInputs]}><option value="">{t("不绑定")}</option></FormSelect></div>
 </div>
 <div className="settings-field"><Label htmlFor="output-nodes"><span className="field-caption">{t("输出节点")}<HelpTip text={t("可多选；留空时使用生图 API 返回的图像输出。")} /></span></Label><WorkflowOutputs /></div>
 </div>
 </fieldset>
+<div className="settings-field">
+<div className="settings-field-heading"><Label htmlFor="backend-canvas-pool">{t('画幅池')}</Label><Button type="button" variant="link" onClick={() => app.setSettingsSection('canvas')}>{t('管理画幅池')}</Button></div>
+<FormSelect id="backend-canvas-pool" disabled={apiDraft.kind === 'gemini'} value={apiDraft.canvas_pool_id || ''} onValueChange={value => api.edit('canvas_pool_id', value)} options={[{value: '', label: t('使用 API 固定尺寸')}, ...pools.pools.map((pool: any) => ({value: pool.id, label: pool.name}))]} />
+<p className="hint">{apiDraft.kind === 'gemini' ? t('此接口使用比例和分辨率档位，暂不支持像素画幅池。') : apiDraft.kind === 'comfyui' ? t('默认工作流可直接使用；自定义工作流需绑定宽高输入。宽高须为 8 的倍数。') : t('漫游可随机抽取池内尺寸，尺寸需符合当前模型要求。')}</p>
+{apiDraft.canvas_pool_id && <p className="hint break-words">{pools.pools.find((pool: any) => pool.id === apiDraft.canvas_pool_id)?.sizes.map((size: any) => `${size.width}×${size.height}${apiDraft.kind === 'comfyui' && (size.width % 8 || size.height % 8) ? t('（不可用）') : ''}`).join(' · ')}</p>}
+</div>
 <div className="dialog-footer"><Button id="test-backend" ref={targets["api.test"]} type="button" className="quiet" variant="outline" onClick={api.testBackend} disabled={settings.pending.test}>{t("测试连接")}</Button><Button id="save-backend" ref={targets["api.save"]} type="submit" className="primary" variant="default" disabled={settings.pending.saving}>{t("保存 API")}</Button></div>
 </form></>;
 }

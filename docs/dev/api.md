@@ -12,7 +12,7 @@ The entry point for Pictide's currently implemented HTTP API. Read the general c
 | Change language, theme, and retention period | [General and History Settings](reference/api/settings.md) |
 | Configure the shared text service for natural-language prompts | [Prompt LLM API](reference/api/settings.md#prompt-llm-api) |
 | Configure roam, save viewing position, and replenish prefetch | [Roam](reference/api/roam.md) |
-| Connect generation backends, check connections, and manage workflows | [Generation Backends and Workflows](reference/api/backends.md) |
+| Connect generation backends, check connections, and manage workflows and canvas pools | [Generation Backends and Workflows](reference/api/backends.md) |
 | Create, paginate, and cancel tasks | [Generation Tasks](reference/api/jobs.md) |
 | Query images, submit feedback, clean up, score preferences, and sort | [Images, Feedback, and Scoring](reference/api/images.md) |
 | Inspect, export, and reset preferences | [User Preferences](reference/api/preferences.md) |

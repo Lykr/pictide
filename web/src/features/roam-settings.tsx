@@ -18,6 +18,7 @@ export function RoamSettings() {
 <div className="settings-field"><Label htmlFor="roam-backend">{t("生图 API")}</Label><FormSelect id="roam-backend" value={state.roamDraft.backend_id} onValueChange={value => app.editRoam({ backend_id: value })} options={[{ value: "", label: t("自动选择 API") }, ...state.backends.map((item: any) => ({ value: item.id, label: item.name }))]}><option value="">{t("自动选择 API")}</option></FormSelect></div>
 </div>
 <p id="roam-cloud-note" className="hint" hidden={!backendCapabilities(state.roamDraft.backend_id ? state.backends.find((item: any) => item.id === state.roamDraft.backend_id) : state.backends[0]).cloud}>{t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")}{' '}{t("首次选择云端 API 会关闭自动预取；再次保存非零预取数量可开启连续生成。")}</p>
+<div className="settings-field"><Label htmlFor="roam-canvas-mode">{t('画幅')}</Label><FormSelect id="roam-canvas-mode" value={state.roamDraft.use_canvas_pool ? 'pool' : 'fixed'} onValueChange={value => app.editRoam({use_canvas_pool: value === 'pool'})} options={[{value: 'fixed', label: t('API 固定尺寸')}, {value: 'pool', label: t('随机画幅池')}]} /><p className="hint">{t('使用当前生图 API 关联的画幅池；未关联时沿用 API 固定尺寸。')}</p></div>
 <RoamSettingsChoices value={state.roamDraft} onChange={app.editRoam} />
 <div className="form-grid">
 <div className="settings-field"><Label htmlFor="roam-prefetch-count"><span className="field-caption">{t("预取数量")}<HelpTip text={t("在当前图片后预备的张数；漫游页打开时按需补足，0 关闭自动预取。")} /></span></Label><Input id="roam-prefetch-count" {...roamInput("prefetch_count")} type="number" min="0" max="20" step="1" required /></div>

@@ -23,6 +23,7 @@
 | `backend_id` / `preset_id` | String; an empty string selects automatically | Empty string |
 | `playback_interval_seconds` | Integer 1–600 | 8 |
 | `liked_tags_only` | Boolean; liked scope / full scope | `false` |
+| `use_canvas_pool` | Boolean; randomly select a usable size from the active image API’s pool; false uses fixed API settings | `true` |
 | `prompt_mode` | `random` Drift / `along` Flow / `stay` Anchor | `random` |
 | `candidate_count` | Integer 1–20 | 10 |
 | `recommendation_strength` | `standard / strong` | `standard` |
@@ -32,9 +33,11 @@
 
 The response also includes `artifact_revision,paused,preference_learning`, and may include `error` while paused. `epoch` is internal state and is not submitted as an HTTP field.
 
-PUT can update any one or a combination of `playback_interval_seconds,liked_tags_only,prompt_mode,candidate_count,recommendation_strength,strong_candidate_multiplier,pinned_positive` independently. Updates to the prefetch count, history count, backend, or preset must include `prefetch_count`; other omitted fields are preserved. Switching to a different cloud backend forces `prefetch_count` to `0` for that save; a later explicit save on the same backend can enable it. Creating the first cloud backend or converting the active backend to cloud also disables automatic prefetch. Danbooru cloud generation requires a preset with an empty negative prompt.
+PUT can update any one or a combination of `playback_interval_seconds,liked_tags_only,prompt_mode,candidate_count,recommendation_strength,strong_candidate_multiplier,pinned_positive,use_canvas_pool` independently. Updates to the prefetch count, history count, backend, or preset must include `prefetch_count`; other omitted fields are preserved. Switching to a different cloud backend forces `prefetch_count` to `0` for that save; a later explicit save on the same backend can enable it. Creating the first cloud backend or converting the active backend to cloud also disables automatic prefetch. Danbooru cloud generation requires a preset with an empty negative prompt.
 
-Changing the scope, mode, backend, preset, or anchors preserves the current image and invalidates subsequent old prefetched results; old results already running are hidden when they finish. Changing only the playback interval, candidate count, or recommendation strength preserves existing prefetched results. Preset fixed terms take priority, and duplicate anchors are removed; anchors cannot be edited in Anchor mode. Count-based cleanup counts only Roam images before the current image. Excess unliked images are cleaned up, while liked images are only hidden from Roam.
+Changing the scope, mode, backend, preset, anchors, or canvas-pool mode preserves the current image and invalidates subsequent old prefetched results; old results already running are hidden when they finish. Changing only the playback interval, candidate count, or recommendation strength preserves existing prefetched results. Preset fixed terms take priority, and duplicate anchors are removed; anchors cannot be edited in Anchor mode. Count-based cleanup counts only Roam images before the current image. Excess unliked images are cleaned up, while liked images are only hidden from Roam.
+
+Canvas-pool mode samples uniformly from the current API's usable sizes. An unlinked API keeps its fixed size. App selects width and height after any natural-language preparation and before persisting the job; Task reuses those stored pixels for submission and recovery. The candidate, recommendation, and LLM inputs are unchanged. See [canvas pool configuration](backends.md#canvas-pools).
 
 ### Viewing position and prefetching
 

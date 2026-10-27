@@ -17,7 +17,7 @@ export function retainedWorkflowBindings(workflow, bindings = {}, outputNodes = 
     return (type === 'integer' ? Number.isInteger(value) : typeof value === type) ? binding : null;
   };
   return {
-    bindings: { positive: retain(bindings?.positive, 'string'), negative: retain(bindings?.negative, 'string'), seed: retain(bindings?.seed, 'integer') },
+    bindings: { positive: retain(bindings?.positive, 'string'), negative: retain(bindings?.negative, 'string'), seed: retain(bindings?.seed, 'integer'), ...Object.fromEntries(['width', 'height'].filter(key => key in (bindings || {})).map(key => [key, retain(bindings[key], 'integer')])) },
     output_nodes: outputNodes.filter(id => workflow[id]?.class_type && workflow[id]?.inputs),
   };
 }

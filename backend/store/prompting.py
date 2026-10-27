@@ -68,6 +68,9 @@ class PromptStore:
             if config.get('prompt_type') == 'natural_language' and identifier != LEGACY_ID:
                 if not db.execute('SELECT 1 FROM llm_connections WHERE id=?', (identifier,)).fetchone():
                     raise ValidationError('Select a saved LLM API for natural-language prompts.')
+            pool_id = config.get('canvas_pool_id')
+            if pool_id and not db.execute('SELECT 1 FROM canvas_pools WHERE id=?', (pool_id,)).fetchone():
+                raise ValidationError('Select a saved canvas pool.')
             self.repository._save_backend(db, config)
         return config
 

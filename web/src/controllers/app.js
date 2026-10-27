@@ -1,11 +1,12 @@
 import { createLocalGeneration } from './local-generation.js';
 import { createBackendSettings } from './backend-settings.js';
 import { createPromptSettings } from './prompt-settings.js';
+import { createCanvasPools } from './canvas-pools.js';
 import { createGenerationController } from './generation-controller.js';
 import { createModel } from '../shared/model.mjs';
 import { onSignal, emitSignal } from '../shared/signals.mjs';
 import { publishUiState, subscribeUiActions, bindUiCommands, getUiState } from '../shared/ui-state.mjs';
-import { t, tr } from '../i18n/index.mjs';
+import { t, tr, messageKey } from '../i18n/index.mjs';
 import { loadTheme } from './theme.mjs';
 import { notify, notifyError, notifySuccess, dismissNotification } from '../shared/notifications.mjs';
 import { confirmAction } from '../components/confirm-action';
@@ -78,7 +79,7 @@ const jobPager = createJobPager({ request: page => api(`/api/jobs?page=${page}`)
 let availabilityRevision = 0;
 let availabilitySignature = '';
 let roamSettingsLoaded = false, roamSettingsLoading = false;
-let roamSettings = { prefetch_count: 2, max_history_images: 20, backend_id: '', preset_id: '', liked_tags_only: false, prompt_mode: 'random', playback_interval_seconds: 8, candidate_count: 10, recommendation_strength: 'standard', strong_candidate_multiplier: 2 };
+let roamSettings = { prefetch_count: 2, max_history_images: 20, backend_id: '', preset_id: '', liked_tags_only: false, use_canvas_pool: true, prompt_mode: 'random', playback_interval_seconds: 8, candidate_count: 10, recommendation_strength: 'standard', strong_candidate_multiplier: 2 };
 let roamError = '';
 let roamAnchorRetried = false;
 let roamPageActive = true, roamVersion = 0;
@@ -158,7 +159,7 @@ async function api(path, options = {}) {
   const response = await fetch(path, { signal: abort.signal, ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
   let data;
   try { data = await response.json(); } catch { throw new Error(tr`服务返回了无法解析的响应（HTTP ${response.status}）`); }
-  if (!response.ok) { const error = new Error(typeof data.error === 'string' ? data.error : data.error?.message || data.detail || tr`请求失败（HTTP ${response.status}）`); error.status = response.status; throw error; }
+  if (!response.ok) { const error = new Error(t(messageKey(typeof data.error === 'string' ? data.error : data.error?.message || data.detail || tr`请求失败（HTTP ${response.status}）`))); error.status = response.status; throw error; }
   return data;
 }
 function showRoamNotice(message, error = false) { notify(message, { id: 'roam-status', kind: error ? 'error' : 'info' }); }
@@ -171,6 +172,7 @@ const generation = createGenerationController({ state, api, getRoamSettings: () 
 const { updateGenerationHints, updateRuleControls, loadRuleConfigs } = generation;
 const backendSettings = createBackendSettings({ state, api, generation, checkBackendAvailability, showBackendAvailability, renderRoamBackends, renderArtifacts, loadRoamSettings });
 const promptSettings = createPromptSettings(api);
+const canvasPools = createCanvasPools(api);
 const localGeneration = createLocalGeneration(api);
 const { renderBackends, loadBackend, loadWorkflowLibrary } = backendSettings;
 
@@ -192,7 +194,7 @@ function setView(route, updateUrl = true) {
   state.view = view;
   publishUiState({ route: view === 'settings' ? `settings/${section || state.settingsSection}` : view, ...(view !== 'feed' ? { waiting: false } : {}) });
   emitSignal('close-image-info');
-  if (view === 'settings' && ['general', 'backend', 'llm', 'roam', 'history'].includes(section)) state.settingsSection = section;
+  if (view === 'settings' && ['general', 'backend', 'llm', 'canvas', 'roam', 'history'].includes(section)) state.settingsSection = section;
   const editor = view === 'prompts';
   changed();
   if (view !== 'feed') emitSignal('roam-options-close');
@@ -205,7 +207,7 @@ function setView(route, updateUrl = true) {
   pageScroll.restore(view);
 }
 function setSettingsSection(section, updateUrl = true) {
-  if (!['general', 'backend', 'llm', 'roam', 'history'].includes(section)) section = 'general';
+  if (!['general', 'backend', 'llm', 'canvas', 'roam', 'history'].includes(section)) section = 'general';
   state.settingsSection = section;
   if (state.view === 'settings') publishUiState({ route: `settings/${section}` });
   changed();
@@ -485,7 +487,7 @@ function openSettings() {
   setView('settings/backend');
 }
 function renderRoamBackends() { changed(); }
-const roamFields = ['recommendation_strength', 'strong_candidate_multiplier', 'candidate_count', 'prefetch_count', 'max_history_images', 'backend_id', 'playback_interval_seconds', 'liked_tags_only', 'prompt_mode'];
+const roamFields = ['recommendation_strength', 'strong_candidate_multiplier', 'candidate_count', 'prefetch_count', 'max_history_images', 'backend_id', 'playback_interval_seconds', 'liked_tags_only', 'prompt_mode', 'use_canvas_pool'];
 state.roamDraft = Object.fromEntries(roamFields.map(key => [key, roamSettings[key]]));
 function roamDraftDirty() { return roamFields.some(key => String(state.roamDraft[key]) !== String(roamSettings[key])); }
 function beginRoamSwitch() {
@@ -573,7 +575,7 @@ async function submitRoamSettings() {
   state.roamSaving = true; changed();
   try {
     const draft = state.roamDraft;
-    const payload = { recommendation_strength: draft.recommendation_strength, strong_candidate_multiplier: strongCandidateMultiplier(draft.strong_candidate_multiplier), candidate_count: candidateCount(draft.candidate_count), prefetch_count: prefetchCount(draft.prefetch_count), max_history_images: maxHistoryImages(draft.max_history_images), backend_id: draft.backend_id, playback_interval_seconds: playbackInterval(draft.playback_interval_seconds), liked_tags_only: draft.liked_tags_only, prompt_mode: draft.prompt_mode };
+    const payload = { recommendation_strength: draft.recommendation_strength, strong_candidate_multiplier: strongCandidateMultiplier(draft.strong_candidate_multiplier), candidate_count: candidateCount(draft.candidate_count), prefetch_count: prefetchCount(draft.prefetch_count), max_history_images: maxHistoryImages(draft.max_history_images), backend_id: draft.backend_id, playback_interval_seconds: playbackInterval(draft.playback_interval_seconds), liked_tags_only: draft.liked_tags_only, prompt_mode: draft.prompt_mode, use_canvas_pool: draft.use_canvas_pool };
     await saveRoamSettings(payload); notifySuccess(() => t('已保存漫游设置。'), { id: 'roam-settings' }); await refresh(true);
   } catch (error) { notifyError(error.message, { id: 'roam-settings' }); }
   finally { state.roamSaving = false; changed(); }
@@ -636,7 +638,7 @@ const commands = {
   'liked-refresh': () => { if (state.likedSort === 'score') return likedRanking.load(state.likedTags, true); state.likedError = ''; return refresh(true); },
   'liked-feedback': value => feedbackGenerated(value.id, value.toggle !== false, 'liked'),
   'roam-playback-toggle': () => roamPlayback.toggle(),
-  'before-update': () => !(localGeneration.model.data.dirty || localGeneration.model.data.busy || generation.dirty || backendSettings.dirty || promptSettings.model.data.dirty || promptSettings.model.data.signingIn || roamDraftDirty() || getUiState().editorDirty),
+  'before-update': () => !(localGeneration.model.data.dirty || localGeneration.model.data.busy || generation.dirty || backendSettings.dirty || promptSettings.model.data.dirty || promptSettings.model.data.signingIn || canvasPools.model.data.dirty || canvasPools.model.data.busy || roamDraftDirty() || getUiState().editorDirty),
   'updating': () => { applicationUpdating = true; roamPlayback.pause(); },
   'update-finished': () => { applicationUpdating = false; return refresh(true); },
 };
@@ -715,6 +717,7 @@ function connectEvents() {
       if (topic === 'local_generation') { void localGeneration.load(); return; }
       if (topic === 'backends') void localGeneration.load();
       if (topic === 'updates') { emitSignal('updates-changed'); return; }
+      if (topic === 'canvas_pools') void canvasPools.load(true);
       if (topic === 'prompting') { void promptSettings.load(true); emitSignal('prompt-settings-changed'); }
       if (topic === 'roam_settings' || topic === 'candidate') loadRoamSettings({ preserveDraft: true });
       if (topic === 'candidate') emitSignal('candidate-library-changed');
@@ -745,12 +748,12 @@ disposers.push(onSignal('prompt-settings-changed', () => { generation.invalidate
 disposers.push(onSignal('language-changed', () => { changed(); generation.model.changed(); backendSettings.model.changed(); renderJobPage(jobPager.state); renderArtifacts(); }));
   return () => {
     disposed = true; abort.abort(); clearInterval(fallbackTimer); clearTimeout(feedbackMotionTimer);
-    promptSettings.dispose(); localGeneration.dispose();
+    promptSettings.dispose(); canvasPools.dispose(); localGeneration.dispose();
     roamPlayback.pause(); nextImageWait.cancel(); likedRanking.cancel(); eventSource?.close();
     for (const dispose of disposers.splice(0)) dispose();
   };
 }
-return { model, generation, backendSettings, promptSettings, localGeneration, mount, commands, setPrivacy, setView, setSettingsSection, openSettings, moveImage, feedback,
+return { model, generation, backendSettings, promptSettings, canvasPools, localGeneration, mount, commands, setPrivacy, setView, setSettingsSection, openSettings, moveImage, feedback,
   requestNextRoamImage, imageLoaded, imageFailed, cancelJob, jobPager, saveHistory, submitRoamSettings,
   editRoam(patch) { Object.assign(state.roamDraft, patch); changed(); },
   editHistory(value) { state.historyDraft = value; changed(); },

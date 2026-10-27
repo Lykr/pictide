@@ -101,6 +101,10 @@ class Repository:
                 db.execute("ALTER TABLE generation_batches ADD COLUMN context TEXT")
             if "prompt_snapshot" not in {row["name"] for row in db.execute("PRAGMA table_info(jobs)")}:
                 db.execute("ALTER TABLE jobs ADD COLUMN prompt_snapshot TEXT")
+            job_columns = {row['name'] for row in db.execute('PRAGMA table_info(jobs)')}
+            for column in ('width', 'height'):
+                if column not in job_columns:
+                    db.execute(f'ALTER TABLE jobs ADD COLUMN {column} INTEGER')
             initialize_recommendation(db)
             # Repair caches left by versions that only marked images as deleted.
             db.execute("DELETE FROM artifact_preference_scores WHERE artifact_id IN "
@@ -265,6 +269,10 @@ class Repository:
             (id,request_id,payload_hash,backend_id,revision_id,status,positive,negative,seed,created_at,updated_at)
             VALUES (?,?,?,?,?,'queued',?,?,?,?,?)""",
             (iid,payload["request_id"],digest,payload["backend_id"],backend["revision_id"],payload["positive"],payload["negative"],actual_seed(payload["seed"]),timestamp,timestamp))
+        if payload.get('width') is not None or payload.get('height') is not None:
+            if any(type(payload.get(key)) is not int or not 1 <= payload[key] <= 16384 for key in ('width', 'height')):
+                raise ValidationError('Width and height must be integers from 1 to 16384 pixels.')
+            db.execute('UPDATE jobs SET width=?,height=? WHERE id=?', (payload['width'], payload['height'], iid))
         if payload.get("prompt_snapshot") is not None:
             db.execute("UPDATE jobs SET prompt_snapshot=? WHERE id=?", (encode(payload["prompt_snapshot"]), iid))
         return iid

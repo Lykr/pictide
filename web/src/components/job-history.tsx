@@ -18,7 +18,7 @@ function JobCard({ job, busy, cancel, open, setOpen }: { job: any; busy: boolean
     <CollapsibleTrigger asChild><Button variant="ghost" className="collapsible-label" data-tooltip={t('展开或收起任务详情')} aria-label={tr`${label} · ${job.id} · ${date} · 任务详情`}>
       <span className={`job-status job-status-${job.status}`} role="img" aria-label={label} data-tooltip={label}><Icon /></span><span className="job-identifier" data-tooltip={tr`任务 ID：${job.id}`}>{job.id}</span><span className="job-time" role="img" aria-label={fullDate} data-tooltip={fullDate}><Clock /></span>
     </Button></CollapsibleTrigger>
-    <CollapsibleContent hidden={!open}><div className="job-body"><dl className="job-meta">{[[t('状态'), label], [t('时间'), fullDate], [t('生图 API'), job.backend_name || job.backend_id], [t('种子'), imageSeedLabel(job)], [t('任务 ID'), job.id]].map(([key, value]) => <Fragment key={key}><dt>{key}</dt><dd>{value}</dd></Fragment>)}</dl>
+    <CollapsibleContent hidden={!open}><div className="job-body"><dl className="job-meta">{[[t('状态'), label], [t('时间'), fullDate], [t('生图 API'), job.backend_name || job.backend_id], [t('种子'), imageSeedLabel(job)], ...(job.width && job.height ? [[t('请求尺寸'), `${job.width}×${job.height}`]] : []), [t('任务 ID'), job.id]].map(([key, value]) => <Fragment key={key}><dt>{key}</dt><dd>{value}</dd></Fragment>)}</dl>
       {[[t('正向提示词'), job.positive], [t('负向提示词'), job.negative]].map(([key, value]) => value && <Fragment key={key}><h3>{key}</h3><p className="job-prompt">{value}</p></Fragment>)}
       {job.error && <p className="job-error">{job.error}</p>}
       {['queued', 'submitting', 'running'].includes(job.status) && <div className="job-actions"><Button disabled={busy} onClick={cancel}>{t('取消任务')}</Button></div>}

@@ -204,6 +204,17 @@ async def prompt_settings(request):
         await body(request) if request.method == "PUT" else None))
 
 
+async def canvas_pools(request):
+    application = request.app[APPLICATION]
+    if request.method == 'PUT':
+        result = await application.save_canvas_pool(request.match_info['id'], await body(request))
+    elif request.method == 'DELETE':
+        result = await application.delete_canvas_pool(request.match_info['id'])
+    else:
+        result = await application.list_canvas_pools()
+    return web.json_response(result)
+
+
 async def llm_connections(request):
     application = request.app[APPLICATION]
     identifier = request.match_info.get('id')
@@ -465,9 +476,11 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         WorkflowLibrary(paths.workflows, tasks.connections.validate), roam, recommendation_store, GeneralSettings(paths))
     from .prompt_preparation import PromptPreparation
     from .store.prompting import PromptStore
+    from .store.canvas_pools import CanvasPoolStore
     from .store.chatgpt import ChatGPTCredentials
     from .prompting.chatgpt import ChatGPTClient
     app[APPLICATION].chatgpt = ChatGPTClient(ChatGPTCredentials(paths.root), app[APPLICATION].llm_changed)
+    app[APPLICATION].canvas_pools = CanvasPoolStore(storage)
     app[APPLICATION].prompting = PromptPreparation(PromptStore(storage), app[APPLICATION].chatgpt)
     from .updates.service import UpdateService
     application = app[APPLICATION]
@@ -480,6 +493,8 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get("/api/bootstrap", bootstrap), web.get("/api/events", events),
         web.get('/api/updates', updates), web.post('/api/updates/{operation:check|download|install}', update_action),
         web.get("/api/settings/prompting", prompt_settings), web.put("/api/settings/prompting", prompt_settings),
+        web.get('/api/canvas-pools', canvas_pools), web.put('/api/canvas-pools/{id}', canvas_pools),
+        web.delete('/api/canvas-pools/{id}', canvas_pools),
         web.get('/api/llm-apis', llm_connections), web.put('/api/llm-apis/{id}', llm_connections),
         web.delete('/api/llm-apis/{id}', llm_connections),
         web.get('/api/llm-apis/{id}/status', llm_action, name='llm-status'),

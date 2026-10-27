@@ -81,9 +81,9 @@ def validate_comfyui(config: dict) -> dict:
     if not isinstance(bindings, dict):
         raise BackendError("bindings must define positive and negative inputs")
     result["bindings"] = {}
-    for role in ("positive", "negative", "seed"):
+    for role in ("positive", "negative", "seed", "width", "height"):
         binding = bindings.get(role)
-        if role == "seed" and binding is None:
+        if role in ("seed", "width", "height") and binding is None:
             continue
         if not isinstance(binding, dict):
             raise BackendError(f"bindings.{role} must specify node_id and input")
@@ -93,14 +93,20 @@ def validate_comfyui(config: dict) -> dict:
         if node is None or input_name not in node["inputs"]:
             raise BackendError(f"bindings.{role} references a missing node input")
         value = node["inputs"][input_name]
-        if role == "seed":
+        if role in ("seed", "width", "height"):
             if not isinstance(value, int) or isinstance(value, bool):
-                raise BackendError("Seed binding must target an integer input, not a linked input")
+                raise BackendError(f"{role} binding must target an integer input, not a linked input")
         elif not isinstance(value, str):
             raise BackendError(f"bindings.{role} must target a text string, not a linked input")
         result["bindings"][role] = {"node_id": node_id, "input": input_name}
     if result["bindings"]["positive"] == result["bindings"]["negative"]:
         raise BackendError("Positive and negative bindings must target different inputs")
+    dimensions = [result['bindings'].get(key) for key in ('width', 'height')]
+    if any(dimensions) and not all(dimensions):
+        raise BackendError('Bind both width and height inputs.')
+    numeric = [result['bindings'][key] for key in ('seed', 'width', 'height') if key in result['bindings']]
+    if len({(binding['node_id'], binding['input']) for binding in numeric}) != len(numeric):
+        raise BackendError('Seed, width and height bindings must target different inputs.')
     outputs = config.get("output_nodes", [])
     if outputs is None:
         outputs = []
@@ -460,12 +466,20 @@ class ComfyBackend:
             raise BackendError("Generation seed must be an unsigned 64-bit integer")
         if plan["negative"] and "negative" not in self.config["bindings"]:
             raise BackendError("该工作流没有绑定负向提示词输入，请清空负向提示词或先完成绑定。")
+        if any(plan.get(key) is not None for key in ('width', 'height')):
+            if any(key not in self.config['bindings'] for key in ('width', 'height')):
+                raise BackendError('Bind both width and height inputs.')
+            if any(type(plan.get(key)) is not int or not 8 <= plan[key] <= 16384 or plan[key] % 8 for key in ('width', 'height')):
+                raise BackendError('ComfyUI width and height must be multiples of 8 from 8 to 16384 pixels.')
         request_id = _string(request_id, "request_id")
         if self._events_request_id != request_id:
             await self.stop_events()
             self._set_event_request(request_id)
         workflow = copy.deepcopy(self.config["workflow"])
         for role, binding in self.config["bindings"].items():
+            if role in ('width', 'height'):
+                if plan.get(role) is None:
+                    continue
             workflow[binding["node_id"]]["inputs"][binding["input"]] = plan[role]
         response = await self._json("POST", "/prompt", payload={"prompt": workflow, "client_id": self._events_client_id,
                                     "extra_data": {"pictide_request_id": request_id}}, uncertain=True)

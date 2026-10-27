@@ -32,6 +32,12 @@ sequenceDiagram
 - App obtains the candidate set, requests recommendation scores, selects a complete combination, and submits a task. It does not return scores to Candidate to rebuild prompts. Task receives only a determined generation request. If recommendation is unavailable, App selects from existing valid combinations using the default policy.
 - Generation records preserve the selected combination, actual tag content, and versions. App associates feedback with the historical record before passing it to Recommendation. The latest tag library does not reinterpret history, and a like does not directly mean that every tag is liked. Withdrawing a like is distinct from a dislike.
 
+## Pixel-size Pools
+
+Host composes `store/canvas_pools.py` beside the other configuration stores. App exposes its CRUD use cases and validates `canvas_pool_id` references from image APIs. Generation owns size capability/filtering rules and explicit ComfyUI width/height bindings; Store owns persistence and reference protection.
+
+For Roam pool mode, App obtains the selected API's usable pixel pairs, draws one uniformly, then includes `width,height` in the determined task. Natural-language preparation completes before this choice. SQLite persists the pair with the job and its backend revision. Task forwards the stored pair to Generation: ComfyUI injects only the bound inputs, and OpenAI sets `size=WIDTHxHEIGHT`. Recovery uses that same pair. Fixed mode and Generate retain saved workflow/API dimensions. Candidate, Recommendation and Prompting do not depend on pools.
+
 ## Natural-language Preparation
 
 Each image backend selects `danbooru` (default) or `natural_language` and a saved `llm_id`. App still scores complete tag combinations. For natural language, it sends only the selected combination to `PromptPreparation`, which resolves the selected LLM configuration, serializes conversions through `backend/prompting/` and saves successful text before creating an image task. Task and image adapters receive final strings and never call the LLM.

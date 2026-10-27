@@ -7,6 +7,7 @@ import math
 import hashlib
 import json
 import re
+import secrets
 import uuid
 import unicodedata
 
@@ -15,7 +16,7 @@ from .recommendation.contracts import ScoreCandidate, ScoreRequest, ScoreTerm
 from .candidate.rounds import validate_options
 from .domain import ConflictError, GoneError, NotFoundError, ValidationError, feedback_value, generation_count, generation_fields, roam_can_enqueue
 from .events import EventHub
-from .generation import backend_capabilities
+from .generation import backend_capabilities, available_canvas_sizes
 from .store.contracts import Storage
 from .store.roam_settings import max_history_images, prefetch_count, selection, recommendation_options
 
@@ -66,6 +67,7 @@ class PictideApplication:
         self.update_installing = False
         self.active_writes = 0
         self.prompting = None
+        self.canvas_pools = None
         self._generation_lock = asyncio.Lock()
         self._roam_preparation = None
 
@@ -237,6 +239,45 @@ class PictideApplication:
         self.events.publish('prompting')
         self.events.publish('roam_settings')
 
+    async def list_canvas_pools(self):
+        return await asyncio.to_thread(self.canvas_pools.listing)
+
+    async def save_canvas_pool(self, identifier, payload):
+        from .store.canvas_pools import validate_pool
+        config = validate_pool(identifier, payload)
+        async with self._roam_lock:
+            backends = await asyncio.to_thread(self.storage.backends)
+            for backend in backends:
+                if backend.get('canvas_pool_id') == identifier and not available_canvas_sizes(backend, config['sizes']):
+                    raise ValidationError('This pool needs a usable pixel size for every linked image API.')
+            previous = next((pool for pool in await self.list_canvas_pools() if pool['id'] == identifier), None)
+            rows = await asyncio.to_thread(self.canvas_pools.save, identifier, payload)
+            document = await asyncio.to_thread(self.roam.get)
+            active_id = document['backend_id'] or (backends[0]['id'] if backends else '')
+            active = next((backend for backend in backends if backend['id'] == active_id), {})
+            if (active.get('canvas_pool_id') == identifier and document['use_canvas_pool']
+                    and (previous is None or previous['sizes'] != config['sizes'])):
+                await asyncio.to_thread(self.roam.invalidate)
+        self.events.publish('canvas_pools')
+        self.events.publish('roam_settings')
+        return rows
+
+    async def delete_canvas_pool(self, identifier):
+        async with self._roam_lock:
+            rows = await asyncio.to_thread(self.canvas_pools.delete, identifier)
+        self.events.publish('canvas_pools')
+        return rows
+
+    async def _roam_dimensions(self, backend, document):
+        identifier = backend.get('canvas_pool_id')
+        if not document.get('use_canvas_pool', True) or not identifier:
+            return {}
+        pool = await asyncio.to_thread(self.canvas_pools.read, identifier)
+        sizes = available_canvas_sizes(backend, pool['sizes'])
+        if not sizes:
+            raise ValidationError('The canvas pool has no usable pixel sizes for this image API.')
+        return dict(secrets.choice(sizes))
+
     async def llm_connections(self):
         accounts = await self.chatgpt.accounts()
         rows = await asyncio.to_thread(self.prompting.store.connections)
@@ -316,15 +357,20 @@ class PictideApplication:
             if not selected.get('revision'):
                 raise ValidationError('Select a saved LLM API for natural-language prompts.')
         draft = await self.tasks.connections.resolve_connection(draft)
-        if draft.get("workflow_mode") == "custom" and any(
-                key in payload for key in ("workflow_name", "workflow_id", "workflow_revision")):
-            document = {key: draft[key] for key in ("workflow", "bindings", "output_nodes")}
-            document["name"] = payload.get("workflow_name")
-            document.update({key: payload[key] for key in ("workflow_id", "workflow_revision") if key in payload})
-            saved = await asyncio.to_thread(self.workflows.save_and_apply, document, draft, self.prompting.store.save_image_backend)
-            self.events.publish("workflows")
-        else:
-            saved = await asyncio.to_thread(self.prompting.store.save_image_backend, draft)
+        async with self._roam_lock:
+            if draft.get('canvas_pool_id'):
+                pool = await asyncio.to_thread(self.canvas_pools.read, draft['canvas_pool_id'])
+                if not available_canvas_sizes(draft, pool['sizes']):
+                    raise ValidationError('The canvas pool has no usable pixel sizes. ComfyUI needs multiples of 8.')
+            if draft.get("workflow_mode") == "custom" and any(
+                    key in payload for key in ("workflow_name", "workflow_id", "workflow_revision")):
+                document = {key: draft[key] for key in ("workflow", "bindings", "output_nodes")}
+                document["name"] = payload.get("workflow_name")
+                document.update({key: payload[key] for key in ("workflow_id", "workflow_revision") if key in payload})
+                saved = await asyncio.to_thread(self.workflows.save_and_apply, document, draft, self.prompting.store.save_image_backend)
+                self.events.publish("workflows")
+            else:
+                saved = await asyncio.to_thread(self.prompting.store.save_image_backend, draft)
         self.events.publish("backends")
         async with self._roam_lock:
             roam = await asyncio.to_thread(self.roam.get)
@@ -651,6 +697,8 @@ class PictideApplication:
 
     async def roam_settings(self, payload=None):
         recommendation = recommendation_options(payload or {})
+        if payload is not None and 'use_canvas_pool' in payload and type(payload['use_canvas_pool']) is not bool:
+            raise ValidationError('use_canvas_pool must be a boolean.')
         if payload is not None and "pinned_positive" in payload and (
                 not isinstance(payload["pinned_positive"], list) or any(
                     not isinstance(text, str) or not text.strip() for text in payload["pinned_positive"])):
@@ -669,14 +717,14 @@ class PictideApplication:
         async with self._roam_lock:
             if payload is None:
                 document = await self._refresh_roam_anchors()
-            elif payload and set(payload) <= {"playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive"}:
+            elif payload and set(payload) <= {"playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "use_canvas_pool"}:
                 previous = await asyncio.to_thread(self.roam.get)
                 anchors = await self._normalized_roam_anchors(previous, payload.get("pinned_positive"))
                 if ("pinned_positive" in payload and previous["prompt_mode"] == "stay"
                         and anchors["pinned_positive"] != previous["pinned_positive"]):
                     raise ValidationError("停泊时暂不可编辑画面锚点。")
                 document = await asyncio.to_thread(self.roam.save_options, payload.get("liked_tags_only"),
-                                                   payload.get("playback_interval_seconds"), payload.get("prompt_mode"), payload.get("candidate_count"), recommendation, anchors)
+                                                   payload.get("playback_interval_seconds"), payload.get("prompt_mode"), payload.get("candidate_count"), recommendation, anchors, payload.get("use_canvas_pool"))
                 self.events.publish("roam_settings")
             else:
                 if "prefetch_count" not in payload:
@@ -706,7 +754,7 @@ class PictideApplication:
                         and anchors["pinned_positive"] != previous["pinned_positive"]):
                     raise ValidationError("停泊时暂不可编辑画面锚点。")
                 document = await asyncio.to_thread(self.roam.save, count, backend_id, preset_id, max_history,
-                                                   payload.get("playback_interval_seconds"), payload.get("liked_tags_only"), payload.get("prompt_mode"), payload.get("candidate_count"), recommendation, anchors)
+                                                   payload.get("playback_interval_seconds"), payload.get("liked_tags_only"), payload.get("prompt_mode"), payload.get("candidate_count"), recommendation, anchors, payload.get("use_canvas_pool"))
                 saved_state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
                 if saved_state["paused"]:
                     # A full save is an explicit retry even when unchanged options retain the epoch.
@@ -716,7 +764,7 @@ class PictideApplication:
                     await self.clean_history(force=True, roam_only=True)
                 self.events.publish("roam_settings")
             state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
-            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "preset_base_positive")} | {
+            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "preset_base_positive", "use_canvas_pool")} | {
                 "artifact_revision": await asyncio.to_thread(self.storage.artifact_revision),
                 "paused": state["paused"], "preference_learning": await self._learning_available(),
                 **({"error": state["error"]} if state.get("error") else {})}
@@ -834,6 +882,7 @@ class PictideApplication:
                                             "positive": chosen.positive, "negative": chosen.negative, "seed": -1})
                 backend = await asyncio.to_thread(self.storage.backend, backend_id)
                 validate_generation_options(backend, fields)
+                fields.update(await self._roam_dimensions(backend, document))
                 state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], anchor, target, fields, snapshot)
             except NotFoundError:
                 raise
@@ -865,6 +914,7 @@ class PictideApplication:
                     "positive": rendered["positive"], "negative": rendered["negative"], "seed": -1})
                 fields["prompt_snapshot"] = {k: snapshot[k] for k in ("positive", "negative")}
                 validate_generation_options(backend, fields)
+                fields.update(await self._roam_dimensions(backend, document))
                 state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], context["anchor_id"], target,
                                                fields, dict(snapshot, rendered=rendered))
                 if state.get('job'):

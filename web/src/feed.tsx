@@ -1,5 +1,6 @@
 import { GenerationForm } from './features/generation-form';
 import { PromptSettings } from './features/prompt-settings';
+import { CanvasPools } from './features/canvas-pools';
 import { ApiSettings } from './features/api-settings';
 import { RoamSettings } from './features/roam-settings';
 import { HistorySettings } from './features/history-settings';
@@ -137,12 +138,13 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <GeneratedResults />
 {"\n    "}</section>
 <section id="settings-view" className="settings-view" hidden={state.view !== "settings"}>
-<Tabs value={state.settingsSection} onValueChange={app.setSettingsSection}><TabsList className="settings-navigation" aria-label={t('设置分类')}>{[['general', '通用'], ['roam', '漫游'], ['backend', '生图 API'], ['llm', 'LLM API'], ['history', '历史']].map(([key, label]) => <TabsTrigger key={key} value={key} data-settings-section={key}>{t(label)}</TabsTrigger>)}</TabsList></Tabs>
+<Tabs value={state.settingsSection} onValueChange={app.setSettingsSection}><TabsList className="settings-navigation" aria-label={t('设置分类')}>{[['general', '通用'], ['roam', '漫游'], ['backend', '生图 API'], ['llm', 'LLM API'], ['canvas', '画幅池'], ['history', '历史']].map(([key, label]) => <TabsTrigger key={key} value={key} data-settings-section={key}>{t(label)}</TabsTrigger>)}</TabsList></Tabs>
 <div className="settings-content">
 <section id="settings-general" className="settings-category" hidden={state.settingsSection !== "general"}><GeneralSettings initialError={themeError} />
 <SettingsRow className="settings-data-location" label={t("数据位置")} stackOnMobile><code id="data-directory">{state.dataDirectory || t("读取中…")}</code></SettingsRow>
 </section>
 <section id="settings-backend" className="settings-category" hidden={state.settingsSection !== "backend"}><ApiSettings /></section>
+<section id="settings-canvas" className="settings-category" hidden={state.settingsSection !== "canvas"}><CanvasPools /></section>
 <section id="settings-llm" className="settings-category" hidden={state.settingsSection !== "llm"}><PromptSettings /></section>
 <section id="settings-roam" className="settings-category" hidden={state.settingsSection !== "roam"}><RoamSettings /></section>
 <section id="settings-history" className="settings-category space-y-6" hidden={state.settingsSection !== "history"}>

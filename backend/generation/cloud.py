@@ -198,9 +198,14 @@ class CloudBackend:
         # Seed capability is checked before the task is queued. Stored jobs may
         # carry an internal randomized seed, which is deliberately never sent.
         config = self.config
+        if any(plan.get(key) is not None for key in ('width', 'height')):
+            if self.kind != 'openai' or any(type(plan.get(key)) is not int or not 1 <= plan[key] <= 16384 for key in ('width', 'height')):
+                raise BackendError('This API needs a valid pixel width and height.')
         if self.kind == "openai":
             payload = {"model": config["model"], "prompt": plan["positive"], "n": 1}
             payload.update({field: config[field] for field in ("size", "quality") if field in config})
+            if plan.get('width') is not None and plan.get('height') is not None:
+                payload['size'] = f"{plan['width']}x{plan['height']}"
             result = await self._json("POST", "/images/generations", payload)
             images = result.get("data")
             if not isinstance(images, list) or not images:

@@ -75,6 +75,8 @@ class RoamSettings:
                        "backend_id TEXT NOT NULL, preset_id TEXT NOT NULL, epoch TEXT NOT NULL, "
                        "liked_tags_only INTEGER NOT NULL DEFAULT 0 CHECK(liked_tags_only IN (0,1)), "
                        "prompt_mode TEXT NOT NULL DEFAULT 'random' CHECK(prompt_mode IN ('random','along','stay')))")
+            if 'use_canvas_pool' not in {row[1] for row in db.execute('PRAGMA table_info(roam_settings)')}:
+                db.execute('ALTER TABLE roam_settings ADD COLUMN use_canvas_pool INTEGER NOT NULL DEFAULT 1')
             db.execute("CREATE TABLE IF NOT EXISTS roam_playback_settings (id INTEGER PRIMARY KEY CHECK(id=1), "
                        "interval_seconds INTEGER NOT NULL CHECK(interval_seconds BETWEEN 1 AND 600))")
 
@@ -99,16 +101,17 @@ class RoamSettings:
 
     @staticmethod
     def defaults():
-        return {"prefetch_count": 2, "max_history_images": 20, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 8, "liked_tags_only": False, "prompt_mode": "random", "candidate_count": 10, "pinned_positive": [], "preset_base_positive": [], **RECOMMENDATION_DEFAULTS}
+        return {"prefetch_count": 2, "max_history_images": 20, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 8, "liked_tags_only": False, "use_canvas_pool": True, "prompt_mode": "random", "candidate_count": 10, "pinned_positive": [], "preset_base_positive": [], **RECOMMENDATION_DEFAULTS}
 
     @classmethod
     def _get(cls, db):
         db.row_factory = sqlite3.Row
-        row = db.execute("SELECT prefetch_count,max_history_images,backend_id,preset_id,epoch,liked_tags_only,prompt_mode "
+        row = db.execute("SELECT prefetch_count,max_history_images,backend_id,preset_id,epoch,liked_tags_only,prompt_mode,use_canvas_pool "
                          "FROM roam_settings WHERE id=1").fetchone()
         playback = db.execute("SELECT interval_seconds FROM roam_playback_settings WHERE id=1").fetchone()
         document = dict(row) if row else cls.defaults()
         document["liked_tags_only"] = bool(document["liked_tags_only"])
+        document["use_canvas_pool"] = bool(document["use_canvas_pool"])
         document["playback_interval_seconds"] = playback[0] if playback else 8
         candidate = db.execute("SELECT candidate_count FROM roam_candidate_settings WHERE id=1").fetchone()
         document["candidate_count"] = candidate[0] if candidate else 10
@@ -127,12 +130,12 @@ class RoamSettings:
     @staticmethod
     def _save_settings(db, document):
         db.execute("INSERT INTO roam_settings "
-                   "(id,prefetch_count,max_history_images,backend_id,preset_id,epoch,liked_tags_only,prompt_mode) "
-                   "VALUES(1,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET "
+                   "(id,prefetch_count,max_history_images,backend_id,preset_id,epoch,liked_tags_only,prompt_mode,use_canvas_pool) "
+                   "VALUES(1,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET "
                    "prefetch_count=excluded.prefetch_count,max_history_images=excluded.max_history_images,"
                    "backend_id=excluded.backend_id,preset_id=excluded.preset_id,epoch=excluded.epoch,"
-                   "liked_tags_only=excluded.liked_tags_only,prompt_mode=excluded.prompt_mode",
-                   tuple(document[key] for key in ("prefetch_count","max_history_images","backend_id", "preset_id", "epoch", "liked_tags_only", "prompt_mode")))
+                   "liked_tags_only=excluded.liked_tags_only,prompt_mode=excluded.prompt_mode,use_canvas_pool=excluded.use_canvas_pool",
+                   tuple(document[key] for key in ("prefetch_count","max_history_images","backend_id", "preset_id", "epoch", "liked_tags_only", "prompt_mode", "use_canvas_pool")))
 
     def history_limit(self):
         return self.get()["max_history_images"]
@@ -147,12 +150,14 @@ class RoamSettings:
             self._save_settings(db, document)
         return document
 
-    def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None):
+    def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None, use_canvas_pool=None):
         document = {"prefetch_count": prefetch_count(count), "backend_id": selection(backend_id, "生图后端"),
                     "max_history_images": max_history_images(max_history),
                     "preset_id": selection(preset_id, "候选预设"), "epoch": uuid.uuid4().hex}
         if playback_interval is not None:
             playback_interval_seconds(playback_interval)
+        if use_canvas_pool is not None and type(use_canvas_pool) is not bool:
+            raise ValidationError('use_canvas_pool must be a boolean.')
         recommendation = recommendation_options(recommendation or {})
         if liked_tags_only is not None:
             liked_tags_only_value(liked_tags_only)
@@ -165,16 +170,17 @@ class RoamSettings:
             previous = self._get(db)
             document["liked_tags_only"] = previous["liked_tags_only"] if liked_tags_only is None else liked_tags_only
             document["prompt_mode"] = previous["prompt_mode"] if prompt_mode is None else prompt_mode
+            document['use_canvas_pool'] = previous['use_canvas_pool'] if use_canvas_pool is None else use_canvas_pool
             if anchors is not None:
                 document.update(anchors)
             else:
                 document.update({key: previous[key] for key in ("pinned_positive", "preset_base_positive")})
             same_settings = all(document[key] == previous[key] for key in
-                ("prefetch_count", "max_history_images", "backend_id", "preset_id", "liked_tags_only", "prompt_mode", "pinned_positive", "preset_base_positive"))
+                ("prefetch_count", "max_history_images", "backend_id", "preset_id", "liked_tags_only", "prompt_mode", "pinned_positive", "preset_base_positive", "use_canvas_pool"))
             same_interval = playback_interval is None or playback_interval == previous["playback_interval_seconds"]
             if (candidate_count is not None or recommendation or anchors is not None) and same_settings and same_interval:
                 document["epoch"] = previous["epoch"]
-            if any(document[key] != previous[key] for key in ("liked_tags_only", "prompt_mode", "backend_id", "preset_id", "pinned_positive", "preset_base_positive")):
+            if any(document[key] != previous[key] for key in ("liked_tags_only", "prompt_mode", "backend_id", "preset_id", "pinned_positive", "preset_base_positive", "use_canvas_pool")):
                 Repository.discard_roam_prefetch(db)
             self._save_settings(db, document)
             self._save_anchors(db, document)
@@ -210,7 +216,9 @@ class RoamSettings:
                    "pinned_positive=excluded.pinned_positive,preset_base_positive=excluded.preset_base_positive",
                    tuple(json.dumps(document[key], ensure_ascii=False) for key in ("pinned_positive", "preset_base_positive")))
 
-    def save_options(self, liked_tags_only=None, playback_interval=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None):
+    def save_options(self, liked_tags_only=None, playback_interval=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None, use_canvas_pool=None):
+        if use_canvas_pool is not None and type(use_canvas_pool) is not bool:
+            raise ValidationError('use_canvas_pool must be a boolean.')
         recommendation = recommendation_options(recommendation or {})
         if liked_tags_only is not None:
             liked_tags_only_value(liked_tags_only)
@@ -224,7 +232,8 @@ class RoamSettings:
             db.execute("BEGIN IMMEDIATE")
             document = self._get(db)
             has_anchor_snapshot = db.execute("SELECT 1 FROM roam_anchor_settings WHERE id=1").fetchone() is not None
-            changed = ((liked_tags_only is not None and liked_tags_only != document["liked_tags_only"])
+            changed = ((use_canvas_pool is not None and use_canvas_pool != document['use_canvas_pool'])
+                       or (liked_tags_only is not None and liked_tags_only != document["liked_tags_only"])
                        or (prompt_mode is not None and prompt_mode != document["prompt_mode"])
                        or (anchors is not None and (
                            anchors["pinned_positive"] != document["pinned_positive"]
@@ -232,6 +241,8 @@ class RoamSettings:
             if changed:
                 if anchors is not None:
                     document.update(anchors)
+                if use_canvas_pool is not None:
+                    document['use_canvas_pool'] = use_canvas_pool
                 if liked_tags_only is not None:
                     document["liked_tags_only"] = liked_tags_only
                 if prompt_mode is not None:

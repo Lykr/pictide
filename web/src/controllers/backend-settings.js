@@ -15,7 +15,7 @@ import { backendDefaults, cloudConfigFields } from './backend-controls.mjs';
 export function createBackendSettings({ state, api, checkBackendAvailability, showBackendAvailability,
   generation, renderRoamBackends, renderArtifacts, loadRoamSettings }) {
   const updateGenerationHints = generation.updateGenerationHints;
-  const model = createModel({ draft: { selectedId: '__new__', llm_id: '', prompt_type: 'danbooru', name: '', kind: 'comfyui', url: 'http://127.0.0.1:8188', key: '', model: '', size: '', quality: '', aspect_ratio: '', image_size: '', workflowMode: 'default', workflowName: '', workflowJson: '', checkpoint: '', positive: '', negative: '', seed: '', outputs: [] }, pending: {}, models: [], textInputs: [], seedInputs: [], outputs: [], nodes: [], nodeErrors: {}, nodeDrafts: {}, nodeParametersOpen: false, editorMode: 'parameters', workflowValid: true, workflowMessage: null, hasSavedApiKey: false });
+  const model = createModel({ draft: { selectedId: '__new__', llm_id: '', canvas_pool_id: '', width: '', height: '', prompt_type: 'danbooru', name: '', kind: 'comfyui', url: 'http://127.0.0.1:8188', key: '', model: '', size: '', quality: '', aspect_ratio: '', image_size: '', workflowMode: 'default', workflowName: '', workflowJson: '', checkpoint: '', positive: '', negative: '', seed: '', outputs: [] }, pending: {}, models: [], textInputs: [], seedInputs: [], outputs: [], nodes: [], nodeErrors: {}, nodeDrafts: {}, nodeParametersOpen: false, editorMode: 'parameters', workflowValid: true, workflowMessage: null, hasSavedApiKey: false });
   const { draft } = model.data;
   const changed = model.changed;
   function pending(name, value) { model.data.pending[name] = value; changed(); }
@@ -52,6 +52,7 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
     draft.key = previous?.key ?? ''; hasSavedApiKey = previous?.hasKey ?? false;
 
     for (const key of cloudFields) draft[key] = previous?.fields[key] ?? '';
+    if (kind === 'gemini') draft.canvas_pool_id = '';
     settingsBackendKind = kind; workflowLoadRevision++; settingsDirty = true;
     dismissNotification('settings-operation');
     updateBackendTypeControls();
@@ -66,6 +67,7 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
     workflowInputOptions = {};
     draft.name = backend?.name || t("本机 ComfyUI"); draft.kind = backend?.kind || 'comfyui';
     draft.prompt_type = backend?.prompt_type || 'danbooru';
+    draft.canvas_pool_id = backend?.canvas_pool_id || '';
     draft.llm_id = backend?.llm_id ?? (backend?.prompt_type === 'natural_language' ? 'legacy-prompt-api' : '');
     draft.url = backend?.base_url || 'http://127.0.0.1:8188';
     settingsBackendKind = backend?.kind || 'comfyui';
@@ -106,7 +108,7 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
     model.data.editorMode = mode; changed();
   }
   function updateBindings(bindings = null, outputNodes = null) {
-    const previous = bindings || { positive: parseBinding(draft.positive), negative: parseBinding(draft.negative), seed: parseBinding(draft.seed) };
+    const previous = bindings || { positive: parseBinding(draft.positive), negative: parseBinding(draft.negative), seed: parseBinding(draft.seed), width: parseBinding(draft.width), height: parseBinding(draft.height) };
     try {
       const workflow = readWorkflow();
       const retained = retainedWorkflowBindings(workflow, previous, outputNodes || draft.outputs);
@@ -124,12 +126,12 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
       Object.assign(model.data, { textInputs: texts, seedInputs: seeds, outputs, workflowValid: true,
         workflowMessage: () => tr`${Object.keys(workflow).length} 个节点 · ${texts.length} 个文本输入`,
         nodes: editableNodeInputs(workflow, workflowInputOptions), nodeErrors: {}, nodeDrafts: {} });
-      draft.positive = bindingValue(retained.bindings.positive); draft.negative = bindingValue(retained.bindings.negative); draft.seed = bindingValue(retained.bindings.seed); draft.outputs = retained.output_nodes;
+      draft.positive = bindingValue(retained.bindings.positive); draft.negative = bindingValue(retained.bindings.negative); draft.seed = bindingValue(retained.bindings.seed); draft.width = bindingValue(retained.bindings.width); draft.height = bindingValue(retained.bindings.height); draft.outputs = retained.output_nodes;
       dismissNotification('workflow-json'); changed(); return true;
     } catch (error) {
       Object.assign(model.data, { workflowValid: false, workflowMessage: () => t('支持从 ComfyUI 导出的 API 工作流。'), nodes: [] });
       if (draft.workflowJson.trim()) notifyError(error.message, { id: 'workflow-json' });
-      if (bindings !== null) { model.data.textInputs = []; model.data.seedInputs = []; model.data.outputs = []; draft.positive = ''; draft.negative = ''; draft.seed = ''; draft.outputs = []; }
+      if (bindings !== null) { model.data.textInputs = []; model.data.seedInputs = []; model.data.outputs = []; draft.positive = ''; draft.negative = ''; draft.seed = ''; draft.width = ''; draft.height = ''; draft.outputs = []; }
       changed(); return false;
     }
   }
@@ -206,7 +208,7 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
     finally { if (workflowLoadRevision === revision) pending('workflow', false); }
   }
   function connectionDraft() {
-    const payload = { name: draft.name.trim(), kind: draft.kind, base_url: draft.url.trim(), prompt_type: draft.prompt_type, llm_id: draft.llm_id || '' };
+    const payload = { name: draft.name.trim(), kind: draft.kind, base_url: draft.url.trim(), prompt_type: draft.prompt_type, llm_id: draft.llm_id || '', canvas_pool_id: draft.kind === 'gemini' ? '' : draft.canvas_pool_id || '' };
     if (!payload.name || !payload.base_url) throw new Error(t('请填写 API 名称和 API 地址。'));
     Object.assign(payload, apiKeyFields(draft.key, hasSavedApiKey)); return payload;
   }
@@ -221,7 +223,9 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
     if (!positive) throw new Error(t('请选择正向提示词输入。'));
     if (!negative) throw new Error(t('请选择负向提示词输入，以便准确记录本次实际使用的提示词。'));
     if (bindingValue(positive) === bindingValue(negative)) throw new Error(t('正向和负向提示词不能绑定同一个输入。'));
-    const custom = { ...payload, workflow, bindings: { positive, negative, seed }, output_nodes: draft.outputs };
+    const width = parseBinding(draft.width), height = parseBinding(draft.height);
+    if (!!width !== !!height || payload.canvas_pool_id && !width) throw new Error(t('使用画幅池时，请同时绑定宽度和高度输入。'));
+    const custom = { ...payload, workflow, bindings: { positive, negative, seed, ...(width && height ? {width, height} : {}) }, output_nodes: draft.outputs };
     return saveWorkflow ? { ...custom, ...workflowSaveFields(custom, draft.workflowName, state.workflowId ? { id: state.workflowId, revision: state.workflowRevision } : null) } : custom;
   }
   function edit(key, value) {

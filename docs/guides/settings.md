@@ -30,6 +30,14 @@ While ComfyUI starts, the terminal shows a moving waiting bar, elapsed time, and
 
 Configure this on the computer running Pictide using its localhost address. Remote image services keep their existing lifecycle. Pictide-installed Windows environments keep their automatic startup unless you disable this setting.
 
+## Canvas pools
+
+Open **Canvas pools** to name a pool and add pixel widths and heights, such as `1024×1024`, `768×1024`, and `1024×768`. Save it, then select that pool under **Image API**. Several image APIs can share the same pool.
+
+Under **Roam → Canvas size**, choose **Random canvas pool** or **Fixed API size**. Without a linked pool, Roam uses the API's fixed size. Generate continues to use the API's fixed settings. Task details show the requested pixel size for pool-generated jobs.
+
+ComfyUI's default workflow is ready to use; custom workflows need width and height input bindings. Roam skips pool sizes that are not divisible by 8 for ComfyUI. OpenAI image services receive the exact `WIDTHxHEIGHT` request size; choose sizes your model supports. Gemini keeps its existing ratio/resolution controls. A linked pool must be detached from its image APIs before deletion.
+
 ## Task records
 
 Open History to check generation progress, inspect failures, or cancel tasks you no longer need. Generate also lets you cancel all its tasks that have not started; tasks already running in the image service continue.
