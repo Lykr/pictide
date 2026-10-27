@@ -16,6 +16,7 @@
 | `pending_image_deletions` | 本地图片和 JSON 的持久回收队列 |
 | `roam_*` | 观看位置、预取归属、设置、锚点与暂停状态 |
 | `general_settings` | 主题、语言和切图动效 |
+| `canvas_pools` | 独立具名像素尺寸集合，由当前生图 API 引用 ID |
 | `llm_connections` / `prompt_preparations` | 具名文本服务配置与有界转换/重试记录 |
 | `recommendation_*` | 模型向量、偏好参数、反馈证据与重置记录 |
 | `artifact_preference_scores` / `recommendation_score_range` | 图片原始评分缓存、手动刷新时间与历史评分范围 |
@@ -27,13 +28,13 @@ SQLite 在初始化时以 `CREATE TABLE IF NOT EXISTS` 增加漫游表，保留�
 | 表 | 数据 |
 | --- | --- |
 | `roam_jobs` | `job_id` 为主键并引用 `jobs`，另存 `epoch`、`candidate` JSON、`created_at`。候选 JSON 含 `candidate_id`、`preset_id`、`policy`、正负文本、`features` 和 `terms`；标签含来源、ID、当时文本/类目/方向及 `content_revision`。 |
-| `roam_settings` | 预取数量、历史上限、后端/预设、方式、喜欢范围与 epoch。 |
+| `roam_settings` | 预取数量、历史上限、后端/预设、方式、喜欢范围、画幅池模式与 epoch。 |
 | `roam_playback_settings` / `roam_candidate_settings` | 自动播放间隔与候选组合数量。 |
-| `roam_recommendation_settings` / `roam_anchor_settings` | 推荐力度/强力倍数及 pinned_positive/preset_base_positive。 |
+| `roam_recommendation_settings` / `roam_anchor_settings` | 推荐力度/强力倍数及 pinned_positive/preset_base_positive、可空的 `pinned_canvas` JSON；初始化补充画幅字段，不使已有预取失效。 |
 | `roam_runs` | `epoch` 为主键，`error` 为该版本暂停原因；存在记录即为暂停。 |
 | `roam_view` | 单个本地用户的观看位置；`actor_id` 固定为 `local` 并为主键，`artifact_id` 可为空并引用 `artifacts`，`viewed_at` 是非负安全整数毫秒时间戳。仅严格较新的保存覆盖原值，防止请求乱序倒退。 |
 
-任务与候选快照在同一数据库事务中保存；图片通过原有任务/产物关系关联，不扩展图片旁 JSON 内容。改变需要失效预取的设置或完整保存恢复暂停后使用新 epoch，旧任务和暂停记录保留，旧版本失败不会暂停新设置。
+任务与候选快照在同一数据库事务中保存。可空的 `jobs.width,height` 一次记录选中的像素宽高；增量初始化保留旧记录为 null，旧任务和固定尺寸任务沿用原适配器设置。画幅池定义单独放在 `canvas_pools(id,revision,config)`，不能改写任务尺寸。图片通过原有任务/产物关系关联，不扩展图片旁 JSON 内容。改变需要失效预取的设置或完整保存恢复暂停后使用新 epoch，旧任务和暂停记录保留，旧版本失败不会暂停新设置。
 
 这些快照用于追溯实际生成时使用的标签文本、类目和身份，更新词库不改写历史快照。手动输入的提示词没有标签来源，不能以模糊匹配补造关联；是否可学习取决于快照完整性和推荐可用状态。备份时同时保留 SQLite 与 漫游设置。
 

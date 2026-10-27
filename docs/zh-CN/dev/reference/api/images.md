@@ -30,7 +30,7 @@
 
 ### Artifact
 
-主要字段：`id,job_id,node_id,output_index,created_at,local_path,content_type,deleted_at,generated_hidden_at,roam_hidden_at,positive,negative,seed,feedback,source,backend_kind,seed_applied,image_url`。`image_url` 指向同源图片接口；`seed` 是图像种子，是否实际应用看 `seed_applied`；OpenAI Images 与 Gemini 为 false。`backend_kind` 标识生成适配器，内部保存的种子不表示云端图像可确定复现。词项信息以生成时实际文本为准。
+主要字段：`id,job_id,node_id,output_index,created_at,local_path,content_type,deleted_at,generated_hidden_at,roam_hidden_at,positive,negative,seed,width,height,feedback,source,backend_kind,seed_applied,image_url`。`image_url` 指向同源图片接口；`seed` 是图像种子，是否实际应用看 `seed_applied`；OpenAI Images 与 Gemini 为 false。`backend_kind` 标识生成适配器，内部保存的种子不表示云端图像可确定复现。词项信息以生成时实际文本为准。可空的 `width,height` 为任务保存的请求尺寸，不是测量的输出尺寸；漫游「固定当前」优先使用它们，旧任务或固定尺寸任务则使用已载入图片的原始像素宽高。
 
 反馈 `1` 喜欢、`-1` 不喜欢、`null` 撤回为未评价。反馈落库后返回，偏好学习及本次反馈触发的清理由编排层后台处理；评分可能暂时使用上一版偏好。重复设置同一状态不重复计入学习。
 

@@ -12,7 +12,7 @@ Pictide 当前已实现的 HTTP API 统一入口。先阅读通用约定，再�
 | 修改语言、主题、清理期限 | [通用与历史设置](reference/api/settings.md) |
 | 配置自然语言提示词使用的文本服务 | [提示词 LLM API](reference/api/settings.md#提示词-llm-api) |
 | 配置漫游、保存观看位置、补足预取 | [漫游](reference/api/roam.md) |
-| 接入生图后端、检查连接、管理工作流 | [生图后端与工作流](reference/api/backends.md) |
+| 接入生图后端、检查连接、管理工作流和画幅池 | [生图后端与工作流](reference/api/backends.md) |
 | 创建、分页查看和取消任务 | [生成任务](reference/api/jobs.md) |
 | 查询图片、反馈、清理、偏好评分与排序 | [图片、反馈与评分](reference/api/images.md) |
 | 查看、导出和重置偏好 | [用户偏好](reference/api/preferences.md) |

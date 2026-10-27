@@ -13,7 +13,7 @@ Pictide 的唯一浏览器入口，npm 包名 `pictide-web`。产品操作见[�
 - `src/editor.tsx`：React 管理的只读词库、生成预设与预览工作区，没有独立页面入口。
 - `src/shared/notifications.mjs`、`src/components/notifications.tsx`：共用的错误与操作结果悬浮通知层，行为见[组件规范](reference/design/components.md#悬浮通知)。
 - `src/controllers/`：浏览器状态、事件和 API 调用。预设校验、共现扩展与预算内连续生成由后端 Candidate 模块负责。
-- `src/controllers/app.js`：组装页面控制器，协调导航、图库、漫游与实时刷新。`backend-settings.js` 管理生图 API/工作流草稿及保存、测试动作；`prompt-settings.js` 独立管理具名 LLM 配置与 ChatGPT 登录状态；`generation-controller.js` 管理生成表单、提示词计数及结果不确定的提交。`local-generation.js` 管理本地 ComfyUI 启动草稿、明确的识别/保存动作与状态，在导航和 SSE 刷新时保留未保存编辑。`components/job-history.tsx` 从分页状态渲染任务记录。
+- `src/controllers/app.js`：组装页面控制器，协调导航、图库、漫游与实时刷新。`canvas-pools.js` 管理可复用像素画幅池的草稿、列表及明确的增删改查动作；`backend-settings.js` 管理生图 API/工作流草稿及保存、测试动作；`prompt-settings.js` 独立管理具名 LLM 配置与 ChatGPT 登录状态；`generation-controller.js` 管理生成表单、提示词计数及结果不确定的提交。`local-generation.js` 管理本地 ComfyUI 启动草稿、明确的识别/保存动作与状态，在导航和 SSE 刷新时保留未保存编辑。`components/job-history.tsx` 从分页状态渲染任务记录。
 - `src/components/ui/`、`src/styles/theme.css`：共享 shadcn/ui 组件与设计 token，见[设计规范](design-system.md)。
 
 React 拥有页面结构与受控输入。功能服务使用小型可观察模型（`shared/model.mjs`）保存普通草稿数据，`useModel` 通过 `useSyncExternalStore` 订阅。动作接收值，返回结果或 Promise。直接使用共享 shadcn/Radix 组件，不引入隐藏代理控件、原生属性拦截或基于 DOM 的业务状态同步。
@@ -24,7 +24,7 @@ React 拥有页面结构与受控输入。功能服务使用小型可观察模�
 
 ## 页面与状态
 
-内部路由为 `#feed`、`#generate`、`#liked`、`#prompts` 和 `#settings/general|roam|backend|llm|history`。任务记录位于设置的历史分区，没有独立任务栏目。
+内部路由为 `#feed`、`#generate`、`#liked`、`#prompts` 和 `#settings/general|roam|backend|llm|canvas|history`。任务记录位于设置的历史分区，没有独立任务栏目。
 
 各功能模型拥有自己的草稿，React 视图跨导航保持挂载。服务端刷新更新服务数据，不覆盖未保存编辑。图片窗口按来源区分生成、漫游，喜欢跨来源；观看位置由后端保存。UI 不直接访问文件、SQLite 或 Python 模块，业务算法在后端。
 

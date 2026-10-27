@@ -23,6 +23,7 @@
 | `positive` | 手动生成时必填非空字符串，最多 20000 字符 |
 | `negative` | 字符串，默认空，最多 20000 字符；云端生图通道要求为空，自然语言模式先转换规避概念 |
 | `seed` | 整数 -1 或 0–9007199254740991；默认 -1 随机图像种子；云端适配器只接受 -1，不发送图像种子 |
+| `width` / `height` | 可选，须成对提供 1–16384 之间的整数像素；整批使用相同尺寸。两项均省略时沿用 API 固定尺寸。需要 `capabilities.dimensions`；ComfyUI 宽高须为 8 的倍数 |
 | `count` | 每次数量，整数 1–10，默认 1 |
 | `repetitions` | 生成次数，整数 1–10，默认 1 |
 | `candidate` | 可选，候选生成参数，见候选章节；提供时每次重新抽取 |
@@ -36,7 +37,7 @@
 
 ### Job
 
-主要字段：`id,request_id,backend_id,revision_id,status,positive,negative,seed,backend_prompt_id,error,created_at,updated_at`。列表还提供 `source`（`roam / generate`）、`backend_name,backend_kind,seed_applied`。不返回含密钥的配置快照。
+主要字段：`id,request_id,backend_id,revision_id,status,positive,negative,seed,backend_prompt_id,error,created_at,updated_at`。任务还提供可空的 `width,height`，记录漫游选中或生成页指定的请求尺寸；null 沿用固定工作流/API 设置。画幅池修改、重启和提交恢复均不改变它们；这些值不包含工作流之后的放大处理。列表还提供 `source`（`roam / generate`）、`backend_name,backend_kind,seed_applied`。不返回含密钥的配置快照。
 
 `positive`/`negative` 保存实际提交给生图服务的文本。自然语言任务、其产物及图片提示词接口另有 `source_prompts:{positive,negative}`，保存原始概念；旧记录和 Danbooru 记录省略该字段。锚点、标签筛选和历史反馈使用这些来源，不将描述句子解析为标签。
 

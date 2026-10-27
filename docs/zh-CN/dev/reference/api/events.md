@@ -15,4 +15,4 @@ Bootstrap 包括：`name,module,version,database_path,data_directory,backend_typ
 
 `recommendation` 包括 `available,model_version,feature_version,policy_version,error`。`capabilities` 包括 `generation,feedback,preference_learning,cooccurrence_prompts,prompt_sequences,events,roam_prefetch`。
 
-SSE 首条主题为 `ready`，之后可能为 `jobs,feedback,artifacts,backends,workflows,candidate,settings,roam_settings,general_settings,recommendation`；约 20 秒无变化发送注释心跳。它是刷新通知，客户端收到后重读有关资源。`revision` 为进程内递增值，重启归零；没有历史事件重放，慢客户端可能只收到最近通知。
+SSE 首条主题为 `ready`，之后可能为 `jobs,feedback,artifacts,backends,workflows,canvas_pools,candidate,settings,roam_settings,general_settings,recommendation`；约 20 秒无变化发送注释心跳。它是刷新通知，客户端收到后重读有关资源。`revision` 为进程内递增值，重启归零；没有历史事件重放，慢客户端可能只收到最近通知。

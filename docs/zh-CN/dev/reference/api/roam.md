@@ -23,18 +23,24 @@
 | `backend_id` / `preset_id` | 字符串；空串自动选择 | 空串 |
 | `playback_interval_seconds` | 整数 1–600 | 8 |
 | `liked_tags_only` | 布尔值；喜欢范围 / 全部范围 | `false` |
+| `use_canvas_pool` | 布尔值；从当前生图 API 的画幅池随机选可用尺寸，false 沿用 API 固定尺寸 | `true` |
 | `prompt_mode` | `random` 漂流 / `along` 顺流 / `stay` 停泊 | `random` |
 | `candidate_count` | 整数 1–20 | 10 |
 | `recommendation_strength` | `standard / strong` | `standard` |
 | `strong_candidate_multiplier` | 整数 1–5 | 2 |
+| `pinned_canvas` | `{width,height}`，1–16384 的整数像素，须受当前 API 支持；null 恢复漫游设置 | `null` |
 | `pinned_positive` | 非空完整词项的字符串数组 | `[]` |
 | `preset_base_positive` | 只读，当前预设的固定正向词 | `[]` |
 
 响应还包含 `artifact_revision,paused,preference_learning`，暂停时可附 `error`。`epoch` 为内部状态，不作为 HTTP 字段提交。
 
-PUT 可单独更新以下任意一项或组合：`playback_interval_seconds,liked_tags_only,prompt_mode,candidate_count,recommendation_strength,strong_candidate_multiplier,pinned_positive`。更新预取数量、历史数量、后端或预设时须携带 `prefetch_count`，其他未传项保留。切换到另一云端后端时，本次保存强制 `prefetch_count=0`；同一后端之后再次明确保存可开启。创建首个云端后端或将当前后端改为云端时也关闭自动预取。Danbooru 云端生成要求预设负向提示词为空。
+PUT 可单独更新以下任意一项或组合：`playback_interval_seconds,liked_tags_only,prompt_mode,candidate_count,recommendation_strength,strong_candidate_multiplier,pinned_positive,use_canvas_pool,pinned_canvas`。更新预取数量、历史数量、后端或预设时须携带 `prefetch_count`，其他未传项保留。切换到另一云端后端时，本次保存强制 `prefetch_count=0`；同一后端之后再次明确保存可开启。创建首个云端后端或将当前后端改为云端时也关闭自动预取。Danbooru 云端生成要求预设负向提示词为空。
 
-切换范围、方式、后端、预设或锚点会保留当前图并使后续旧预取失效；执行中的旧结果完成后隐藏。只改播放间隔、候选数量、推荐力度保留已有预取。预设固定词优先，与之重复的锚点会被移除；停泊时不能修改锚点。数量清理仅统计当前图之前的漫游图片，超限未喜欢图清理，喜欢图仅从漫游隐藏。
+切换范围、方式、后端、预设、锚点或画幅池模式会保留当前图并使后续旧预取失效；执行中的旧结果完成后隐藏。只改播放间隔、候选数量、推荐力度保留已有预取。预设固定词优先，与之重复的锚点会被移除；停泊时不能修改提示词锚点，独立的画幅固定在所有模式下均可编辑。数量清理仅统计当前图之前的漫游图片，超限未喜欢图清理，喜欢图仅从漫游隐藏。
+
+非空 `pinned_canvas` 优先于画幅池和 API 固定尺寸。保存或清除固定会保留当前图，使后续旧结果失效；重复保存相同值不改变 epoch。浏览器与提示词锚点一样，等下一次导航再准备新预取。固定画幅期间修改画幅池不影响已有预取；即使池内容变化，固定像素仍保留。之后的 API 配置若不支持该尺寸，需清除固定或选择可用值。
+
+画幅池模式对当前 API 的可用尺寸均匀抽样，未关联时沿用固定尺寸。App 在自然语言准备之后、任务落库之前确定宽高；Task 在提交和恢复时复用已保存像素，不改变 Candidate、Recommendation 或 LLM 输入。参见[画幅池配置](backends.md#画幅池)。
 
 ### 观看位置与预取
 

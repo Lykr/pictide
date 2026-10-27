@@ -17,7 +17,7 @@ python scripts/check.py browser
 
 | 分组 | 检查内容 | 环境要求 |
 | --- | --- | --- |
-| `core`（默认） | 12 项冒烟：本地 ComfyUI 生命周期、macOS 更新重启模式、预设到漫游、队列恢复、数据库迁移、可撤回反馈、OpenAI/Gemini 协议、自然语言停泊复用与明确重试、具名 LLM 引用、OAuth 回调校验 | 应用 Python 依赖 |
+| `core`（默认） | 15 项冒烟：本地 ComfyUI 生命周期、macOS 更新重启模式、预设到漫游、队列恢复、数据库迁移、可撤回反馈、OpenAI/Gemini 协议、自然语言停泊复用与明确重试、具名 LLM 引用、画幅池任务尺寸快照、画幅锚点持久化、生成尺寸/重放快照、OAuth 回调校验 | 应用 Python 依赖 |
 | `ui` | 8 个 Node 测试文件：本地 ComfyUI 启动草稿、引导状态与定位、生成草稿、通知、主题/语言竞态、API 密钥编辑、HTTP 环境请求 ID | Node.js |
 | `corpus` | 3 项离线冒烟：图片过滤、过期/损坏预构建资源拒绝、两版词库导出 | 安装了 `corpus/requirements.txt` 的 Python 环境 |
 | `browser` | 真实页面流程：共享布局与安全区、通知、引导、API 表单、明确更新、漫游反馈与自动播放、主屏幕请求 ID、桌面/手机自然语言配置与预览 | 应用 Python 依赖、前端依赖、测试前端产物与浏览器 |
@@ -62,3 +62,9 @@ LLM 连接变更另运行 `tests.backend.application.test_llm_connections`、`te
 本地 ComfyUI 生命周期变更使用 `python -m unittest tests.backend.setup.test_comfy_lifecycle tests.backend.setup.test_local_generation_session tests.backend.desktop.test_desktop_launcher -v` 与 `web/tests/browser/local-generation.spec.mjs`，覆盖明确的下次启动保存、真实轻量子服务启动/复用/退出、进程树所有权、关闭/旧配置、失败和超时恢复、回环配置限制、只读识别、草稿、多候选及桌面/手机布局。夹具不提交图片任务或加载 GPU 模型；各声明支持的平台仍需原生验证，模拟服务不能证明兼容所有 ComfyUI 发行方式。
 
 ComfyUI 启动显示变更另运行 `python -m unittest tests.backend.desktop.test_startup_progress tests.backend.desktop.test_desktop_text tests.backend.runtime.test_managed_output_logging -v`，检查中英文耗时、窄终端、不虚构百分比的等待动画、重定向纯文本、日志脱敏及真实 Windows worker stdout/就绪交接。延迟服务夹具不加载 ComfyUI 模型或提交图片请求。
+
+像素画幅池变更另运行 `python -m unittest tests.backend.application.test_canvas_pools -v`、`node --test web/tests/unit/workflow-panel.test.mjs` 和 `web/tests/browser/canvas-pools.spec.mjs`，覆盖独立可复用画幅池、尺寸校验与引用删除保护、固定/随机漫游、自然语言任务快照、重启保留、模拟 ComfyUI/OpenAI 精确请求、工作流显式绑定、草稿及桌面/手机像素编辑。不请求真实生图服务或 GPU；模型接受的尺寸和出图质量需另行验证。
+
+生成尺寸选择另运行 `tests.backend.application.test_generation_sizes`、`web/tests/unit/generation-draft.test.mjs` 和 `web/tests/browser/generation-sizes.spec.mjs`，覆盖手动/候选/自然语言批次、转换前拒绝无效或不支持的尺寸、配置变化后的持久批次重放、草稿保留、响应丢失重试、API 切换和桌面/手机尺寸选择。生图与 LLM 均模拟。
+
+画幅锚点变更另运行 `tests.backend.application.test_canvas_anchors` 和 `web/tests/browser/canvas-anchors.spec.mjs`，覆盖固定/跟随优先级、严格尺寸校验、保留当前图并使后续结果失效、相同值保存、增量迁移、进行中的文本准备失效、沿用当前尺寸、刷新保留，以及桌面/手机/原生全屏交互。全部服务商均模拟。

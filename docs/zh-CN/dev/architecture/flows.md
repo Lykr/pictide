@@ -32,6 +32,12 @@ sequenceDiagram
 - App 获取候选组合集合，交给推荐模块评分，再根据评分选择一个完整组合并提交任务；不将评分交回候选模块重新组装提示词。任务模块只接收确定的生成请求。推荐不可用时，由 App 在既有合法组合中按默认策略选择。
 - 生成记录保存所选组合及实际标签内容与版本；反馈由 App 关联历史记录后交给推荐模块，不以最新标签库重新解释历史，也不把一次点赞直接视为喜欢全部标签。撤回喜欢不等同于不喜欢。
 
+## 像素画幅池
+
+Host 在配置存储旁组装 `store/canvas_pools.py`；App 提供增删改查用例，校验生图 API 的 `canvas_pool_id` 引用。Generation 拥有尺寸能力、筛选规则和 ComfyUI 宽高输入绑定，Store 负责持久化与引用保护。
+
+漫游使用画幅池时，App 从当前 API 的可用像素尺寸中均匀抽取，在确定的任务中传入 `width,height`；自然语言准备先于尺寸选择完成。SQLite 将宽高和后端修订一起保存，Task 原样交给 Generation：ComfyUI 仅注入绑定的输入，OpenAI 设置 `size=WIDTHxHEIGHT`；恢复时沿用原值。固定漫游和未指定尺寸的生成请求保留已保存的工作流/API 尺寸。生成页也可选择一个池内尺寸，经已有请求提交可选的 `width,height`；App 在 LLM 准备前校验支持能力，同批任务保存相同宽高。已提交请求的持久重放不依赖之后的画幅池定义；Candidate、Recommendation 和 Prompting 不依赖画幅池。
+
 ## 自然语言准备
 
 每个生图后端选择 `danbooru`（默认）或 `natural_language`，并选择已保存的 `llm_id`。App 仍对完整标签组合评分；自然语言模式只把选中的组合交给 `PromptPreparation`，由它解析 LLM 配置，经 `backend/prompting/` 串行转换，在创建图片任务前保存成功文本。Task 和生图适配器只接收最终字符串，不调用 LLM。
