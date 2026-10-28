@@ -6,12 +6,14 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORMS = {'windows-x64': 'win32-amd64', 'linux-x64': 'linux-x86_64',
              'macos-arm64': 'darwin-arm64', 'macos-x64': 'darwin-x86_64'}
 ARCHITECTURES = {'amd64', 'arm64'}
 REPOSITORY = 'ghcr.io/lykr/pictide'
+DIAGNOSTICS = 'release-diagnostics.zip'
 
 
 def read(path):
@@ -116,6 +118,51 @@ def verify(directory, commit, tag):
     if set(native) != set(PLATFORMS) or set(docker) != ARCHITECTURES:
         raise ValueError('Expected four native packages and both Docker architectures')
     return dict(schema=1, tag=tag, version=tag[1:], commit=commit, portable=native, docker=docker)
+
+
+def diagnostic_paths(directory):
+    names = ['release.json']
+    for platform in sorted(PLATFORMS):
+        names.extend(f'{prefix}-{platform}.json' for prefix in ('build-report', 'smoke-report', 'source'))
+    for architecture in sorted(ARCHITECTURES):
+        names.extend(f'{prefix}-{architecture}.json' for prefix in ('docker-smoke-report', 'source-docker'))
+    return [Path(directory) / name for name in names]
+
+
+def bundle_diagnostics(directory):
+    paths = diagnostic_paths(directory)
+    if not all(path.is_file() for path in paths):
+        raise ValueError('Expected complete release diagnostics')
+    target = Path(directory) / DIAGNOSTICS
+    with zipfile.ZipFile(target, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+        for path in paths:
+            archive.write(path, arcname=path.name)
+    return target
+
+
+def release_downloads(directory):
+    """Keep the public download list explicit; preserve all engineering JSON in one ZIP."""
+    directory = Path(directory)
+    release = read(directory / 'release.json')
+    validate_identity(release['commit'], release['tag'])
+    version = release['version']
+    if release['tag'] != 'v' + version:
+        raise ValueError('Release tag and version differ')
+    files = []
+    for kind, targets in [('portable', PLATFORMS), ('docker', ARCHITECTURES)]:
+        if set(release[kind]) != set(targets):
+            raise ValueError('Expected all six release artifacts')
+        for key, record in sorted(release[kind].items()):
+            name = (f'pictide-{version}-{PLATFORMS[key]}.zip' if kind == 'portable'
+                    else f'pictide-{version}-linux-{key}-docker.tar.gz')
+            path = directory / name
+            if record['archive'] != name or digest(path) != record['sha256']:
+                raise ValueError('Download differs from the verified release artifact')
+            files.append(path)
+    files.extend([directory / 'compose.yaml', directory / 'update.json', bundle_diagnostics(directory)])
+    checksums = directory / 'SHA256SUMS'
+    checksums.write_text(''.join(digest(path) + '  ' + path.name + '\n' for path in sorted(files)), encoding='utf-8')
+    return sorted(files + [checksums])
 
 
 if __name__ == '__main__':

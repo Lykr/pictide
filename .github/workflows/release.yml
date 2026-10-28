@@ -89,7 +89,7 @@ jobs:
           # HTTP core fixtures register static routes before the frontend is built.
           mkdir -p web/dist
           python scripts/check.py core
-          python -m unittest tests.scripts.test_portable_startup tests.scripts.test_portable_audit tests.scripts.test_release_artifacts -v
+          python -m unittest tests.scripts.test_portable_startup tests.scripts.test_portable_audit tests.scripts.test_release_artifacts tests.scripts.test_release_assets -v
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
@@ -239,10 +239,14 @@ jobs:
           persist-credentials: false
           ref: ${{ github.workflow_sha }}
           path: dev/build/release-tooling
-          sparse-checkout: scripts/release_docker.py
+          sparse-checkout: |
+            scripts/release_docker.py
+            scripts/release_artifacts.py
           sparse-checkout-cone-mode: false
       - name: Use release tooling from the workflow revision
-        run: cp dev/build/release-tooling/scripts/release_docker.py scripts/release_docker.py
+        run: |
+          cp dev/build/release-tooling/scripts/release_docker.py scripts/release_docker.py
+          cp dev/build/release-tooling/scripts/release_artifacts.py scripts/release_artifacts.py
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -320,31 +324,26 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         shell: python
         run: |
-          import hashlib, json, os, subprocess, sys
+          import json, os, subprocess, sys
           from pathlib import Path
           sys.path.insert(0, str(Path.cwd()))
           directory = Path('dev/build/release-assets')
-          assert len(list(directory.glob('*.zip'))) == 4, 'Expected four native archives'
+          assert len(list(directory.glob('pictide-*.zip'))) == 4, 'Expected four native archives'
           reports = list(directory.glob('smoke-report-*.json'))
           assert len(reports) == 4
           assert all(json.loads(path.read_text())['passed'] for path in reports), 'Smoke checks must pass'
           assert len(list(directory.glob('build-report-*.json'))) == 4
           from scripts.release_updates import write_manifest
           write_manifest(directory)
-          files = sorted(directory.iterdir())
-          checksums = directory / 'SHA256SUMS'
-          with checksums.open('w', encoding='utf-8', newline='\n') as handle:
-              for path in files:
-                  with path.open('rb') as source:
-                      digest = hashlib.file_digest(source, 'sha256').hexdigest()
-                  handle.write(digest + '  ' + path.name + '\n')
+          from scripts.release_artifacts import release_downloads
+          files = release_downloads(directory)
           from backend import __version__
           tag = os.environ['RELEASE_TAG']
           assert tag == 'v' + __version__, 'Release tag differs from source version'
           command = ['gh', 'release', 'create', tag, '--verify-tag', '--generate-notes', '--draft', '--title', tag]
           if '-' in tag:
               command.append('--prerelease')
-          command.extend(str(path) for path in files + [checksums])
+          command.extend(str(path) for path in files)
           # Creation refuses an existing release; it never replaces another run's assets.
           subprocess.run(command, check=True)
           subprocess.run(['gh', 'release', 'edit', tag, '--draft=false'], check=True)

@@ -75,7 +75,7 @@ docker load -i pictide-0.10.0-linux-amd64-docker.tar.gz
 docker compose up -d --pull never
 ```
 
-镜像文件与仓库中经过验证的镜像一致。首次准备词库和 MiniLM 仍需联网。`SHA256SUMS` 用于校验下载文件，`release.json` 记录源码 commit 和镜像摘要。
+镜像文件与仓库中经过验证的镜像一致。首次准备词库和 MiniLM 仍需联网。`SHA256SUMS` 用于校验下载文件。工程信息统一保存在 `release-diagnostics.zip`，其中的 `release.json` 记录源码 commit 和镜像摘要，其他 JSON 保存构建与测试报告。
 
 ## 从源码构建
 

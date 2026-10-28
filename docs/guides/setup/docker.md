@@ -85,7 +85,7 @@ docker load -i pictide-0.10.0-linux-amd64-docker.tar.gz
 docker compose up -d --pull never
 ```
 
-The image file contains the same tested image as the registry. Initial vocabulary and MiniLM preparation still needs network access. `SHA256SUMS` verifies downloaded files; `release.json` records the source commit and image digests.
+The image file contains the same tested image as the registry. Initial vocabulary and MiniLM preparation still needs network access. `SHA256SUMS` verifies downloaded files. For build details, `release-diagnostics.zip` contains `release.json` with the source commit and image digests, plus build and test reports.
 
 ## Build from source
 

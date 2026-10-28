@@ -85,7 +85,7 @@ git push origin v0.5.0
 
 core、ui 和 browser 检查通过后开始打包；每个便携包再验证启动、真实 CPU 推理和旧版升级。词库及 MiniLM 不打进安装包，由隔离启动冒烟验证首次下载。Docker 在两种原生架构上验证 Compose 启动、CPU 推理和保留数据卷的离线重建，通过后暂存镜像。发布时按不可变摘要拉取暂存镜像，核对镜像 ID 和源码标签，不重新构建。
 
-四份便携包和两种镜像全部通过后，统一发布多架构镜像、可下载镜像文件、固定版本的 `compose.yaml`、ZIP、`update.json`、`release.json`、校验值和报告，并验证两种架构均可匿名拉取。稳定镜像的 `latest` 别名在 GitHub Release 发布后更新；预发布不修改 `latest`。保留已有版本镜像和 Release。
+四份便携包和两种镜像全部通过后，发布多架构镜像，以及十个下载附件：四份便携 ZIP、两份 Docker 镜像文件、固定版本的 `compose.yaml`、`update.json`、`SHA256SUMS` 和 `release-diagnostics.zip`。诊断包保存 `release.json` 及全部构建、测试和来源记录，工程 JSON 不再逐项放入下载列表；GitHub 另提供两份自动生成的源码包。上传使用明确的附件清单。两种架构均验证匿名拉取通过后，稳定镜像的 `latest` 别名在 GitHub Release 发布后更新；预发布不修改 `latest`。保留已有版本镜像和 Release。
 
 发布任务需要 `contents: write` 和 `packages: write`。GHCR 首次创建的包默认为私有：第一次暂存上传后，在关联仓库的 `pictide` 包设置中将可见性改为公开，再进入匿名访问检查。后续发版复用公开的包。
 
@@ -93,7 +93,7 @@ core、ui 和 browser 检查通过后开始打包；每个便携包再验证启�
 
 只修正 CI 后需要完整重跑时，从 `main` 手动触发 `release.yml`，传入已有 `release_tag`，将 `build_run`、`macos_run` 留空。验证、四平台便携包和两种 Docker 镜像均检出该标签解析出的 commit，沿用相同验证和发布门禁。HTTP 核心夹具检查前先准备空 `web/dist/`，浏览器检查使用完整编译的隔离产物；不覆盖已有 Release。
 
-如果四平台便携包已通过，只有 Docker 或发布阶段失败，可传入原 `build_run`，将 `macos_run` 留空。恢复任务复用已验证的安装包，从同一个标签 commit 重建 Docker。镜像上传工具使用工作流版本，且不进入 Docker 构建上下文或便携包，因此修正 CI 无需改写标签。`release.json` 分别记录应用的 `commit` 和工具的 `tooling_commit`。
+如果四平台便携包已通过，只有 Docker 或发布阶段失败，可传入原 `build_run`，将 `macos_run` 留空。恢复任务复用已验证的安装包，从同一个标签 commit 重建 Docker。发布工具使用工作流版本，且不进入 Docker 构建上下文或便携包，因此修正 CI 无需改写标签。诊断包内的 `release.json` 分别记录应用的 `commit` 和工具的 `tooling_commit`。
 
 不发布的 Mac 验证使用 `.github/workflows/macos-validation.yml`，选择 Intel 或 Apple Silicon，复用发行构建与启动冒烟，保留 ZIP、校验值、修订元数据和报告为七天期 Actions artifact。传到目标 Mac 核对 SHA-256 后，单独记录实际启动器与启动行为，不能用 CI 结果替代。
 
