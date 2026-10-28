@@ -1,5 +1,6 @@
 """Build a native directory-style Pictide portable package."""
 import argparse
+import filecmp
 import importlib.metadata as metadata
 import json
 import os
@@ -36,6 +37,20 @@ def export_resources(seed):
                 'files': []}
     (seed / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     return manifest
+
+
+def deduplicate_numpy_binaries(package):
+    """Keep NumPy's private DLL paths; remove byte-identical copies at the bundle root."""
+    internal = Path(package) / '_internal'
+    removed = []
+    for retained in sorted((internal / 'numpy.libs').glob('*.dll')):
+        duplicate = internal / retained.name
+        if duplicate.is_file() and filecmp.cmp(duplicate, retained, shallow=False):
+            removed.append({'removed': duplicate.relative_to(package).as_posix(),
+                            'retained': retained.relative_to(package).as_posix(),
+                            'bytes': duplicate.stat().st_size})
+            duplicate.unlink()
+    return removed
 
 
 def copy_licenses(destination):
@@ -169,6 +184,9 @@ def build(output_dir=None):
             bundled = runtime / 'Pictide'
             if sys.platform == 'win32':
                 package = bundled
+                result['deduplicated_numpy_binaries'] = deduplicate_numpy_binaries(package)
+                if result['deduplicated_numpy_binaries']:
+                    print('Removed duplicate NumPy DLLs: ' + json.dumps(result['deduplicated_numpy_binaries']), flush=True)
                 documents = package
                 launcher_name = 'Pictide.exe'
                 desktop_help = ('Startup progress appears while preparing dependencies, then Pictide stays in the system tray.\n'

@@ -62,7 +62,7 @@ The build retains FastEmbed, ONNX Runtime, tokenizers, and `backend/recommendati
 
 Only final `pictide-VERSION-PLATFORM-ARCH.zip` files go into `releases/`. `--output-dir DIR` selects an existing alternative directory. After archive checks succeed, a repeated local build atomically replaces the same ZIP; other versions and previous successful output survive a failed build. Temporary frontend, PyInstaller, and expanded-package directories are cleaned on success or failure. Reports remain in `dev/verification/portable/VERSION-PLATFORM-ARCH/build-report.json`.
 
-Windows packages expose `Pictide.exe` beside `_internal/`, with `data/` as the default runtime location. macOS packages contain `Pictide.app`, a small native AppKit launcher, and default to the user's Application Support directory. macOS builds use ad-hoc signing without Developer ID signing or notarization. Linux uses `start.sh` in a ZIP. ComfyUI and image-generation weights are optional runtime downloads, separate from the portable archive.
+Windows packaging removes byte-identical root DLL copies also collected under `numpy.libs/`, preserving NumPy's private loader paths. The build report records removed and retained paths with their unpacked sizes. Windows packages expose `Pictide.exe` beside `_internal/`, with `data/` as the default runtime location. macOS packages contain `Pictide.app`, a small native AppKit launcher, and default to the user's Application Support directory. macOS builds use ad-hoc signing without Developer ID signing or notarization. Linux uses `start.sh` in a ZIP. ComfyUI and image-generation weights are optional runtime downloads, separate from the portable archive.
 
 ## GitHub Actions releases
 

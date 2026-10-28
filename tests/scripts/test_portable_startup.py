@@ -22,7 +22,7 @@ from backend.host import open_browser_when_ready
 from backend.paths import DataPaths
 from backend.recommendation.resources import model_catalog
 from backend.setup.vocabulary import vocabulary_catalog
-from scripts.build_portable import build, export_resources, write_archive
+from scripts.build_portable import build, deduplicate_numpy_binaries, export_resources, write_archive
 from scripts.smoke_portable import unpack
 
 
@@ -97,6 +97,12 @@ class PortableResourcesSmoke(unittest.TestCase):
                         else:
                             shutil.copytree(source, target)
 
+                if target_platform == 'win32':
+                    numpy_libs = internal / 'numpy.libs'
+                    numpy_libs.mkdir()
+                    for target in (internal / 'blas.dll', numpy_libs / 'blas.dll'):
+                        target.write_bytes(b'neutral DLL fixture')
+
             def fixture_archive(package, archive):
                 with zipfile.ZipFile(archive, 'w') as result:
                     for path in package.rglob('*'):
@@ -142,6 +148,11 @@ class PortableResourcesSmoke(unittest.TestCase):
                 self.assertFalse(any(name.endswith('.sqlite3') for name in archive.namelist()))
                 names = archive.namelist()
                 if target_platform == 'win32':
+                    self.assertIn('Pictide/_internal/numpy.libs/blas.dll', names)
+                    self.assertNotIn('Pictide/_internal/blas.dll', names)
+                    self.assertEqual(result['deduplicated_numpy_binaries'], [dict(
+                        removed='_internal/blas.dll', retained='_internal/numpy.libs/blas.dll',
+                        bytes=len(b'neutral DLL fixture'))])
                     self.assertIn('Pictide/Pictide.exe', names)
                     self.assertFalse(any(name.startswith('Pictide/data/') or name.endswith('start.cmd') for name in names))
                 elif target_platform == 'darwin':
@@ -164,6 +175,24 @@ class PortableResourcesSmoke(unittest.TestCase):
                     self.assertIn('Pictide/data/runtime/pictide/Pictide', names)
                 self.assertFalse(any(name.endswith('.onnx') or '/models/' in name for name in archive.namelist()))
                 self.assertFalse(any('/db/' in name or '/images/' in name for name in archive.namelist()))
+
+    def test_numpy_dedup_preserves_different_versions_and_unique_runtime_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory)
+            internal = package / '_internal'
+            private = internal / 'numpy.libs'
+            private.mkdir(parents=True)
+            (private / 'same.dll').write_bytes(b'same contents')
+            (internal / 'same.dll').write_bytes(b'same contents')
+            (private / 'different.dll').write_bytes(b'version one')
+            (internal / 'different.dll').write_bytes(b'version two')
+            (internal / 'unique.dll').write_bytes(b'keep runtime dependency')
+            removed = deduplicate_numpy_binaries(package)
+            self.assertEqual([row['removed'] for row in removed], ['_internal/same.dll'])
+            self.assertEqual((private / 'same.dll').read_bytes(), b'same contents')
+            self.assertEqual((private / 'different.dll').read_bytes(), b'version one')
+            self.assertEqual((internal / 'different.dll').read_bytes(), b'version two')
+            self.assertEqual((internal / 'unique.dll').read_bytes(), b'keep runtime dependency')
 
     def test_macos_archive_uses_native_bundle_archiver(self):
         with patch('scripts.build_portable.sys.platform', 'darwin'), patch('scripts.build_portable.subprocess.run') as run:
