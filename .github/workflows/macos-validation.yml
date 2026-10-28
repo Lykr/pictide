@@ -36,24 +36,6 @@ jobs:
         with:
           node-version: '22'
           package-manager-cache: false
-      - name: Download and verify the locked vocabulary
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        shell: python
-        run: |
-          import json, subprocess, sys
-          from pathlib import Path
-          sys.path.insert(0, str(Path.cwd()))
-          from corpus.portable import load_prebuilt
-          lock = json.loads(Path('corpus/prebuilt.json').read_text())
-          destination = Path('dev/cache/prebuilt')
-          destination.mkdir(parents=True)
-          command = ['gh', 'release', 'download', lock['release_tag'], '--dir', str(destination)]
-          for item in lock['files']:
-              command.extend(['--pattern', item['path']])
-          subprocess.run(command, check=True)
-          load_prebuilt(destination, Path('corpus/profiles/compact.json'))
       - name: Install the pinned pnpm version
         shell: python
         run: |
@@ -76,7 +58,7 @@ jobs:
           tests.backend.task.test_job_logging
           tests.backend.runtime.test_network
       - name: Build the native app
-        run: python scripts/build_portable.py --prebuilt-library dev/cache/prebuilt
+        run: python scripts/build_portable.py
       - name: Check the extracted app
         env:
           GH_TOKEN: ${{ github.token }}

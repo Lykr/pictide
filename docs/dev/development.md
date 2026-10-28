@@ -52,13 +52,11 @@ MiniLM is prepared before the HTTP service starts. Portable packages include the
 
 ## Build portable packages
 
-Prepare a native builder environment using the [Windows](setup/windows.md#build-a-portable-package), [Linux](setup/linux.md#build-a-portable-package), or [macOS](setup/macos.md#build-a-portable-package) instructions. Python 3.12 is recommended. Install `backend/requirements-release.txt` into `dev/runtime/builder/`; add `corpus/requirements.txt` when processing raw metadata locally, which requires Python 3.11+.
+Prepare a native builder environment using the [Windows](setup/windows.md#build-a-portable-package), [Linux](setup/linux.md#build-a-portable-package), or [macOS](setup/macos.md#build-a-portable-package) instructions. Python 3.12 is recommended. Install `backend/requirements-release.txt` into `dev/runtime/builder/`. Offline vocabulary production uses a separate environment with `corpus/requirements.txt` and Python 3.11+.
 
 Run `scripts/build_portable.py` with that environment. It installs locked frontend dependencies, checks types, builds temporary frontend assets, prepares resources, creates a PyInstaller directory bundle, and checks its ZIP archive. Temporary assets live under `dev/build/`; the running checkout's `web/dist/` and application `data/` are preserved. Starting the application before packaging is unnecessary.
 
-The default vocabulary profile is `corpus/profiles/compact.json`. Raw shards and the download manifest stay in `dev/datasets/danbooru-2026/`; intermediate statistics and verified libraries live in `dev/cache/portable/`. A valid library cache supports offline resource preparation. Missing resources are downloaded and processed as needed. Clearing build caches preserves the raw dataset.
-
-Use `--dataset-dir`, `--cache-dir`, and `--profile` to select other locations or settings. `--prebuilt-library DIR` consumes a verified `vocabulary.sqlite3` and `report.json` matching the dataset revision, profile, and processing code. Invalid resources stop the build; this mode does not fall back to raw processing and does not require PyArrow or SciPy. See [prebuilt vocabularies](corpus.md#prebuilt-vocabulary).
+Portable packages contain the pinned download catalogs in `backend/setup/vocabularies.json` and `backend/recommendation/model.json`, without vocabulary databases or model weights. Building needs no raw dataset, processed library, or corpus-processing dependencies. At startup, existing valid vocabularies are reused; otherwise an interactive terminal chooses an edition and unattended startup defaults to `filtered`. `--vocabulary filtered|all-ratings` explicitly chooses the edition when none is valid. All-ratings is marked as potentially generating explicit content. See [Vocabulary editions](../guides/vocabularies.md).
 
 The build retains FastEmbed, ONNX Runtime, tokenizers, and `backend/recommendation/model.json`, without downloading or bundling MiniLM weights. Startup verifies the selected data directory's model files before exposing HTTP; failures stop startup, and a later attempt resumes retained partial downloads.
 
@@ -70,8 +68,8 @@ Windows packages expose `Pictide.exe` beside `_internal/`, with `data/` as the d
 
 `.github/workflows/release.yml` runs on pushed `v*` tags. It builds Windows x64, Linux x64, macOS ARM64, and macOS Intel packages on native runners using Python 3.12 and Node.js 22. The tag without `v` must match the versions in `backend/__init__.py` and `web/package.json`.
 
-1. Prepare and publish the [prebuilt vocabulary](corpus.md#prebuilt-vocabulary) as immutable assets of a `corpus-<fingerprint>` resource Release. This tag does not match the application release trigger.
-2. Commit and push `corpus/prebuilt.json` with the version changes. Regenerate the resource when the dataset revision, profile, or processor changes.
+1. Publish [vocabulary editions](corpus.md#export-both-vocabulary-editions) as immutable resource Release assets when the vocabulary changes.
+2. Update `backend/setup/vocabularies.json` from the published editions manifest when needed, retaining the release tag, edition file sizes and SHA-256 hashes. Commit the catalog and application version changes.
 3. Confirm the tagged commit includes the workflow, lock, and matching versions; create and push the version tag. For example, when both source versions are `0.5.0`:
 
 ```shell
@@ -81,7 +79,7 @@ git push origin v0.5.0
 
 Use a new version for each release; existing published versions and assets are preserved.
 
-The workflow checks locked resource sizes, SHA-256 hashes, provenance, report, and database. Runners use `--prebuilt-library` rather than downloading or processing raw metadata. Core, UI, and browser checks gate native packaging; every native package then passes an isolated startup smoke check. Once all platforms succeed, the workflow publishes ZIPs, `SHA256SUMS`, and reports together. Versions with prerelease suffixes become prereleases.
+The workflow validates the pinned download catalog. Native builds download neither vocabularies nor raw metadata; their isolated startup smokes exercise the first-start `filtered` download and integrity checks. Core, UI, and browser checks gate native packaging; every native package then passes an isolated startup smoke check. Once all platforms succeed, the workflow publishes ZIPs, `SHA256SUMS`, and reports together. Versions with prerelease suffixes become prereleases.
 
 Ordinary branch pushes use local verification and do not trigger Actions. Resource Releases persist the vocabulary; Actions caches only accelerate builds. For check preparation and coverage limits, see [release checks](testing.md#release-checks).
 

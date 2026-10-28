@@ -1,6 +1,5 @@
 """Build a native directory-style Pictide portable package."""
 import argparse
-from contextlib import closing
 import importlib.metadata as metadata
 import json
 import os
@@ -8,7 +7,6 @@ from pathlib import Path
 import platform
 import plistlib
 import shutil
-import sqlite3
 import stat
 import subprocess
 import sys
@@ -21,33 +19,21 @@ sys.path.insert(0, str(ROOT))
 from backend import __version__
 from backend.paths import DataPaths
 from backend.recommendation.resources import model_catalog
-from corpus.download import sha256 as digest
-from corpus.portable import prepare_resources
+from backend.setup.vocabulary import vocabulary_catalog
 
 
-def export_resources(resources, seed):
-    """Export the public library and metadata for the startup model download."""
+def export_resources(seed):
+    """Package download catalogs and installation metadata, without vocabulary/model files."""
     seed = Path(seed)
-    library = resources.library
-    target = seed / 'libraries' / library.name
-    target.parent.mkdir(parents=True)
-    with closing(sqlite3.connect(library.as_uri() + '?mode=ro', uri=True)) as source, closing(sqlite3.connect(target)) as db:
-        source.backup(db)
-        tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
-        for name in tables - {'tags', 'correlations', 'dataset'}:
-            db.execute('DROP TABLE "' + name.replace('"', '""') + '"')
-        db.commit()
-        db.execute('VACUUM')
-        if db.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
-            raise RuntimeError('Vocabulary integrity check failed.')
+    seed.mkdir(parents=True)
     model = model_catalog()
-    manifest = {'version': __version__, 'provenance': resources.provenance,
-                'model': model,
+    vocabularies = vocabulary_catalog()
+    manifest = {'version': __version__,
+                'provenance': {'vocabulary_release': vocabularies['release_tag'],
+                               'vocabulary_fingerprint': vocabularies['fingerprint']},
+                'vocabularies': vocabularies, 'model': model,
                 'model_sha256': next(item['sha256'] for item in model['files'] if item['path'] == 'model.onnx'),
                 'files': []}
-    for path in sorted(seed.rglob('*')):
-        if path.is_file():
-            manifest['files'].append({'path': path.relative_to(seed).as_posix(), 'bytes': path.stat().st_size, 'sha256': digest(path)})
     (seed / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     return manifest
 
@@ -136,9 +122,7 @@ def build_frontend(destination):
         subprocess.run([pnpm, '--dir', str(web), *arguments], cwd=ROOT, check=True)
 
 
-def build(output_dir=None, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
-          cache_dir=ROOT / 'dev/cache/portable',
-          profile=ROOT / 'corpus/profiles/compact.json', prebuilt_library=None):
+def build(output_dir=None):
     started = time.perf_counter()
     build_paths = DataPaths(ROOT / 'dev/build').configure_runtime()
     output = Path(output_dir or ROOT / 'releases').expanduser().resolve()
@@ -152,13 +136,10 @@ def build(output_dir=None, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
             working = Path(temporary)
             front = working / 'frontend'
             build_frontend(front)
-            resources = prepare_resources(dataset_dir, cache_dir, profile,
-                                          prebuilt_library=prebuilt_library,
-                                          progress=lambda text: print(text, flush=True))
             runtime = working / 'native'
             runtime.mkdir(parents=True)
             seed = working / 'resources'
-            manifest = export_resources(resources, seed)
+            manifest = export_resources(seed)
             (seed / 'installation.json').write_text(json.dumps(dict(schema=1, version=__version__, platform=sys.platform,
                                                                     arch=platform.machine().lower())), encoding='utf8')
             print('Resources exported; packaging the native runtime.', flush=True)
@@ -166,6 +147,7 @@ def build(output_dir=None, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
                        '--distpath', str(runtime), '--workpath', str(working / 'work'), '--specpath', str(working),
                        '--paths', str(ROOT), '--add-data', f'{front}{os.pathsep}web/dist',
                        '--add-data', f'{ROOT / "backend/recommendation/model.json"}{os.pathsep}backend/recommendation',
+                       '--add-data', f'{ROOT / "backend/setup/vocabularies.json"}{os.pathsep}backend/setup',
                        '--add-data', f'{ROOT / "docs/assets/workflows/anima-turbo-v1.1.api.json"}{os.pathsep}backend/workflows',
                        '--add-data', f'{seed}{os.pathsep}resources', '--collect-all', 'fastembed',
                        '--collect-all', 'onnxruntime', '--collect-all', 'tokenizers',
@@ -227,7 +209,7 @@ def build(output_dir=None, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
                 launcher.chmod(0o755)
                 launcher_name = launcher.name
                 desktop_help = 'Close the launcher window or press Ctrl+C to stop.\nData stays in data/.\n'
-            (documents / 'README.txt').write_text('Pictide\n\nRun ' + launcher_name + ' to open Pictide.\nThe first launch downloads and verifies the MiniLM recommendation dependency before opening the app.\nAn internet connection is required until this download completes.\nLater launches reuse the verified dependency in the data directory.\nConfigure an image API in Settings.\n' + desktop_help + 'Use --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
+            (documents / 'README.txt').write_text('Pictide\n\nRun ' + launcher_name + ' to open Pictide.\nThe first launch downloads and verifies a vocabulary and the MiniLM recommendation dependency before opening the app.\nAn internet connection is required until this download completes.\nLater launches reuse the verified dependency in the data directory.\nWith no valid vocabulary, an interactive terminal offers filtered or all-ratings; unattended startup defaults to filtered.\nUse --vocabulary filtered or --vocabulary all-ratings to choose explicitly. All-ratings may generate explicit content.\nConfigure an image API in Settings.\n' + desktop_help + 'Use --port, --data-dir, --lan or --no-browser when needed.\n', encoding='utf-8')
             for name in ('LICENSE', 'NOTICE'):
                 shutil.copyfile(ROOT / name, documents / name)
             notices = documents / 'licenses'
@@ -283,16 +265,7 @@ def build(output_dir=None, *, dataset_dir=ROOT / 'dev/datasets/danbooru-2026',
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--dataset-dir', type=Path, default=ROOT / 'dev/datasets/danbooru-2026',
-                        help='Persistent raw dataset and download manifest directory')
-    parser.add_argument('--cache-dir', type=Path, default=ROOT / 'dev/cache/portable',
-                        help='Rebuildable vocabulary cache directory')
-    parser.add_argument('--profile', type=Path, default=ROOT / 'corpus/profiles/compact.json',
-                        help='Vocabulary processing profile')
-    parser.add_argument('--prebuilt-library', type=Path,
-                        help='Directory containing the locked vocabulary.sqlite3 and report.json; never rebuilds raw data')
     parser.add_argument('--output-dir', type=Path, default=ROOT / 'releases',
                         help='Final archive directory (default: releases/); local same-name builds are replaced atomically.')
     options = parser.parse_args()
-    build(options.output_dir, dataset_dir=options.dataset_dir, cache_dir=options.cache_dir,
-          profile=options.profile, prebuilt_library=options.prebuilt_library)
+    build(options.output_dir)

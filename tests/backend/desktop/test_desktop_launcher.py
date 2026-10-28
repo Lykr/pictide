@@ -87,7 +87,7 @@ class DesktopSocketSmoke(unittest.TestCase):
             app = host.web.Application()
             app[host.APPLICATION] = SimpleNamespace(updates=SimpleNamespace(installation=None))
             owned = []
-            def prepare(*args):
+            def prepare(*args, **kwargs):
                 self.assertFalse(status.exists())
             def serve(application, **options):
                 self.assertIs(application, app)

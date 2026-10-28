@@ -54,31 +54,13 @@ jobs:
           tag = os.environ['RELEASE_TAG']
           assert re.fullmatch(r'v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', tag), 'Use a vMAJOR.MINOR.PATCH tag'
           assert tag == 'v' + version, 'Tag and application versions differ'
-          lock = json.loads(Path('corpus/prebuilt.json').read_text(encoding='utf-8'))
-          assert re.fullmatch(r'corpus-[0-9a-f]{64}', lock['release_tag']), 'Invalid corpus release tag'
-          assert lock['release_tag'] == 'corpus-' + lock['fingerprint']
-          assert {item['path'] for item in lock['files']} == {'vocabulary.sqlite3', 'report.json'}
-      - name: Verify published vocabulary provenance before native builds
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        shell: python
-        run: |
-          import json, subprocess, sys
-          from pathlib import Path
-          sys.path.insert(0, str(Path.cwd()))
-          from corpus.download import verified
-          from corpus.portable import fingerprint, vocabulary_inputs
-          lock = json.loads(Path('corpus/prebuilt.json').read_text(encoding='utf-8'))
-          destination = Path('dev/cache/prebuilt')
-          destination.mkdir(parents=True)
-          subprocess.run(['gh', 'release', 'download', lock['release_tag'], '--pattern', 'report.json', '--dir', str(destination)], check=True)
-          report_path = destination / 'report.json'
-          assert verified(report_path, next(item for item in lock['files'] if item['path'] == 'report.json'))
-          report = json.loads(report_path.read_text(encoding='utf-8'))
-          assert all(report['identity'].get(key) == value for key, value in vocabulary_inputs(Path('corpus/profiles/compact.json')).items()), 'Prebuilt vocabulary is stale for this source/profile'
-          assert report['fingerprint'] == lock['fingerprint'] == fingerprint(report['identity'])
-          assert report['file'] == next(item for item in lock['files'] if item['path'] == 'vocabulary.sqlite3')
+          catalog = json.loads(Path('backend/setup/vocabularies.json').read_text(encoding='utf-8'))
+          assert re.fullmatch(r'corpus-editions-[0-9a-f]{64}', catalog['release_tag'])
+          assert catalog['release_tag'] == 'corpus-editions-' + catalog['fingerprint']
+          assert set(catalog['editions']) == {'filtered', 'all-ratings'}
+          for edition, entry in catalog['editions'].items():
+              assert entry['file']['path'] == 'pictide-vocabulary-' + edition + '.sqlite3'
+              assert entry['file']['bytes'] > 0 and re.fullmatch(r'[0-9a-f]{64}', entry['file']['sha256'])
       - name: Install application dependencies for core smokes
         run: python -m pip install --no-cache-dir -r backend/requirements.txt
       - name: Check core business behavior before native builds
@@ -139,24 +121,6 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
-      - name: Download and verify the locked vocabulary
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        shell: python
-        run: |
-          import json, subprocess, sys
-          from pathlib import Path
-          sys.path.insert(0, str(Path.cwd()))
-          from corpus.portable import load_prebuilt
-          lock = json.loads(Path('corpus/prebuilt.json').read_text(encoding='utf-8'))
-          destination = Path('dev/cache/prebuilt')
-          destination.mkdir(parents=True)
-          command = ['gh', 'release', 'download', lock['release_tag'], '--dir', str(destination)]
-          for item in lock['files']:
-              command.extend(['--pattern', item['path']])
-          subprocess.run(command, check=True)
-          load_prebuilt(destination, Path('corpus/profiles/compact.json'))
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
@@ -175,7 +139,7 @@ jobs:
           OPENSSL_STATIC: '1'
         run: python -m pip install --no-cache-dir -r backend/requirements-release.txt
       - name: Build the native portable package
-        run: python scripts/build_portable.py --prebuilt-library dev/cache/prebuilt
+        run: python scripts/build_portable.py
       - name: Smoke test the extracted package
         env:
           GH_TOKEN: ${{ github.token }}

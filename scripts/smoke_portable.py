@@ -154,11 +154,12 @@ def smoke(archive, report_path, timeout=900, model_dir=None, previous_archive=No
             internal = executable.parent.parent / 'Frameworks' if sys.platform == 'darwin' else executable.parent / '_internal'
             manifest = json.loads((internal / 'resources/manifest.json').read_text(encoding='utf-8'))
             catalog = json.loads((internal / 'backend/recommendation/model.json').read_text(encoding='utf-8'))
-            if manifest['model'] != catalog or any(not item['path'].startswith('libraries/') for item in manifest['files']):
-                raise RuntimeError('Portable resources must contain only vocabulary files and the locked model catalog')
-            if any(path.name == 'model.onnx' or path.suffix == '.safetensors' for path in internal.rglob('*')):
-                raise RuntimeError('Portable archive must not bundle model weights')
-            report['checks'].append('vocabulary-only seed, locked model catalog and no bundled model weights')
+            vocabulary_catalog = json.loads((internal / 'backend/setup/vocabularies.json').read_text(encoding='utf-8'))
+            if manifest['model'] != catalog or manifest['vocabularies'] != vocabulary_catalog or manifest['files']:
+                raise RuntimeError('Portable resources must contain only locked download catalogs')
+            if any(path.name == 'model.onnx' or path.suffix in {'.safetensors', '.sqlite3'} for path in internal.rglob('*')):
+                raise RuntimeError('Portable archive must not bundle vocabularies or model weights')
+            report['checks'].append('locked vocabulary/model download catalogs; no bundled vocabularies or model weights')
             data = directory / 'fresh-data'
             if model_dir is not None:
                 target = data / 'models/minilm'
@@ -250,12 +251,14 @@ def smoke(archive, report_path, timeout=900, model_dir=None, previous_archive=No
                 dataset = get('/api/candidate/dataset')
                 libraries = get('/api/candidate/library')
                 if dataset['status'] != 'ready' or dataset['tag_count'] <= 0 or not libraries['selected']:
-                    raise RuntimeError('Bundled vocabulary was not initialized and selected')
+                    raise RuntimeError('Downloaded vocabulary was not initialized and selected')
                 with closing(sqlite3.connect((data / 'libraries' / libraries['selected']).as_uri() + '?mode=ro', uri=True)) as db:
                     if db.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
                         raise RuntimeError('Initialized vocabulary failed integrity check')
+                if not libraries['selected'].startswith('pictide-vocabulary-filtered'):
+                    raise RuntimeError('Unattended first startup must select filtered')
                 report['vocabulary'] = dataset
-                report['checks'].append('initialized vocabulary selection and SQLite integrity')
+                report['checks'].append('first-start downloaded vocabulary selection and SQLite integrity')
                 if sys.platform == 'darwin':
                     process.stdin.close()
                     if process.wait(timeout=15) != 0:

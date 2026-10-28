@@ -11,6 +11,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 GROUPS = {
     'core': (
+        'tests.backend.setup.test_vocabulary.VocabularyPreparationSmoke.test_first_download_selects_and_reuses_offline_without_touching_personal_data',
         'tests.backend.setup.test_comfy_lifecycle.LifecycleHTTPTests.test_saved_configuration_starts_only_after_host_restart_and_closes_on_exit',
         'tests.backend.desktop.test_desktop_launcher.DesktopSocketSmoke.test_macos_update_preserves_launcher_mode_including_empty_arguments',
         'tests.backend.candidate.test_cooccurrence_integration.CooccurrenceIntegrationSmoke.test_preset_preview_rounds_and_sqlite_roam',

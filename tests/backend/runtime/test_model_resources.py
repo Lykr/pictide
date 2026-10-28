@@ -67,6 +67,7 @@ class ModelPreparationSmoke(unittest.TestCase):
         history.write_bytes(b'personal history fixture')
         paths = DataPaths(self.root).ensure()
         with (patch('backend.paths.DataPaths.configure_runtime', return_value=paths),
+              patch('backend.setup.vocabulary.prepare_vocabulary'),
               patch('backend.recommendation.resources.model_catalog', return_value=self.catalog),
               patch('backend.recommendation.resources.urlopen', side_effect=OSError('connection unavailable')),
               patch('backend.recommendation.resources.time.sleep'),

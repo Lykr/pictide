@@ -52,24 +52,12 @@ py -3.12 -m venv dev/runtime/builder
 .\dev\runtime\builder\Scripts\python.exe -m pip install -r backend/requirements-release.txt
 ```
 
-If building the vocabulary from raw metadata, also install the offline dependencies:
-
-```powershell
-.\dev\runtime\builder\Scripts\python.exe -m pip install -r corpus/requirements.txt
-```
-
 Build with that interpreter:
 
 ```powershell
 .\dev\runtime\builder\Scripts\python.exe scripts/build_portable.py
 ```
 
-Alternatively, use a verified [prebuilt vocabulary](../corpus.md#prebuilt-vocabulary), without the offline dependencies:
-
-```powershell
-.\dev\runtime\builder\Scripts\python.exe scripts/build_portable.py --prebuilt-library dev/resources/filtered
-```
-
-The builder handles locked frontend installation, type checking, temporary asset generation, packaging, and archive verification. `--dataset-dir`, `--cache-dir`, and `--profile` select resource inputs; see [portable builds](../development.md#build-portable-packages) for caching, output, and cleanup rules.
+The builder handles locked frontend installation, type checking, temporary asset generation, packaging, and archive verification. Vocabulary and MiniLM files are downloaded on first application startup. See [portable builds](../development.md#build-portable-packages) for caching, output, and cleanup rules.
 
 The final ZIP appears in `releases/`; reports stay under `dev/verification/portable/`. Extract it and launch the top-level `Pictide.exe`, keeping `_internal/` beside it. MiniLM downloads on first application startup, rather than during packaging. Run relevant [smoke checks](../testing.md) before delivery; simulated generation does not verify a GPU backend.

@@ -56,7 +56,7 @@ class CandidateLibraries:
         path = Path(path)
         key = self.stamp(path)
         cached = self._summaries.get(path)
-        if cached and cached[0] == key and not integrity:
+        if cached and cached[0] == key and (not integrity or cached[2]):
             return dict(cached[1])
         try:
             with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
@@ -78,7 +78,7 @@ class CandidateLibraries:
         except sqlite3.Error as error:
             raise CandidateError("词库文件格式或统计结构无效。") from error
         summary = dict(filename=path.name, tag_count=tags, relation_count=relations, bytes=key[0])
-        self._summaries[path] = (key, summary)
+        self._summaries[path] = (key, summary, integrity)
         return dict(summary)
 
     def listing(self):
@@ -88,7 +88,7 @@ class CandidateLibraries:
                 continue
             try:
                 path = self._path(path.name)
-                libraries.append(self.inspect(path))
+                libraries.append(self.inspect(path, integrity=True))
             except (CandidateError, OSError):
                 continue
         selected = self._selection()
@@ -100,7 +100,7 @@ class CandidateLibraries:
         listing = self.listing()
         if listing["selected"]:
             return self.directory / listing["selected"]
-        if not self._selection() and listing["libraries"]:
+        if listing["libraries"]:
             return self.select(listing["libraries"][0]["filename"])
         return self.empty_path()
 

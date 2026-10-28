@@ -35,24 +35,12 @@ python3.12 -m venv dev/runtime/builder
 ./dev/runtime/builder/bin/python -m pip install -r backend/requirements-release.txt
 ```
 
-Install offline dependencies if processing raw metadata locally:
-
-```bash
-./dev/runtime/builder/bin/python -m pip install -r corpus/requirements.txt
-```
-
 Then build:
 
 ```bash
 ./dev/runtime/builder/bin/python scripts/build_portable.py
 ```
 
-Or consume a verified [prebuilt vocabulary](../corpus.md#prebuilt-vocabulary) without the offline dependencies:
-
-```bash
-./dev/runtime/builder/bin/python scripts/build_portable.py --prebuilt-library dev/resources/filtered
-```
-
-The builder installs locked frontend dependencies, checks types, builds isolated assets, prepares vocabulary resources, and verifies the ZIP. See [portable builds](../development.md#build-portable-packages) for `--dataset-dir`, `--cache-dir`, `--profile`, final output, reports, and cleanup.
+The builder installs locked frontend dependencies, checks types, builds isolated assets, includes the pinned resource download catalogs, and verifies the ZIP. See [portable builds](../development.md#build-portable-packages) for final output, reports, and cleanup. Vocabulary and MiniLM files are downloaded on first startup, outside the archive.
 
 Extract the final ZIP from `releases/` and run `./start.sh`. MiniLM is prepared at application startup. The native Linux x64 CI smoke checks isolated startup, vocabulary initialization, model preparation, and HTTP readiness; it does not establish real GPU generation compatibility. Use the relevant [smoke group](../testing.md) for source changes.

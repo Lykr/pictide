@@ -31,11 +31,11 @@ python -m pip install -r corpus/requirements.txt
 
 The importer processes existing local files. Downloading and environment installation are separate steps. Preserve raw data and write each finished library to a new path under `dev/datasets/`; use the application to [upload or select the result](../guides/prompts.md#add-and-switch-libraries).
 
-## Portable build resources
+## Runtime vocabulary resources
 
-Local `scripts/build_portable.py` builds use the `filtered` edition from `corpus/profiles/compact.json` by default. They can prepare it from raw data, or consume an exported library with `--prebuilt-library DIR`. Both use a separate builder environment and stay independent of the development application's `data/`. See the native build instructions for [Windows](setup/windows.md#build-a-portable-package), [Linux](setup/linux.md#build-a-portable-package), or [macOS](setup/macos.md#build-a-portable-package).
+Application builds contain no vocabulary database and require no corpus-processing dependencies. `backend/setup/vocabularies.json` pins the published `filtered` and `all-ratings` editions; application startup downloads one only when no valid local library exists. See [Vocabulary editions](../guides/vocabularies.md) for startup choices and manual switching.
 
-Raw shards and `download.sqlite3` remain in `dev/datasets/danbooru-2026/`. Missing shards are downloaded at the pinned source revision; statistics and completed libraries go to `dev/cache/portable/`. Clearing the build cache preserves raw data for local recomputation. A verified library cache allows resource preparation without network requests. Change `--dataset-dir`, `--cache-dir`, or `--profile` to use other locations or processing settings. Corpus prepares vocabulary only; MiniLM is prepared [before application startup](../guides/getting-started.md#recommendation-dependency-preparation). See [cache verification](#cache-verification) for fingerprints and file checks. Manual processing below remains available for other library specifications.
+Offline tools below produce and validate reusable libraries independently of application packaging. Raw shards and `download.sqlite3` stay under `dev/datasets/danbooru-2026/`; intermediate statistics and reports use `dev/cache/portable/`. Clearing build caches preserves raw data.
 
 ### Cache verification
 
@@ -47,7 +47,7 @@ Prebuilt consumers additionally verify the resource lock's two files, fingerprin
 
 ### Prebuilt vocabulary
 
-Prepare one vocabulary locally and reuse it across native GitHub Actions builds. In the offline processing environment, with `corpus/requirements.txt` installed, run:
+Prepare one vocabulary locally for reuse by offline consumers. This lock is separate from the application startup catalog. In the offline processing environment, with `corpus/requirements.txt` installed, run:
 
 ```shell
 python scripts/prepare_vocabulary.py
@@ -59,7 +59,7 @@ The report records the source revision and checksums, normalized processing para
 
 Upload both files using the `gh release create` command printed by the preparation script. The resource tag is `corpus-<fingerprint>`; it is a prerelease excluded from the latest application release and does not match the application's `v*` workflow trigger. Authenticate GitHub CLI before uploading. Keep published resource assets unchanged; a changed vocabulary gets a new resource release. Commit and push the resulting resource lock after the upload succeeds.
 
-GitHub Actions downloads the exact locked files and passes their directory through `--prebuilt-library`. A missing, outdated, or damaged resource stops the build; CI never falls back to processing the raw dataset. The build carries MiniLM's fixed runtime catalog, without downloading or bundling its model files. Release builders install `backend/requirements-release.txt`; PyArrow and SciPy are needed only on machines preparing raw vocabulary data. For tag/version requirements and release commands, see [GitHub Actions releases](development.md#github-actions-releases).
+Application packaging no longer consumes `corpus/prebuilt.json`. Use the paired edition export below for runtime distribution; PyArrow and SciPy remain confined to offline production.
 
 ### Export both vocabulary editions
 
@@ -77,9 +77,9 @@ The default export directory is `releases/vocabularies-<contentfingerprint12>/`,
 - `pictide-vocabulary-all-ratings.sqlite3` and `pictide-vocabulary-all-ratings.report.json`;
 - `manifest.json` and `SHA256SUMS`.
 
-Use `--dataset-dir`, `--cache-dir`, or `--output-dir` to select other locations. The command exports locally and leaves `corpus/prebuilt.json` unchanged, so the portable build keeps its locked `filtered` resource. Each report records that edition's processing options and provenance; the manifest identifies the edition assets and their content.
+Use `--dataset-dir`, `--cache-dir`, or `--output-dir` to select other locations. The command exports locally and leaves `corpus/prebuilt.json` and the runtime download catalog unchanged. Each report records that edition's processing options and provenance; the manifest identifies the edition assets and their content.
 
-After checking the output, run the printed `gh release create` command to publish a fixed resource release with `--prerelease --latest=false`. Authenticate GitHub CLI first. Keep published assets unchanged and use a new content-based resource tag for changed exports. This publication is separate from preparing the default CI lock above; application releases continue to use the existing `v*` tag workflow. Link users to the two SQLite assets and the [download and switching guide](../guides/vocabularies.md#download-and-switch).
+After checking the output, run the printed `gh release create` command to publish a fixed resource release with `--prerelease --latest=false`. Authenticate GitHub CLI first. Keep published assets unchanged and use a new content-based resource tag for changed exports. After publication, copy the immutable manifest into `backend/setup/vocabularies.json` to select the editions offered by subsequent application builds. Application releases continue to use the existing `v*` tag workflow. Link users to the two SQLite assets and the [download and switching guide](../guides/vocabularies.md#download-and-switch).
 
 ## One-command processing
 

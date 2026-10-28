@@ -74,6 +74,10 @@ Keep **Danbooru** to use tags directly without an LLM.
 
 Internet downloads and image services automatically follow your system's HTTP(S) proxy settings or proxy environment variables. Localhost, private IP addresses, and local hostnames connect directly. To bypass a proxy for a custom internal domain, add it to your proxy exceptions or `NO_PROXY`. With no proxy configured, connections are direct. Pictide does not change your system settings. On macOS, HTTPS connections use the system certificate trust settings.
 
+## Vocabulary preparation
+
+If no valid vocabulary is installed, Pictide downloads one before opening the application. Interactive terminals offer `filtered` and `all-ratings`; unattended startup defaults to `filtered`. Use `--vocabulary filtered` or `--vocabulary all-ratings` to specify the edition. **All-ratings may generate explicit content.** Existing valid vocabularies are reused. See [Vocabulary editions](vocabularies.md) for downloads and offline preparation.
+
 ## Recommendation dependency preparation
 
 First launch downloads MiniLM, a recommendation dependency (about **91 MB**). Keep the launcher window open until downloading and verification finish; the application opens afterward. If downloading fails, restore connectivity and restart to resume. Completed downloads are reused offline.
@@ -93,4 +97,4 @@ Download these five files on a connected machine, keep their names, and place th
 
 ## Start from source
 
-Source startup requires Python 3.10+. On a fresh checkout, build the frontend and [add a library](prompts.md#add-and-switch-libraries). Follow the steps for [Windows](setup/windows.md#prepare-from-source), [Linux](setup/linux.md#prepare-from-source), or [macOS](setup/macos.md#prepare-from-source).
+Source startup requires Python 3.10+. On a fresh checkout, build the frontend; startup prepares a vocabulary and the recommendation dependency. Follow the steps for [Windows](setup/windows.md#prepare-from-source), [Linux](setup/linux.md#prepare-from-source), or [macOS](setup/macos.md#prepare-from-source).

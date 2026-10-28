@@ -42,25 +42,13 @@ python3.12 -m venv dev/runtime/builder
 ./dev/runtime/builder/bin/python -m pip install -r backend/requirements-release.txt
 ```
 
-Add offline dependencies when processing raw metadata:
-
-```bash
-./dev/runtime/builder/bin/python -m pip install -r corpus/requirements.txt
-```
-
 Build with the native interpreter:
 
 ```bash
 ./dev/runtime/builder/bin/python scripts/build_portable.py
 ```
 
-Or use a verified [prebuilt vocabulary](../corpus.md#prebuilt-vocabulary) without the offline dependencies:
-
-```bash
-./dev/runtime/builder/bin/python scripts/build_portable.py --prebuilt-library dev/resources/filtered
-```
-
-The build compiles `scripts/macos_launcher.swift` with system AppKit, bundles the service, and creates a ZIP containing `Pictide.app`. See [portable builds](../development.md#build-portable-packages) for resource flags, cache rules, reports, and automatic cleanup. Signing is ad-hoc; Developer ID signing and notarization are outside the current distribution process.
+The build compiles `scripts/macos_launcher.swift` with system AppKit, bundles the service, and creates a ZIP containing `Pictide.app`. See [portable builds](../development.md#build-portable-packages) for output, reports, and automatic cleanup. Vocabulary and MiniLM downloads happen at application startup. Signing is ad-hoc; Developer ID signing and notarization are outside the current distribution process.
 
 `Contents/MacOS/Pictide` owns preparation progress, the menu bar, session locking, and its child service. `PictideService` runs Host; browser opening waits for HTTP readiness. Quitting requests normal service shutdown. CLI arguments delegate to the engine:
 

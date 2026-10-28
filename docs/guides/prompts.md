@@ -30,7 +30,7 @@ Statistical association helps combine tags; the image model determines the resul
 
 ## Add and switch libraries
 
-Portable packages include `filtered`, ready to use. For a broader range of tags, download `all-ratings` from [Vocabulary editions](vocabularies.md).
+On startup, Pictide downloads a vocabulary if none is valid; unattended startup defaults to `filtered`. For edition choices and manual switching, see [Vocabulary editions](vocabularies.md). The `all-ratings` edition includes explicit source material and may generate explicit content.
 
 Under Prompts → Library → Upload, select the downloaded `.sqlite3` file. It is selected automatically after upload. You can also place a finished library in `libraries/` under your data directory, refresh, and select it. Multiple versions can coexist. Switching preserves your personal presets and fixed terms; newly generated prompts use the selected library.
 

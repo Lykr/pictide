@@ -1,0 +1,56 @@
+{
+  "editions": {
+    "filtered": {
+      "profile": "corpus/profiles/compact.json",
+      "fingerprint": "a6d094bdf1e3c1614581320753536b03f651fe79f357e8519f71a26b92cce3ff",
+      "file": {
+        "path": "pictide-vocabulary-filtered.sqlite3",
+        "bytes": 18518016,
+        "sha256": "d6dada523525d1811a90c49fa5b1490781639a331ac18d1fc6c36b44d62360f0"
+      },
+      "report": {
+        "path": "pictide-vocabulary-filtered.report.json",
+        "bytes": 3171,
+        "sha256": "bd8ca08cc5de7268820a5e1c67e9800bbf640b865b89212244390d63d904127a"
+      }
+    },
+    "all-ratings": {
+      "profile": "corpus/profiles/all-ratings.json",
+      "fingerprint": "4217b20579ad4c9074464bfcb320bacaa104e5bd4f601c0bc7acf3d50b4e16a0",
+      "file": {
+        "path": "pictide-vocabulary-all-ratings.sqlite3",
+        "bytes": 23498752,
+        "sha256": "14ce87a55f9b5eacca9be942bcda0f3992f8a143c71a5583fea68b740837bcd2"
+      },
+      "report": {
+        "path": "pictide-vocabulary-all-ratings.report.json",
+        "bytes": 3077,
+        "sha256": "a3851771314b9681940c07d001d2b0ece60ce415b84c6c4eea3dc43717e86436"
+      }
+    }
+  },
+  "files": [
+    {
+      "path": "pictide-vocabulary-filtered.sqlite3",
+      "bytes": 18518016,
+      "sha256": "d6dada523525d1811a90c49fa5b1490781639a331ac18d1fc6c36b44d62360f0"
+    },
+    {
+      "path": "pictide-vocabulary-filtered.report.json",
+      "bytes": 3171,
+      "sha256": "bd8ca08cc5de7268820a5e1c67e9800bbf640b865b89212244390d63d904127a"
+    },
+    {
+      "path": "pictide-vocabulary-all-ratings.sqlite3",
+      "bytes": 23498752,
+      "sha256": "14ce87a55f9b5eacca9be942bcda0f3992f8a143c71a5583fea68b740837bcd2"
+    },
+    {
+      "path": "pictide-vocabulary-all-ratings.report.json",
+      "bytes": 3077,
+      "sha256": "a3851771314b9681940c07d001d2b0ece60ce415b84c6c4eea3dc43717e86436"
+    }
+  ],
+  "fingerprint": "fa4d623c2a7d32d2569a3e1657e4aa5b1f6937284cc42091d60c1bcc8d899c5b",
+  "release_tag": "corpus-editions-fa4d623c2a7d32d2569a3e1657e4aa5b1f6937284cc42091d60c1bcc8d899c5b"
+}

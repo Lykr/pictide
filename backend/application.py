@@ -41,11 +41,10 @@ def validate_generation_options(config, fields):
 
 class PictideApplication:
     @staticmethod
-    def prepare_startup(paths, seed_dir):
-        """Prepare vocabulary and model before composing application services."""
-        if seed_dir is not None:
-            from .store.portable_resources import initialize_resources
-            initialize_resources(paths, seed_dir)
+    def prepare_startup(paths, *, vocabulary=None, interactive=False):
+        """Prepare the chosen vocabulary and model before composing application services."""
+        from .setup.vocabulary import prepare_vocabulary
+        prepare_vocabulary(paths, vocabulary, interactive=interactive)
         from .recommendation.resources import prepare_model
         prepare_model(paths.models / 'minilm')
 

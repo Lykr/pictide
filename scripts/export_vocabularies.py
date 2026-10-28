@@ -74,7 +74,7 @@ def export_vocabularies(dataset_dir, cache_dir, *, output_dir=None, profiles=Non
                *(str(output / name) for name in [*(item['path'] for item in files), 'manifest.json', 'SHA256SUMS']),
                '--title', 'Pictide vocabularies: filtered and all ratings',
                '--notes', 'Statistical vocabularies, processing provenance, and SHA-256 checksums. '
-               'Portable packages use filtered by default; all-ratings is an optional manual replacement.',
+               'Startup downloads a separate vocabulary when needed. Unattended startup defaults to filtered; all-ratings may generate explicit content.',
                '--prerelease', '--latest=false']
     print('Upload arguments: ' + json.dumps(command), flush=True)
     print(shlex.join(command), flush=True)

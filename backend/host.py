@@ -567,6 +567,9 @@ def _main(argv=None):
     parser.add_argument("--host", default="127.0.0.1", choices=["127.0.0.1", "localhost", "::1", "0.0.0.0"])
     parser.add_argument("--port", type=int, default=8189)
     parser.add_argument("--data-dir", default=None)
+    parser.add_argument("--vocabulary", choices=['filtered', 'all-ratings'], default=None,
+                        help="Vocabulary to download when none is valid; non-interactive default: filtered. "
+                             "all-ratings may generate explicit content.")
     parser.add_argument("--lan", action="store_true", help="Allow devices on the local network")
     parser.add_argument("--no-browser", action="store_true", help="Keep the browser closed")
     parser.add_argument("--desktop", action="store_true", help="Use the Windows desktop tray")
@@ -618,7 +621,14 @@ def _main(argv=None):
         raise SystemExit(1) from None
     if desktop_requested and not args.desktop_worker:
         from .desktop.launcher import launch_desktop
-        if launch_desktop(sys.argv[1:] if argv is None else argv, paths):
+        from .setup.vocabulary import choose_vocabulary
+        arguments = list(sys.argv[1:] if argv is None else argv)
+        if args.vocabulary is None:
+            args.vocabulary = choose_vocabulary(paths, interactive=bool(sys.stdin and sys.stdin.isatty()
+                                                                        and sys.stdout and sys.stdout.isatty()))
+            if args.vocabulary:
+                arguments += ['--vocabulary', args.vocabulary]
+        if launch_desktop(arguments, paths):
             return
         # The worker released its tray-less session; this terminal now owns logs.
         paths.configure_runtime()
@@ -647,7 +657,9 @@ def _main(argv=None):
         if sys.platform == 'darwin' and args.desktop_worker:
             from .desktop.launcher import reserve_desktop_socket
             worker_socket = reserve_desktop_socket(host, args.port)
-        PictideApplication.prepare_startup(paths, STATIC.parent.parent / "resources" if frozen else None)
+        PictideApplication.prepare_startup(paths, vocabulary=args.vocabulary,
+            interactive=bool(not args.desktop_worker and sys.stdin and sys.stdin.isatty()
+                             and sys.stdout and sys.stdout.isatty()))
         app = create_app(paths.root, allow_lan=host == "0.0.0.0")
         from .updates.runtime import save_instance, ready_instance, remove_instance
         arguments = json.loads(os.environ.get('PICTIDE_DESKTOP_ARGUMENTS', 'null'))

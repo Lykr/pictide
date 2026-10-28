@@ -1,6 +1,5 @@
 """A few portable startup smokes; native bundling is validated separately."""
 from tests import ROOT
-from contextlib import closing
 import json
 import logging
 import os
@@ -8,11 +7,10 @@ from pathlib import Path
 import platform
 import plistlib
 import shutil
-import sqlite3
 import sys
 import tempfile
 import unittest
-from unittest.mock import ANY, patch
+from unittest.mock import patch
 import zipfile
 
 from aiohttp import web
@@ -23,14 +21,13 @@ from backend import __version__
 from backend.host import open_browser_when_ready
 from backend.paths import DataPaths
 from backend.recommendation.resources import model_catalog
-from corpus.portable import PreparedResources
+from backend.setup.vocabulary import vocabulary_catalog
 from scripts.build_portable import build, export_resources, write_archive
 from scripts.smoke_portable import unpack
-from tests.backend.candidate.test_candidate_libraries import vocabulary
 
 
 class PortableResourcesSmoke(unittest.TestCase):
-    def test_build_from_prepared_resources_without_application_data(self):
+    def test_build_with_download_catalogs_without_application_data(self):
         for target in ('win32', 'darwin', 'linux'):
             with self.subTest(platform=target):
                 self.check_platform_build(target)
@@ -50,17 +47,17 @@ class PortableResourcesSmoke(unittest.TestCase):
             notices.write_text('frontend licenses', encoding='utf-8')
             for name in ('LICENSE', 'NOTICE'):
                 (repo / name).write_text('project license fixture', encoding='utf-8')
-            library = vocabulary(root / 'neutral.sqlite3')
             catalog = repo / 'backend/recommendation/model.json'
             catalog.parent.mkdir(parents=True)
             catalog.write_text(json.dumps(model_catalog()), encoding='utf-8')
             workflow = repo / 'docs/assets/workflows/anima-turbo-v1.1.api.json'
             workflow.parent.mkdir(parents=True)
             shutil.copyfile(ROOT / 'docs/assets/workflows/anima-turbo-v1.1.api.json', workflow)
-            provenance = {'fixture': True, 'dataset_revision': 'pinned-v1'}
-            resources = PreparedResources(library, provenance)
-            dataset, cache = (root / name for name in ('datasets', 'cache'))
-            profile = root / 'profile.json'
+            vocabularies = repo / 'backend/setup/vocabularies.json'
+            vocabularies.parent.mkdir(parents=True)
+            vocabularies.write_text(json.dumps(vocabulary_catalog()), encoding='utf-8')
+            provenance = {'vocabulary_release': vocabulary_catalog()['release_tag'],
+                          'vocabulary_fingerprint': vocabulary_catalog()['fingerprint']}
             output = root / 'release'
             output.mkdir()
             previous = output / f'pictide-{__version__}-{target_platform}-{platform.machine().lower()}.zip'
@@ -110,17 +107,13 @@ class PortableResourcesSmoke(unittest.TestCase):
                 with patch('scripts.build_portable.ROOT', repo), \
                         patch('scripts.build_portable.sys.platform', target_platform), \
                         patch('scripts.build_portable.build_frontend', side_effect=lambda target: shutil.copytree(front, target)) as frontend, \
-                        patch('scripts.build_portable.prepare_resources', return_value=resources) as prepare, \
                         patch('scripts.build_portable.subprocess.run', side_effect=bundle), \
                         patch('scripts.build_portable.write_archive', side_effect=fixture_archive), \
                         patch('scripts.build_portable.copy_licenses', side_effect=lambda target: (target / 'Apache-2.0.txt').write_text('license fixture')), \
                         patch('backend.paths.logging.getLogger', return_value=logger), \
                         patch.dict('os.environ'), patch('tempfile.tempdir', tempfile.tempdir), \
                         patch('sys.pycache_prefix', sys.pycache_prefix):
-                    result = build(output, dataset_dir=dataset, cache_dir=cache,
-                                   profile=profile)
-                    prepare.assert_called_once_with(dataset, cache, profile,
-                                                    prebuilt_library=None, progress=ANY)
+                    result = build(output)
                     frontend.assert_called_once()
             finally:
                 for handler in logger.handlers:
@@ -140,11 +133,13 @@ class PortableResourcesSmoke(unittest.TestCase):
                 manifest = json.loads(archive.read(seed + 'manifest.json'))
                 self.assertEqual(manifest['provenance'], provenance)
                 self.assertEqual(manifest['model'], model_catalog())
-                self.assertEqual([item['path'] for item in manifest['files']], ['libraries/neutral.sqlite3'])
+                self.assertEqual(manifest['files'], [])
+                self.assertEqual(manifest['vocabularies'], vocabulary_catalog())
                 self.assertIn(internal + 'backend/recommendation/model.json', archive.namelist())
                 bundled_workflow = json.loads(archive.read(internal + 'backend/workflows/anima-turbo-v1.1.api.json'))
                 self.assertEqual(bundled_workflow['28']['inputs'], dict(width=832, height=1248, batch_size=1))
-                self.assertIn(seed + 'libraries/neutral.sqlite3', archive.namelist())
+                self.assertIn(internal + 'backend/setup/vocabularies.json', archive.namelist())
+                self.assertFalse(any(name.endswith('.sqlite3') for name in archive.namelist()))
                 names = archive.namelist()
                 if target_platform == 'win32':
                     self.assertIn('Pictide/Pictide.exe', names)
@@ -169,10 +164,6 @@ class PortableResourcesSmoke(unittest.TestCase):
                     self.assertIn('Pictide/data/runtime/pictide/Pictide', names)
                 self.assertFalse(any(name.endswith('.onnx') or '/models/' in name for name in archive.namelist()))
                 self.assertFalse(any('/db/' in name or '/images/' in name for name in archive.namelist()))
-                exported = root / 'exported.sqlite3'
-                exported.write_bytes(archive.read(seed + 'libraries/neutral.sqlite3'))
-                with closing(sqlite3.connect(exported)) as db:
-                    self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='presets'").fetchone())
 
     def test_macos_archive_uses_native_bundle_archiver(self):
         with patch('scripts.build_portable.sys.platform', 'darwin'), patch('scripts.build_portable.subprocess.run') as run:
@@ -229,26 +220,20 @@ class PortableResourcesSmoke(unittest.TestCase):
             self.assertEqual(json.loads(report.read_text())['error'], 'frontend fixture failed')
             self.assertFalse(json.loads(report.read_text())['passed'])
 
-    def test_export_initialize_and_preserve_user_data(self):
+    def test_export_catalogs_and_prepare_without_replacing_existing_data(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            library = vocabulary(root / 'neutral.sqlite3')
-            seed = root / 'seed'
-            resources = PreparedResources(library, {'fixture': True})
-            manifest = export_resources(resources, seed)
-            self.assertTrue(manifest['files'])
-            with closing(sqlite3.connect(seed / 'libraries/neutral.sqlite3')) as db:
-                self.assertEqual(db.execute('SELECT count(*) FROM tags').fetchone()[0], 2)
-                self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='presets'").fetchone())
-            target = DataPaths(root / 'portable data')
-            with patch('backend.recommendation.resources.prepare_model') as prepare:
-                PictideApplication.prepare_startup(target, seed)
-                prepare.assert_called_once_with(target.models / 'minilm')
-            target.candidate_database.write_bytes(b'personal presets')
+            manifest = export_resources(root / 'seed')
+            self.assertEqual(manifest['files'], [])
+            self.assertEqual(manifest['vocabularies'], vocabulary_catalog())
+            self.assertEqual(list((root / 'seed').iterdir()), [root / 'seed/manifest.json'])
+            target = DataPaths(root / 'portable data').ensure()
             target.database.write_bytes(b'personal history')
-            with patch('backend.recommendation.resources.prepare_model'):
-                PictideApplication.prepare_startup(target, seed)
-            self.assertEqual(target.candidate_database.read_bytes(), b'personal presets')
+            with patch('backend.setup.vocabulary.prepare_vocabulary') as vocabulary_prepare, \
+                    patch('backend.recommendation.resources.prepare_model') as model_prepare:
+                PictideApplication.prepare_startup(target, vocabulary='all-ratings', interactive=False)
+            vocabulary_prepare.assert_called_once_with(target, 'all-ratings', interactive=False)
+            model_prepare.assert_called_once_with(target.models / 'minilm')
             self.assertEqual(target.database.read_bytes(), b'personal history')
 
     def test_portable_default_uses_executable_location(self):
