@@ -153,6 +153,26 @@ class UnifiedReleaseTests(unittest.TestCase):
             self.assertIsNone(docker.latest(self.root))
         publish.assert_not_called()
 
+    def test_stage_accepts_push_output_with_a_qualified_image_reference(self):
+        report = artifacts.read(self.root / 'docker-smoke-report-amd64.json')
+        artifacts.write(self.root / 'smoke-report.json', report)
+        image_digest = 'sha256:' + 'd' * 64
+        with patch.object(docker, 'identity', return_value=dict(commit=COMMIT, version=VERSION)), \
+                patch.object(docker, 'image_info'), \
+                patch.object(docker, 'run', return_value=Mock(stdout=artifacts.REPOSITORY + ':build-test@' + image_digest + '\n', stderr='')):
+            record = docker.stage(self.root, 'pictide:validation', '12345-1')
+        self.assertEqual(record['image'], artifacts.REPOSITORY + '@' + image_digest)
+        self.assertEqual(record['image_id'], report['image_id'])
+        self.assertEqual(record['commit'], COMMIT)
+
+    def test_push_digest_must_be_unambiguous(self):
+        digest = 'sha256:' + 'd' * 64
+        self.assertEqual(docker.pushed_digest(digest + '\n'), digest)
+        self.assertEqual(docker.pushed_digest('build: digest: ' + digest + ' size: 1043\n'), digest)
+        for output in ['no digest', digest + '\nsha256:' + 'e' * 64]:
+            with self.assertRaisesRegex(ValueError, 'one registry digest'):
+                docker.pushed_digest(output)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -30,6 +30,13 @@ def image_info(image, record):
         raise ValueError('Registry image differs from the tested release source')
 
 
+def pushed_digest(output):
+    matches = set(re.findall(r'(?:^|@|\s)(sha256:[0-9a-f]{64})(?=\s|$)', output))
+    if len(matches) != 1:
+        raise ValueError('Expected one registry digest in Docker push output: ' + output)
+    return matches.pop()
+
+
 def stage(directory, image, build_id):
     current = identity()
     if not re.fullmatch(r'[0-9]+-[0-9]+', build_id):
@@ -41,7 +48,8 @@ def stage(directory, image, build_id):
         raise ValueError('Only a successful smoke of this checkout can be staged')
     target = f"{REPOSITORY}:build-{current['commit']}-{build_id}-{record['architecture']}"
     run('docker', 'tag', image, target)
-    image_digest = run('docker', 'push', '--quiet', target).stdout.strip().splitlines()[-1]
+    pushed = run('docker', 'push', target)
+    image_digest = pushed_digest(pushed.stdout + '\n' + pushed.stderr)
     shutil.copyfile(Path(directory) / 'smoke-report.json',
                     Path(directory) / f"docker-smoke-report-{record['architecture']}.json")
     return write_docker(directory, record['architecture'], current['commit'], current['version'],
@@ -60,7 +68,7 @@ def manifest(image, records):
     run('docker', 'manifest', 'create', image, *(record['image'] for record in records.values()))
     for architecture, record in records.items():
         run('docker', 'manifest', 'annotate', image, record['image'], '--os', 'linux', '--arch', architecture)
-    return run('docker', 'manifest', 'push', image).stdout.strip().splitlines()[-1]
+    return pushed_digest(run('docker', 'manifest', 'push', image).stdout)
 
 
 def export_image(image, archive):
@@ -74,6 +82,7 @@ def export_image(image, archive):
 def publish(directory, commit, tag):
     directory = Path(directory)
     release = verify(directory, commit, tag)
+    release['tooling_commit'] = os.environ.get('RELEASE_TOOLING_COMMIT', commit)
     versioned = REPOSITORY + ':' + release['version']
     # A first GHCR publication needs public package visibility before any stable tag.
     with tempfile.TemporaryDirectory() as config:
