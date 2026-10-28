@@ -19,6 +19,8 @@ On Windows, first-launch setup can install ComfyUI and a recommended model. On m
 
 Startup help: [Windows](docs/guides/setup/windows.md#portable-edition) · [Linux](docs/guides/setup/linux.md#portable-edition) · [macOS](docs/guides/setup/macos.md#portable-edition).
 
+For a server or NAS, [deploy with Docker Compose](docs/guides/setup/docker.md): `docker compose up -d --build`.
+
 ### Feature overview
 
 | Section | Purpose | Guide |

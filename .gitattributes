@@ -1,4 +1,6 @@
 * text=auto
+Dockerfile text eol=lf
+.dockerignore text eol=lf
 *.py text eol=lf
 *.js text eol=lf
 *.mjs text eol=lf

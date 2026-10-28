@@ -83,7 +83,7 @@ Use a new version for each release; existing published versions and assets are p
 
 The workflow validates the pinned download catalog. Native builds download neither vocabularies nor raw metadata; their isolated startup smokes exercise the first-start `filtered` download and integrity checks. Core, UI, and browser checks gate native packaging; every native package then passes an isolated startup smoke check. Once all platforms succeed, the workflow publishes ZIPs, `SHA256SUMS`, and reports together. Versions with prerelease suffixes become prereleases.
 
-Ordinary branch pushes use local verification and do not trigger Actions. Resource Releases persist the vocabulary; Actions caches only accelerate builds. For check preparation and coverage limits, see [release checks](testing.md#release-checks).
+Ordinary branch pushes use local verification and do not trigger Actions. Docker validation additionally runs on relevant pull requests and manual dispatches; see [Docker builds](#build-and-verify-docker). Resource Releases persist the vocabulary; Actions caches only accelerate builds. For check preparation and coverage limits, see [release checks](testing.md#release-checks).
 
 To rerun the complete release after a CI-only correction, dispatch `release.yml` from `main` with the existing `release_tag` and leave `build_run` and `macos_run` empty. Validation and all four builds check out that tag, then use the same native smoke and publication gates. This keeps the application source pinned while using the corrected workflow. Core HTTP fixtures receive an empty `web/dist/` before their checks; browser checks use the fully compiled isolated assets. An existing Release is never replaced.
 
@@ -92,6 +92,19 @@ For Mac validation without publishing, manually run `.github/workflows/macos-val
 The optional `source_ref` selects an existing branch or tag; provenance records the checked-out commit. `previous_release` pins the older package and downloads it through authenticated GitHub CLI access, allowing upgrade checks for an existing tag without changing that tag. Normal release smoke jobs also use the workflow token for GitHub metadata queries to avoid shared-runner anonymous rate limits. Tokens remain confined to CI and are never bundled with the application.
 
 If one macOS validation fails while the other three release builds succeed, validate the same tag with the manual Mac workflow for the failed architecture. Both macOS builders statically link source-built cryptography to avoid conflicting OpenSSL dylibs in the packaged app. The release workflow's manual recovery accepts `release_tag`, the original `build_run`, and the successful `macos_run`. It collects the three original assets and the matching replacement Mac asset inside GitHub, verifies matching application source commits and package hashes, and runs the same report, manifest, and checksum checks before publication. A workflow-only correction can run from `main` while `source_ref` keeps the application checkout on the original tag. It refuses to replace an existing platform asset or an existing Release. This recovery path is explicitly triggered; ordinary branch pushes still do not start workflows.
+
+## Build and verify Docker
+
+`Dockerfile` builds locked frontend assets in a Node.js stage and copies them into a Python 3.12 runtime. Runtime installs only `backend/requirements.txt`, runs as UID/GID 10001, and starts the existing CLI host. All mutable state stays under `/data`; vocabulary and MiniLM catalogs retain the same first-start download and verification path as source/portable startup. The allowlisted `.dockerignore` excludes personal data, developer environments, generated assets and local secrets from the build context.
+
+```shell
+docker compose up -d --build
+python scripts/smoke_docker.py --image pictide:local
+```
+
+The smoke creates its own uniquely named Compose project and volume, checks non-root execution, published HTTP/frontend assets, actual CPU MiniLM scoring, and host-gateway API connectivity. It then replaces the container with networking disabled and verifies resource reuse plus database, settings and image persistence. Only those temporary containers and their volume are removed. Reports stay in `dev/verification/docker/`; no GPU or image/LLM provider requests are made.
+
+`.github/workflows/docker-validation.yml` runs these checks natively on Linux amd64 and arm64 for relevant pull requests, or by manual dispatch with an optional `source_ref`. It retains source/image provenance and reports without publishing an image. Portable release jobs remain separate. Deployment and update commands are in the [Docker guide](../guides/setup/docker.md).
 
 ## Verify and commit
 

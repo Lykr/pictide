@@ -76,6 +76,8 @@ Source and packaged deployments use the same personal data responsibilities and 
 
 ## Data Lifecycle
 
+Docker mounts the complete runtime data root at `/data`. The default Compose named volume retains databases, images, feedback, catalogs' downloaded resources, caches and logs when replacing the container. Image layers hold application code and built frontend assets. See [Docker deployment](../guides/setup/docker.md) for volume ownership and rebuild commands.
+
 For disposable caches, frontend backups and validation files, use the [project cleanup script](cleanup.md). It previews a reviewable list and preserves long-lived resources and personal data.
 
 - Each backend save creates an immutable revision; existing tasks reference their submission-time snapshot. Workflow versions are backed up before editing.

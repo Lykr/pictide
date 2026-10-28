@@ -1,0 +1,57 @@
+name: Validate Docker deployment
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - .gitattributes
+      - compose.yaml
+      - .github/workflows/docker-validation.yml
+      - backend/**
+      - web/**
+      - scripts/smoke_docker.py
+      - scripts/smoke_inference.py
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Source branch or tag (empty uses this workflow revision)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Docker ${{ matrix.architecture }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {architecture: amd64, os: ubuntu-24.04}
+          - {architecture: arm64, os: ubuntu-24.04-arm}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.source_ref || github.sha }}
+      - name: Build the native image
+        run: docker build --pull --tag pictide:validation .
+      - name: Validate Compose startup, CPU inference and persistent offline replacement
+        run: python3 scripts/smoke_docker.py --image pictide:validation --report dev/verification/docker/smoke-report.json
+      - name: Record source and image provenance
+        if: always()
+        run: |
+          mkdir -p dev/verification/docker
+          git rev-parse HEAD > dev/verification/docker/source-commit.txt
+          docker image inspect pictide:validation > dev/verification/docker/image.json || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: docker-${{ matrix.architecture }}-verification
+          path: dev/verification/docker/
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,17 @@
+services:
+  pictide:
+    image: ${PICTIDE_IMAGE:-pictide:local}
+    build: .
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    ports:
+      - "${PICTIDE_BIND:-127.0.0.1}:${PICTIDE_PORT:-8189}:8189"
+    volumes:
+      - pictide-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["--vocabulary", "${PICTIDE_VOCABULARY:-filtered}"]
+
+volumes:
+  pictide-data:

@@ -11,7 +11,7 @@ Choose what you want to do, then follow the guide to get started.
 | Question | Start here |
 | --- | --- |
 | What is Pictide, and how can I use it? | [About Pictide](guides/about.md) |
-| How do I install and start it? | [Windows](guides/setup/windows.md) · [Linux](guides/setup/linux.md) · [macOS](guides/setup/macos.md) |
+| How do I install and start it? | [Windows](guides/setup/windows.md) · [Linux](guides/setup/linux.md) · [macOS](guides/setup/macos.md) · [Docker](guides/setup/docker.md) |
 | How do I connect a generation backend? | [Connect ComfyUI, OpenAI Images, or Gemini](guides/getting-started.md) |
 | How do I access it from my phone or add it to my Home Screen? | [LAN access and Home Screen app](guides/access.md) |
 | How do I keep a favorite style or guide image concepts? | [Prompts and presets](guides/prompts.md) |
