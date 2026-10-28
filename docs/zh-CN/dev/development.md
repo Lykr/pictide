@@ -68,10 +68,10 @@ Windows 包在 `_internal/` 旁提供 `Pictide.exe`，默认数据位置为旁�
 
 ## GitHub Actions 发版
 
-`.github/workflows/release.yml` 在推送 `v*` 标签时运行，使用原生 runner、Python 3.12 与 Node.js 22，构建 Windows x64、Linux x64、macOS ARM64 和 macOS Intel 包。标签去掉 `v` 后必须与 `backend/__init__.py`、`web/package.json` 的版本一致。
+`.github/workflows/release.yml` 在推送 `v*` 标签时运行，使用原生 runner 构建 Windows x64、Linux x64、macOS ARM64、macOS Intel 便携包，以及 Linux amd64/arm64 Docker 镜像。标签去掉 `v` 后必须与 `backend/__init__.py`、`web/package.json` 的版本一致。
 
-1. 准备并将[预构建词库](corpus.md#预构建词库)发布为 `corpus-<fingerprint>` 资源 Release 的不可变资产，此标签不触发应用发行。
-2. 将 `corpus/prebuilt.json` 与版本变更一起提交、推送；源数据修订、配置或处理器变化时重新准备资源。
+1. 词库变化时，将[两版词库](../../dev/corpus.md#export-both-vocabulary-editions)发布为不可变的资源 Release。
+2. 按发布的版本清单更新 `backend/setup/vocabularies.json`，保留 Release 标签、文件大小和 SHA-256，与应用版本变更一起提交。
 3. 确认标签提交包含工作流、资源锁及一致版本，再创建并推送标签。例如两个源码版本均为 `0.5.0`：
 
 ```shell
@@ -81,11 +81,17 @@ git push origin v0.5.0
 
 每次发行使用新版本，保留已有发布版本与资源。
 
-工作流校验锁定资源的大小、SHA-256、来源、报告与数据库，使用 `--prebuilt-library`，不在 runner 下载或统计原始数据。core、ui 和 browser 检查是原生打包门禁，每个原生包另做独立启动冒烟。所有平台通过后统一发布 ZIP、`SHA256SUMS` 和报告；带预发布后缀的版本标为 prerelease。
+工作流将标签解析为唯一 commit，所有构建均检出该 SHA。`scripts/release_artifacts.py` 将便携包哈希、经过测试的镜像摘要与源码版本绑定；缺少平台或来源不一致时停止发布。不能从更新后的 `main` 单独构建镜像，再与旧安装包放在同一版本下。
+
+core、ui 和 browser 检查通过后开始打包；每个便携包再验证启动、真实 CPU 推理和旧版升级。词库及 MiniLM 不打进安装包，由隔离启动冒烟验证首次下载。Docker 在两种原生架构上验证 Compose 启动、CPU 推理和保留数据卷的离线重建，通过后暂存镜像。发布时按不可变摘要拉取暂存镜像，核对镜像 ID 和源码标签，不重新构建。
+
+四份便携包和两种镜像全部通过后，统一发布多架构镜像、可下载镜像文件、固定版本的 `compose.yaml`、ZIP、`update.json`、`release.json`、校验值和报告，并验证两种架构均可匿名拉取。稳定镜像的 `latest` 别名在 GitHub Release 发布后更新；预发布不修改 `latest`。保留已有版本镜像和 Release。
+
+发布任务需要 `contents: write` 和 `packages: write`。GHCR 首次创建的包默认为私有：第一次暂存上传后，在关联仓库的 `pictide` 包设置中将可见性改为公开，再进入匿名访问检查。后续发版复用公开的包。
 
 日常分支推送使用本地验证，不触发 Actions。资源 Release 长期保存词库，Actions cache 仅加速构建；验证准备与覆盖限制见[发版检查](testing.md#发版检查)。
 
-只修正 CI 后需要完整重跑时，从 `main` 手动触发 `release.yml`，传入已有 `release_tag`，将 `build_run`、`macos_run` 留空。验证与四平台构建均检出该标签，沿用相同原生冒烟和发布门禁，从而固定应用源码并使用修正的工作流。HTTP 核心夹具检查前先准备空 `web/dist/`，浏览器检查使用完整编译的隔离产物；不覆盖已有 Release。
+只修正 CI 后需要完整重跑时，从 `main` 手动触发 `release.yml`，传入已有 `release_tag`，将 `build_run`、`macos_run` 留空。验证、四平台便携包和两种 Docker 镜像均检出该标签解析出的 commit，沿用相同验证和发布门禁。HTTP 核心夹具检查前先准备空 `web/dist/`，浏览器检查使用完整编译的隔离产物；不覆盖已有 Release。
 
 不发布的 Mac 验证使用 `.github/workflows/macos-validation.yml`，选择 Intel 或 Apple Silicon，复用发行构建与启动冒烟，保留 ZIP、校验值、修订元数据和报告为七天期 Actions artifact。传到目标 Mac 核对 SHA-256 后，单独记录实际启动器与启动行为，不能用 CI 结果替代。
 

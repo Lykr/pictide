@@ -1,21 +1,25 @@
 # Docker deployment
 
+[简体中文](../../zh-CN/guides/setup/docker.md)
+
 [Installation and Image API setup](../getting-started.md) · [User documentation](../../README.md)
 
 Docker runs Pictide's web application and CPU recommendation service. Connect an existing ComfyUI or cloud image API in Settings; ComfyUI and image-generation models run separately.
 
 ## Start with Compose
 
-Clone the repository, open its directory, and run:
+Download `compose.yaml` from [GitHub Releases](https://github.com/Lykr/pictide/releases/latest), place it in an empty directory, and run there:
 
 ```shell
-docker compose up -d --build
+docker compose up -d
 docker compose logs -f pictide
 ```
 
 Open [http://localhost:8189](http://localhost:8189). On first startup, Pictide downloads and verifies the **filtered** vocabulary and MiniLM before serving the page. The container stays in `starting` health status during preparation. Later starts reuse these resources from the data volume; interrupted downloads resume.
 
-The image builds the frontend in a separate Node.js stage. The running image contains Python, application code and built assets; it includes neither vocabulary databases nor MiniLM or generation model weights. Linux amd64 and arm64 are checked by the Docker validation workflow.
+Compose downloads the prebuilt image from `ghcr.io/lykr/pictide`; Docker selects Linux amd64 or arm64 for your machine. No source checkout or local build tools are needed. Release downloads pin the image version, for example `0.10.0`. The repository's Compose file follows the latest stable release.
+
+Each release builds its portable packages and both image architectures from the same tagged commit. Images pass native startup, CPU inference and persistence checks before publication. The running image contains Python, application code and built frontend assets; vocabulary databases and model weights download on first use.
 
 The default Compose configuration publishes only to this computer. Set `PICTIDE_BIND=0.0.0.0` for access from a trusted LAN. `PICTIDE_PORT` changes the host port while the container keeps port 8189.
 
@@ -49,11 +53,11 @@ The Compose file includes the host-gateway mapping for Linux. A host-side ComfyU
 
 ## Update and stop
 
-Update your source checkout, then rebuild and recreate:
+Download the new release's `compose.yaml` into the same directory, retaining your `.env`, then pull and recreate:
 
 ```shell
-git pull --ff-only
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Docker deployments update by replacing the image; the application's portable-package updater is not used. The existing data volume remains mounted. To stop:
@@ -65,10 +69,30 @@ docker compose down
 ## Without Compose
 
 ```shell
-docker build -t pictide:local .
 docker run -d --name pictide --init --restart unless-stopped \
   -p 127.0.0.1:8189:8189 -v pictide-data:/data \
-  --add-host host.docker.internal:host-gateway pictide:local
+  --add-host host.docker.internal:host-gateway ghcr.io/lykr/pictide:0.10.0
 ```
 
-Arguments after the image replace its default vocabulary choice, for example `pictide:local --vocabulary all-ratings`.
+Arguments after the image replace its default vocabulary choice, for example `ghcr.io/lykr/pictide:0.10.0 --vocabulary all-ratings`.
+
+## Download an image file
+
+If the Docker host cannot reach GHCR, download `pictide-VERSION-linux-amd64-docker.tar.gz` or `pictide-VERSION-linux-arm64-docker.tar.gz` from the same release, along with `compose.yaml`. Select your host architecture, transfer both files, and run:
+
+```shell
+docker load -i pictide-0.10.0-linux-amd64-docker.tar.gz
+docker compose up -d --pull never
+```
+
+The image file contains the same tested image as the registry. Initial vocabulary and MiniLM preparation still needs network access. `SHA256SUMS` verifies downloaded files; `release.json` records the source commit and image digests.
+
+## Build from source
+
+For development, clone the repository and use the build override:
+
+```shell
+docker compose -f compose.yaml -f compose.build.yaml up -d --build
+```
+
+This builds `pictide:local`. The default Compose configuration always uses a prebuilt image. See [Docker build verification](../../dev/development.md#build-and-verify-docker).

@@ -21,7 +21,7 @@ Prioritize changes that help people discover images they enjoy or guide explorat
 - [Corpus tools](corpus.md): configurable processing, input/output structures, and [prebuilt release vocabularies](corpus.md#prebuilt-vocabulary).
 - [Development workflow](development.md): start a task → prepare the environment → verify → integrate and deploy.
 - [Focused smoke checks](testing.md): core, UI, corpus and browser groups, plus release gates.
-- [GitHub Actions releases](development.md#github-actions-releases): prepare locked resources, then push a version tag to build native portable packages.
+- [GitHub Actions releases](development.md#github-actions-releases): one version tag builds native portable packages and Docker images from the same commit.
 - [UI design system](design-system.md): terminology, visuals, components, layout, and interactions.
 - [Web code entry points](web.md): pages, controllers, and shared components.
 

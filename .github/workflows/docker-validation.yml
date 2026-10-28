@@ -7,11 +7,24 @@ on:
       - .dockerignore
       - .gitattributes
       - compose.yaml
+      - compose.build.yaml
       - .github/workflows/docker-validation.yml
+      - .github/workflows/release.yml
       - backend/**
       - web/**
       - scripts/smoke_docker.py
       - scripts/smoke_inference.py
+      - scripts/release_artifacts.py
+      - scripts/release_docker.py
+      - tests/scripts/test_release_artifacts.py
+  workflow_call:
+    inputs:
+      source_ref:
+        required: true
+        type: string
+      stage_images:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       source_ref:
@@ -27,6 +40,9 @@ jobs:
     name: Docker ${{ matrix.architecture }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -39,7 +55,12 @@ jobs:
           persist-credentials: false
           ref: ${{ inputs.source_ref || github.sha }}
       - name: Build the native image
-        run: docker build --pull --tag pictide:validation .
+        run: |
+          commit=$(git rev-parse HEAD)
+          version=$(python3 -c 'from backend import __version__; print(__version__)')
+          docker build --pull --tag pictide:validation \
+            --label org.opencontainers.image.revision="$commit" \
+            --label org.opencontainers.image.version="$version" .
       - name: Validate Compose startup, CPU inference and persistent offline replacement
         run: python3 scripts/smoke_docker.py --image pictide:validation --report dev/verification/docker/smoke-report.json
       - name: Record source and image provenance
@@ -48,10 +69,29 @@ jobs:
           mkdir -p dev/verification/docker
           git rev-parse HEAD > dev/verification/docker/source-commit.txt
           docker image inspect pictide:validation > dev/verification/docker/image.json || true
+      - name: Log in to the release registry
+        if: inputs.stage_images == true
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+      - name: Stage the tested image by digest
+        if: inputs.stage_images == true
+        run: >-
+          python3 scripts/release_docker.py stage --directory dev/verification/docker
+          --image pictide:validation --build-id ${{ github.run_id }}-${{ github.run_attempt }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: docker-${{ matrix.architecture }}-verification
           path: dev/verification/docker/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: inputs.stage_images == true
+        with:
+          name: docker-release-${{ matrix.architecture }}
+          path: |
+            dev/verification/docker/source-docker-*.json
+            dev/verification/docker/docker-smoke-report-*.json
           if-no-files-found: error
           retention-days: 7

@@ -1,4 +1,4 @@
-name: Portable release
+name: Release
 
 on:
   push:
@@ -28,15 +28,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate:
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.build_run == '' && inputs.macos_run == '')
+  resolve:
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+      tag: ${{ steps.source.outputs.tag }}
+      version: ${{ steps.source.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ inputs.release_tag || github.ref }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - id: source
+        name: Resolve the release tag to one immutable source commit
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: python scripts/release_artifacts.py identity --tag "$RELEASE_TAG"
+
+  validate:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.build_run == '' && inputs.macos_run == '')
+    runs-on: ubuntu-22.04
+    needs: resolve
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.resolve.outputs.commit }}
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -68,7 +89,7 @@ jobs:
           # HTTP core fixtures register static routes before the frontend is built.
           mkdir -p web/dist
           python scripts/check.py core
-          python -m unittest tests.scripts.test_portable_startup tests.scripts.test_portable_audit -v
+          python -m unittest tests.scripts.test_portable_startup tests.scripts.test_portable_audit tests.scripts.test_release_artifacts -v
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
@@ -102,7 +123,7 @@ jobs:
 
   build:
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.build_run == '' && inputs.macos_run == '')
-    needs: validate
+    needs: [resolve, validate]
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -118,7 +139,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.release_tag || github.ref }}
+          ref: ${{ needs.resolve.outputs.commit }}
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -174,6 +195,11 @@ jobs:
               matches = list(reports.rglob(name + '.json'))
               assert len(matches) == 1, 'Expected one ' + name
               shutil.copyfile(matches[0], target / (name + '-' + os.environ['BUILD_PLATFORM'] + '.json'))
+      - name: Bind the native package to the selected release commit
+        run: >-
+          python scripts/release_artifacts.py native --directory dev/build/release-assets
+          --platform ${{ matrix.platform }} --commit ${{ needs.resolve.outputs.commit }}
+          --version ${{ needs.resolve.outputs.version }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: portable-${{ matrix.platform }}
@@ -182,18 +208,30 @@ jobs:
           compression-level: 0
           retention-days: 1
 
+  docker:
+    needs: [resolve, validate]
+    if: always() && needs.resolve.result == 'success' && (needs.validate.result == 'success' || (inputs.build_run != '' && inputs.macos_run != ''))
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker-validation.yml
+    with:
+      source_ref: ${{ needs.resolve.outputs.commit }}
+      stage_images: true
+
   publish:
-    if: always() && (needs.build.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.build_run != '' && inputs.macos_run != ''))
-    needs: build
+    if: always() && needs.resolve.result == 'success' && needs.docker.result == 'success' && (needs.build.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.build_run != '' && inputs.macos_run != ''))
+    needs: [resolve, build, docker]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
       actions: read
+      packages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.release_tag || github.ref }}
+          ref: ${{ needs.resolve.outputs.commit }}
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -204,6 +242,11 @@ jobs:
           merge-multiple: true
           run-id: ${{ inputs.build_run || github.run_id }}
           github-token: ${{ github.token }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: docker-release-*
+          path: dev/build/release-assets
+          merge-multiple: true
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: github.event_name == 'workflow_dispatch' && inputs.build_run != '' && inputs.macos_run != ''
         with:
@@ -228,7 +271,8 @@ jobs:
               run = os.environ[key]
               assert run.isdecimal(), 'Invalid run ID'
               return json.loads(subprocess.check_output(['gh', 'api', 'repos/' + os.environ['GH_REPO'] + '/actions/runs/' + run]))
-          assert run_record('BUILD_RUN')['head_sha'] == commit, 'Original build source differs'
+          # Actual checkout metadata below binds artifacts even for workflow-only reruns from main.
+          assert run_record('BUILD_RUN')['name'] == 'Release', 'Unexpected original workflow'
           assert run_record('MACOS_RUN')['conclusion'] == 'success', 'Mac validation did not pass'
           source = Path('dev/build/macos-recovery')
           provenance = json.loads((source / 'source.json').read_text())
@@ -243,6 +287,21 @@ jobs:
           shutil.copyfile(archives[0], target / archives[0].name)
           for name in ('build-report', 'smoke-report'):
               shutil.copyfile(source / (name + '.json'), target / (name + '-' + platform + '.json'))
+          from scripts.release_artifacts import write_native
+          from backend import __version__
+          write_native(target, platform, commit, __version__)
+      - name: Check all six artifacts share the selected source
+        run: >-
+          python scripts/release_artifacts.py verify --directory dev/build/release-assets
+          --commit ${{ needs.resolve.outputs.commit }} --tag ${{ needs.resolve.outputs.tag }}
+      - name: Log in to the release registry
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+      - name: Publish the tested image digests and export downloadable images
+        run: >-
+          python scripts/release_docker.py publish --directory dev/build/release-assets
+          --commit ${{ needs.resolve.outputs.commit }} --tag ${{ needs.resolve.outputs.tag }}
       - name: Check assets, write checksums and publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -278,3 +337,5 @@ jobs:
           # Creation refuses an existing release; it never replaces another run's assets.
           subprocess.run(command, check=True)
           subprocess.run(['gh', 'release', 'edit', tag, '--draft=false'], check=True)
+      - name: Advance the stable image alias after the unified release
+        run: python scripts/release_docker.py latest --directory dev/build/release-assets

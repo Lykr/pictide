@@ -1,0 +1,4 @@
+services:
+  pictide:
+    image: pictide:local
+    build: .

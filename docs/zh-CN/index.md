@@ -12,6 +12,7 @@
 | --- | --- |
 | Pictide 是什么，适合怎样使用？ | [认识 Pictide](guides/about.md) |
 | 如何安装和启动？ | [Windows](guides/setup/windows.md) · [Linux](guides/setup/linux.md) · [macOS](guides/setup/macos.md) |
+| 如何部署到服务器或 NAS？ | [Docker Compose](guides/setup/docker.md) |
 | 如何接入生图服务？ | [连接 ComfyUI、OpenAI Images 或 Gemini](guides/getting-started.md) |
 | 如何让手机访问或添加主屏幕应用？ | [局域网与主屏幕应用](guides/access.md) |
 | 如何保持喜欢的风格、调整画面内容？ | [提示词与预设](guides/prompts.md) |

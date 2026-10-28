@@ -68,7 +68,7 @@ Windows packages expose `Pictide.exe` beside `_internal/`, with `data/` as the d
 
 ## GitHub Actions releases
 
-`.github/workflows/release.yml` runs on pushed `v*` tags. It builds Windows x64, Linux x64, macOS ARM64, and macOS Intel packages on native runners using Python 3.12 and Node.js 22. The tag without `v` must match the versions in `backend/__init__.py` and `web/package.json`.
+`.github/workflows/release.yml` runs on pushed `v*` tags. It builds Windows x64, Linux x64, macOS ARM64, and macOS Intel packages, plus Linux amd64/arm64 Docker images, on native runners. The tag without `v` must match the versions in `backend/__init__.py` and `web/package.json`.
 
 1. Publish [vocabulary editions](corpus.md#export-both-vocabulary-editions) as immutable resource Release assets when the vocabulary changes.
 2. Update `backend/setup/vocabularies.json` from the published editions manifest when needed, retaining the release tag, edition file sizes and SHA-256 hashes. Commit the catalog and application version changes.
@@ -81,7 +81,13 @@ git push origin v0.5.0
 
 Use a new version for each release; existing published versions and assets are preserved.
 
-The workflow validates the pinned download catalog. Native builds download neither vocabularies nor raw metadata; their isolated startup smokes exercise the first-start `filtered` download and integrity checks. Core, UI, and browser checks gate native packaging; every native package then passes an isolated startup smoke check. Once all platforms succeed, the workflow publishes ZIPs, `SHA256SUMS`, and reports together. Versions with prerelease suffixes become prereleases.
+The workflow resolves the tag once to an immutable commit; every build checks out that SHA. `scripts/release_artifacts.py` binds native archive hashes and tested Docker image digests to that commit and version, rejecting a missing platform or mixed sources before publication. Never build a release image from a newer `main` or attach it to older portable packages.
+
+The workflow validates the pinned download catalog. Native builds download neither vocabularies nor raw metadata; isolated startup smokes exercise first-start `filtered` preparation and integrity checks. Core, UI, and browser checks gate packaging, and each package then passes its native startup, CPU inference and upgrade smoke. Docker images pass native Compose, CPU inference and offline persistent-volume replacement checks. Successful images are staged under run-specific tags; the publisher pulls their immutable digests and verifies configuration IDs and source labels instead of rebuilding them.
+
+Only after all four portable builds and both Docker architectures pass does publication create the versioned multi-architecture image, Docker image downloads, version-pinned `compose.yaml`, ZIPs, `update.json`, `release.json`, checksums and reports. Anonymous manifest and pull checks verify public registry access. The stable `latest` image alias advances after the GitHub Release is published; prereleases leave it unchanged. Existing versioned images and published Releases are preserved.
+
+The workflow token needs `contents: write` and `packages: write` for publication. GHCR initially creates a private package: on its first staged upload, set the repository-linked `pictide` package visibility to public before publication reaches its anonymous-access checks. Subsequent releases reuse that public package.
 
 Ordinary branch pushes use local verification and do not trigger Actions. Docker validation additionally runs on relevant pull requests and manual dispatches; see [Docker builds](#build-and-verify-docker). Resource Releases persist the vocabulary; Actions caches only accelerate builds. For check preparation and coverage limits, see [release checks](testing.md#release-checks).
 
@@ -98,13 +104,13 @@ If one macOS validation fails while the other three release builds succeed, vali
 `Dockerfile` builds locked frontend assets in a Node.js stage and copies them into a Python 3.12 runtime. Runtime installs only `backend/requirements.txt`, runs as UID/GID 10001, and starts the existing CLI host. All mutable state stays under `/data`; vocabulary and MiniLM catalogs retain the same first-start download and verification path as source/portable startup. The allowlisted `.dockerignore` excludes personal data, developer environments, generated assets and local secrets from the build context.
 
 ```shell
-docker compose up -d --build
+docker compose -f compose.yaml -f compose.build.yaml up -d --build
 python scripts/smoke_docker.py --image pictide:local
 ```
 
 The smoke creates its own uniquely named Compose project and volume, checks non-root execution, published HTTP/frontend assets, actual CPU MiniLM scoring, and host-gateway API connectivity. It then replaces the container with networking disabled and verifies resource reuse plus database, settings and image persistence. Only those temporary containers and their volume are removed. Reports stay in `dev/verification/docker/`; no GPU or image/LLM provider requests are made.
 
-`.github/workflows/docker-validation.yml` runs these checks natively on Linux amd64 and arm64 for relevant pull requests, or by manual dispatch with an optional `source_ref`. It retains source/image provenance and reports without publishing an image. Portable release jobs remain separate. Deployment and update commands are in the [Docker guide](../guides/setup/docker.md).
+`.github/workflows/docker-validation.yml` runs these checks natively on Linux amd64 and arm64 for relevant pull requests, or by manual dispatch with an optional `source_ref`. Those runs retain reports without publishing. The unified release reuses the same workflow with the resolved commit and registry staging enabled. Deployment and update commands are in the [Docker guide](../guides/setup/docker.md).
 
 ## Verify and commit
 

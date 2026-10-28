@@ -15,11 +15,13 @@
 ### 快速开始
 
 1. 从 [GitHub Releases](https://github.com/Lykr/pictide/releases) 下载并解压适合系统的便携包。
-2. 启动 Pictide，跟随应用内引导开始漫游。
+2. 启动 Pictide，首次运行等待词库和推荐资源下载完成，再跟随应用内引导开始漫游。
 
 Windows 可在首次启动时安装 ComfyUI 和推荐模型；macOS、Linux 用户需提前准备好 ComfyUI 或其他生图 API。
 
 启动帮助：[Windows](guides/setup/windows.md#便携版本) · [Linux](guides/setup/linux.md#便携版本) · [macOS](guides/setup/macos.md#便携版本)。
+
+服务器或 NAS 可使用 [Docker Compose 部署](guides/setup/docker.md)：下载发布页的 `compose.yaml`，执行 `docker compose up -d`。预构建镜像支持 Linux amd64 和 arm64。
 
 ### 功能概览
 

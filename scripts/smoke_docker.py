@@ -70,6 +70,8 @@ def smoke(image, report_path, timeout=900):
         command(*compose, 'config', '--quiet', env=environment)
         info = docker_json('image', 'inspect', image)[0]
         report.update(image_id=info['Id'], image_bytes=info['Size'], architecture=info['Architecture'])
+        labels = info['Config'].get('Labels') or {}
+        report['revision'] = labels.get('org.opencontainers.image.revision')
         assert info['Config']['User'] == '10001:10001'
         pristine = command('docker', 'run', '--rm', '--entrypoint', 'python', image, '-c',
             "import importlib.util,json,os,pathlib,shutil; "
@@ -124,6 +126,8 @@ def smoke(image, report_path, timeout=900):
         libraries = get('/api/candidate/library')
         assert libraries['selected'].startswith('pictide-vocabulary-filtered')
         report['version'] = bootstrap['version']
+        if labels.get('org.opencontainers.image.version'):
+            assert report['version'] == labels['org.opencontainers.image.version']
         report['checks'].append('Compose loopback port and healthy HTTP startup with a real first-start filtered/MiniLM download')
         assets = Assets()
         assets.feed(get('/', document=False).decode())

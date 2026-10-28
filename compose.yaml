@@ -1,7 +1,6 @@
 services:
   pictide:
-    image: ${PICTIDE_IMAGE:-pictide:local}
-    build: .
+    image: ${PICTIDE_IMAGE:-ghcr.io/lykr/pictide:latest}
     init: true
     restart: unless-stopped
     stop_grace_period: 30s
