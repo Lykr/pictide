@@ -17,11 +17,11 @@ git status --short --branch
 git diff
 ```
 
-Use a separate task branch. Codex branches use `codex/<topic>`; other contributors may use `feat/`, `fix/`, or `chore/`. Use separate worktrees, data directories, and ports for parallel work or changes involving running instances:
+Use the primary checkout for routine work, with a separate task branch. Codex branches use `codex/<topic>`; other contributors may use `feat/`, `fix/`, or `chore/`. Create a worktree only for parallel tasks or work requiring an isolated running instance, with its own data directory and port. Keep this project's worktrees inside the primary checkout's ignored `.worktrees/<task>/` directory. Run these commands from the primary checkout:
 
 ```shell
-git worktree add ../pictide-example -b codex/example main
-cd ../pictide-example
+git worktree add .worktrees/example -b codex/example main
+cd .worktrees/example
 ```
 
 Check whether the branch or directory already exists. Git carries source files; ignored data and dependencies are prepared separately. Simple documentation changes can use a clean checkout directly. When delegating independent work, agree on file ownership, shared interfaces, and delivery requirements.
