@@ -5,10 +5,10 @@ import json
 import logging
 from pathlib import Path
 import socket
-import sys
 import tempfile
 
 from ..desktop.text import system_language
+from ..desktop.terminal import interactive_terminal, status
 from .comfy_process import ComfyProcess, _WindowsJob
 
 log = logging.getLogger('backend.setup.local_generation')
@@ -17,7 +17,7 @@ log = logging.getLogger('backend.setup.local_generation')
 def announce(english, chinese):
     message = chinese if system_language() == 'zh-CN' else english
     log.info('%s', message)
-    print(message, flush=True)
+    status(message)
 
 
 def read_state(paths):
@@ -75,7 +75,7 @@ def prepare_windows_data_directory(paths, *, force=False):
                      '请先从托盘退出 Pictide，再运行 --setup。')
             return None
         return paths
-    if not (sys.stdin and sys.stdin.isatty()):
+    if not interactive_terminal():
         if force:
             raise RuntimeError('--setup requires an interactive terminal')
         return paths
@@ -114,7 +114,7 @@ def prepare_windows_setup(paths, *, force=False):
                      '请先从托盘退出 Pictide，再运行 --setup。')
             return False
         return True
-    if not (sys.stdin and sys.stdin.isatty()):
+    if not interactive_terminal():
         if force:
             raise RuntimeError('--setup requires an interactive terminal')
         return True

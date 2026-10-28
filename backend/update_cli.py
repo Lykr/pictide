@@ -10,6 +10,12 @@ from .paths import DataPaths
 from .store.update_state import unfinished_jobs
 from .updates.apply import alive, create_plan, launch_helper, local_json
 from .updates.service import UpdateService
+from .desktop.terminal import status as terminal_status
+from .desktop.text import translate
+
+
+def status(message, *, stream=None):
+    terminal_status(message, heading=translate('updating'), stream=stream)
 
 
 def running_instance(paths, installation):
@@ -41,7 +47,7 @@ async def run(args):
                 phase = service.state['phase']
                 now = time.monotonic()
                 if phase != last[0] or now - last[1] >= .5:
-                    print(f"Update {phase}: {service.state['downloaded_bytes']}/{service.state['total_bytes']} bytes", flush=True)
+                    status(f"Update {phase}: {service.state['downloaded_bytes']}/{service.state['total_bytes']} bytes")
                     last[:] = [phase, now]
             service.on_change = progress
         if args.check_updates:
@@ -57,13 +63,13 @@ async def run(args):
             if result.get('error'):
                 raise ValueError(result['error'])
             if result['phase'] == 'current':
-                print('Pictide is up to date.')
+                status('Pictide is up to date.')
                 return 0
             if not result['can_download']:
                 raise ValueError('This version requires a manual update: ' + result['release_url'])
             result = await asyncio.to_thread(local_json, base + '/download', method='POST')
             while result['phase'] in ('downloading', 'verifying'):
-                print(f"Preparing update: {result['downloaded_bytes']}/{result['total_bytes']} bytes", flush=True)
+                status(f"Preparing update: {result['downloaded_bytes']}/{result['total_bytes']} bytes")
                 await asyncio.sleep(.5)
                 result = await asyncio.to_thread(local_json, base)
             if result['phase'] != 'ready':
@@ -77,7 +83,7 @@ async def run(args):
             if result['error']:
                 raise ValueError(result['error'])
             if result['phase'] == 'current':
-                print('Pictide is up to date.')
+                status('Pictide is up to date.')
                 return 0
             service.start_download()
             await service.task
@@ -93,11 +99,11 @@ async def run(args):
                 arguments.append('--desktop')
             path, program = await asyncio.to_thread(create_plan, service, arguments, [os.getpid()])
             launch_helper(path, program)
-        print('Update installation has been requested. Pictide will restart after this command exits.\n'
-              'Result: ' + str(paths.tmp / 'updates/result.json'), flush=True)
+        status('Update installation has been requested. Pictide will restart after this command exits.\n'
+               'Result: ' + str(paths.tmp / 'updates/result.json'))
         return 0
     except (OSError, ValueError, RuntimeError) as error:
-        print('Update failed: ' + str(error), file=sys.stderr, flush=True)
+        status('Update failed: ' + str(error), stream=sys.stderr)
         return 1
     finally:
         if service is not None:

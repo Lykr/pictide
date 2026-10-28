@@ -2,6 +2,7 @@
 from contextlib import closing
 import hashlib
 import io
+import os
 from pathlib import Path
 import shutil
 import sqlite3
@@ -13,6 +14,7 @@ from backend import host
 from backend.paths import DataPaths
 from backend.setup.vocabulary import choose_vocabulary, prepare_vocabulary, vocabulary_catalog
 from backend.store.candidate_libraries import CandidateLibraries
+from backend.desktop.terminal import ANIMATION_ENV, clean
 from tests.backend.candidate.test_candidate_libraries import vocabulary
 
 
@@ -65,15 +67,18 @@ class VocabularyPreparationSmoke(unittest.TestCase):
             self.assertEqual(choose_vocabulary(self.paths), 'filtered')
             self.assertEqual(choose_vocabulary(self.paths, 'all-ratings'), 'all-ratings')
 
-    def test_interactive_choice_lists_explicit_warning_and_reprompts_invalid_input(self):
-        with patch('backend.desktop.text.system_language', return_value='zh-CN'):
-            selected = choose_vocabulary(self.paths, interactive=True, progress=self.messages.append,
-                                         read=Mock(side_effect=['bad', '2']))
+    def test_interactive_choice_uses_arrows_and_keeps_explicit_warning_visible(self):
+        output = io.StringIO()
+        with patch('backend.desktop.text.system_language', return_value='zh-CN'), patch('sys.stdout', output):
+            selected = choose_vocabulary(self.paths, interactive=True,
+                                         read=Mock(side_effect=['2', 'down', 'enter']))
         self.assertEqual(selected, 'all-ratings')
-        self.assertIn('可能生成露骨内容', '\n'.join(self.messages))
-        self.assertIn('filtered', '\n'.join(self.messages))
-        self.assertEqual(choose_vocabulary(self.paths, interactive=True, progress=lambda _: None,
-                                           read=lambda _: ''), 'filtered')
+        self.assertIn('可能生成露骨内容', output.getvalue())
+        self.assertIn('filtered', output.getvalue())
+        with patch('sys.stdout', io.StringIO()):
+            self.assertEqual(choose_vocabulary(self.paths, interactive=True, read=lambda: 'enter'), 'filtered')
+            with self.assertRaises(KeyboardInterrupt):
+                choose_vocabulary(self.paths, interactive=True, read=lambda: 'escape')
 
     def test_explicit_all_ratings_logs_warning_before_downloading(self):
         def response(*args, **kwargs):
@@ -82,6 +87,18 @@ class VocabularyPreparationSmoke(unittest.TestCase):
         with patch('backend.desktop.text.system_language', return_value='zh-CN'), \
                 patch('backend.setup.vocabulary.urlopen', side_effect=response):
             self.prepare('all-ratings')
+        self.assertEqual(CandidateLibraries(self.paths).listing()['selected'], 'pictide-vocabulary-all-ratings.sqlite3')
+
+    def test_default_all_ratings_download_keeps_warning_in_the_refreshed_frame(self):
+        output = io.StringIO()
+        with patch('backend.desktop.text.system_language', return_value='zh-CN'), \
+                patch('backend.setup.vocabulary.vocabulary_catalog', return_value=self.catalog), \
+                patch('backend.setup.vocabulary.urlopen', return_value=Response(self.payload)), \
+                patch.dict(os.environ, {ANIMATION_ENV: '1'}), patch('sys.stdout', output):
+            prepare_vocabulary(self.paths, 'all-ratings')
+        frame = clean(output.getvalue().rsplit('\x1b[H', 1)[1])
+        self.assertIn('可能生成露骨内容', frame)
+        self.assertIn('词库已就绪', frame)
         self.assertEqual(CandidateLibraries(self.paths).listing()['selected'], 'pictide-vocabulary-all-ratings.sqlite3')
 
     def test_custom_library_is_valid_and_missing_selection_uses_another_existing_library(self):
@@ -171,8 +188,8 @@ class VocabularyPreparationSmoke(unittest.TestCase):
                 patch('backend.setup.local_generation_session.prepare_windows_data_directory', return_value=self.paths), \
                 patch('backend.setup.local_generation_session.prepare_windows_setup', return_value=True), \
                 patch('backend.host.sys.stdin', Mock(isatty=lambda: True)), \
-                patch('backend.host.sys.stdout', Mock(isatty=lambda: True)), \
-                patch('builtins.input', return_value='2'), \
+                patch('backend.host.sys.stdout', Mock(isatty=lambda: True, fileno=Mock(side_effect=io.UnsupportedOperation))), \
+                patch('backend.desktop.terminal.read_key', side_effect=['down', 'enter']), \
                 patch('backend.desktop.launcher.launch_desktop', return_value=True) as launch:
             host.main(['--desktop', '--data-dir', str(self.paths.root)])
         self.assertEqual(launch.call_args.args[0][-2:], ['--vocabulary', 'all-ratings'])

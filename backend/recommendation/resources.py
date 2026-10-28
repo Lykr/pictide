@@ -9,6 +9,7 @@ import time
 from urllib.request import Request
 
 from ..desktop.text import translate
+from ..desktop.terminal import status
 from ..network import open_url as urlopen
 
 
@@ -17,7 +18,7 @@ def model_catalog():
 
 
 def _progress(message):
-    print(message, flush=True)
+    status(message)
     logging.getLogger('backend').info(message)
 
 

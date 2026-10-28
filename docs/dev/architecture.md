@@ -52,7 +52,7 @@ pictide/
     dist/                      Vite distribution assets
   backend/
     host.py                    HTTP API, SSE, static assets, startup, and shutdown
-    desktop/                   Desktop session, launcher, localized messages, and Windows tray
+    desktop/                   Desktop session, launcher, terminal frames/keyboard, localized messages, and Windows tray
     setup/                     Local generation resources/session, Windows preparation UI and hardware detection
     application.py             Application orchestration: generation, candidates, feedback, cleanup
     domain.py                  Shared input validation and errors

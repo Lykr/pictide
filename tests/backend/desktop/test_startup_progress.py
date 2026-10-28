@@ -8,8 +8,9 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from backend.desktop.startup_progress import ANIMATION_ENV, COLUMNS_ENV, StartupProgress, _width
+from backend.desktop.startup_progress import StartupProgress
 from backend.desktop.launcher import STATUS_ENV, launch_desktop
+from backend.desktop.terminal import ANIMATION_ENV, COLUMNS_ENV, clean, width as _width
 
 
 class StartupProgressTests(unittest.TestCase):
@@ -29,11 +30,11 @@ class StartupProgressTests(unittest.TestCase):
             self.assertNotIn('ComfyUI 已就绪', stream.getvalue())
             view.finish('ready')
             self.assertIn('ComfyUI 已就绪 · 用时 00:12', stream.getvalue())
-            for line in stream.getvalue().split('\r')[1:]:
-                if '\n' not in line:
+            for frame in stream.getvalue().split('\x1b[H')[1:]:
+                for line in clean(frame).splitlines():
                     self.assertLessEqual(_width(line), 59)
             self.assertNotIn('%', stream.getvalue())
-            self.assertNotIn('\x1b', stream.getvalue())
+            self.assertIn('\x1b[H', stream.getvalue())
             finished = stream.getvalue()
             view.tick('late output'); view.finish('failed')
             self.assertEqual(stream.getvalue(), finished)
@@ -119,7 +120,7 @@ finally:
                 self.assertIn('Waiting for ComfyUI', output)
                 self.assertIn('Loading custom nodes', output)
                 self.assertIn('ComfyUI is ready', output)
-                self.assertIn('\r', output)
+                self.assertIn('\x1b[H', output)
                 self.assertIsNone(children[0].poll())
                 self.assertFalse(list(paths.tmp.glob('desktop-startup-*.status')))
                 self.assertFalse(list(paths.tmp.glob('desktop-output-*.log')))
@@ -142,6 +143,7 @@ finally:
                     return process
                 stdout = Mock()
                 stdout.isatty.return_value = interactive
+                stdout.fileno.side_effect = io.UnsupportedOperation('virtual terminal')
                 original = os.environ.get(ANIMATION_ENV)
                 with patch('backend.desktop.launcher.subprocess.Popen', side_effect=start), \
                      patch('backend.desktop.launcher.read_startup_output', return_value=b''), \

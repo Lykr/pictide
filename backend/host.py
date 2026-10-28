@@ -552,7 +552,9 @@ async def open_browser_when_ready(url, on_ready=None):
                 try:
                     await asyncio.to_thread(webbrowser.open, url)
                 except webbrowser.Error:
-                    print("Open Pictide in your browser: " + url)
+                    from .desktop.terminal import status
+                    from .desktop.text import translate
+                    status(translate('local_address', address=url), heading=translate('ready'))
                 return
             await asyncio.sleep(0.1)
 
@@ -614,21 +616,24 @@ def _main(argv=None):
                 return
     except (OSError, ValueError, RuntimeError) as error:
         logging.getLogger('backend').exception('Runtime preparation failed')
-        print(str(error), file=sys.stderr, flush=True)
-        if sys.stdin and sys.stdin.isatty():
-            from .desktop.text import translate
-            input(translate('close_prompt'))
+        from .desktop.text import translate
+        from .desktop.terminal import status, close_prompt
+        status(str(error), heading=translate('terminal_error'), stream=sys.stderr)
+        close_prompt(str(error))
         raise SystemExit(1) from None
     if desktop_requested and not args.desktop_worker:
         from .desktop.launcher import launch_desktop
         from .setup.vocabulary import choose_vocabulary
         arguments = list(sys.argv[1:] if argv is None else argv)
-        if args.vocabulary is None:
-            args.vocabulary = choose_vocabulary(paths, interactive=bool(sys.stdin and sys.stdin.isatty()
-                                                                        and sys.stdout and sys.stdout.isatty()))
-            if args.vocabulary:
-                arguments += ['--vocabulary', args.vocabulary]
-        if launch_desktop(arguments, paths):
+        try:
+            if args.vocabulary is None:
+                args.vocabulary = choose_vocabulary(paths, interactive=bool(sys.stdin and sys.stdin.isatty()
+                                                                            and sys.stdout and sys.stdout.isatty()))
+                if args.vocabulary:
+                    arguments += ['--vocabulary', args.vocabulary]
+            if launch_desktop(arguments, paths):
+                return
+        except (EOFError, KeyboardInterrupt):
             return
         # The worker released its tray-less session; this terminal now owns logs.
         paths.configure_runtime()
@@ -687,6 +692,13 @@ def _main(argv=None):
                     logger.warning('Could not discover LAN addresses', exc_info=True)
             logger.info('Pictide ready local=%s lan=%s startup_seconds=%.3f', url,
                         ','.join(addresses) or '-', time.monotonic() - started)
+            from .desktop.terminal import Console
+            from .desktop.text import translate
+            Console().show(translate('ready'),
+                [translate('local_address', address=url),
+                 *[translate('lan_address', address=address) for address in addresses],
+                 translate('data_directory', directory=paths.root),
+                 translate('startup_log', path=paths.logs / 'pictide.log')])
         app.on_startup.append(log_ready)
         if worker_socket is not None:
             async def notify_worker_ready(app):
@@ -709,16 +721,17 @@ def _main(argv=None):
         elif worker_socket is not None:
             web.run_app(app, sock=worker_socket, access_log=None, print=None)
         else:
-            web.run_app(app, host=host, port=args.port, access_log=None)
+            web.run_app(app, host=host, port=args.port, access_log=None, print=None)
+    except KeyboardInterrupt:
+        logger.info('Pictide startup cancelled')
     except Exception as error:
         from .desktop.text import translate
         logging.getLogger('backend').exception('Pictide startup failed')
-        print(translate('startup_failed', error=error), file=sys.stderr, flush=True)
+        from .desktop.terminal import status, close_prompt
+        message = translate('startup_failed', error=error)
+        status(message, heading=translate('terminal_error'), stream=sys.stderr)
         if desktop is not None and not os.environ.get('PICTIDE_DESKTOP_STATUS') and sys.stdin is not None and sys.stdin.isatty():
-            try:
-                input(translate('close_prompt'))
-            except EOFError:
-                pass
+            close_prompt(message)
         raise SystemExit(1) from None
     finally:
         if instance is not None:

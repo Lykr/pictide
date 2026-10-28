@@ -83,7 +83,7 @@ class DesktopSocketSmoke(unittest.TestCase):
     def test_macos_worker_reports_ready_only_after_application_startup_and_closes_socket(self):
         with tempfile.TemporaryDirectory() as directory:
             status = Path(directory) / 'worker.status'
-            paths = SimpleNamespace(root=Path(directory), tmp=Path(directory), configure_runtime=Mock())
+            paths = SimpleNamespace(root=Path(directory), tmp=Path(directory), logs=Path(directory) / 'logs', configure_runtime=Mock())
             app = host.web.Application()
             app[host.APPLICATION] = SimpleNamespace(updates=SimpleNamespace(installation=None))
             owned = []

@@ -1,12 +1,11 @@
 """Dependency-free first-run console choices and installation progress."""
-from contextlib import contextmanager
 import os
 import logging
 from pathlib import Path
-import sys
 import time
 
 from backend.desktop.text import system_language
+from backend.desktop.terminal import Console, console_mode as _console_mode, read_key
 from backend.setup.local_generation import capacity_gib, hardware_issues
 from backend.setup.windows_hardware import detect_hardware, select_gpu
 
@@ -16,8 +15,7 @@ _TEXT = {
         'title': 'Welcome to Pictide', 'question': 'How would you like to generate images?',
         'external': 'I already have an image generation API',
         'local': 'Set up local ComfyUI for me', 'later': 'Set up later',
-        'keys': 'Up / Down: select   Enter: continue   Esc: back',
-        'number': 'Choose a number (Enter / 0: back): ',
+        'keys': 'Up / Down: select   Enter: confirm   Esc: back',
         'data_location': 'Data location',
         'data_purpose': 'Models, images and preferences will be saved here.',
         'use_directory': 'Use this directory', 'other_directory': 'Specify another directory',
@@ -66,8 +64,7 @@ _TEXT = {
     'zh-CN': {
         'title': '欢迎使用 Pictide', 'question': '你准备如何生成图片？',
         'external': '我已有生图 API', 'local': '帮我安装本地 ComfyUI', 'later': '稍后配置',
-        'keys': '↑ ↓ 选择 · Enter 继续 · Esc 返回',
-        'number': '输入选项编号（Enter / 0 返回）：',
+        'keys': '↑ ↓ 选择 · Enter 确认 · Esc 返回',
         'data_location': '数据保存位置',
         'data_purpose': '模型、图片和偏好都会保存在这里。',
         'use_directory': '使用此目录', 'other_directory': '指定其他目录',
@@ -120,89 +117,22 @@ def _size(value):
         amount /= 1000
 
 
-@contextmanager
-def _console_mode():
-    """Enable ANSI for this console handle only and restore its original mode."""
-    if os.name != 'nt' or not sys.stdin or not sys.stdout:
-        yield False
-        return
-    if not sys.stdin.isatty() or not sys.stdout.isatty():
-        yield False
-        return
-    import ctypes
-    from ctypes import wintypes
-    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
-    kernel.GetStdHandle.argtypes = [wintypes.DWORD]
-    kernel.GetStdHandle.restype = wintypes.HANDLE
-    kernel.GetConsoleMode.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
-    kernel.GetConsoleMode.restype = wintypes.BOOL
-    kernel.SetConsoleMode.argtypes = [wintypes.HANDLE, wintypes.DWORD]
-    kernel.SetConsoleMode.restype = wintypes.BOOL
-    handle = kernel.GetStdHandle(-11 & 0xffffffff)
-    previous = wintypes.DWORD()
-    enabled = bool(kernel.GetConsoleMode(handle, ctypes.byref(previous))
-                   and kernel.SetConsoleMode(handle, previous.value | 4))
-    try:
-        yield enabled
-    finally:
-        if enabled:
-            kernel.SetConsoleMode(handle, previous.value)
-
-
-class _Console:
+class _Console(Console):
     def __init__(self, text, interactive):
+        super().__init__(interactive=interactive)
         self.text = text
-        self.interactive = interactive
         self.last_progress = 0.0
         self.last_phase = None
         self.last_log_progress = 0.0
         self.last_log_phase = None
 
-    def show(self, heading, lines=()):
-        if self.interactive:
-            print('\x1b[2J\x1b[H', end='')
-        print(f'\n  Pictide · {heading}\n')
-        for line in lines:
-            print(f'  {line}')
-        print(flush=True)
-
     def choose(self, heading, options, details=()):
-        if not self.interactive:
-            self.show(heading, details)
-            for index, label in enumerate(options, 1):
-                print(f'  {index}. {label}')
-            while True:
-                answer = input('\n  ' + self.text['number']).strip()
-                if not answer or answer in ('0', '\x1b'):
-                    return None
-                if answer.isdigit() and 1 <= int(answer) <= len(options):
-                    return int(answer) - 1
-        import msvcrt
-        selected = 0
-        while True:
-            self.show(heading, (*details, '', *[
-                ('› ' if index == selected else '  ') + label
-                for index, label in enumerate(options)], '', self.text['keys']))
-            key = msvcrt.getwch()
-            if key in ('\x00', '\xe0'):
-                direction = msvcrt.getwch()
-                if direction in ('H', 'P'):
-                    selected = (selected + (-1 if direction == 'H' else 1)) % len(options)
-            elif key in ('\r', '\n'):
-                return selected
-            elif key == '\x1b':
-                return None
-            elif key == '\x03':
-                raise KeyboardInterrupt
-            elif key.isdigit() and 1 <= int(key) <= len(options):
-                return int(key) - 1
+        return super().choose(heading, options, details, keys=self.text['keys'])
 
     def progress(self, event):
         if self.interactive:
-            import msvcrt
-            while msvcrt.kbhit():
-                key = msvcrt.getwch()
-                if key in ('\x1b', '\x03'):
+            while (key := read_key(block=False)) is not None:
+                if key == 'escape':
                     raise KeyboardInterrupt
         now = time.monotonic()
         phase = str(event.get('phase', 'download'))
@@ -231,11 +161,7 @@ class _Console:
             lines.append(_size(downloaded))
         if event.get('speed'):
             lines[-1] += f'  ·  {_size(event["speed"])}/s'
-        lines.extend(('', self.text['cancel']))
-        if self.interactive:
-            self.show(self.text['preparing'], lines)
-        else:
-            print('  ' + ' · '.join(lines[:-2]), flush=True)
+        self.show(self.text['preparing'], lines, footer=self.text['cancel'])
 
 
 def _catalog_size(entry):
@@ -340,9 +266,10 @@ def choose_data_directory(current_directory, *, language=None, error=None) -> st
                     return None
                 if choice == 0:
                     return str(directory)
-                answer = input('  ' + text['directory_prompt']).strip()
-                if answer == '\x1b':
-                    return None
+                answer = console.read_text(text['data_location'], text['directory_prompt'], details)
+                if answer is None:
+                    continue
+                answer = answer.strip()
                 if not answer:
                     continue
                 if len(answer) >= 2 and answer[0] == answer[-1] and answer[0] in ('"', "'"):

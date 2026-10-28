@@ -10,7 +10,8 @@ import threading
 import time
 
 from .comfy_discovery import probe
-from ..desktop.startup_progress import ANIMATION_ENV, COLUMNS_ENV, StartupProgress
+from ..desktop.startup_progress import StartupProgress
+from ..desktop.terminal import ANIMATION_ENV, COLUMNS_ENV
 
 log = logging.getLogger('backend.setup.local_generation')
 

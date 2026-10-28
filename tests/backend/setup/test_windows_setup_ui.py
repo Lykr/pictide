@@ -20,28 +20,39 @@ HARDWARE = {'gpus': [{'profile': 'nvidia', 'name': 'NVIDIA GeForce RTX 4070 Ti',
                       'vram_bytes': 12 * 1024 ** 3}], 'ram_bytes': 32 * 1024 ** 3}
 
 
+def menu_keys(choices):
+    """Readable option positions drive the same arrow/Enter path as a user."""
+    keys = []
+    for choice in choices:
+        keys.extend(['down'] * (int(choice) - 1) + ['enter'] if choice.isdigit() and choice != '0' else ['escape'])
+    return keys
+
+
 class WindowsSetupUISmoke(unittest.TestCase):
     def run_choices(self, answers, install, *, language='en', hardware=HARDWARE,
                     profiles=PROFILES, recipes=RECIPES):
         output = io.StringIO()
         with patch('backend.setup.windows_ui._console_mode') as mode, \
                 patch('backend.setup.windows_ui.detect_hardware', return_value=hardware), \
-                patch('builtins.input', side_effect=answers), \
+                patch('backend.desktop.terminal.interactive_terminal', return_value=True), \
+                patch('backend.desktop.terminal.read_key', side_effect=menu_keys(answers)), \
+                patch('backend.setup.windows_ui.read_key', return_value=None), \
                 patch('sys.stdout', output):
-            mode.return_value.__enter__.return_value = False
+            mode.return_value.__enter__.return_value = True
             result = run_setup(profiles, recipes, install, language=language)
         return result, output.getvalue()
 
     def test_directory_default_back_and_cancel_do_not_create_files(self):
         with tempfile.TemporaryDirectory() as temporary:
             current = Path(temporary) / 'data'
-            for answers, expected in [(['1'], str(current)), (['2', '', '1'], str(current)),
-                                      (['0'], None), (['\x1b'], None), ([KeyboardInterrupt], None)]:
+            for answers, expected in [(['enter'], str(current)), (['down', 'enter', 'enter', 'enter'], str(current)),
+                                      (['escape'], None), (['eof'], None), ([KeyboardInterrupt], None)]:
                 with self.subTest(answers=answers), \
                         patch('backend.setup.windows_ui._console_mode') as mode, \
-                        patch('builtins.input', side_effect=answers), \
+                        patch('backend.desktop.terminal.interactive_terminal', return_value=True), \
+                        patch('backend.desktop.terminal.read_key', side_effect=answers), \
                         patch('sys.stdout', io.StringIO()) as output:
-                    mode.return_value.__enter__.return_value = False
+                    mode.return_value.__enter__.return_value = True
                     self.assertEqual(choose_data_directory(current, language='en'), expected)
                     self.assertIn('Data location', output.getvalue())
                     self.assertNotIn('will not be moved', output.getvalue())
@@ -53,16 +64,18 @@ class WindowsSetupUISmoke(unittest.TestCase):
             selected = Path(temporary) / 'new data'
             with patch('backend.setup.windows_ui._console_mode') as mode, \
                     patch('backend.setup.windows_ui.system_language', return_value='zh-CN'), \
-                    patch('builtins.input', side_effect=['2', 'relative/data', '2', f'"{selected}"', '1']), \
+                    patch('backend.desktop.terminal.interactive_terminal', return_value=True), \
+                    patch('backend.desktop.terminal.read_key', side_effect=[
+                        'down', 'enter', *'relative/data', 'enter', 'down', 'enter', *f'"{selected}"', 'enter', 'enter']), \
                     patch('sys.stdout', io.StringIO()) as output:
-                mode.return_value.__enter__.return_value = False
+                mode.return_value.__enter__.return_value = True
                 self.assertEqual(choose_data_directory(current, error='目录不可写'), str(selected))
             displayed = output.getvalue()
             self.assertIn('数据保存位置', displayed)
             self.assertIn('目录不可写', displayed)
             self.assertIn('请输入绝对目录路径。', displayed)
             self.assertIn(str(selected), displayed)
-            self.assertEqual(displayed.count('原目录的数据会保留在原处，不会自动迁移。'), 1)
+            self.assertIn('原目录的数据会保留在原处，不会自动迁移。', displayed)
             self.assertEqual(list(Path(temporary).iterdir()), [])
 
     def test_external_and_later_never_install(self):

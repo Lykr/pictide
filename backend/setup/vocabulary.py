@@ -1,5 +1,6 @@
 """Choose and download a pinned vocabulary before composing application services."""
 import hashlib
+import functools
 import json
 import logging
 from pathlib import Path
@@ -7,6 +8,7 @@ import time
 from urllib.request import Request
 
 from ..desktop.text import translate
+from ..desktop.terminal import Console, console_mode, status
 from ..network import open_url as urlopen
 from ..store.candidate_libraries import CandidateLibraries
 
@@ -17,8 +19,8 @@ def vocabulary_catalog():
     return json.loads(Path(__file__).with_name('vocabularies.json').read_text(encoding='utf-8'))
 
 
-def _progress(message):
-    print(message, flush=True)
+def _progress(message, *, notice=None):
+    status(message, details=[notice] if notice and notice != message else [])
     logging.getLogger('backend').info(message)
 
 
@@ -32,19 +34,13 @@ def choose_vocabulary(paths, requested=None, *, interactive=False, progress=_pro
         return None
     if requested is not None or not interactive:
         return requested or 'filtered'
-    progress(translate('vocabulary_choose'))
-    progress(translate('vocabulary_filtered'))
-    progress(translate('vocabulary_all_ratings'))
-    while True:
-        try:
-            choice = (read or input)(translate('vocabulary_choice')).strip()
-        except EOFError:
-            return 'filtered'
-        if choice in ('', '1', 'filtered'):
-            return 'filtered'
-        if choice in ('2', 'all-ratings'):
-            return 'all-ratings'
-        progress(translate('vocabulary_invalid_choice'))
+    with console_mode() as enabled:
+        console = Console(interactive=enabled or read is not None)
+        selected = console.choose(translate('vocabulary_choose'),
+            [translate('vocabulary_filtered'), translate('vocabulary_all_ratings')], read=read)
+    if selected is None:
+        raise KeyboardInterrupt
+    return EDITIONS[selected]
 
 
 def _verified(path, item):
@@ -68,6 +64,8 @@ def prepare_vocabulary(paths, requested=None, *, interactive=False, progress=_pr
     partial = directory / (item['path'] + '.part')
     url = f'https://github.com/Lykr/pictide/releases/download/{catalog["release_tag"]}/{item["path"]}'
     if edition == 'all-ratings':
+        if progress is _progress:
+            progress = functools.partial(_progress, notice=translate('vocabulary_explicit_warning'))
         progress(translate('vocabulary_explicit_warning'))
     progress(translate('vocabulary_downloading', edition=edition))
     for attempt in range(3):

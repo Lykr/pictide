@@ -34,3 +34,9 @@ Visible Select, Checkbox, Radio, Toggle, Dialog, and Collapsible controls use th
 Node.js is a development and build dependency. Runtime serves built assets through aiohttp, with bundled fonts and no CDN or Node process. Third-party notices live in `web/src/THIRD_PARTY_NOTICES.md`.
 
 Before adding a primitive, check the shared library and official shadcn Vite instructions. Apply preset changes in an isolated checkout, review the diff, and reuse the shared component recipes. Use the pinned pnpm version and commit its lockfile. Follow the [development workflow](development.md) for builds and publishing assets.
+
+## Terminal interaction
+
+Interactive startup uses `backend/desktop/terminal.py` for one refreshed viewport, shared spacing, Unicode wrapping, and keyboard handling. Menus use Up/Down to select, Enter to confirm, and Esc to return; numeric selection and numbered-input fallbacks are not used. Directory entry stays within the same frame and supports editing, Enter, and Esc. Long menus keep the focused option and keyboard help visible in a small terminal.
+
+Installation, vocabulary/model downloads, ComfyUI readiness, errors, and the ready summary replace the current frame. Keep detailed events in the existing log files. Use determinate percentages only for known totals; service readiness keeps elapsed time and an indeterminate indicator. Windows desktop workers inherit the parent terminal's rendering capability and dimensions. Redirected and unattended output stays plain text, never waits for menu input, and retains the default filtered vocabulary behavior. `--check-updates` retains its JSON command output.

@@ -11,13 +11,14 @@ from urllib.parse import urlsplit
 from urllib.request import ProxyHandler, build_opener
 
 from .text import translate
+from .terminal import Console, status
 
 log = logging.getLogger('backend')
 
 
 def announce(key, **values):
     message = translate(key, **values)
-    print(message, flush=True)
+    status(message)
     log.info(message)
 
 
@@ -108,16 +109,20 @@ class DesktopSession:
             raise web.GracefulExit()
 
         self._write_info(True)
-        announce('ready')
-        announce('local_address', address=self.url)
+        messages = [translate('local_address', address=self.url),
+                    translate('data_directory', directory=self.paths.root),
+                    translate('startup_log', path=self.paths.logs / 'pictide.log')]
         if self.socket.getsockname()[0] == '0.0.0.0':
             try:
                 addresses = sorted(set(socket.gethostbyname_ex(socket.gethostname())[2]))
                 for address in addresses:
                     if not address.startswith('127.') and address != '0.0.0.0':
-                        announce('lan_address', address=f'http://{address}:{self.socket.getsockname()[1]}')
+                        messages.append(translate('lan_address', address=f'http://{address}:{self.socket.getsockname()[1]}'))
             except OSError:
                 log.exception('Cannot discover LAN addresses')
+        for message in (translate('ready'), *messages):
+            log.info(message)
+        Console().show(translate('ready'), messages)
         try:
             self._tray = WindowsTray(self._icon(), 'Pictide — ' + translate('ready'),
                                      {name: translate(name) for name in ('open', 'logs', 'exit')},

@@ -12,6 +12,8 @@ These steps apply to v0.5.0 and later.
 2. On first launch, confirm where to save your data and follow the setup guide. Need an image service? Choose **ComfyUI + Anima Turbo v1.1** to install one.
 3. Wait for preparation to finish. Your browser opens automatically; follow the in-app tour to start roaming.
 
+Use ↑/↓ to select, Enter to confirm, and Esc to go back. Directory paths can be typed and edited in the same screen. Downloads and service startup refresh the current screen; detailed logs remain available from the tray menu.
+
 Installing the recommended model also connects the service and its default workflow. To use an existing service, see [image service setup](../getting-started.md).
 
 Pictide keeps running in the system tray after you close the browser. Right-click its tray icon to reopen it, view logs, or exit. Exiting also stops any ComfyUI process started by Pictide.
