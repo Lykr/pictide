@@ -22,7 +22,7 @@ from backend.host import open_browser_when_ready
 from backend.paths import DataPaths
 from backend.recommendation.resources import model_catalog
 from backend.setup.vocabulary import vocabulary_catalog
-from scripts.build_portable import build, deduplicate_numpy_binaries, export_resources, write_archive
+from scripts.build_portable import build, export_resources, write_archive
 from scripts.smoke_portable import unpack
 
 
@@ -32,7 +32,10 @@ class PortableResourcesSmoke(unittest.TestCase):
             with self.subTest(platform=target):
                 self.check_platform_build(target)
 
-    def check_platform_build(self, target_platform):
+    def test_package_audit_failure_preserves_the_previous_local_archive(self):
+        self.check_platform_build('win32', unexpected_model=True)
+
+    def check_platform_build(self, target_platform, unexpected_model=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             repo = root / 'clean repository'
@@ -100,8 +103,9 @@ class PortableResourcesSmoke(unittest.TestCase):
                 if target_platform == 'win32':
                     numpy_libs = internal / 'numpy.libs'
                     numpy_libs.mkdir()
-                    for target in (internal / 'blas.dll', numpy_libs / 'blas.dll'):
-                        target.write_bytes(b'neutral DLL fixture')
+                    (numpy_libs / 'blas.dll').write_bytes(b'neutral DLL fixture')
+                if unexpected_model:
+                    (internal / 'demo.onnx').write_bytes(b'unexpected demo model')
 
             def fixture_archive(package, archive):
                 with zipfile.ZipFile(archive, 'w') as result:
@@ -111,6 +115,7 @@ class PortableResourcesSmoke(unittest.TestCase):
             logger = logging.Logger('portable-build-smoke')
             try:
                 with patch('scripts.build_portable.ROOT', repo), \
+                        patch('scripts.build_portable.audit_builder', return_value={'python': 'isolated fixture'}), \
                         patch('scripts.build_portable.sys.platform', target_platform), \
                         patch('scripts.build_portable.build_frontend', side_effect=lambda target: shutil.copytree(front, target)) as frontend, \
                         patch('scripts.build_portable.subprocess.run', side_effect=bundle), \
@@ -119,6 +124,16 @@ class PortableResourcesSmoke(unittest.TestCase):
                         patch('backend.paths.logging.getLogger', return_value=logger), \
                         patch.dict('os.environ'), patch('tempfile.tempdir', tempfile.tempdir), \
                         patch('sys.pycache_prefix', sys.pycache_prefix):
+                    if unexpected_model:
+                        with self.assertRaisesRegex(RuntimeError, 'Portable package audit failed'):
+                            build(output)
+                        self.assertEqual(previous.read_bytes(), b'previous local build')
+                        report = next((repo / 'dev/verification/portable').rglob('build-report.json'))
+                        result = json.loads(report.read_text())
+                        self.assertFalse(result['passed'])
+                        self.assertTrue(result['inventory']['violations'])
+                        self.assertFalse(list((repo / 'dev/build/tmp').glob('portable-build-*')))
+                        return
                     result = build(output)
                     frontend.assert_called_once()
             finally:
@@ -150,9 +165,7 @@ class PortableResourcesSmoke(unittest.TestCase):
                 if target_platform == 'win32':
                     self.assertIn('Pictide/_internal/numpy.libs/blas.dll', names)
                     self.assertNotIn('Pictide/_internal/blas.dll', names)
-                    self.assertEqual(result['deduplicated_numpy_binaries'], [dict(
-                        removed='_internal/blas.dll', retained='_internal/numpy.libs/blas.dll',
-                        bytes=len(b'neutral DLL fixture'))])
+                    self.assertEqual(result['inventory']['violations'], [])
                     self.assertIn('Pictide/Pictide.exe', names)
                     self.assertFalse(any(name.startswith('Pictide/data/') or name.endswith('start.cmd') for name in names))
                 elif target_platform == 'darwin':
@@ -175,24 +188,6 @@ class PortableResourcesSmoke(unittest.TestCase):
                     self.assertIn('Pictide/data/runtime/pictide/Pictide', names)
                 self.assertFalse(any(name.endswith('.onnx') or '/models/' in name for name in archive.namelist()))
                 self.assertFalse(any('/db/' in name or '/images/' in name for name in archive.namelist()))
-
-    def test_numpy_dedup_preserves_different_versions_and_unique_runtime_files(self):
-        with tempfile.TemporaryDirectory() as directory:
-            package = Path(directory)
-            internal = package / '_internal'
-            private = internal / 'numpy.libs'
-            private.mkdir(parents=True)
-            (private / 'same.dll').write_bytes(b'same contents')
-            (internal / 'same.dll').write_bytes(b'same contents')
-            (private / 'different.dll').write_bytes(b'version one')
-            (internal / 'different.dll').write_bytes(b'version two')
-            (internal / 'unique.dll').write_bytes(b'keep runtime dependency')
-            removed = deduplicate_numpy_binaries(package)
-            self.assertEqual([row['removed'] for row in removed], ['_internal/same.dll'])
-            self.assertEqual((private / 'same.dll').read_bytes(), b'same contents')
-            self.assertEqual((private / 'different.dll').read_bytes(), b'version one')
-            self.assertEqual((internal / 'different.dll').read_bytes(), b'version two')
-            self.assertEqual((internal / 'unique.dll').read_bytes(), b'keep runtime dependency')
 
     def test_macos_archive_uses_native_bundle_archiver(self):
         with patch('scripts.build_portable.sys.platform', 'darwin'), patch('scripts.build_portable.subprocess.run') as run:
@@ -233,6 +228,7 @@ class PortableResourcesSmoke(unittest.TestCase):
             logger = logging.Logger('portable-failure-smoke')
             try:
                 with patch('scripts.build_portable.ROOT', repo), \
+                        patch('scripts.build_portable.audit_builder', return_value={'python': 'isolated fixture'}), \
                         patch('scripts.build_portable.build_frontend', side_effect=RuntimeError('frontend fixture failed')), \
                         patch('backend.paths.logging.getLogger', return_value=logger), \
                         patch.dict('os.environ'), patch('tempfile.tempdir', tempfile.tempdir), \

@@ -1,6 +1,5 @@
 """Build a native directory-style Pictide portable package."""
 import argparse
-import filecmp
 import importlib.metadata as metadata
 import json
 import os
@@ -21,6 +20,7 @@ from backend import __version__
 from backend.paths import DataPaths
 from backend.recommendation.resources import model_catalog
 from backend.setup.vocabulary import vocabulary_catalog
+from scripts.portable_audit import audit_builder, audit_package
 
 
 def export_resources(seed):
@@ -37,20 +37,6 @@ def export_resources(seed):
                 'files': []}
     (seed / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     return manifest
-
-
-def deduplicate_numpy_binaries(package):
-    """Keep NumPy's private DLL paths; remove byte-identical copies at the bundle root."""
-    internal = Path(package) / '_internal'
-    removed = []
-    for retained in sorted((internal / 'numpy.libs').glob('*.dll')):
-        duplicate = internal / retained.name
-        if duplicate.is_file() and filecmp.cmp(duplicate, retained, shallow=False):
-            removed.append({'removed': duplicate.relative_to(package).as_posix(),
-                            'retained': retained.relative_to(package).as_posix(),
-                            'bytes': duplicate.stat().st_size})
-            duplicate.unlink()
-    return removed
 
 
 def copy_licenses(destination):
@@ -74,6 +60,8 @@ def copy_licenses(destination):
             if item.marker is None or item.marker.evaluate({'extra': ''}):
                 todo.append(item.name)
         for file in dist.files or []:
+            if Path(file).suffix.lower() in {'.py', '.pyc', '.pyo'}:
+                continue
             if any(word in str(file).lower() for word in ('license', 'copying', 'notice')):
                 source = Path(dist.locate_file(file))
                 if source.is_file():
@@ -146,6 +134,7 @@ def build(output_dir=None):
     report = ROOT / 'dev/verification/portable' / name.removeprefix('pictide-') / 'build-report.json'
     result = {'passed': False, 'archive': str(archive_path), 'report': str(report)}
     try:
+        result['builder'] = audit_builder()
         output.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='portable-build-', dir=build_paths.tmp) as temporary:
             working = Path(temporary)
@@ -158,14 +147,16 @@ def build(output_dir=None):
             (seed / 'installation.json').write_text(json.dumps(dict(schema=1, version=__version__, platform=sys.platform,
                                                                     arch=platform.machine().lower())), encoding='utf8')
             print('Resources exported; packaging the native runtime.', flush=True)
+            # Imports collect code; ONNX Runtime's upstream hook collects native
+            # libraries. Its optional demo datasets are not application resources.
             command = [sys.executable, '-m', 'PyInstaller', '--onedir', '--noconfirm', '--name', 'Pictide',
                        '--distpath', str(runtime), '--workpath', str(working / 'work'), '--specpath', str(working),
                        '--paths', str(ROOT), '--add-data', f'{front}{os.pathsep}web/dist',
                        '--add-data', f'{ROOT / "backend/recommendation/model.json"}{os.pathsep}backend/recommendation',
                        '--add-data', f'{ROOT / "backend/setup/vocabularies.json"}{os.pathsep}backend/setup',
                        '--add-data', f'{ROOT / "docs/assets/workflows/anima-turbo-v1.1.api.json"}{os.pathsep}backend/workflows',
-                       '--add-data', f'{seed}{os.pathsep}resources', '--collect-all', 'fastembed',
-                       '--collect-all', 'onnxruntime', '--collect-all', 'tokenizers',
+                       '--add-data', f'{seed}{os.pathsep}resources', '--collect-data', 'fastembed',
+                       '--collect-data', 'tokenizers',
                        '--copy-metadata', 'fastembed', '--copy-metadata', 'onnxruntime', '--copy-metadata', 'tokenizers',
                        '--exclude-module', 'torch', '--exclude-module', 'tensorflow', '--exclude-module', 'pytest',
                        str(ROOT / 'scripts/portable_entry.py')]
@@ -184,9 +175,6 @@ def build(output_dir=None):
             bundled = runtime / 'Pictide'
             if sys.platform == 'win32':
                 package = bundled
-                result['deduplicated_numpy_binaries'] = deduplicate_numpy_binaries(package)
-                if result['deduplicated_numpy_binaries']:
-                    print('Removed duplicate NumPy DLLs: ' + json.dumps(result['deduplicated_numpy_binaries']), flush=True)
                 documents = package
                 launcher_name = 'Pictide.exe'
                 desktop_help = ('Startup progress appears while preparing dependencies, then Pictide stays in the system tray.\n'
@@ -241,6 +229,9 @@ def build(output_dir=None):
                 for target in (package / 'Contents/MacOS/PictideService', package / 'Contents/MacOS/Pictide', package):
                     subprocess.run(['/usr/bin/codesign', '--force', '--sign', '-', str(target)], check=True)
                 subprocess.run(['/usr/bin/codesign', '--verify', '--deep', '--strict', str(package)], check=True)
+            result['inventory'] = audit_package(package)
+            if result['inventory']['violations']:
+                raise RuntimeError('Portable package audit failed: ' + '; '.join(result['inventory']['violations']))
             archive = working / f'pictide-{__version__}-{sys.platform}-{platform.machine().lower()}.zip'
             write_archive(package, archive)
             result.update({'archive_bytes': archive.stat().st_size,
@@ -277,7 +268,7 @@ def build(output_dir=None):
         partial = report.with_suffix('.json.part')
         partial.write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
         os.replace(partial, report)
-    print(json.dumps(result), flush=True)
+    print(json.dumps({key: value for key, value in result.items() if key not in {'inventory', 'builder'}}), flush=True)
     return result
 
 

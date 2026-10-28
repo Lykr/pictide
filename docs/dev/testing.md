@@ -51,7 +51,9 @@ Natural-language changes use `python -m unittest tests.backend.application.test_
 
 ## Release checks
 
-The release workflow runs `core`, `ui` and `browser` once before the four native builds, both on version-tag pushes and on a manual full rerun of an existing tag. It creates the static directory required by HTTP core fixtures before compiling the isolated browser frontend. The offline `corpus` group remains available separately when data processing changes. Each native build retains its own extracted-package startup smoke.
+The release workflow runs `core`, `ui`, `browser`, and the packaging checks below once before the four native builds, both on version-tag pushes and on a manual full rerun of an existing tag. It creates the static directory required by HTTP core fixtures before compiling the isolated browser frontend. The offline `corpus` group remains available separately when data processing changes. Each native build retains its own extracted-package startup smoke.
+
+Packaging changes additionally run `python -m unittest tests.scripts.test_portable_startup tests.scripts.test_portable_audit -v`. Build checks reject mixed interpreter dependencies, duplicated native binaries, loose Python sources, and bundled databases/model weights. The native `scripts/smoke_portable.py` then requests a preference score for inert completed history in disposable data, forcing real CPU MiniLM inference with an empty embedding cache. It checks finite normalized 384-dimensional vectors; model-file availability alone does not establish inference. The fixture creates no active image backend or provider request. Use the previous-release options above to verify upgrades too.
 
 Ordinary branch pushes do not trigger Actions. This update applies to subsequent version tags; it does not rebuild v0.5.0.
 

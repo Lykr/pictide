@@ -63,11 +63,12 @@ jobs:
               assert entry['file']['bytes'] > 0 and re.fullmatch(r'[0-9a-f]{64}', entry['file']['sha256'])
       - name: Install application dependencies for core smokes
         run: python -m pip install --no-cache-dir -r backend/requirements.txt
-      - name: Check core business behavior before native builds
+      - name: Check core and packaging behavior before native builds
         run: |
           # HTTP core fixtures register static routes before the frontend is built.
           mkdir -p web/dist
           python scripts/check.py core
+          python -m unittest tests.scripts.test_portable_startup tests.scripts.test_portable_audit -v
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
