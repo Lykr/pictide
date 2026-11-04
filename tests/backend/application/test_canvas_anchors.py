@@ -99,8 +99,10 @@ class CanvasAnchorTests(unittest.IsolatedAsyncioTestCase):
         epoch = self.app.roam.get()['epoch']
         with self.app.roam.connect() as db:
             db.execute('ALTER TABLE roam_anchor_settings DROP COLUMN pinned_canvas')
+            db.execute('ALTER TABLE roam_anchor_settings DROP COLUMN excluded_positive')
         migrated = RoamSettings(self.app.paths).get()
         self.assertIsNone(migrated['pinned_canvas'])
+        self.assertEqual(migrated['excluded_positive'], [])
         self.assertEqual(migrated['epoch'], epoch)
         self.assertEqual(migrated['pinned_positive'], ['garden'])
 

@@ -100,7 +100,7 @@ class CandidateService:
         except KeyError:
             raise CandidateError(f"未找到预设：{preset_id}") from None
 
-    def normalize_roam_anchors(self, preset_id, pinned_positive):
+    def normalize_roam_anchors(self, preset_id, pinned_positive, excluded_positive):
         document = self.load_preset(preset_id)["document"] if preset_id else DEFAULT_DOCUMENT
         if not isinstance(pinned_positive, list) or any(
                 not isinstance(text, str) or not text.strip() for text in pinned_positive):
@@ -108,8 +108,12 @@ class CandidateService:
         base, _ = self._fixed(document["base_positive"], "positive", "")
         pins, _ = self._fixed([text.strip().replace("_", " ") for text in pinned_positive], "positive", "")
         base_ids = {term["id"] for term in base}
+        excluded = dict.fromkeys(keyword_text(text) for text in excluded_positive)
+        excluded.pop("", None)
         return dict(preset_base_positive=[term["text"] for term in base],
-                    pinned_positive=[term["text"] for term in pins if term["id"] not in base_ids])
+                    pinned_positive=[term["text"] for term in pins if term["id"] not in base_ids
+                                     and keyword_text(term["text"]) not in excluded],
+                    excluded_positive=list(excluded))
 
     def _with_library_floor(self, document):
         return {**document, "min_cooccurrence": max(document["min_cooccurrence"],
@@ -183,7 +187,8 @@ class CandidateService:
         if allowed_ids is not None and any(tag["id"] not in allowed_ids for tag in variable):
             return None
         excluded_negative = {keyword_text(text) for text in document["base_negative"]}
-        if any(keyword_text(tag["name"]) in excluded_negative or
+        excluded_terms = excluded_negative.union(document.get("excluded_positive", ()))
+        if any(keyword_text(tag["name"]) in excluded_terms or
                matches_blocked_keyword(tag["name"], document["blocked_keywords"]) for tag in variable):
             return None
         existing = list(anchors)
@@ -198,7 +203,8 @@ class CandidateService:
 
     def _extend(self, document, fixed_count, anchors, variable, rng, cap, work, allowed_ids=None, prepared=None):
         variable = list(variable)
-        excluded_negative = {keyword_text(term["text"]) for term in prepared.negative}
+        excluded_terms = {keyword_text(term["text"]) for term in prepared.negative}
+        excluded_terms.update(document.get("excluded_positive", ()))
         reason = "target_length"
         state = None
         while fixed_count + len(variable) < cap:
@@ -210,9 +216,9 @@ class CandidateService:
                 for tag in variable:
                     state.add(tag)
             choices = state.choices()
-            if excluded_negative or document["blocked_keywords"]:
+            if excluded_terms or document["blocked_keywords"]:
                 choices = [(tag, weight) for tag, weight in choices
-                           if keyword_text(tag["name"]) not in excluded_negative and
+                           if keyword_text(tag["name"]) not in excluded_terms and
                            not matches_blocked_keyword(tag["name"], document["blocked_keywords"])]
             if not choices:
                 return variable, "no_eligible_tags"
@@ -271,10 +277,15 @@ class CandidateService:
                 self._sequence_cache.popitem(last=False)
             return variable, reason, changes
 
-    def _prepare_generation(self, payload, allowed_positive_tag_ids=None, previous_candidate=None):
+    def _prepare_generation(self, payload, allowed_positive_tag_ids=None, previous_candidate=None, *, excluded_positive=()):
         options = validate_options(payload)
         document = validate_document(options.get("document") if "document" in options else
                                      self.load_preset(options["preset_id"])["document"])
+        if excluded_positive:
+            excluded = {keyword_text(text) for text in excluded_positive}
+            document["base_positive"] = [text for text in document["base_positive"]
+                                         if keyword_text(text) not in excluded]
+            document["excluded_positive"] = sorted(excluded)
         dataset = self.dataset_status()
         if dataset["status"] != "ready":
             raise CandidateError("共现数据尚未导入完成，请等待 dataset 状态为 ready 后再生成")

@@ -347,7 +347,7 @@ body.pictide-immersive { overflow: hidden; }
 .roam-anchors > :not(.roam-anchor-terms) { flex-shrink: 0; }
 .roam-anchor-terms { display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; gap: 6px; padding: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .feed-page .roam-anchor-term { height: auto; min-height: 32px; max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; }
-.feed-page .roam-anchor-term:disabled { opacity: 0.65; }
+.feed-page .roam-anchor-term:is(:disabled, [aria-disabled=true]) { opacity: 0.65; }
 .feed-page .roam-image-card[data-state=open] { --anchor-panel-width: clamp(160px, var(--anchor-panel-ratio, 30%), calc(100% - 326px)); display: grid; grid-template-columns: minmax(0, 1fr) 6px var(--anchor-panel-width); grid-template-rows: var(--roam-image-height) auto; height: auto; min-height: 0; }
 .feed-page .roam-image-card[data-state=open] .image-stage { grid-column: 1; grid-row: 1; position: relative; inset: auto; width: 100%; height: 100%; min-height: 0; max-height: none; aspect-ratio: auto; }
 .feed-page .roam-image-card[data-state=open] > .roam-anchors { grid-column: 3; grid-row: 1 / 3; contain: size; }

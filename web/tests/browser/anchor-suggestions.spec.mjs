@@ -97,6 +97,34 @@ for (const width of [1365, 390]) test(`anchor library selection, free text and f
   expect(generation).toEqual([]);
 });
 
+test('mouse right-click excludes an anchor and keeps it removable in the same list', async ({ page, context }) => {
+  await openAnchors(page, context);
+  const sky = page.locator('.roam-anchor-term').filter({ hasText: /^blue sky$/ });
+  const settings = async () => (await (await page.request.get('/api/settings/roam')).json()).excluded_positive;
+  const image = await page.locator('#main-image').getAttribute('src');
+  await sky.click();
+  await expect(sky).toHaveAttribute('aria-pressed', 'true');
+
+  await sky.dispatchEvent('pointerdown', { pointerType: 'touch', button: 0 });
+  await sky.dispatchEvent('contextmenu', { button: 2 });
+  expect(await settings()).toEqual([]);
+  await sky.click({ button: 'right' });
+  await expect(sky).toHaveAccessibleName('blue sky · Excluded. Right-click to undo');
+  await expect(sky.locator('.line-through')).toHaveText('blue sky');
+  await expect.poll(settings).toEqual(['blue sky']);
+  expect(await pins(page)).toEqual([]);
+  await expect(page.locator('#main-image')).toHaveAttribute('src', image);
+
+  await page.locator('#next').click();
+  await expect(page.locator('#main-image')).not.toHaveAttribute('src', image);
+  await page.reload();
+  await page.locator('.roam-anchor-trigger').click();
+  await expect(sky).toHaveAccessibleName('blue sky · Excluded. Right-click to undo');
+  await sky.click({ button: 'right' });
+  await expect.poll(settings).toEqual([]);
+  await expect(sky).toHaveCount(0);
+});
+
 test('anchor search ignores stale responses, handles IME and keeps drafts on failures', async ({ page, context }) => {
   await openAnchors(page, context);
   let releaseOld;

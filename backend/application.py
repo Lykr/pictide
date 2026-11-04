@@ -683,16 +683,20 @@ class PictideApplication:
         return dict(document, cleanup={**cleanup, **counts},
                     artifact_revision=await asyncio.to_thread(self.storage.artifact_revision))
 
-    async def _normalized_roam_anchors(self, document, pinned=None):
+    async def _normalized_roam_anchors(self, document, changes=None):
+        changes = changes or {}
         presets = (await asyncio.to_thread(self.candidates.list_presets))["presets"]
         identifiers = [item["id"] for item in presets]
         preset_id = document["preset_id"] or (identifiers[0] if identifiers else "")
         # A deleted explicit preset remains invalid for generation, but must not prevent startup.
         if preset_id not in identifiers:
             preset_id = ""
+        fields = ("pinned_positive", "excluded_positive")
         anchors = await asyncio.to_thread(self.candidates.normalize_roam_anchors, preset_id,
-                                          document["pinned_positive"] if pinned is None else pinned)
-        return anchors | {'pinned_canvas': document.get('pinned_canvas')}
+                                          *(changes.get(key, document[key]) for key in fields))
+        if document["prompt_mode"] == "stay" and any(key in changes and anchors[key] != document[key] for key in fields):
+            raise ValidationError("停泊时暂不可编辑画面锚点。")
+        return anchors | {'pinned_canvas': changes.get('pinned_canvas', document.get('pinned_canvas'))}
 
     async def _refresh_roam_anchors(self):
         document = await asyncio.to_thread(self.roam.get)
@@ -706,10 +710,10 @@ class PictideApplication:
         recommendation = recommendation_options(payload or {})
         if payload is not None and 'use_canvas_pool' in payload and type(payload['use_canvas_pool']) is not bool:
             raise ValidationError('use_canvas_pool must be a boolean.')
-        if payload is not None and "pinned_positive" in payload and (
-                not isinstance(payload["pinned_positive"], list) or any(
-                    not isinstance(text, str) or not text.strip() for text in payload["pinned_positive"])):
-            raise ValidationError("pinned_positive 必须是完整且非空的提示词列表。")
+        for key in ("pinned_positive", "excluded_positive"):
+            if payload is not None and key in payload and (not isinstance(payload[key], list) or any(
+                    not isinstance(text, str) or not text.strip() for text in payload[key])):
+                raise ValidationError(f"{key} 必须是完整且非空的提示词列表。")
         if payload is not None and "liked_tags_only" in payload and type(payload["liked_tags_only"]) is not bool:
             raise ValidationError("仅从喜欢图片抽取标签须为布尔值。")
         if payload is not None and "playback_interval_seconds" in payload:
@@ -733,13 +737,9 @@ class PictideApplication:
                     validate_generation_options(backend, canvas)
             if payload is None:
                 document = await self._refresh_roam_anchors()
-            elif payload and set(payload) <= {"playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "use_canvas_pool", "pinned_canvas"}:
+            elif payload and set(payload) <= {"playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "excluded_positive", "use_canvas_pool", "pinned_canvas"}:
                 previous = await asyncio.to_thread(self.roam.get)
-                anchors = await self._normalized_roam_anchors(
-                    previous | {'pinned_canvas': payload.get('pinned_canvas', previous['pinned_canvas'])}, payload.get("pinned_positive"))
-                if ("pinned_positive" in payload and previous["prompt_mode"] == "stay"
-                        and anchors["pinned_positive"] != previous["pinned_positive"]):
-                    raise ValidationError("停泊时暂不可编辑画面锚点。")
+                anchors = await self._normalized_roam_anchors(previous, payload)
                 document = await asyncio.to_thread(self.roam.save_options, payload.get("liked_tags_only"),
                                                    payload.get("playback_interval_seconds"), payload.get("prompt_mode"), payload.get("candidate_count"), recommendation, anchors, payload.get("use_canvas_pool"))
                 self.events.publish("roam_settings")
@@ -766,11 +766,7 @@ class PictideApplication:
                         raise ValidationError("漫游生图后端不存在，请重新选择。")
                     if preset_id and preset_id not in {item["id"] for item in (await asyncio.to_thread(self.candidates.list_presets))["presets"]}:
                         raise ValidationError("漫游候选预设不存在，请重新选择。")
-                anchors = await self._normalized_roam_anchors(previous | {"preset_id": preset_id,
-                    'pinned_canvas': payload.get('pinned_canvas', previous['pinned_canvas'])}, payload.get("pinned_positive"))
-                if ("pinned_positive" in payload and previous["prompt_mode"] == "stay"
-                        and anchors["pinned_positive"] != previous["pinned_positive"]):
-                    raise ValidationError("停泊时暂不可编辑画面锚点。")
+                anchors = await self._normalized_roam_anchors(previous | {"preset_id": preset_id}, payload)
                 document = await asyncio.to_thread(self.roam.save, count, backend_id, preset_id, max_history,
                                                    payload.get("playback_interval_seconds"), payload.get("liked_tags_only"), payload.get("prompt_mode"), payload.get("candidate_count"), recommendation, anchors, payload.get("use_canvas_pool"))
                 saved_state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
@@ -782,7 +778,7 @@ class PictideApplication:
                     await self.clean_history(force=True, roam_only=True)
                 self.events.publish("roam_settings")
             state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
-            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "preset_base_positive", "use_canvas_pool", "pinned_canvas")} | {
+            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "excluded_positive", "preset_base_positive", "use_canvas_pool", "pinned_canvas")} | {
                 "artifact_revision": await asyncio.to_thread(self.storage.artifact_revision),
                 "paused": state["paused"], "preference_learning": await self._learning_available(),
                 **({"error": state["error"]} if state.get("error") else {})}
@@ -807,7 +803,8 @@ class PictideApplication:
         strategy = "mean" if strong else "thompson"
         count = context.get("candidate_count", 10) * (context.get("strong_candidate_multiplier", 2) if strong else 1)
         constraints = {"count": count, "prompt_mode": mode, "previous_candidate": previous,
-                       "pinned_positive": context.get("pinned_positive", [])}
+                       "pinned_positive": context.get("pinned_positive", []),
+                       "excluded_positive": context.get("excluded_positive", [])}
         if context.get("liked_tags_only") and not (mode == "stay" and previous):
             prompts = self.storage.liked_positive_prompts()
             allowed = self.candidates.resolve_tag_pool(prompts)
@@ -881,7 +878,7 @@ class PictideApplication:
                            "backend_id": backend_id, "preset_id": preset_id, "epoch": document["epoch"],
                            "liked_tags_only": document["liked_tags_only"], "prompt_mode": document["prompt_mode"],
                            "candidate_count": document["candidate_count"],
-                           "pinned_positive": document["pinned_positive"],
+                           "pinned_positive": document["pinned_positive"], "excluded_positive": document["excluded_positive"],
                            "recommendation_strength": document["recommendation_strength"],
                            "strong_candidate_multiplier": document["strong_candidate_multiplier"]}
                 chosen, snapshot = await asyncio.to_thread(self._roam_candidate, context)

@@ -12,6 +12,7 @@ from backend.host import APPLICATION, create_app
 from backend.prompting import PromptRenderer
 from backend.prompt_preparation import PromptPreparation
 from backend.store.prompting import PromptStore
+from backend.store.roam_settings import RoamSettings
 from tests.backend.application.test_app import FakeBackend, configuration
 from tests.backend.candidate.test_candidate_libraries import vocabulary
 from backend.recommendation.service import RecommendationService
@@ -78,6 +79,26 @@ class NaturalPromptTests(unittest.IsolatedAsyncioTestCase):
     def finish(self, job):
         self.app.storage.complete(job['id'], [{'node_id': '9', 'index': 0, 'filename': 'neutral.png'}])
         return next(a for a in self.app.storage.artifacts() if a['job_id'] == job['id'])
+
+    async def test_roam_exclusion_replaces_pin_and_invalidates_prefetch(self):
+        await self.app.roam_settings({'pinned_positive': ['blue sky'], 'prompt_mode': 'along'})
+        current = self.finish(await self.roam())
+        self.app.storage.roam_view({'artifact_id': current['id'], 'viewed_at': 1})
+        queued = await self.roam()
+        response = await self.client.put('/api/settings/roam', json={'excluded_positive': [' BLUE_SKY ', 'blue sky']})
+        saved = await response.json()
+        self.assertEqual(response.status, 200, saved)
+        self.assertEqual(saved['pinned_positive'], [])
+        self.assertEqual(saved['excluded_positive'], ['blue sky'])
+        self.assertEqual(RoamSettings(self.app.paths).get()['excluded_positive'], ['blue sky'])
+        self.assertEqual(self.app.storage.job(queued['id'])['status'], 'cancelled')
+        self.assertEqual([image['id'] for image in self.app.storage.artifacts(source='roam')], [current['id']])
+
+        following = await self.roam()
+        self.assertEqual(following['source_prompts'], {'positive': 'garden', 'negative': ''})
+        epoch = self.app.roam.get()['epoch']
+        await self.app.roam_settings({'excluded_positive': ['BLUE_SKY']})
+        self.assertEqual(self.app.roam.get()['epoch'], epoch)
 
     async def test_preview_is_reused_for_batch_and_restart_replay(self):
         preview = await self.post('/api/candidate/generate', {'preset_id': self.preset['id'], 'backend_id': 'local'})

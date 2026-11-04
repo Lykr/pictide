@@ -510,7 +510,7 @@ async function applyRoamSettings(settings, savedFields = []) {
     generation.selectPreset(next.preset_id);
   }
   const switched = roamSettingsLoaded && roamGenerationChanged(roamSettings, next);
-  if (roamSettingsLoaded && (JSON.stringify(roamSettings.pinned_positive ?? []) !== JSON.stringify(next.pinned_positive ?? [])
+  if (roamSettingsLoaded && (['pinned_positive', 'excluded_positive'].some(key => JSON.stringify(roamSettings[key] ?? []) !== JSON.stringify(next[key] ?? []))
       || JSON.stringify(roamSettings.pinned_canvas ?? null) !== JSON.stringify(next.pinned_canvas ?? null))) {
     // Saving anchors still discards the old window, but editing must not launch
     // replacements through settings/SSE/page refresh events. Next navigation resumes it.

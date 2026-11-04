@@ -52,7 +52,8 @@ class CooccurrenceCandidateProvider:
             frames.append(frame)
 
         prepared = self.service._prepare_generation(
-            frames[0], allowed_ids, previous if prompt_mode == "along" else None)
+            frames[0], allowed_ids, previous if prompt_mode == "along" else None,
+            excluded_positive=constraints.get("excluded_positive", ()))
 
         def generate_one(frame):
             result = self.service._generate_prepared(prepared, frame)

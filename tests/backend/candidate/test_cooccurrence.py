@@ -78,6 +78,16 @@ class CooccurrenceSmoke(unittest.TestCase):
         stay = self.service.provider.generate(blocked, dict(prompt_mode="stay", previous_candidate=reference))[0]
         self.assertEqual(stay.positive, initial["positive"])
 
+    def test_roam_excludes_exact_positive_terms_across_preset_and_sampling(self):
+        options = dict(preset_id="test", mode="fixed_seed", seed=19)
+        candidate, = self.service.provider.generate(options, {
+            "pinned_positive": ["soft light"],
+            "excluded_positive": ["BLUE_SKY", "green grass", "view"],
+        })
+        self.assertEqual(candidate.positive, "soft light, wide view")
+        self.assertEqual(candidate.negative, "blurry")
+        self.assertEqual(self.service.load_preset("test")["document"]["base_positive"], ["blue sky"])
+
     def test_negative_terms_exclude_exact_sampled_matches_in_all_modes(self):
         document = dict(self.doc, base_negative=["  SOFT__LIGHT  ", "green_grass"],
                         min_tags=4, max_tags=4)

@@ -73,5 +73,5 @@ export function likedTagsWait(result, waitingForNext) {
 export function roamGenerationChanged(previous, next) {
   return ['liked_tags_only', 'prompt_mode', 'backend_id', 'preset_id', 'use_canvas_pool'].some(key => previous[key] !== next[key])
     || JSON.stringify(previous.pinned_canvas ?? null) !== JSON.stringify(next.pinned_canvas ?? null)
-    || ['pinned_positive', 'preset_base_positive'].some(key => JSON.stringify(previous[key] ?? []) !== JSON.stringify(next[key] ?? []));
+    || ['pinned_positive', 'excluded_positive', 'preset_base_positive'].some(key => JSON.stringify(previous[key] ?? []) !== JSON.stringify(next[key] ?? []));
 }

@@ -6,7 +6,7 @@ import { useErrorNotice } from "./notifications";
 import { getUiState, publishUiState, subscribeUiState } from "../shared/ui-state.mjs";
 import { uiTarget } from "../shared/ui-targets";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactElement, type ReactNode } from "react";
-import { Anchor, LoaderCircle, LockKeyhole, Plus, Trash2, X } from "lucide-react";
+import { Anchor, Ban, LoaderCircle, LockKeyhole, Plus, Trash2, X } from "lucide-react";
 import { t, tr } from "../i18n/index.mjs";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -16,16 +16,19 @@ import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./ui/pop
 import { ImageToolbarPopover } from "./image-toolbar-popover";
 import { HelpTip } from "./actions";
 import { RoamCanvas } from "./roam-canvas";
-import { anchorTerms } from "../controllers/roam-anchors.mjs";
+import { anchorKey, anchorTerms } from "../controllers/roam-anchors.mjs";
 
-type AnchorSettings = { pinned_positive: string[]; preset_base_positive: string[]; prompt_mode: string };
+type AnchorSettings = { pinned_positive: string[]; excluded_positive: string[]; preset_base_positive: string[]; prompt_mode: string };
 const normalize = (text: string) => text.trim().replaceAll("_", " ");
 
 export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel: ReactNode) => ReactElement }) {
   const facts = useSyncExternalStore(subscribeUiState, getUiState) as Record<string, unknown>;
   const immersive = facts.roamImmersive === true;
   const value = useUiFact("roamOptions");
-  const settings: AnchorSettings = { pinned_positive: value?.pinned_positive ?? [], preset_base_positive: value?.preset_base_positive ?? [], prompt_mode: value?.prompt_mode ?? "random" };
+  const settings: AnchorSettings = {
+    pinned_positive: value?.pinned_positive ?? [], excluded_positive: value?.excluded_positive ?? [],
+    preset_base_positive: value?.preset_base_positive ?? [], prompt_mode: value?.prompt_mode ?? "random",
+  };
   const positive = useUiFact("imageInfo")?.sourcePositive ?? "";
   const [query, setQuery] = useState("");
   const ready = !!value;
@@ -33,6 +36,7 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
   const [adding, setAdding] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const navigating = useRef(false);
+  const rightButtonTerm = useRef<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState("");
   useErrorNotice(error, { id: "roam-anchors" });
@@ -43,18 +47,21 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
   const anchorRevision = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (adding && open) inputRef.current?.focus(); }, [adding, open]);
-  const fixed = new Set(settings.preset_base_positive.map(normalize));
-  const pins = settings.pinned_positive.map(normalize).filter(text => !fixed.has(text));
-  const pinned = new Set(pins);
-  const terms: string[] = anchorTerms(positive, pins, settings.preset_base_positive);
+  const fixed = new Set(settings.preset_base_positive.map(anchorKey));
+  const exclusions = settings.excluded_positive;
+  const excluded = new Set(exclusions.map(anchorKey));
+  const pins = settings.pinned_positive.map(normalize).filter(text => !fixed.has(anchorKey(text)) && !excluded.has(anchorKey(text)));
+  const pinned = new Set(pins.map(anchorKey));
+  const terms: string[] = anchorTerms(positive, pins, settings.preset_base_positive, exclusions);
+  const count = pins.length + exclusions.length;
   const locked = settings.prompt_mode === "stay";
   const disabled = !ready || locked || pending !== null;
   const suggestionsOpen = searchOpen && open && !disabled && facts.route === "feed";
   const { matches, error: searchError, loading } = useVocabularySearch(query, suggestionsOpen);
   useErrorNotice(searchError ? `${t("词库暂不可用，仍可输入提示词并回车添加")} · ${searchError}` : "", { id: "anchor-tag-search", visible: suggestionsOpen });
-  const excluded = new Set([...settings.preset_base_positive, ...pins].map(text => normalize(text).toLowerCase()));
-  const options = matches.filter(tag => !excluded.has(normalize(tag.name).toLowerCase()));
-  const custom = query.trim() && !excluded.has(normalize(query).toLowerCase()) && !matches.some(tag => normalize(tag.name).toLowerCase() === normalize(query).toLowerCase());
+  const occupied = new Set([...fixed, ...pinned, ...excluded]);
+  const options = matches.filter(tag => !occupied.has(anchorKey(tag.name)));
+  const custom = anchorKey(query) && !occupied.has(anchorKey(query)) && !matches.some(tag => anchorKey(tag.name) === anchorKey(query));
   useEffect(() => { setSearchOpen(false); navigating.current = false; }, [open, immersive]);
   const signature = JSON.stringify(pins);
   useEffect(() => {
@@ -64,31 +71,34 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
     }
     publishUiState({ anchorOpen: open, anchorCount: pins.length, anchorsEditable: ready && !locked && pending === null, anchorRevision: anchorRevision.current });
   }, [open, ready, locked, pending, signature]);
-  const save = async (text: string | null, addOnly = false) => {
+  const save = async (text: string | null, exclude = false) => {
     if (!ready || locked || pending !== null) return false;
-    if (addOnly && text !== null && excluded.has(normalize(text).toLowerCase())) return true;
-    const next = text === null ? [] : pinned.has(text) ? pins.filter(value => value !== text) : [...pins, text];
+    const key = text === null ? "" : anchorKey(text);
+    const nextPins = text === null ? [] : pins.filter(value => anchorKey(value) !== key);
+    const nextExclusions = text === null ? [] : exclusions.filter(value => anchorKey(value) !== key);
+    if (text !== null && exclude && !excluded.has(key)) nextExclusions.push(text);
+    if (text !== null && !exclude && !pinned.has(key) && !fixed.has(key)) nextPins.push(text);
     setPending(text ?? ""); setError("");
     try {
-      await runUiCommand('roam-settings-save', { pinned_positive: next });
+      await runUiCommand('roam-settings-save', { pinned_positive: nextPins, excluded_positive: nextExclusions });
       return true;
     } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); return false; }
     finally { setPending(null); }
   };
   const add = async (value = query) => {
     const text = normalize(value);
-    if (text && await save(text, true)) { setQuery(""); setAdding(false); setSearchOpen(false); navigating.current = false; }
+    if (anchorKey(text) && (occupied.has(anchorKey(text)) || await save(text))) { setQuery(""); setAdding(false); setSearchOpen(false); navigating.current = false; }
   };
   const triggerButton = <Button ref={triggerTarget} variant={open ? "secondary" : "ghost"} size="icon-sm" className="roam-anchor-trigger" aria-label={t("锚点")} aria-pressed={open} data-tooltip={t("锚点")} onClick={() => { if (!open) emitSignal("close-image-info"); }}>
-      <Anchor aria-hidden="true" />{pins.length > 0 && <span className="roam-anchor-count">{pins.length}</span>}
+      <Anchor aria-hidden="true" />{count > 0 && <span className="roam-anchor-count">{count}</span>}
     </Button>;
   const trigger = immersive ? <PopoverTrigger asChild>{triggerButton}</PopoverTrigger> : <CollapsibleTrigger asChild>{triggerButton}</CollapsibleTrigger>;
   const content = <>
     <div className="roam-anchor-heading">
-      <span className="font-medium">{t("锚点")}</span><Badge variant="secondary">{pins.length}</Badge>
-      <HelpTip text={locked ? t("停泊保持整组提示词，切换漫游方式后可编辑锚点。") : t("点选正向词，让后续图片保留这个元素；修改后清空旧预取。")} />
+      <span className="font-medium">{t("锚点")}</span><Badge variant="secondary">{count}</Badge>
+      <HelpTip text={locked ? t("停泊保持整组提示词，切换漫游方式后可编辑锚点。") : t("点击固定标签，右键排除标签。修改后清空旧预取。")} />
       <div className="ml-auto flex items-center gap-1">
-        {pins.length > 0 && <Button variant="ghost" size="icon-sm" ref={targets.clear} aria-label={t("清空锚点")} data-tooltip={t("清空锚点")} disabled={!ready || locked || pending !== null} onClick={() => save(null)}>
+        {count > 0 && <Button variant="ghost" size="icon-sm" ref={targets.clear} aria-label={t("清空锚点")} data-tooltip={t("清空锚点")} disabled={disabled} onClick={() => save(null)}>
           {pending === "" ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
         </Button>}
         <Button variant="ghost" size="icon-sm" aria-label={t("收起锚点")} data-tooltip={t("收起锚点")} onClick={() => { setOpen(false); triggerRef.current?.focus({ preventScroll: true }); }}><X aria-hidden="true" /></Button>
@@ -116,7 +126,7 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
             disabled={disabled} onClick={() => { if (query.trim()) void add(); else { setAdding(true); inputRef.current?.focus(); } }}>
             {pending !== null && pending === normalize(query) ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}
           </Button>
-          {pins.length > 0 && <Button ref={targets.mobileClear} className="roam-anchor-mobile-clear" variant="ghost" size="icon-sm" aria-label={t("清空锚点")} data-tooltip={t("清空锚点")} disabled={disabled} onClick={() => save(null)}>
+          {count > 0 && <Button ref={targets.mobileClear} className="roam-anchor-mobile-clear" variant="ghost" size="icon-sm" aria-label={t("清空锚点")} data-tooltip={t("清空锚点")} disabled={disabled} onClick={() => save(null)}>
             {pending === "" ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
           </Button>}
         </div></PopoverAnchor>
@@ -138,11 +148,21 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
     </Command>
     <div ref={targets.terms} className="roam-anchor-terms">
       {terms.map(text => {
-        const fromPreset = fixed.has(text), selected = pinned.has(text);
-        const label = fromPreset ? t("来自预设") : selected ? t("取消锚点") : t("设为锚点");
-        return <Button key={text} variant={selected ? "secondary" : "outline"} size="sm" className="roam-anchor-term" aria-label={text + " · " + label} aria-pressed={selected} data-tooltip={label} disabled={!ready || locked || fromPreset || pending !== null} onClick={() => save(text)}>
-          {pending === text ? <LoaderCircle className="size-3 animate-spin" /> : fromPreset ? <LockKeyhole className="size-3" /> : selected ? <Anchor className="size-3" /> : null}
-          <span>{text}</span>
+        const key = anchorKey(text);
+        const isExcluded = excluded.has(key), fromPreset = fixed.has(key), selected = pinned.has(key);
+        const label = isExcluded ? t("已排除，右键撤销") : fromPreset ? t("来自预设") : selected ? t("取消锚点") : t("设为锚点");
+        return <Button key={key} variant={selected || isExcluded ? "secondary" : "outline"} size="sm" className="roam-anchor-term"
+          aria-label={text + " · " + label} aria-pressed={selected} data-tooltip={label} disabled={disabled} aria-disabled={fromPreset && !isExcluded || undefined}
+          onClick={() => { if (!fromPreset || isExcluded) void save(text); }}
+          onPointerDown={event => { rightButtonTerm.current = event.pointerType === "mouse" && event.button === 2 ? key : null; }}
+          onContextMenu={event => {
+            if (event.button !== 2 || rightButtonTerm.current !== key) return;
+            rightButtonTerm.current = null;
+            event.preventDefault();
+            void save(text, true);
+          }}>
+          {pending === text ? <LoaderCircle className="size-3 animate-spin" /> : isExcluded ? <Ban className="size-3" aria-hidden="true" /> : fromPreset ? <LockKeyhole className="size-3" /> : selected ? <Anchor className="size-3" /> : null}
+          <span className={isExcluded ? "line-through" : undefined}>{text}</span>
         </Button>;
       })}
     </div>
