@@ -328,13 +328,6 @@ function stepFeedback(direction) {
     return feedback(steppedFeedbackValue(artifact.feedback, direction), false, true);
   }
 }
-function offerUnlikeUndo(artifact, value) {
-  if (artifact.feedback !== 1 || value !== null) return;
-  notify(() => t('已取消喜欢'), {
-    id: `liked-unlike-${artifact.id}`,
-    action: { label: () => t('撤销'), onClick: () => restoreLike(artifact.id) },
-  });
-}
 async function restoreLike(id) {
   if (state.feedbackPending || state.generatedMutationPending) {
     notifyError(() => t('请等待当前操作完成后重试。'), {
@@ -353,7 +346,6 @@ async function restoreLike(id) {
     replaceArtifact(result.artifact);
     recentUnlikes.remove(id);
     if (state.view === 'liked' && state.likedSort === 'score') await likedRanking.load(state.likedTags);
-    dismissNotification(`liked-unlike-${id}`);
     notifySuccess(() => t('已重新喜欢'), { id: 'liked-restore' });
   } catch (error) {
     if (error.status === 404 || error.status === 410) recentUnlikes.remove(id);
@@ -380,7 +372,6 @@ async function feedback(value, toggle = true, animate = false) {
     if (state.view === 'liked' && nextValue === null && !await confirmAction(t("确定取消喜欢这张图片？取消后将从喜欢页面移除，保留 24 小时缓冲后再按清理规则处理。"))) return;
     const result = await api(`/api/artifacts/${encodeURIComponent(artifact.id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value: nextValue }) }); state.feedbackRevision++; observeArtifactRevision(state, result.revision ?? result.artifact_revision); if (artifactRevision === state.artifactRevision) { const delta = Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); if (state.likedSort !== 'score' && matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += delta; replaceArtifact(result.artifact); } renderArtifacts();
     if (animate && state.view === 'feed' && state.currentImage === artifact.id) showFeedbackNotice(result.artifact.feedback, artifact.feedback);
-    offerUnlikeUndo(artifact, nextValue);
     void recentUnlikes.invalidate();
   }
   catch (error) { showNotice(error.status === 404 || error.status === 410 ? t("图片已清理或不可用，正在刷新列表。") : error.message, true); }
@@ -443,7 +434,6 @@ async function feedbackGenerated(id, toggle = true, view = 'generate') {
     const result = await api(`/api/artifacts/${encodeURIComponent(id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value }) });
     state.feedbackRevision++;
     observeArtifactRevision(state, result.revision ?? result.artifact_revision);
-    offerUnlikeUndo(artifact, value);
     void recentUnlikes.invalidate();
     if (view === 'liked' && state.likedSort === 'score') { replaceArtifact(result.artifact); }
     else if (revision === state.artifactRevision) { if (state.likedSort !== 'score' && matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); replaceArtifact(result.artifact); }

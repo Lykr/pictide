@@ -15,7 +15,7 @@ async function prepare(page, context) {
 }
 
 for (const width of [1365, 390]) {
-  test(`toolbar recovery, privacy and undo at ${width}px`, async ({ page, context }, testInfo) => {
+  test(`toolbar recovery, privacy and silent unlike at ${width}px`, async ({ page, context }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     const images = await prepare(page, context);
     const hidden = images[2];
@@ -61,7 +61,12 @@ for (const width of [1365, 390]) {
     await expect(page.getByRole('alertdialog')).toBeVisible();
     await page.getByRole('alertdialog').getByRole('button', { name: '确认', exact: true }).click();
     await expect(collection.locator('.generated-card')).toHaveCount(2);
-    await page.getByRole('button', { name: '撤销', exact: true }).click();
+    await expect(page.locator('.notification-card').filter({ hasText: '已取消喜欢' })).toHaveCount(0);
+    await history.click();
+    await expect(cards).toHaveCount(1);
+    await cards.getByRole('button', { name: '重新喜欢', exact: true }).click();
+    await expect(cards).toHaveCount(0);
+    await recent.getByRole('button', { name: '关闭', exact: true }).click();
     await expect(collection.locator('.generated-card')).toHaveCount(3);
     await page.reload();
     await expect(collection.locator('.generated-card')).toHaveCount(3);
