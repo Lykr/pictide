@@ -69,7 +69,7 @@ export function NetworkSettings() {
             <Button type="button" variant="ghost" size="icon-sm" aria-label={t('刷新访问地址')} disabled={busy} onClick={() => void load()}><RefreshCw aria-hidden="true" /></Button>
           </div>
           <QRCodeSVG value={url} size={160} marginSize={4} title={t('手机扫码访问 Pictide')} className="max-w-full rounded-md" />
-          <p className="text-sm text-muted-foreground">{t('手机连接同一局域网后扫码。连接受阻时，请检查系统防火墙的专用网络权限。')}</p>
+          <p className="text-sm text-muted-foreground">{t('地址对应本机的不同网卡。手机连接同一局域网后扫码，连接受阻时检查防火墙的专用网络权限。')}</p>
         </> : <p className="text-sm text-muted-foreground">{t('未找到局域网地址，请检查网络后刷新。')}</p>}
       </>}
     </div>
