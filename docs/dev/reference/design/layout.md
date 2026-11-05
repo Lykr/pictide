@@ -58,6 +58,8 @@ Liked offers Latest / Preference score sorting and a searchable multi-select tag
 
 Liked alone adds original-image download in the shared large-view trailing slot. The page header places an export-selection icon toggle immediately to the right of blur, using the same size and styling. Selection mode reveals grid checkboxes and a row with the selected count, Select all loaded, and ZIP export. The header toggle exits selection mode. Changing the filter or leaving the view clears selection. Images removed from the list are removed from selection. Export is disabled during a transfer and when the selection is empty or exceeds 1000 images.
 
+Recently unliked uses a history icon immediately after export, available even with an empty or filtered collection. Open a shared Dialog with an internally scrolling three-column grid (two on phones), remaining protection time, and Like again on each image. Keep time and action on separate rows, with a 44px restore target. It shares Liked's blur state and large viewer; original-image download remains unavailable until restored. Closing returns focus to the toolbar without changing the collection's filters or scroll. Successful unlike actions also offer Undo through the shared notification layer. The deadline describes the recovery window, not a guaranteed deletion time.
+
 ## Prompts
 
 Vocabulary selection, upload, and refresh form one management row; full-width tag search follows. Keep controls grouped on narrow screens, constrain long filenames, and page the read-only vocabulary rather than mounting it all.

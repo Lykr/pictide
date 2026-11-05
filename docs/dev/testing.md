@@ -17,6 +17,8 @@ Use Python 3.12 to match release CI.
 
 First-use, export, LAN-listener, and unlike-grace changes additionally run `tests.backend.application.test_liked_export`, `tests.backend.runtime.test_network_access`, `tests.backend.store.test_unlike_grace`, existing cleanup and desktop-launcher checks, and `web/tests/browser/first-use.spec.mjs`. These use temporary images and local services to verify exact exported bytes, interrupted-transfer cleanup, runtime listener changes and graceful process exit, 24-hour protection across restarts, canonical workflow bindings, and desktop/phone controls. They submit no GPU or image-provider requests.
 
+Liked-recovery changes also use `tests.backend.application.test_recent_unlikes`, `web/tests/unit/recent-unlikes.test.mjs`, and `web/tests/browser/liked-recovery.spec.mjs`. They cover hidden images, deadline ordering and stable pagination after restoring a cursor image, server-relative expiry, late requests, Undo, score sorting, blur, empty collections, failed-read retry, and desktop/phone controls.
+
 | Group | Checks | Requirements |
 | --- | --- | --- |
 | `core` (default) | Eighteen smokes: terminal keyboard/frame consistency, startup vocabulary download/offline reuse, local ComfyUI lifecycle, macOS update restart mode, preset-to-roam flow, blocked queue recovery, database migration, reversible feedback, OpenAI and Gemini protocol requests, natural-language Anchor reuse and explicit prefetch retry, named LLM references, immutable canvas-pool task dimensions, persistent canvas anchors, Generate size/replay snapshots, and OAuth callback verification | Application Python dependencies |

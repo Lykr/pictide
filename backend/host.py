@@ -195,6 +195,14 @@ async def liked_tags(request):
     return web.json_response(await request.app[APPLICATION].liked_tags())
 
 
+async def recent_unlikes(request):
+    try:
+        limit = int(request.query.get("limit", "100"))
+    except ValueError:
+        raise ValidationError("分页数量必须是整数。") from None
+    return web.json_response(await request.app[APPLICATION].recent_unlikes(limit, request.query.get("before")))
+
+
 class ExportResponse(web.StreamResponse):
     def __init__(self, path):
         super().__init__(headers={'Content-Type': 'application/zip',
@@ -569,6 +577,7 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get("/api/jobs", jobs), web.post("/api/jobs", jobs), web.post("/api/jobs/cancel-pending", cancel_pending_jobs),
         web.post("/api/jobs/{id}/cancel", cancel_job),
         web.get("/api/liked/tags", liked_tags),
+        web.get("/api/liked/recently-unliked", recent_unlikes),
         web.post('/api/liked/export', export_liked),
         web.get("/api/liked/ranked", liked_ranked),
         web.post("/api/liked/ranked/refresh", refresh_liked_ranked),

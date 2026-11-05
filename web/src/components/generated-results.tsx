@@ -1,7 +1,6 @@
 import { useApplication, useModel, useUiFact } from '../shared/application-context';
 import { runUiCommand } from '../shared/ui-state.mjs';
 import { useErrorNotice } from "./notifications";
-import { notifyError } from "../shared/notifications.mjs";
 import { publishUiState } from "../shared/ui-state.mjs";
 import { uiTarget } from "../shared/ui-targets";
 import { t, tr, messageKey, locale } from "../i18n/index.mjs";
@@ -15,22 +14,14 @@ import { Checkbox } from './ui/checkbox';
 import { IconButton } from "./actions";
 import { LikedTagFilter } from "./liked-tag-filter";
 import { GeneratedViewer, type GeneratedArtifact } from "./generated-viewer";
+import { ArtifactImage } from './artifact-image';
+import { RecentUnlikes } from './recent-unlikes';
 import { imageSeedLabel } from "../controllers/backend-controls.mjs";
 
 type ResultState = { artifacts: GeneratedArtifact[]; total: number; hasMore: boolean; loading: boolean; error: string; pending: boolean; status: string; feedbackPending: boolean; mutationPending: boolean; visible: boolean; configured: boolean; tags: string[]; sort: "latest" | "score"; refreshedAt: string | null; filterVersion: number; revision: number };
 const initial: ResultState = { artifacts: [], total: 0, hasMore: false, loading: true, error: "", pending: false, status: "", feedbackPending: false, mutationPending: false, visible: false, configured: false, tags: [], sort: "latest", refreshedAt: null, filterVersion: 0, revision: 0 };
 const emit = (name: string, detail?: unknown) => runUiCommand(name, detail);
-const imagePath = (item: GeneratedArtifact) => `/api/artifacts/${encodeURIComponent(item.id)}/image`;
 const seedLabel = imageSeedLabel;
-
-function ArtifactImage({ item, label }: { item: GeneratedArtifact; label: string }) {
-  const [status, setStatus] = useState("loading");
-  return <div className="generated-thumbnail">
-    <img src={imagePath(item)} alt={`${label} · ${seedLabel(item)}`} loading="lazy" onLoad={() => setStatus("ready")} onError={() => { setStatus("error"); notifyError(t("图片已清理或读取失败"), { id: "artifact-image-load" }); }} />
-    {status === "loading" && <span className="generated-image-state" role="status"><LoaderCircle className="animate-spin" aria-hidden="true" /><span className="sr-only">{t("图片加载中")}</span></span>}
-    {status === "error" && <span className="generated-image-state" role="status">{t("图片已清理或读取失败")}</span>}
-  </div>;
-}
 
 // Both collections use the same grid/viewer; only their data and actions differ.
 export function GeneratedResults({ collection = "generate", privacyHost }: { collection?: "generate" | "liked"; privacyHost?: HTMLElement | null }) {
@@ -87,6 +78,7 @@ export function GeneratedResults({ collection = "generate", privacyHost }: { col
         disabled={busy || !state.artifacts.length} onPressedChange={value => { setSelecting(value); setSelection([]); setExportError(''); }}>
         <ListChecks aria-hidden="true" />
       </Toggle>
+      <RecentUnlikes visible={state.visible} busy={state.feedbackPending || state.mutationPending} privacyBlur={privacyBlur} onPrivacyChange={setPrivacyBlur} />
     </span>, privacyHost)}
     {liked && selecting && <div className="mb-4 flex flex-wrap items-center gap-2" aria-label={t('收藏导出')}>
         <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setSelection(state.artifacts.map(item => item.id))}>{t('全选已加载')}</Button>

@@ -22,6 +22,7 @@ import { bindTouchNavigation } from './touch-navigation.mjs';
 import { createJobPager } from './job-pages.mjs';
 import { createPageScroll } from './page-scroll.mjs';
 import { createLikedRanking } from './liked-ranking.mjs';
+import { createRecentUnlikes } from './recent-unlikes.mjs';
 
 import { playImageTransition, cancelImageTransition } from './image-transitions.mjs';
 
@@ -174,6 +175,7 @@ const backendSettings = createBackendSettings({ state, api, generation, checkBac
 const promptSettings = createPromptSettings(api);
 const canvasPools = createCanvasPools(api);
 const localGeneration = createLocalGeneration(api);
+const recentUnlikes = createRecentUnlikes({ request: api });
 const { renderBackends, loadBackend, loadWorkflowLibrary } = backendSettings;
 
 function artifactsForView() { return state.view === 'liked' ? state.likedArtifacts : state.artifacts; }
@@ -309,6 +311,41 @@ function stepFeedback(direction) {
     return feedback(steppedFeedbackValue(artifact.feedback, direction), false, true);
   }
 }
+function offerUnlikeUndo(artifact, value) {
+  if (artifact.feedback !== 1 || value !== null) return;
+  notify(() => t('已取消喜欢'), {
+    id: `liked-unlike-${artifact.id}`,
+    action: { label: () => t('撤销'), onClick: () => restoreLike(artifact.id) },
+  });
+}
+async function restoreLike(id) {
+  if (state.feedbackPending || state.generatedMutationPending) {
+    notifyError(() => t('请等待当前操作完成后重试。'), {
+      id: 'liked-restore',
+      action: { label: () => t('重试'), onClick: () => restoreLike(id) },
+    });
+    return;
+  }
+  state.feedbackPending = true; renderArtifacts();
+  try {
+    const result = await api(`/api/artifacts/${encodeURIComponent(id)}/feedback`, {
+      method: 'PUT', body: JSON.stringify({ value: 1 }),
+    });
+    state.feedbackRevision++;
+    observeArtifactRevision(state, result.revision ?? result.artifact_revision);
+    replaceArtifact(result.artifact);
+    recentUnlikes.remove(id);
+    if (state.view === 'liked' && state.likedSort === 'score') await likedRanking.load(state.likedTags);
+    dismissNotification(`liked-unlike-${id}`);
+    notifySuccess(() => t('已重新喜欢'), { id: 'liked-restore' });
+  } catch (error) {
+    if (error.status === 404 || error.status === 410) recentUnlikes.remove(id);
+    notifyError(error.status === 404 || error.status === 410 ? () => t('图片已清理或不可用，正在刷新列表。') : error.message, {
+      id: 'liked-restore',
+      action: error.status === 404 || error.status === 410 ? undefined : { label: () => t('重试'), onClick: () => restoreLike(id) },
+    });
+  } finally { state.feedbackPending = false; renderArtifacts(); void recentUnlikes.invalidate(); await refresh(true); }
+}
 async function feedback(value, toggle = true, animate = false) {
   if (value === 1 && state.view === 'feed') roamPlayback.pauseForLike();
   if (state.feedbackPending) return;
@@ -325,6 +362,8 @@ async function feedback(value, toggle = true, animate = false) {
     if (state.view === 'liked' && nextValue === null && !await confirmAction(t("确定取消喜欢这张图片？取消后将从喜欢页面移除，保留 24 小时缓冲后再按清理规则处理。"))) return;
     const result = await api(`/api/artifacts/${encodeURIComponent(artifact.id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value: nextValue }) }); state.feedbackRevision++; observeArtifactRevision(state, result.revision ?? result.artifact_revision); if (artifactRevision === state.artifactRevision) { const delta = Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); if (state.likedSort !== 'score' && matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += delta; replaceArtifact(result.artifact); } renderArtifacts();
     if (animate && state.view === 'feed' && state.currentImage === artifact.id) showFeedbackNotice(result.artifact.feedback, artifact.feedback);
+    offerUnlikeUndo(artifact, nextValue);
+    void recentUnlikes.invalidate();
   }
   catch (error) { showNotice(error.status === 404 || error.status === 410 ? t("图片已清理或不可用，正在刷新列表。") : error.message, true); }
   finally { state.feedbackPending = false; renderArtifacts(); await refresh(true); }
@@ -386,6 +425,8 @@ async function feedbackGenerated(id, toggle = true, view = 'generate') {
     const result = await api(`/api/artifacts/${encodeURIComponent(id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value }) });
     state.feedbackRevision++;
     observeArtifactRevision(state, result.revision ?? result.artifact_revision);
+    offerUnlikeUndo(artifact, value);
+    void recentUnlikes.invalidate();
     if (view === 'liked' && state.likedSort === 'score') { replaceArtifact(result.artifact); }
     else if (revision === state.artifactRevision) { if (state.likedSort !== 'score' && matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); replaceArtifact(result.artifact); }
   } catch (error) { const message = error.status === 404 || error.status === 410 ? t("图片已清理或不可用，正在刷新列表。") : error.message; if (view === 'liked') state.likedError = message; else state.generatedMutationError = message; }
@@ -711,11 +752,12 @@ function syncTheme() {
 function connectEvents() {
   if (!window.EventSource || eventSource) return;
   eventSource = new EventSource('/api/events');
-  eventSource.addEventListener('open', () => { realtimeConnected = true; emitSignal('updates-changed'); void localGeneration.load(); if (applicationUpdating) return; syncTheme(); loadRoamSettings({ preserveDraft: true }); refresh(true); });
+  eventSource.addEventListener('open', () => { realtimeConnected = true; emitSignal('updates-changed'); void localGeneration.load(); if (applicationUpdating) return; syncTheme(); loadRoamSettings({ preserveDraft: true }); void recentUnlikes.invalidate(); refresh(true); });
   // Queue another refresh if a change arrives while the current read is in flight.
   eventSource.addEventListener('change', event => {
     try {
       const topic = JSON.parse(event.data).topic;
+      if (topic === 'feedback' || topic === 'artifacts') void recentUnlikes.invalidate();
       if (topic === 'local_generation') { void localGeneration.load(); return; }
       if (topic === 'backends') void localGeneration.load();
       if (topic === 'updates') { emitSignal('updates-changed'); return; }
@@ -739,7 +781,7 @@ listen(window, 'pagehide', () => {
 });
 listen(window, 'pageshow', (event) => { roamPageActive = true; if (event.persisted) { renderArtifacts(); connectEvents(); refillRoam(); } });
 // Existing polling remains the fallback while SSE is unsupported or reconnecting.
-fallbackTimer = setInterval(() => { if (!realtimeConnected) refresh(); }, 2000);
+fallbackTimer = setInterval(() => { if (!realtimeConnected) { refresh(); void recentUnlikes.invalidate(); } }, 2000);
 
 // Preset changes refresh selectors without resetting generator counters or manual drafts.
 disposers.push(onSignal('candidate-presets-changed', () => { loadRuleConfigs(); }));
@@ -749,12 +791,12 @@ disposers.push(onSignal('prompt-settings-changed', () => { generation.invalidate
 disposers.push(onSignal('language-changed', () => { changed(); generation.model.changed(); backendSettings.model.changed(); renderJobPage(jobPager.state); renderArtifacts(); }));
   return () => {
     disposed = true; abort.abort(); clearInterval(fallbackTimer); clearTimeout(feedbackMotionTimer);
-    promptSettings.dispose(); canvasPools.dispose(); localGeneration.dispose();
+    promptSettings.dispose(); canvasPools.dispose(); localGeneration.dispose(); recentUnlikes.dispose();
     roamPlayback.pause(); nextImageWait.cancel(); likedRanking.cancel(); eventSource?.close();
     for (const dispose of disposers.splice(0)) dispose();
   };
 }
-return { model, generation, backendSettings, promptSettings, canvasPools, localGeneration, mount, commands, setPrivacy, setView, setSettingsSection, openSettings, moveImage, feedback,
+return { model, generation, backendSettings, promptSettings, canvasPools, localGeneration, recentUnlikes, restoreLike, mount, commands, setPrivacy, setView, setSettingsSection, openSettings, moveImage, feedback,
   requestNextRoamImage, imageLoaded, imageFailed, cancelJob, jobPager, saveHistory, submitRoamSettings,
   editRoam(patch) { Object.assign(state.roamDraft, patch); changed(); },
   editHistory(value) { state.historyDraft = value; changed(); },

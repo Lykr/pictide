@@ -683,6 +683,44 @@ class Repository:
                     "total":total,"counts":counts,"source":source,
                     "revision":self._artifact_revision(db)}
 
+    def recent_unlikes_page(self, limit=100, before=None):
+        if type(limit) is not int or not 1 <= limit <= 200:
+            raise ValidationError("图片分页数量必须为 1 到 200。")
+        marker = None
+        if before is not None:
+            try:
+                if not isinstance(before, str) or len(before) > 256:
+                    raise ValueError
+                marker = json.loads(before)
+                if (not isinstance(marker, list) or len(marker) != 2
+                        or not isinstance(marker[0], str) or not utc_timestamp(marker[0])
+                        or not isinstance(marker[1], str) or not 1 <= len(marker[1]) <= 100):
+                    raise ValueError
+            except (ValueError, TypeError):
+                raise ValidationError("图片分页位置无效，请刷新列表。") from None
+        timestamp = now()
+        with self.connection() as db:
+            db.execute("BEGIN")
+            eligible = "a.deleted_at IS NULL AND a.unliked_protected_until>? AND COALESCE(f.value,0)<>1"
+            rows = db.execute(f"""SELECT a.*,j.positive,j.negative,j.prompt_snapshot,j.seed,j.width,j.height,f.value AS feedback,
+                CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id) THEN 'roam' ELSE 'generate' END AS source,
+                COALESCE(json_extract(r.config,'$.kind'),'comfyui') AS backend_kind,json_type(r.config,'$.bindings.seed')='object' AS seed_applied
+                FROM artifacts a JOIN jobs j ON j.id=a.job_id
+                JOIN backend_revisions r ON r.id=j.revision_id
+                LEFT JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local'
+                WHERE {eligible} AND (?=0 OR a.unliked_protected_until<? OR (a.unliked_protected_until=? AND a.id<?))
+                ORDER BY a.unliked_protected_until DESC,a.id DESC LIMIT ?""",
+                (timestamp, int(marker is not None), marker[0] if marker else "", marker[0] if marker else "",
+                 marker[1] if marker else "", limit + 1)).fetchall()
+            items = [self._artifact(row) for row in rows[:limit]]
+            has_more = len(rows) > limit
+            total = db.execute(f"SELECT count(*) FROM artifacts a LEFT JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local' WHERE {eligible}", (timestamp,)).fetchone()[0]
+            # Carry the sort key, so restoring or re-unliking the boundary image
+            # cannot move the cursor or make the remaining page inaccessible.
+            return {"artifacts": items, "has_more": has_more,
+                    "next_cursor": encode([items[-1]["unliked_protected_until"], items[-1]["id"]]) if has_more else None,
+                    "total": total, "server_time": timestamp, "revision": self._artifact_revision(db)}
+
     @staticmethod
     def _artifact_revision(db):
         # Both irreversible visibility transitions invalidate in-flight pages.

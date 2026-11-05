@@ -18,6 +18,12 @@ Open a liked image and choose **Download original** to save its original file. C
 
 Removing a like starts a 24-hour grace period before automatic age or Roam-count cleanup can delete the image. After the grace period, the ordinary [cleanup rules](settings.md#historical-image-cleanup) apply.
 
+## Recover a removed like
+
+Choose **Undo** in the notification after removing a like. Later, open **Recently unliked**, the history icon to the right of the export button. It shows images still in their 24-hour grace period, with the remaining time and a **Like again** action. The list survives refreshes and restarts and includes images already hidden from Roam or Generate. Restoring an image returns it to Liked without changing those pages' visibility.
+
+The recovery dialog shares Liked's blur setting. Open an image to view it in full; restore its like before downloading the original. Closing the dialog preserves your collection's filters, sort, and scroll position. After the grace period the image leaves this list and normal cleanup rules apply.
+
 ## Preference score sorting
 
 Choose **Newest** to find recent favorites, or **Preference score** to see images closer to your current taste first. After giving more feedback, refresh scores manually to update the order.

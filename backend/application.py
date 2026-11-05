@@ -550,6 +550,12 @@ class PictideApplication:
         await self.clean_history()
         return await asyncio.to_thread(self.storage.artifact_page, liked, limit, before, source, around, tuple(dict.fromkeys(tags)))
 
+    async def recent_unlikes(self, limit=100, before=None):
+        if type(limit) is not int or not 1 <= limit <= 200:
+            raise ValidationError("分页数量必须在 1 至 200 之间。")
+        await self.clean_history()
+        return await asyncio.to_thread(self.storage.recent_unlikes_page, limit, before)
+
     async def preference_score(self, identifier):
         artifact = await asyncio.to_thread(self.storage.artifact, identifier)
         if artifact is None:
