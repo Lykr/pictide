@@ -32,6 +32,17 @@ for (const scenario of [{width: 1365, language: 'en'}, {width: 390, language: 'z
     expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(scenario.width + 1);
     expect(box.width).toBeGreaterThanOrEqual(140);
     expect(await page.locator('#generation-canvas-size [data-slot=select-value]').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    const sourceBox = await page.locator('#prompt-source').boundingBox();
+    expect(Math.abs(sourceBox.y - box.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(sourceBox.width - box.width)).toBeLessThanOrEqual(1);
+    for (const id of ['generate-backend', 'generation-canvas-size', 'prompt-source', 'positive', 'negative', 'seed', 'generation-count', 'generation-repetitions']) {
+      const gap = await page.locator(`#${id}`).evaluate(control => {
+        const label = document.querySelector(`label[for="${control.id}"]`).getBoundingClientRect();
+        return control.getBoundingClientRect().top - label.bottom;
+      });
+      expect(gap, `${id} label spacing`).toBeGreaterThanOrEqual(7);
+      expect(gap, `${id} label spacing`).toBeLessThanOrEqual(9);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const screenshot = testInfo.outputPath('generation-size.png');
     await page.screenshot({path: screenshot, fullPage: true});

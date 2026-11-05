@@ -43,7 +43,7 @@ Clipboard helpers prefer the Clipboard API and fall back to browser copy command
 
 ## Generate and Liked
 
-Generate places the form beside independent results on desktop and stacks them on narrow screens. Cooccurrence preset and draw mode share two columns; preset refresh sits in its label row. Pair seed or sequence values with their post-generation behavior. Keep advanced search settings collapsed and retain drafts for hidden modes. Batch size and generation count are bounded integers from 1 to 10, initially 1. Help explains per-round prompts, within-round sharing, cross-round seeds, sequential execution, and workflow outputs.
+Generate places the form beside independent results on desktop and stacks them on narrow screens. Pair canvas size with prompt source; keep labels above their controls with consistent spacing. Stack the generation actions when both buttons no longer fit. Cooccurrence preset and draw mode share two columns; preset refresh sits in its label row. Pair seed or sequence values with their post-generation behavior. Keep advanced search settings collapsed and retain drafts for hidden modes. Batch size and generation count are bounded integers from 1 to 10, initially 1. Help explains per-round prompts, within-round sharing, cross-round seeds, sequential execution, and workflow outputs.
 
 Generate's cancel-pending action only cancels that page's queued work. Submission and cancellation disable each other. Generation progress remains in results and task history; submitting successfully means a task was accepted. Transient results and errors use the shared notification layer.
 

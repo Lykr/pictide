@@ -33,15 +33,24 @@ export function GenerationForm() {
 <h2>{t("图像生成")}</h2>
 </div>
 {"\n      "}<form id="generate-form" inert={gen.busy} onSubmit={event => { event.preventDefault(); void generation.submit(); }}>
-{"\n        "}<Label className="col-span-full">{t("生图 API")}<FormSelect options={state.backends.length ? state.backends.map((item: any) => ({ value: item.id, label: item.name })) : [{ value: "", label: t("请先配置生图 API") }]} id="generate-backend" aria-label={t("生图 API")} {...genSelect("backendId")} required size="sm">
-</FormSelect>
-</Label>
-<Label htmlFor="generation-canvas-size">{t('画幅尺寸')}<FormSelect id="generation-canvas-size" {...genSelect('canvasSize')} options={sizeOptions} size="sm" disabled={!sizes.length && !draft.canvasSize} /></Label>
-{"\n        "}<Label>{t("提示词来源")}<FormSelect id="prompt-source" aria-label={t("提示词来源")} {...genSelect("source")} size="sm">
-<option value="manual">{t("手动输入")}</option>
-<option value="rules">{t("共现候选")}</option>
-</FormSelect>
-</Label>
+<div className="generation-field">
+  <Label htmlFor="generate-backend">{t('生图 API')}</Label>
+  <FormSelect options={state.backends.length ? state.backends.map((item: any) => ({ value: item.id, label: item.name })) : [{ value: '', label: t('请先配置生图 API') }]}
+    id="generate-backend" aria-label={t('生图 API')} {...genSelect('backendId')} required />
+</div>
+<div className="generation-options form-grid">
+  <div className="generation-field">
+    <Label htmlFor="generation-canvas-size">{t('画幅尺寸')}</Label>
+    <FormSelect id="generation-canvas-size" {...genSelect('canvasSize')} options={sizeOptions} disabled={!sizes.length && !draft.canvasSize} />
+  </div>
+  <div className="generation-field">
+    <Label htmlFor="prompt-source">{t('提示词来源')}</Label>
+    <FormSelect id="prompt-source" aria-label={t('提示词来源')} {...genSelect('source')}>
+      <option value="manual">{t('手动输入')}</option>
+      <option value="rules">{t('共现候选')}</option>
+    </FormSelect>
+  </div>
+</div>
 {!sizes.length && !draft.canvasSize && capabilities.dimensions && <p className="hint col-span-full">{t('在生图 API 中关联画幅池后，可选择像素尺寸。')}</p>}
 <fieldset id="rule-section" className="rule-section" hidden={!rules.rules} disabled={!rules.rules}>
   <div className="rule-primary-fields">
@@ -93,23 +102,34 @@ export function GenerationForm() {
   <p id="rule-generation-note" className="hint" role="status" data-tooltip={t(draft.automatic ? "计数已更新为下次值，当前提示词可直接编辑。" : "抽取报告对应编辑前的结果，重新勾选自动抽取可恢复共现生成。")} hidden={!gen.promptNote}>{gen.promptNote?.()}</p>
   <Disclosure id="rule-report" className="rule-report" hidden={!gen.report} title={t("抽取报告")}><pre id="rule-report-content">{JSON.stringify(gen.report, null, 2)}</pre></Disclosure>
 </fieldset>
-{"\n        "}<Label>{t(natural ? "正向标签" : "正向提示词")}<Textarea id="positive" {...genInput("positive")} rows={8} placeholder={t("描述你想看到的画面…")} required={rules.positiveRequired}>
-</Textarea>
-</Label>
-{"\n        "}<Label id="negative-field" hidden={!natural && capabilities.cloud && !capabilities.negative_prompt}>{t(natural ? "负向标签" : "负向提示词")}<Textarea id="negative" {...genInput("negative")} rows={4} placeholder={t("不希望出现的内容（可选）")} disabled={!natural && capabilities.cloud && !capabilities.negative_prompt}>
-</Textarea>
-<small id="negative-binding-note" hidden={natural || !state.backends.length || capabilities.negative_prompt || capabilities.cloud}>{t("当前生图 API 未绑定负向输入，请保持为空，或在生图 API 设置中绑定。")}</small>
-</Label>
+<div className="generation-field">
+  <Label htmlFor="positive">{t(natural ? '正向标签' : '正向提示词')}</Label>
+  <Textarea id="positive" {...genInput('positive')} rows={8} placeholder={t('描述你想看到的画面…')} required={rules.positiveRequired} />
+</div>
+<div id="negative-field" className="generation-field" hidden={!natural && capabilities.cloud && !capabilities.negative_prompt}>
+  <Label htmlFor="negative">{t(natural ? '负向标签' : '负向提示词')}</Label>
+  <Textarea id="negative" {...genInput('negative')} rows={4} placeholder={t('不希望出现的内容（可选）')} disabled={!natural && capabilities.cloud && !capabilities.negative_prompt} />
+  <small id="negative-binding-note" hidden={natural || !state.backends.length || capabilities.negative_prompt || capabilities.cloud}>{t('当前生图 API 未绑定负向输入，请保持为空，或在生图 API 设置中绑定。')}</small>
+</div>
 <NaturalPrompt prompt={gen.rendered} />
 <p id="generation-capability-note" className="hint" hidden={!capabilities.cloud || natural}>{t("此生图 API 不支持负向提示词和图像种子；本次仅发送正向提示词，原输入保留。候选预设中的负向词仍需移除。")}</p>
 <p id="generation-cloud-note" className="hint" hidden={!capabilities.cloud}>{t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")}</p>
-{"\n        "}<div className="generation-plan-fields"><Label id="seed-field" hidden={capabilities.cloud && !capabilities.seed}><span className="field-caption">{t("图像种子")}<HelpTip id="seed-note" text={t(capabilities.seed ? "-1 每个任务随机；非负值按任务递增，跨轮延续。实际种子随图片保存。" : "未绑定种子输入，将使用工作流自身的种子设置。")} /></span><Input id="seed" {...genInput("seed")} type="number" min="-1" max="9007199254740991" step="1" disabled={!capabilities.seed} />
-
-</Label>
-<div className="form-grid">
-<Label htmlFor="generation-count"><span className="field-caption">{t("每次数量")}<HelpTip text={t("每轮提交的生成任务数，同轮共用提示词；单个任务可能输出多张图片。")} /></span><Input id="generation-count" {...genInput("count")} type="number" min="1" max="10" step="1" required /></Label>
-<Label htmlFor="generation-repetitions"><span className="field-caption">{t("生成次数")}<HelpTip text={t("整批生成的轮数；每轮包含左侧设置的生成任务数。")} /></span><Input id="generation-repetitions" {...genInput("repetitions")} type="number" min="1" max="10" step="1" required /></Label>
-</div></div>
+<div className="generation-plan-fields">
+  <div id="seed-field" className="generation-field" hidden={capabilities.cloud && !capabilities.seed}>
+    <Label htmlFor="seed"><span className="field-caption">{t('图像种子')}<HelpTip id="seed-note" text={t(capabilities.seed ? '-1 每个任务随机；非负值按任务递增，跨轮延续。实际种子随图片保存。' : '未绑定种子输入，将使用工作流自身的种子设置。')} /></span></Label>
+    <Input id="seed" {...genInput('seed')} type="number" min="-1" max="9007199254740991" step="1" disabled={!capabilities.seed} />
+  </div>
+  <div className="form-grid">
+    <div className="generation-field">
+      <Label htmlFor="generation-count"><span className="field-caption">{t('每次数量')}<HelpTip text={t('每轮提交的生成任务数，同轮共用提示词；单个任务可能输出多张图片。')} /></span></Label>
+      <Input id="generation-count" {...genInput('count')} type="number" min="1" max="10" step="1" required />
+    </div>
+    <div className="generation-field">
+      <Label htmlFor="generation-repetitions"><span className="field-caption">{t('生成次数')}<HelpTip text={t('整批生成的轮数；每轮包含左侧设置的生成任务数。')} /></span></Label>
+      <Input id="generation-repetitions" {...genInput('repetitions')} type="number" min="1" max="10" step="1" required />
+    </div>
+  </div>
+</div>
 {"\n        "}<div className="generation-actions"><Button id="generate" aria-busy={gen.busy} className="primary" type="submit" variant="default" data-tooltip={t("提交整批任务；关闭网页不会取消已提交任务。")} disabled={gen.busy || !state.backends.length}>{gen.feedback.submit ? <LoaderCircle className="animate-spin" /> : <Sparkles aria-hidden="true" />}{t("生成图片")}</Button>
 <Button id="cancel-pending" type="button" variant="outline" data-tooltip={t("取消生成页全部待执行任务；保留已开始的任务和漫游预取。")} disabled={gen.busy} onClick={generation.cancelPending}>{gen.feedback.cancel ? <LoaderCircle className="animate-spin" /> : <CircleSlash aria-hidden="true" />}{t("取消待执行任务")}</Button></div>
 

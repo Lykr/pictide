@@ -84,7 +84,7 @@
 .feed-page .checkbox-label:not(:where(.editor-page, .editor-page *)) { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 400; }
 .feed-page .checkbox-label input:not(:where(.editor-page, .editor-page *)) { margin: 0; }
 .feed-page .job:not(:where(.editor-page, .editor-page *)) { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); overflow-wrap: anywhere; }
-.feed-page .generation-actions { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.feed-page .generation-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 8px; }
 .feed-page .job-list:not(:where(.editor-page, .editor-page *)) { display: grid; gap: 8px; }
 .feed-page #jobs-page-message { margin-top: 12px; text-align: center; }
 .feed-page #jobs-page-message.error { color: var(--destructive); }
@@ -190,8 +190,10 @@
 .feed-page #history-form .retention-warning { margin: 0; }
 
 
-.feed-page #generate-form:not(:where(.editor-page, .editor-page *)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
-.feed-page #generate-form > label:has(textarea):not(:where(.editor-page, .editor-page *)), .feed-page #rule-section:not(:where(.editor-page, .editor-page *)), .feed-page .generation-plan-fields:not(:where(.editor-page, .editor-page *)) { grid-column: 1 / -1; }
+.feed-page #generate-form:not(:where(.editor-page, .editor-page *)) { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.feed-page .generation-field { display: grid; align-content: start; min-width: 0; gap: 8px; }
+.feed-page .generation-field > label { display: flex; align-items: center; min-height: 24px; margin: 0; }
+.feed-page .generation-plan-fields { display: grid; gap: 16px; }
 /* One mounted image stage serves native fullscreen and the browser viewport fallback. */
 body.pictide-immersive { overflow: hidden; }
 .feed-page .image-card.immersive { position: fixed; inset: 0; z-index: 1000; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--secondary); }
@@ -276,7 +278,7 @@ body.pictide-immersive { overflow: hidden; }
 }
 
 @media (max-width: 640px), (max-width: 900px) and (max-height: 500px) {
-  .feed-page .generation-plan-fields .form-grid:not(:where(.editor-page, .editor-page *)) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .feed-page .generation-options.form-grid:not(:where(.editor-page, .editor-page *)), .feed-page .generation-plan-fields .form-grid:not(:where(.editor-page, .editor-page *)) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .feed-page .generated-card-like { opacity: 1; }
 }
 
