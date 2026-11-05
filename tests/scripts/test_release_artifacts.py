@@ -90,8 +90,9 @@ class UnifiedReleaseTests(unittest.TestCase):
     def test_publisher_does_nothing_when_sources_disagree(self):
         self.change('source-linux-x64.json', commit='d' * 40)
         with patch.object(docker, 'run') as command:
-            with self.assertRaises(ValueError):
-                docker.publish(self.root, COMMIT, 'v' + VERSION)
+            for replace in (False, True):
+                with self.subTest(replace_version=replace), self.assertRaises(ValueError):
+                    docker.publish(self.root, COMMIT, 'v' + VERSION, replace_version=replace)
         command.assert_not_called()
 
     def test_publisher_exports_and_publishes_only_verified_digests(self):
@@ -106,15 +107,21 @@ class UnifiedReleaseTests(unittest.TestCase):
                 return subprocess.CompletedProcess(args, 0, json.dumps(manifest), '')
             return subprocess.CompletedProcess(args, 0, '', '')
 
+        for replace in (False, True):
+            self.check_publish(command, replace)
+
+    def check_publish(self, command, replace):
         with patch.object(docker, 'run', side_effect=command) as commands, \
                 patch.object(docker, 'image_info') as inspect, \
                 patch.object(docker, 'export_image', side_effect=lambda image, path: path.write_bytes(b'archive')), \
                 patch.object(docker, 'manifest', return_value='sha256:' + 'e' * 64) as publish:
-            result = docker.publish(self.root, COMMIT, 'v' + VERSION)
+            result = docker.publish(self.root, COMMIT, 'v' + VERSION, replace_version=replace)
         self.assertEqual(inspect.call_count, 2)
         self.assertEqual(publish.call_args.args[0], artifacts.REPOSITORY + ':' + VERSION)
         pulls = [call.args for call in commands.call_args_list if call.args[:2] == ('docker', 'pull')]
         self.assertEqual(len(pulls), 4)  # two authenticated digest pulls, two anonymous version pulls
+        version_checks = [call for call in commands.call_args_list if call.kwargs.get('check') is False]
+        self.assertEqual(len(version_checks), 0 if replace else 1)
         self.assertTrue(all('@sha256:' in call[-1] for call in pulls[:2]))
         self.assertNotIn('build', [part for call in commands.call_args_list for part in call.args])
         self.assertEqual(result['commit'], COMMIT)

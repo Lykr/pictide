@@ -81,6 +81,8 @@ git push origin v0.5.0
 
 Use a new version for each release; existing published versions and assets are preserved.
 
+When explicitly recreating a release that has been deleted, move its tag to the intended commit and manually dispatch `release.yml` with `release_tag` and `replace_version: true`. The workflow verifies that no GitHub Release still exists, rebuilds and validates all outputs from the tag's resolved commit, and permits replacing only that versioned Docker tag. The default remains to reject an existing versioned image. The stable `latest` image advances only after the recreated GitHub Release is published.
+
 The workflow resolves the tag once to an immutable commit; every build checks out that SHA. `scripts/release_artifacts.py` binds native archive hashes and tested Docker image digests to that commit and version, rejecting a missing platform or mixed sources before publication. Never build a release image from a newer `main` or attach it to older portable packages.
 
 The workflow validates the pinned download catalog. Native builds download neither vocabularies nor raw metadata; isolated startup smokes exercise first-start `filtered` preparation and integrity checks. Core, UI, and browser checks gate packaging, and each package then passes its native startup, CPU inference and upgrade smoke. Docker images pass native Compose, CPU inference and offline persistent-volume replacement checks. Successful images are staged under run-specific tags; the publisher pulls their immutable digests and verifies configuration IDs and source labels instead of rebuilding them.

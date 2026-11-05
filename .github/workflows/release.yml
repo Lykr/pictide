@@ -9,6 +9,11 @@ on:
         description: Existing version tag to build or recover
         required: true
         type: string
+      replace_version:
+        description: Explicitly recreate a deleted release and replace its versioned Docker image
+        required: false
+        default: false
+        type: boolean
       build_run:
         description: Recovery only; reuse this run's native packages (macos_run optionally supplies a missing Mac)
         required: false
@@ -47,6 +52,25 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: python scripts/release_artifacts.py identity --tag "$RELEASE_TAG"
+      - name: Require the old GitHub release to be deleted before explicit recreation
+        if: github.event_name == 'workflow_dispatch' && inputs.replace_version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        shell: python
+        run: |
+          import os
+          from urllib.error import HTTPError
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
+          url = os.environ['GITHUB_API_URL'] + '/repos/' + os.environ['GITHUB_REPOSITORY'] + '/releases/tags/' + quote(os.environ['RELEASE_TAG'], safe='')
+          request = Request(url, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
+          try:
+              with urlopen(request, timeout=30):
+                  raise SystemExit('The release still exists; delete it before explicitly recreating it.')
+          except HTTPError as error:
+              if error.code != 404:
+                  raise
 
   validate:
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.build_run == '' && inputs.macos_run == '')
@@ -319,6 +343,7 @@ jobs:
         run: >-
           python scripts/release_docker.py publish --directory dev/build/release-assets
           --commit ${{ needs.resolve.outputs.commit }} --tag ${{ needs.resolve.outputs.tag }}
+          ${{ github.event_name == 'workflow_dispatch' && inputs.replace_version && '--replace-version' || '' }}
       - name: Check assets, write checksums and publish
         env:
           GH_TOKEN: ${{ github.token }}

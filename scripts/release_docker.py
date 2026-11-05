@@ -79,7 +79,7 @@ def export_image(image, archive):
                 raise RuntimeError('Could not export the tested image')
 
 
-def publish(directory, commit, tag):
+def publish(directory, commit, tag, replace_version=False):
     directory = Path(directory)
     release = verify(directory, commit, tag)
     release['tooling_commit'] = os.environ.get('RELEASE_TOOLING_COMMIT', commit)
@@ -88,7 +88,8 @@ def publish(directory, commit, tag):
     with tempfile.TemporaryDirectory() as config:
         for record in release['docker'].values():
             run('docker', 'manifest', 'inspect', record['image'], env=dict(os.environ, DOCKER_CONFIG=config))
-    ensure_new_version(versioned)
+    if not replace_version:
+        ensure_new_version(versioned)
     for architecture, record in release['docker'].items():
         run('docker', 'pull', '--platform', 'linux/' + architecture, record['image'])
         image_info(record['image'], record)
@@ -131,11 +132,12 @@ if __name__ == '__main__':
     parser.add_argument('--build-id')
     parser.add_argument('--commit')
     parser.add_argument('--tag')
+    parser.add_argument('--replace-version', action='store_true', help='Explicitly recreate the versioned image after deleting its GitHub release')
     args = parser.parse_args()
     if args.operation == 'stage':
         result = stage(args.directory, args.image, args.build_id)
     elif args.operation == 'publish':
-        result = publish(args.directory, args.commit, args.tag)
+        result = publish(args.directory, args.commit, args.tag, replace_version=args.replace_version)
     else:
         result = latest(args.directory)
     print(json.dumps(result))
