@@ -32,6 +32,20 @@ def playback_interval_seconds(value):
     return value
 
 
+DISPLAY_DEFAULTS = {"playback_style": "single", "scroll_speed": "normal"}
+
+
+def display_options(playback_style=None, scroll_speed=None):
+    options = {}
+    for key, value, choices in (("playback_style", playback_style, ("single", "scroll")),
+                                ("scroll_speed", scroll_speed, ("slow", "normal", "fast"))):
+        if value is not None:
+            if value not in choices:
+                raise ValidationError(f"{key} must be one of {', '.join(choices)}.")
+            options[key] = value
+    return options
+
+
 def liked_tags_only_value(value):
     if type(value) is not bool:
         raise ValidationError("喜欢偏好范围须为布尔值。")
@@ -86,6 +100,9 @@ class RoamSettings:
                 db.execute('ALTER TABLE roam_settings ADD COLUMN use_canvas_pool INTEGER NOT NULL DEFAULT 1')
             db.execute("CREATE TABLE IF NOT EXISTS roam_playback_settings (id INTEGER PRIMARY KEY CHECK(id=1), "
                        "interval_seconds INTEGER NOT NULL CHECK(interval_seconds BETWEEN 1 AND 600))")
+            db.execute("CREATE TABLE IF NOT EXISTS roam_display_settings (id INTEGER PRIMARY KEY CHECK(id=1), "
+                       "playback_style TEXT NOT NULL CHECK(playback_style IN ('single','scroll')), "
+                       "scroll_speed TEXT NOT NULL CHECK(scroll_speed IN ('slow','normal','fast')))")
 
             db.execute("CREATE TABLE IF NOT EXISTS roam_candidate_settings (id INTEGER PRIMARY KEY CHECK(id=1), "
                        "candidate_count INTEGER NOT NULL CHECK(candidate_count BETWEEN 1 AND 20))")
@@ -113,7 +130,7 @@ class RoamSettings:
 
     @staticmethod
     def defaults():
-        return {"prefetch_count": 2, "max_history_images": 20, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 8, "liked_tags_only": False, "use_canvas_pool": True, "prompt_mode": "random", "candidate_count": 10, "pinned_positive": [], "excluded_positive": [], "preset_base_positive": [], "pinned_canvas": None, **RECOMMENDATION_DEFAULTS}
+        return {"prefetch_count": 2, "max_history_images": 20, "backend_id": "", "preset_id": "", "epoch": "0" * 32, "playback_interval_seconds": 8, "liked_tags_only": False, "use_canvas_pool": True, "prompt_mode": "random", "candidate_count": 10, "pinned_positive": [], "excluded_positive": [], "preset_base_positive": [], "pinned_canvas": None, **RECOMMENDATION_DEFAULTS, **DISPLAY_DEFAULTS}
 
     @classmethod
     def _get(cls, db):
@@ -125,6 +142,8 @@ class RoamSettings:
         document["liked_tags_only"] = bool(document["liked_tags_only"])
         document["use_canvas_pool"] = bool(document["use_canvas_pool"])
         document["playback_interval_seconds"] = playback[0] if playback else 8
+        display = db.execute("SELECT playback_style,scroll_speed FROM roam_display_settings WHERE id=1").fetchone()
+        document.update(dict(display) if display else DISPLAY_DEFAULTS)
         candidate = db.execute("SELECT candidate_count FROM roam_candidate_settings WHERE id=1").fetchone()
         document["candidate_count"] = candidate[0] if candidate else 10
         recommendation = db.execute("SELECT recommendation_strength,strong_candidate_multiplier "
@@ -164,7 +183,8 @@ class RoamSettings:
             self._save_settings(db, document)
         return document
 
-    def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None, use_canvas_pool=None):
+    def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None, use_canvas_pool=None, playback_style=None, scroll_speed=None):
+        display = display_options(playback_style, scroll_speed)
         document = {"prefetch_count": prefetch_count(count), "backend_id": selection(backend_id, "生图后端"),
                     "max_history_images": max_history_images(max_history),
                     "preset_id": selection(preset_id, "候选预设"), "epoch": uuid.uuid4().hex}
@@ -191,7 +211,7 @@ class RoamSettings:
                 ("liked_tags_only", "prompt_mode", "backend_id", "preset_id", "pinned_positive", "excluded_positive", "preset_base_positive", "use_canvas_pool", "pinned_canvas"))
             same_settings = not generation_changed and all(document[key] == previous[key] for key in ("prefetch_count", "max_history_images"))
             same_interval = playback_interval is None or playback_interval == previous["playback_interval_seconds"]
-            if (candidate_count is not None or recommendation or anchors is not None) and same_settings and same_interval:
+            if (candidate_count is not None or recommendation or anchors is not None or display) and same_settings and same_interval:
                 document["epoch"] = previous["epoch"]
             if generation_changed:
                 Repository.discard_roam_prefetch(db)
@@ -199,6 +219,8 @@ class RoamSettings:
             self._save_anchors(db, document)
             if playback_interval is not None:
                 self._save_playback(db, playback_interval)
+            if display:
+                self._save_display(db, previous | display)
             if candidate_count is not None:
                 self._save_candidate_count(db, candidate_count)
             if recommendation:
@@ -210,6 +232,12 @@ class RoamSettings:
     def _save_playback(db, seconds):
         db.execute("INSERT INTO roam_playback_settings VALUES(1,?) ON CONFLICT(id) DO UPDATE SET "
                    "interval_seconds=excluded.interval_seconds", (seconds,))
+
+    @staticmethod
+    def _save_display(db, document):
+        db.execute("INSERT INTO roam_display_settings VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET "
+                   "playback_style=excluded.playback_style,scroll_speed=excluded.scroll_speed",
+                   (document["playback_style"], document["scroll_speed"]))
 
     @staticmethod
     def _save_candidate_count(db, count):
@@ -232,7 +260,8 @@ class RoamSettings:
                    tuple(json.dumps(document.get(key), ensure_ascii=False)
                          for key in ('pinned_positive', 'preset_base_positive', 'pinned_canvas', 'excluded_positive')))
 
-    def save_options(self, liked_tags_only=None, playback_interval=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None, use_canvas_pool=None):
+    def save_options(self, liked_tags_only=None, playback_interval=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None, use_canvas_pool=None, playback_style=None, scroll_speed=None):
+        display = display_options(playback_style, scroll_speed)
         if use_canvas_pool is not None and type(use_canvas_pool) is not bool:
             raise ValidationError('use_canvas_pool must be a boolean.')
         recommendation = recommendation_options(recommendation or {})
@@ -274,6 +303,8 @@ class RoamSettings:
                 self._save_anchors(db, document | anchors)
             if playback_interval is not None:
                 self._save_playback(db, playback_interval)
+            if display:
+                self._save_display(db, document | display)
             if candidate_count is not None:
                 self._save_candidate_count(db, candidate_count)
             if recommendation:

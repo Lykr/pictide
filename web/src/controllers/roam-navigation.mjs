@@ -1,24 +1,30 @@
 /** Each gallery owns its cursor; liking/browsing another view never moves roam. */
 export function createGalleryCursors() {
   const cursors = { feed: null, liked: null };
-  let initialized = false, clock = 0;
+  let initialized = false, clock = 0, watched = null;
+  function watch(id, now = Date.now()) {
+    if (!initialized || watched === id) return null;
+    watched = id || null;
+    clock = Math.max(clock + 1, now);
+    return { artifact_id: watched, viewed_at: clock };
+  }
   return {
     get ready() { return initialized; },
     get: view => cursors[view === 'liked' ? 'liked' : 'feed'],
     restore(record = {}) {
       if (initialized) return;
       cursors.feed = record.artifact_id || null;
+      watched = cursors.feed;
       clock = Number.isSafeInteger(record.viewed_at) ? record.viewed_at : 0;
       initialized = true;
     },
-    select(view, id, now = Date.now()) {
+    select(view, id, now = Date.now(), persist = true) {
       const key = view === 'liked' ? 'liked' : 'feed';
       if (!initialized || cursors[key] === id) return null;
       cursors[key] = id || null;
-      if (key !== 'feed') return null;
-      clock = Math.max(clock + 1, now);
-      return { artifact_id: cursors.feed, viewed_at: clock };
+      return key === 'feed' && persist ? watch(cursors.feed, now) : null;
     },
+    watch,
   };
 }
 

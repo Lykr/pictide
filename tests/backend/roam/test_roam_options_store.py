@@ -17,6 +17,17 @@ class RoamOptionsStoreTests(unittest.TestCase):
     def tearDown(self):
         self.directory.cleanup()
 
+    def test_display_upgrade_preserves_old_settings_and_partial_saves(self):
+        previous = self.settings.save(3, 'backend', 'preset', 25, 12)
+        with self.settings.connect() as db:
+            db.execute('DROP TABLE roam_display_settings')
+        self.settings = RoamSettings(self.paths)
+        self.assertEqual(self.settings.get(), previous)
+        saved = self.settings.save_options(playback_style='scroll', scroll_speed='slow')
+        self.assertEqual(saved, previous | {'playback_style': 'scroll', 'scroll_speed': 'slow'})
+        changed = self.settings.save(3, 'backend', 'preset', 25, 12, playback_style='single')
+        self.assertEqual(changed, previous | {'scroll_speed': 'slow'})
+
     def test_partial_options_preserve_selections_and_epoch_changes_only_with_scope(self):
         original = self.settings.save(8, 'backend', 'preset', 25, 9)
         self.assertFalse(original['liked_tags_only'])

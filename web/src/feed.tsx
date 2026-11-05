@@ -20,6 +20,7 @@ import { ImageInfo } from "./components/image-info";
 import { RoamImmersiveLoading } from "./components/immersive-loading";
 import { RoamAnchors } from "./components/roam-anchors";
 import { RoamPlaybackButton, RoamOptions } from "./components/roam-playback";
+import { RoamScroll } from './components/roam-scroll';
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Heart, Image, ListFilter, LoaderCircle, Maximize, Minimize, Settings, Compass, Sparkles, CircleSlash, ThumbsDown } from "lucide-react";
 import { IconButton } from "./components/actions";
 import { Card } from "./components/ui/card";
@@ -110,9 +111,9 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <IconButton id="roam-immersive-exit" icon={Minimize} label={t("退出沉浸模式")} ref={ref.immersiveExit} hidden={!state.immersive} />
 </div>
 <div className="image-stage" ref={node => { ref.stage(node); targets["roam.image"](node); }}>
-<img id="main-image" alt={t("生成的图片")} draggable={false} ref={ref.image} src={artifact ? `/api/artifacts/${encodeURIComponent(artifact.id)}/image` : undefined} onLoad={app.imageLoaded} onError={app.imageFailed} />
+{state.roamDisplay.playback_style === 'scroll' && artifact ? <RoamScroll artifacts={state.artifacts} currentId={artifact.id} active={state.view === 'feed'} speed={state.roamDisplay.scroll_speed} busy={state.feedbackPending || state.gallery.loading} /> : <img id="main-image" alt={t("生成的图片")} draggable={false} ref={ref.image} src={artifact ? `/api/artifacts/${encodeURIComponent(artifact.id)}/image` : undefined} onLoad={app.imageLoaded} onError={app.imageFailed} />}
 
-<div id="immersive-feedback" className="immersive-feedback" role="status" aria-live="polite" aria-atomic="true" hidden={!state.feedbackNotice} data-value={state.feedbackNotice?.value === null ? "clear" : String(state.feedbackNotice?.value)}>
+<div id="immersive-feedback" className="immersive-feedback" role="status" aria-live="polite" aria-atomic="true" hidden={!state.feedbackNotice || state.roamDisplay.playback_style === 'scroll'} data-value={state.feedbackNotice?.value === null ? "clear" : String(state.feedbackNotice?.value)}>
 <div ref={ref.feedback} className="immersive-feedback-content">
 <Heart data-feedback-icon="like" aria-hidden="true" />
 <ThumbsDown data-feedback-icon="dislike" aria-hidden="true" />

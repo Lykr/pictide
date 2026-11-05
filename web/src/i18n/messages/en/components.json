@@ -201,5 +201,13 @@
   "负向标签": "Negative tags",
   "正在准备提示词…": "Preparing prompt…",
   "请在下方配置自然语言提示词服务。": "Configure the prompt LLM API below.",
-  "预览当前标签与最终生图提示词。": "Preview the tags and the final image prompt."
+  "预览当前标签与最终生图提示词。": "Preview the tags and the final image prompt.",
+  "播放方式": "Playback style",
+  "单张": "Single",
+  "画轴": "Scroll",
+  "移动速度": "Scroll speed",
+  "慢": "Slow",
+  "适中": "Normal",
+  "快": "Fast",
+  "查看这张图片": "View this image"
 }

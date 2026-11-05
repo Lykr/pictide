@@ -747,6 +747,12 @@ class PictideApplication:
 
     async def roam_settings(self, payload=None):
         recommendation = recommendation_options(payload or {})
+        if payload is not None:
+            from .store.roam_settings import display_options
+            for key in ("playback_style", "scroll_speed"):
+                if key in payload and payload[key] is None:
+                    raise ValidationError(f"{key} must be a string.")
+            display_options(payload.get("playback_style"), payload.get("scroll_speed"))
         if payload is not None and 'use_canvas_pool' in payload and type(payload['use_canvas_pool']) is not bool:
             raise ValidationError('use_canvas_pool must be a boolean.')
         for key in ("pinned_positive", "excluded_positive"):
@@ -776,11 +782,11 @@ class PictideApplication:
                     validate_generation_options(backend, canvas)
             if payload is None:
                 document = await self._refresh_roam_anchors()
-            elif payload and set(payload) <= {"playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "excluded_positive", "use_canvas_pool", "pinned_canvas"}:
+            elif payload and set(payload) <= {"playback_interval_seconds", "playback_style", "scroll_speed", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "excluded_positive", "use_canvas_pool", "pinned_canvas"}:
                 previous = await asyncio.to_thread(self.roam.get)
                 anchors = await self._normalized_roam_anchors(previous, payload)
                 document = await asyncio.to_thread(self.roam.save_options, payload.get("liked_tags_only"),
-                                                   payload.get("playback_interval_seconds"), payload.get("prompt_mode"), payload.get("candidate_count"), recommendation, anchors, payload.get("use_canvas_pool"))
+                                                   payload.get("playback_interval_seconds"), payload.get("prompt_mode"), payload.get("candidate_count"), recommendation, anchors, payload.get("use_canvas_pool"), payload.get("playback_style"), payload.get("scroll_speed"))
                 self.events.publish("roam_settings")
             else:
                 if "prefetch_count" not in payload:
@@ -807,7 +813,7 @@ class PictideApplication:
                         raise ValidationError("漫游候选预设不存在，请重新选择。")
                 anchors = await self._normalized_roam_anchors(previous | {"preset_id": preset_id}, payload)
                 document = await asyncio.to_thread(self.roam.save, count, backend_id, preset_id, max_history,
-                                                   payload.get("playback_interval_seconds"), payload.get("liked_tags_only"), payload.get("prompt_mode"), payload.get("candidate_count"), recommendation, anchors, payload.get("use_canvas_pool"))
+                                                   payload.get("playback_interval_seconds"), payload.get("liked_tags_only"), payload.get("prompt_mode"), payload.get("candidate_count"), recommendation, anchors, payload.get("use_canvas_pool"), payload.get("playback_style"), payload.get("scroll_speed"))
                 saved_state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
                 if saved_state["paused"]:
                     # A full save is an explicit retry even when unchanged options retain the epoch.
@@ -817,7 +823,7 @@ class PictideApplication:
                     await self.clean_history(force=True, roam_only=True)
                 self.events.publish("roam_settings")
             state = await asyncio.to_thread(self.storage.ensure_roam, document["epoch"], None, 0)
-            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "excluded_positive", "preset_base_positive", "use_canvas_pool", "pinned_canvas")} | {
+            return {key: document[key] for key in ("prefetch_count", "max_history_images", "backend_id", "preset_id", "playback_interval_seconds", "playback_style", "scroll_speed", "liked_tags_only", "prompt_mode", "candidate_count", "recommendation_strength", "strong_candidate_multiplier", "pinned_positive", "excluded_positive", "preset_base_positive", "use_canvas_pool", "pinned_canvas")} | {
                 "artifact_revision": await asyncio.to_thread(self.storage.artifact_revision),
                 "paused": state["paused"], "preference_learning": await self._learning_available(),
                 **({"error": state["error"]} if state.get("error") else {})}

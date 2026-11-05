@@ -44,9 +44,13 @@ const nextImageWait = createNextImageWait();
 Object.defineProperty(state, 'activeId', { get: () => galleryCursors.get(state.view), set: id => selectImage(id) });
 let roamWindowLoading = false, roamBlocked = false, viewRevision = 0;
 let roamViewPending = Promise.resolve();
-function selectImage(id, view = state.view) {
-  const record = galleryCursors.select(view, id);
+let scrollDriver = null;
+const isScroll = () => roamSettings.playback_style === 'scroll';
+function saveRoamView(record) {
   if (record) roamViewPending = api('/api/roam/view', { method: 'PUT', keepalive: true, body: JSON.stringify(record) }).catch(error => showNotice(tr`观看位置保存失败：${error.message}`, true));
+}
+function selectImage(id, view = state.view) {
+  saveRoamView(galleryCursors.select(view, id, Date.now(), !isScroll()));
 }
 state.likedArtifacts = [];
 state.likedError = "";
@@ -80,7 +84,8 @@ const jobPager = createJobPager({ request: page => api(`/api/jobs?page=${page}`)
 let availabilityRevision = 0;
 let availabilitySignature = '';
 let roamSettingsLoaded = false, roamSettingsLoading = false;
-let roamSettings = { prefetch_count: 2, max_history_images: 20, backend_id: '', preset_id: '', liked_tags_only: false, use_canvas_pool: true, prompt_mode: 'random', playback_interval_seconds: 8, candidate_count: 10, recommendation_strength: 'standard', strong_candidate_multiplier: 2 };
+let roamSettings = { prefetch_count: 2, max_history_images: 20, backend_id: '', preset_id: '', liked_tags_only: false, use_canvas_pool: true, prompt_mode: 'random', playback_interval_seconds: 8, playback_style: 'single', scroll_speed: 'normal', candidate_count: 10, recommendation_strength: 'standard', strong_candidate_multiplier: 2 };
+state.roamDisplay = { playback_style: 'single', scroll_speed: 'normal' };
 let roamError = '';
 let roamAnchorRetried = false;
 let roamPageActive = true, roamVersion = 0;
@@ -98,6 +103,7 @@ function syncRoamPlayback(artifact = state.artifacts.find(item => item.id === st
     busy: !!nextImageWait.current || roamWindowLoading || !!roamSwitch || state.feedbackPending, blocked: !!roamSwitch || state.imageFailed });
 }
 function publishPlaybackInterval(settings) {
+  roamPlayback.setExternal(settings.playback_style === 'scroll');
   roamPlayback.setInterval(settings.playback_interval_seconds ?? 8);
   publishUiState({ roamOptions: { ...settings } });
 }
@@ -252,7 +258,7 @@ function renderArtifacts() {
 }
 function advanceWaitingImage() {
   const next = nextImageWait.consume(state.artifacts, galleryCursors.get('feed'), state.view === 'feed' && roamPageActive && !document.hidden);
-  if (next) selectImage(next);
+  if (next && !isScroll()) selectImage(next);
 }
 function requestNextRoamImage() {
   if (!galleryCursors.ready || roamSwitch || nextImageWait.current || state.view !== 'feed') return;
@@ -266,6 +272,12 @@ async function moveImage(direction, automatic = null) {
   if (!automatic && state.view === 'feed') {
     roamPlayback.prepareNavigation(direction);
     roamPlayback.restart();
+    if (isScroll() && scrollDriver) {
+      if (direction === 'newer') anchorPrefetchDeferred = false;
+      if (direction === 'older') nextImageWait.cancel();
+      scrollDriver.navigate(direction);
+      return;
+    }
   }
   if (!state.pages[pageView()].loaded) { refresh(true); return; }
   if (state.view === 'feed' && direction === 'newer') anchorPrefetchDeferred = false;
@@ -305,6 +317,7 @@ function showFeedbackNotice(value, previous) {
 }
 function stepFeedback(direction) {
   if (state.feedbackPending) return;
+  if (state.view === 'feed' && isScroll()) scrollDriver?.freeze();
   const artifact = artifactsForView().find(item => item.id === state.activeId);
   if (artifact) {
     clearFeedbackNotice();
@@ -347,6 +360,7 @@ async function restoreLike(id) {
   } finally { state.feedbackPending = false; renderArtifacts(); void recentUnlikes.invalidate(); await refresh(true); }
 }
 async function feedback(value, toggle = true, animate = false) {
+  if (state.view === 'feed' && isScroll()) scrollDriver?.freeze();
   if (value === 1 && state.view === 'feed') roamPlayback.pauseForLike();
   if (state.feedbackPending) return;
   const artifact = artifactsForView().find((item) => item.id === state.activeId); if (!artifact) { showNotice(t("还没有可以评价的图片。")); return; }
@@ -528,7 +542,7 @@ function openSettings() {
   setView('settings/backend');
 }
 function renderRoamBackends() { changed(); }
-const roamFields = ['recommendation_strength', 'strong_candidate_multiplier', 'candidate_count', 'prefetch_count', 'max_history_images', 'backend_id', 'playback_interval_seconds', 'liked_tags_only', 'prompt_mode', 'use_canvas_pool'];
+const roamFields = ['recommendation_strength', 'strong_candidate_multiplier', 'candidate_count', 'prefetch_count', 'max_history_images', 'backend_id', 'playback_interval_seconds', 'playback_style', 'scroll_speed', 'liked_tags_only', 'prompt_mode', 'use_canvas_pool'];
 state.roamDraft = Object.fromEntries(roamFields.map(key => [key, roamSettings[key]]));
 function roamDraftDirty() { return roamFields.some(key => String(state.roamDraft[key]) !== String(roamSettings[key])); }
 function beginRoamSwitch() {
@@ -536,7 +550,7 @@ function beginRoamSwitch() {
   roamSwitch = { resume: roamPlayback.playing, view: viewRevision };
   roamVersion++; viewRevision++;
   roamSwitch.view = viewRevision;
-  roamPlayback.pause(); nextImageWait.cancel(); roamWindowLoading = false;
+  scrollDriver?.freeze(); roamPlayback.pause(); nextImageWait.cancel(); roamWindowLoading = false;
   renderArtifacts();
 }
 function finishRoamSwitch() {
@@ -547,6 +561,9 @@ function finishRoamSwitch() {
 }
 async function applyRoamSettings(settings, savedFields = []) {
   const next = { ...settings, recommendation_strength: settings.recommendation_strength ?? 'standard', strong_candidate_multiplier: strongCandidateMultiplier(settings.strong_candidate_multiplier ?? 2), candidate_count: candidateCount(settings.candidate_count ?? 10), prefetch_count: prefetchCount(settings.prefetch_count ?? 2), max_history_images: maxHistoryImages(settings.max_history_images ?? 20), liked_tags_only: !!settings.liked_tags_only, prompt_mode: settings.prompt_mode ?? 'random', playback_interval_seconds: settings.playback_interval_seconds ?? 8 };
+  next.playback_style ??= 'single'; next.scroll_speed ??= 'normal';
+  const displayChanged = next.playback_style !== roamSettings.playback_style;
+  if (displayChanged) { scrollDriver?.freeze(); roamPlayback.pause(); }
   if (!roamSettingsLoaded || next.preset_id !== roamSettings.preset_id) {
     generation.selectPreset(next.preset_id);
   }
@@ -561,6 +578,8 @@ async function applyRoamSettings(settings, savedFields = []) {
   const merged = mergeRoamDraft(roamSettings, next, state.roamDraft, savedFields);
   state.roamDraft = merged; changed();
   roamSettings = next; roamSettingsLoaded = true; roamVersion++;
+  state.roamDisplay = { playback_style: next.playback_style, scroll_speed: next.scroll_speed };
+  if (displayChanged && !isScroll()) saveRoamView(galleryCursors.watch(galleryCursors.get('feed')));
   publishPlaybackInterval(next);
   if (settings.paused) { roamBlocked = true; roamPlayback.pause(); } else clearRoamError();
   roamAnchorRetried = false;
@@ -617,7 +636,7 @@ async function submitRoamSettings() {
   state.roamSaving = true; changed();
   try {
     const draft = state.roamDraft;
-    const payload = { recommendation_strength: draft.recommendation_strength, strong_candidate_multiplier: strongCandidateMultiplier(draft.strong_candidate_multiplier), candidate_count: candidateCount(draft.candidate_count), prefetch_count: prefetchCount(draft.prefetch_count), max_history_images: maxHistoryImages(draft.max_history_images), backend_id: draft.backend_id, playback_interval_seconds: playbackInterval(draft.playback_interval_seconds), liked_tags_only: draft.liked_tags_only, prompt_mode: draft.prompt_mode, use_canvas_pool: draft.use_canvas_pool };
+    const payload = { recommendation_strength: draft.recommendation_strength, strong_candidate_multiplier: strongCandidateMultiplier(draft.strong_candidate_multiplier), candidate_count: candidateCount(draft.candidate_count), prefetch_count: prefetchCount(draft.prefetch_count), max_history_images: maxHistoryImages(draft.max_history_images), backend_id: draft.backend_id, playback_interval_seconds: draft.playback_style === "scroll" ? roamSettings.playback_interval_seconds : playbackInterval(draft.playback_interval_seconds), playback_style: draft.playback_style, scroll_speed: draft.scroll_speed, liked_tags_only: draft.liked_tags_only, prompt_mode: draft.prompt_mode, use_canvas_pool: draft.use_canvas_pool };
     await saveRoamSettings(payload); notifySuccess(() => t('已保存漫游设置。'), { id: 'roam-settings' }); await refresh(true);
   } catch (error) { notifyError(error.message, { id: 'roam-settings' }); }
   finally { state.roamSaving = false; changed(); }
@@ -679,7 +698,7 @@ const commands = {
   'liked-more': () => { if (state.view === 'liked') return loadMore(); },
   'liked-refresh': () => { if (state.likedSort === 'score') return likedRanking.load(state.likedTags, true); state.likedError = ''; return refresh(true); },
   'liked-feedback': value => feedbackGenerated(value.id, value.toggle !== false, 'liked'),
-  'roam-playback-toggle': () => roamPlayback.toggle(),
+  'roam-playback-toggle': () => { if (isScroll()) scrollDriver?.freeze(); roamPlayback.toggle(); },
   'before-update': () => !(localGeneration.model.data.dirty || localGeneration.model.data.busy || generation.dirty || backendSettings.dirty || promptSettings.model.data.dirty || promptSettings.model.data.signingIn || canvasPools.model.data.dirty || canvasPools.model.data.busy || roamDraftDirty() || getUiState().editorDirty),
   'updating': () => { applicationUpdating = true; roamPlayback.pause(); },
   'update-finished': () => { applicationUpdating = false; return refresh(true); },
@@ -707,16 +726,41 @@ commands['liked-sort'] = value => {
   else { renderLikedResults(); refresh(true); }
 };
 function setPrivacy(view, value) { state.privacy[view] = value; changed(); }
-function imageLoaded() {
+function imageLoaded(meta) {
+  const scrollImage = meta?.id ? meta : null;
+  if (scrollImage && scrollImage.id !== state.currentImage) return;
   state.imageReady = true; state.imageFailed = false;
-  publishUiState({ imagePixels: { id: state.currentImage, width: elements.image.naturalWidth, height: elements.image.naturalHeight } });
-  if (roamImageSwitchPending) { roamImageSwitchPending = false; playImageTransition(elements.image); }
+  publishUiState({ imagePixels: { id: state.currentImage, width: scrollImage?.width ?? elements.image?.naturalWidth, height: scrollImage?.height ?? elements.image?.naturalHeight } });
+  if (roamImageSwitchPending) { roamImageSwitchPending = false; if (!isScroll()) playImageTransition(elements.image); }
   syncRoamPlayback(); changed();
 }
 function imageFailed() {
   if (!state.imageFailed) notifyError(() => t('图片读取失败，请检查服务与文件是否可用。'), { id: 'roam-image-error' });
   state.imageFailed = true; state.imageReady = false; roamImageSwitchPending = false;
   cancelImageTransition(elements.image); roamPlayback.pause(); syncRoamPlayback(); changed();
+}
+function scrollFrame(frame) {
+  if (!isScroll() || state.view !== 'feed' || !roamPageActive || document.hidden) return;
+  if (frame.oldest) saveRoamView(galleryCursors.watch(frame.oldest));
+  if (!frame.focus || !state.artifacts.some(item => item.id === frame.focus)) return;
+  if (state.activeId !== frame.focus) {
+    selectImage(frame.focus, 'feed'); renderArtifacts(); refillRoam();
+  }
+  if (frame.ready && !state.imageReady) imageLoaded({ id: frame.focus, width: frame.width, height: frame.height });
+}
+async function scrollMore(direction) {
+  if (!isScroll() || state.view !== 'feed' || roamWindowLoading || roamSwitch || state.feedbackPending) return false;
+  const action = roamBoundaryAction(direction, state.pages.feed);
+  if (action === 'generate') { requestNextRoamImage(); return !!state.backends.length; }
+  if (action !== 'load') return false;
+  const anchor = state.activeId, revision = viewRevision;
+  roamWindowLoading = true; renderArtifacts();
+  try {
+    const result = await api(roamArtifactPath(anchor));
+    if (state.view === 'feed' && revision === viewRevision) applyPage('feed', result, { replace: true });
+  } catch (error) { roamPlayback.pause(); showNotice(tr`图片加载失败：${error.message}`, true); return false; }
+  finally { if (revision === viewRevision) roamWindowLoading = false; renderArtifacts(); refillRoam(); }
+  return true;
 }
 let realtimeConnected = false, eventSource, fallbackTimer;
 function mount(refs) {
@@ -744,7 +788,7 @@ listen(document, 'keydown', (event) => {
 listen(window, 'hashchange', () => setView(location.hash.slice(1) || 'feed', false));
 setView(location.hash.slice(1) || 'feed', false);
 disposers.push(subscribeUiActions((name, value) => { if (name === 'navigate') setView(value); }));
-listen(document, 'visibilitychange', () => { if (applicationUpdating) return; if (document.hidden) roamPlayback.pause(); else { loadRoamSettings({ preserveDraft: true }); refresh(true); } });
+listen(document, 'visibilitychange', () => { if (applicationUpdating) return; if (document.hidden) { scrollDriver?.freeze(); roamPlayback.pause(); } else { loadRoamSettings({ preserveDraft: true }); refresh(true); } });
 void bootstrap().then(() => { if (!disposed) { updateRuleControls(); connectEvents(); } });
 function syncTheme() {
   return loadTheme().catch(error => emitSignal('theme-error', tr`主题读取失败：${error.message}`));
@@ -776,7 +820,7 @@ function connectEvents() {
   eventSource.addEventListener('error', () => { realtimeConnected = false; });
 }
 listen(window, 'pagehide', () => {
-  roamPlayback.pause(); roamPageActive = false; viewRevision++; nextImageWait.cancel(); roamWindowLoading = false;
+  scrollDriver?.freeze(); roamPlayback.pause(); roamPageActive = false; viewRevision++; nextImageWait.cancel(); roamWindowLoading = false;
   eventSource?.close(); eventSource = undefined; realtimeConnected = false;
 });
 listen(window, 'pageshow', (event) => { roamPageActive = true; if (event.persisted) { renderArtifacts(); connectEvents(); refillRoam(); } });
@@ -798,6 +842,10 @@ disposers.push(onSignal('language-changed', () => { changed(); generation.model.
 }
 return { model, generation, backendSettings, promptSettings, canvasPools, localGeneration, recentUnlikes, restoreLike, mount, commands, setPrivacy, setView, setSettingsSection, openSettings, moveImage, feedback,
   requestNextRoamImage, imageLoaded, imageFailed, cancelJob, jobPager, saveHistory, submitRoamSettings,
+  scrollFrame, scrollMore,
+  bindScroll(driver) { scrollDriver = driver; return () => { if (scrollDriver === driver) scrollDriver = null; }; },
+  pauseScroll() { roamPlayback.pause(); },
+  scrollImageFailed(id) { roamPlayback.pause(); if (id === state.currentImage) imageFailed(); else notifyError(() => t('图片读取失败，请检查服务与文件是否可用。'), { id: 'roam-image-error' }); },
   editRoam(patch) { Object.assign(state.roamDraft, patch); changed(); },
   editHistory(value) { state.historyDraft = value; changed(); },
 };

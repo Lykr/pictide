@@ -38,6 +38,30 @@ class RoamPlaybackSettingsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status, 200, data)
         return data
 
+    async def test_scroll_settings_preserve_generation_and_survive_restart(self):
+        initial = await self.put({"prefetch_count": 0})
+        self.assertEqual((initial["playback_style"], initial["scroll_speed"]), ("single", "normal"))
+        previous = self.app.roam.get()
+        self.app.storage.pause_roam(previous["epoch"], "Paused smoke")
+        saved = await self.put({"playback_style": "scroll", "scroll_speed": "fast"})
+        self.assertEqual(self.app.roam.get(), previous | {"playback_style": "scroll", "scroll_speed": "fast"})
+        self.assertTrue(saved["paused"])
+        self.assertEqual(self.app.storage.jobs(), [])
+        before = self.app.roam.get()
+        revision = self.app.events.revision
+        for payload in ({"playback_style": "other"}, {"scroll_speed": "other"},
+                        {"playback_style": None}, {"scroll_speed": False},
+                        {"prefetch_count": 0, "playback_style": "scroll", "scroll_speed": []}):
+            response = await self.client.put('/api/settings/roam', json=payload)
+            self.assertEqual(response.status, 400, payload)
+            self.assertEqual(self.app.roam.get(), before)
+        self.assertEqual(self.app.events.revision, revision)
+        await self.client.close()
+        await self.open_app()
+        saved = await (await self.client.get('/api/settings/roam')).json()
+        self.assertEqual((saved["playback_style"], saved["scroll_speed"]), ("scroll", "fast"))
+        self.assertEqual(self.app.storage.jobs(), [])
+
     async def test_default_event_and_restart_persistence(self):
         response = await self.client.get("/api/settings/roam")
         self.assertEqual(response.status, 200)

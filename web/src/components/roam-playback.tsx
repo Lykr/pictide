@@ -33,7 +33,30 @@ export function RoamPlaybackButton({ immersive = false }: { immersive?: boolean 
 type PromptMode = "random" | "along" | "stay";
 type RecommendationStrength = "standard" | "strong";
 type ModeChoices = { liked_tags_only: boolean; prompt_mode: PromptMode; recommendation_strength: RecommendationStrength };
-type RoamSettings = ModeChoices & { playback_interval_seconds: number };
+type DisplayChoices = { playback_style: 'single' | 'scroll'; scroll_speed: 'slow' | 'normal' | 'fast' };
+type RoamSettings = ModeChoices & DisplayChoices & { playback_interval_seconds: number };
+export function RoamDisplayChoices({ value, onChange, compact = false, disabled = false }: {
+  value: DisplayChoices; onChange: (patch: Partial<DisplayChoices>) => void; compact?: boolean; disabled?: boolean;
+}) {
+  const row = compact ? 'roam-choice flex min-h-8 flex-wrap items-center justify-between gap-2' : 'settings-field';
+  return <div className={compact ? 'grid gap-1' : 'form-grid'}>
+    <div className={row}>
+      <span className="field-caption whitespace-nowrap">{t('播放方式')}</span>
+      <ToggleGroup type="single" size="sm" value={value.playback_style} disabled={disabled} aria-label={t('播放方式')} onValueChange={next => { if (next) onChange({ playback_style: next as DisplayChoices['playback_style'] }); }}>
+        <ToggleGroupItem value="single">{t('单张')}</ToggleGroupItem>
+        <ToggleGroupItem value="scroll">{t('画轴')}</ToggleGroupItem>
+      </ToggleGroup>
+    </div>
+    {value.playback_style === 'scroll' && <div className={row}>
+      <span className="field-caption whitespace-nowrap">{t('移动速度')}</span>
+      <ToggleGroup type="single" size="sm" value={value.scroll_speed} disabled={disabled} aria-label={t('移动速度')} onValueChange={next => { if (next) onChange({ scroll_speed: next as DisplayChoices['scroll_speed'] }); }}>
+        <ToggleGroupItem value="slow">{t('慢')}</ToggleGroupItem>
+        <ToggleGroupItem value="normal">{t('适中')}</ToggleGroupItem>
+        <ToggleGroupItem value="fast">{t('快')}</ToggleGroupItem>
+      </ToggleGroup>
+    </div>}
+  </div>;
+}
 function RoamChoices({ value, disabled = false, onChange, compact = false }: {
   value: ModeChoices; disabled?: boolean; onChange: (patch: Partial<ModeChoices>) => void; compact?: boolean;
 }) {
@@ -68,7 +91,7 @@ export function RoamSettingsChoices({ value, onChange }: { value: ModeChoices; o
 export function RoamOptions({ buttonRef }: { buttonRef?: React.Ref<HTMLButtonElement> }) {
   const [open, setOpen] = useState(false);
   const current = useUiFact("roamOptions");
-  const settings: RoamSettings = current ?? { playback_interval_seconds: 8, liked_tags_only: false, prompt_mode: "random", recommendation_strength: "standard" };
+  const settings: RoamSettings = current ?? { playback_interval_seconds: 8, playback_style: 'single', scroll_speed: 'normal', liked_tags_only: false, prompt_mode: "random", recommendation_strength: "standard" };
   const ready = !!current;
   const [draft, setDraft] = useState("8");
   const [saving, setSaving] = useState({ interval: false, choices: false });
@@ -84,7 +107,7 @@ export function RoamOptions({ buttonRef }: { buttonRef?: React.Ref<HTMLButtonEle
     };
   }, []);
   useEffect(() => { if (!dirty.current) setDraft(String(settings.playback_interval_seconds)); }, [settings.playback_interval_seconds]);
-  const save = async (kind: "interval" | "choices", choices?: Partial<ModeChoices>) => {
+  const save = async (kind: "interval" | "choices", choices?: Partial<ModeChoices & DisplayChoices>) => {
     if (kind === "interval" && (!ready || !dirty.current || intervalPending.current)) return;
     setError("");
     try {
@@ -106,13 +129,14 @@ export function RoamOptions({ buttonRef }: { buttonRef?: React.Ref<HTMLButtonEle
     <PopoverTrigger asChild><IconButton ref={buttonRef} id="roam-options" icon={Settings2} label={t("漫游选项")} /></PopoverTrigger>
     <PopoverContent forceMount hidden={!open} align="end" collisionPadding={12} className="roam-options-panel w-max gap-1 p-3" aria-label={t("漫游选项")} onOpenAutoFocus={event => { if (!open) event.preventDefault(); }} onCloseAutoFocus={event => { if (document.querySelector(".image-card.immersive")) event.preventDefault(); }}>
       <div className="grid gap-1">
-        <form className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-3" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
+        <RoamDisplayChoices compact value={settings} disabled={!ready || saving.choices} onChange={patch => void save('choices', patch)} />
+        {settings.playback_style !== 'scroll' && <form className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-3" onSubmit={event => { event.preventDefault(); void save("interval"); }}>
           <Label htmlFor="roam-playback-seconds" className="mb-0! whitespace-nowrap font-normal">{t("展示时间")}</Label>
           <InputGroup className="h-8" data-disabled={!ready || saving.interval}>
           <InputGroupInput id="roam-playback-seconds" aria-label={t("展示时间（秒）")} aria-busy={saving.interval} className="h-8 min-w-0 pl-3 text-right tabular-nums" type="number" min={1} max={600} step={1} value={draft} disabled={!ready || saving.interval} onChange={event => { dirty.current = true; setDraft(event.target.value); }} onBlur={() => void save("interval")} />
           <InputGroupAddon align="inline-end" className="py-0 text-xs" aria-hidden="true">{t("秒")}</InputGroupAddon>
           </InputGroup>
-        </form>
+        </form>}
         <RoamChoices compact value={settings} disabled={!ready || saving.choices} onChange={patch => void save("choices", patch)} />
       </div>
     </PopoverContent>

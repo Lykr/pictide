@@ -38,6 +38,8 @@ The independent Canvas size row below the prompt terms can pin a size from the c
 
 Turn on autoplay for relaxed browsing and adjust each image's display time in Roam options. Playback waits if generation is unfinished. Liking an image pauses on it; moving to the next resumes playback. Leaving Roam pauses playback.
 
+Choose **Scroll** in Roam options or Settings → Roam to display a continuous strip moving from right to left. Images share a height and retain their aspect ratios. Select Slow, Normal, or Fast; playback holds on the last available image while the next is generated or loaded. Arrow keys and previous/next buttons move smoothly from the current position. Like pauses and marks that picture with a pink outline and a small heart; Next smoothly continues playback. Manually pausing keeps playback paused while browsing. Feedback and image information follow the picture covering the center; click a picture to pause and bring it into focus. **Single** retains timed one-picture playback.
+
 Use ← / → to browse and ↑ / ↓ to move between Disliked, Unrated, and Liked. Immersive mode fills the screen with the image, with a loading ring at the top left while waiting. Open Anchors in a floating panel to guide the next images. Blur changes only the display; the original stays clear.
 
 Roam remembers where you left off. Like images you want to keep; older unliked images are handled according to your [cleanup settings](settings.md).

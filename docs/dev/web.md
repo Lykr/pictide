@@ -38,6 +38,8 @@ Image-list invalidation preserves the displayed Roam image's identity and loaded
 
 The entire application shares one `/api/events` EventSource. Existing polling fallback remains on disconnection; switching sections does not create a second connection. Candidate uses `/api/candidate/tags|presets|dataset|generate|relations`; see the [Candidate API](reference/api/candidate.md) for methods and fields.
 
+Scroll playback uses `controllers/roam-scroll.mjs` for pixel geometry and smooth retargeting, and `components/roam-scroll.tsx` for a bounded window of original images. React owns image elements; animation refs update only transforms and attached marker positions. `app.js` retains feedback, prefetch, and viewing-position persistence. The shared playback controller retains play/pause and resume-after-like intent, with its single-image timer disabled in Scroll. Feedback follows the image covering the viewport center; the saved viewing guard follows the oldest visible neighbor.
+
 ## Build
 
 Run `pnpm install --frozen-lockfile`, `pnpm run typecheck`, and `pnpm run build` in `web/`. The [Development Workflow](development.md) defines initial setup, validation, and release order. Do not clear dist directly in a directory currently serving pages.

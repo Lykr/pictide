@@ -8,7 +8,7 @@ export function playbackInterval(value) {
 
 /** One timeout per loaded picture; unavailable next images are resumed by gallery events. */
 export function createRoamPlayback({ advance, changed = () => {}, cancelWait = () => {}, schedule = setTimeout, cancel = clearTimeout, now = () => performance.now() }) {
-  let playing = false, seconds = 8, timer, startedAt = null, cycle = 0;
+  let playing = false, seconds = 8, timer, startedAt = null, cycle = 0, external = false;
   let imageId = null, ready = false, active = false, busy = false, blocked = false;
   let due = false, advancing = false, revision = 0;
   let resumeAfterLike = false, nextAfterLike = null;
@@ -22,7 +22,7 @@ export function createRoamPlayback({ advance, changed = () => {}, cancelWait = (
     finally { advancing = false; }
   };
   const arm = () => {
-    if (timer !== undefined || !playing || !active || !ready || busy || blocked || due || !imageId) return;
+    if (external || timer !== undefined || !playing || !active || !ready || busy || blocked || due || !imageId) return;
     startedAt = now(); cycle++;
     timer = schedule(() => { timer = undefined; startedAt = null; due = true; notify(); void go(); }, seconds * 1000);
   };
@@ -71,6 +71,10 @@ export function createRoamPlayback({ advance, changed = () => {}, cancelWait = (
       seconds = next;
       if (!due) { clear(); arm(); }
       notify();
+    },
+    setExternal(value) {
+      if (external === value) return;
+      external = value; clear(); due = false; revision++; arm(); notify();
     },
     retry() { if (due) void go(); else arm(); notify(); },
   };

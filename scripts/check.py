@@ -21,6 +21,7 @@ GROUPS = {
         'tests.backend.store.test_storage.RepositoryTests.test_existing_database_is_migrated_without_losing_images_or_feedback',
         'tests.backend.recommendation.test_recommendation_application.RecommendationApplicationTests.test_signed_http_feedback_is_exclusive_reversible_and_idempotent',
         'tests.backend.application.test_thumbnails.ThumbnailHTTPTests.test_thumbnail_is_webp_and_conditional_reads_reuse_it_without_changing_originals',
+        'tests.backend.roam.test_roam_playback_settings.RoamPlaybackSettingsTests.test_scroll_settings_preserve_generation_and_survive_restart',
         'tests.backend.generation.test_cloud_backends.CloudProtocolTests.test_openai_base64_and_actual_request_fields',
         'tests.backend.generation.test_cloud_backends.CloudProtocolTests.test_gemini_interactions_only_final_images_and_stateless',
         'tests.backend.application.test_natural_prompts.NaturalPromptTests.test_stay_skips_llm_and_feedback_uses_semantic_snapshot',

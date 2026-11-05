@@ -13,6 +13,8 @@ python scripts/check.py browser
 
 Run commands from the repository root, or pass an absolute path to `scripts/check.py`. Add `--list` to inspect a group without running it. A failed check returns a nonzero exit code.
 
+Scroll playback changes use `web/tests/unit/roam-scroll.test.mjs`, the existing playback/navigation unit checks, `web/tests/browser/roam-scroll.spec.mjs`, and `roam-playback.spec.mjs`. They verify pixel continuity, rapid retargeting, center-image feedback, visible liked markers, generation waits, manual pause versus resume after Like, settings retention, and desktop/mobile immersion. Backend display settings are covered by `RoamPlaybackSettingsTests.test_scroll_settings_preserve_generation_and_survive_restart` and `RoamOptionsStoreTests.test_display_upgrade_preserves_old_settings_and_partial_saves`; all providers and pictures are fixtures.
+
 Use Python 3.12 to match release CI.
 
 First-use, export, LAN-listener, and unlike-grace changes additionally run `tests.backend.application.test_liked_export`, `tests.backend.runtime.test_network_access`, `tests.backend.store.test_unlike_grace`, existing cleanup and desktop-launcher checks, and `web/tests/browser/first-use.spec.mjs`. These use temporary images and local services to verify exact exported bytes, interrupted-transfer cleanup, runtime listener changes and graceful process exit, 24-hour protection across restarts, canonical workflow bindings, and desktop/phone controls. They submit no GPU or image-provider requests.
