@@ -30,7 +30,7 @@ def download_previous(archive, destination):
     from backend import __version__
     # Shared runner IPs frequently exhaust GitHub's anonymous API quota.
     # Keep authentication confined to CI tooling, never the running application.
-    document = (json.loads(subprocess.check_output(['gh', 'api', API], text=True))
+    document = (json.loads(subprocess.check_output(['gh', 'api', API], encoding='utf-8'))
                 if os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('GH_TOKEN')
                 else read_json(API))
     previous = document['tag_name'].removeprefix('v')

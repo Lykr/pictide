@@ -3,6 +3,8 @@ import io
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
@@ -22,11 +24,32 @@ class PreviousReleaseTests(unittest.TestCase):
                     patch('scripts.smoke_updates.subprocess.check_output', return_value=json.dumps(document)) as authenticated_read:
                 self.assertIsNone(download_previous('pictide-0.6.2-darwin-arm64.zip', Path(directory)))
                 if authenticated:
-                    authenticated_read.assert_called_once_with(['gh', 'api', API], text=True)
+                    authenticated_read.assert_called_once_with(['gh', 'api', API], encoding='utf-8')
                     anonymous.assert_not_called()
                 else:
                     anonymous.assert_called_once_with(API)
                     authenticated_read.assert_not_called()
+
+    def test_ci_decodes_non_ascii_release_json_independently_of_windows_locale(self):
+        document = dict(tag_name='v1.0.0', body='图像生成与漫游设置')
+        payload = json.dumps(document, ensure_ascii=False).encode('utf-8')
+        with self.assertRaises(UnicodeDecodeError):
+            payload.decode('cp1252')
+        original_check_output = subprocess.check_output
+
+        def cli_output(command, **kwargs):
+            self.assertEqual(command, ['gh', 'api', API])
+            # Exercise real pipe decoding with the locale that failed on the runner.
+            kwargs.setdefault('encoding', 'cp1252')
+            return original_check_output([sys.executable, '-c', f'import sys; sys.stdout.buffer.write({payload!r})'], **kwargs)
+
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.dict(os.environ, GITHUB_ACTIONS='true', GH_TOKEN='test-token'), \
+                patch('backend.__version__', '1.0.0'), \
+                patch('scripts.smoke_updates.subprocess.check_output', side_effect=cli_output), \
+                patch('scripts.smoke_updates.read_json') as anonymous:
+            self.assertIsNone(download_previous('pictide-1.0.0-win32-amd64.zip', Path(directory)))
+            anonymous.assert_not_called()
 
     def test_previous_package_is_pinned_to_the_platform_and_supported_source_range(self):
         content = b'previous native release'

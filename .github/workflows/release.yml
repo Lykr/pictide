@@ -89,7 +89,7 @@ jobs:
           # HTTP core fixtures register static routes before the frontend is built.
           mkdir -p web/dist
           python scripts/check.py core
-          python -m unittest tests.scripts.test_portable_startup tests.scripts.test_portable_audit tests.scripts.test_release_artifacts tests.scripts.test_release_assets -v
+          python -m unittest tests.scripts.test_portable_startup tests.scripts.test_portable_audit tests.scripts.test_release_artifacts tests.scripts.test_release_assets tests.scripts.test_smoke_updates -v
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
@@ -164,6 +164,8 @@ jobs:
         run: python scripts/build_portable.py
       - name: Smoke test the extracted package
         env:
+          # Historical tags may decode gh's UTF-8 JSON with the Windows locale.
+          PYTHONUTF8: '1'
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: python scripts/smoke_portable.py --archive releases/*.zip --report dev/verification/portable/smoke-report.json --previous-release
