@@ -4,11 +4,21 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import stat
 import tempfile
 
 from ..domain import BackendError
 
 EXTENSIONS = {"image/png":".png","image/jpeg":".jpg","image/webp":".webp","image/gif":".gif","image/avif":".avif"}
+
+
+def is_reparse_point(path):
+    try:
+        attributes = path.lstat()
+    except FileNotFoundError:
+        return False
+    return stat.S_ISLNK(attributes.st_mode) or bool(
+        getattr(attributes, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
 
 
 def atomic_write(path, content, temporary_directory):

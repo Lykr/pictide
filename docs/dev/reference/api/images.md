@@ -10,6 +10,7 @@
 | --- | --- | --- | --- |
 | GET | `/api/artifacts` | Image list query parameters | Image window; see below |
 | GET | `/api/artifacts/{id}/image` | None | Image file binary |
+| GET | `/api/artifacts/{id}/image?thumbnail=1` | None | Cached WebP preview, longest edge at most 480px |
 | GET | `/api/artifacts/{id}/image?download=1` | None | Original file attachment, restricted to a currently liked image |
 | POST | `/api/liked/export` | `{ids:[image_id,...]}` | ZIP attachment of selected original images |
 | GET | `/api/liked/recently-unliked` | `limit` (1–200, default 100), opaque `before` cursor | `{artifacts,has_more,next_cursor,total,server_time,revision}` |
@@ -42,6 +43,8 @@ Transitioning from liked to another feedback state atomically records a 24-hour 
 Recently unliked returns current non-liked images with an unexpired protection deadline and no deletion tombstone, including images hidden from Roam or Generate. It ignores the Liked page's tag filter and sort. Order is descending protection deadline (unlike time), then descending ID. Pass `next_cursor` unchanged as `before`; it carries the deadline and ID, so restoring or unliking the boundary image again does not invalidate pagination. `server_time` is the UTC read time used for the window; clients use it with each artifact's `unliked_protected_until` for remaining-time labels. At the deadline the image leaves this recovery list; its files follow normal cleanup rules rather than an immediate-deletion promise. Restore through the existing feedback PUT with `value:1`, which also restores its preference contribution. Original-image export still requires a current like.
 
 Export accepts 1–1000 IDs and deduplicates them. Every selected image must currently be liked. The server builds a temporary ZIP containing the original bytes under unique image-ID filenames, streams it, and removes the temporary file after transfer or disconnection. Export actions appear in Liked. Prompt JSON downloads remain separate.
+
+`thumbnail=1` uses the same active-artifact check and legacy original-fetch path, then returns an on-demand preview from `cache/thumbnails/`. Previews preserve aspect ratio, alpha and EXIF orientation, never upscale, omit source metadata, and use the first frame for animated images. Concurrent requests for one image share conversion; at most two conversions run at once. Cache files track the original's modification time and are atomically replaced when it changes. Responses explicitly use `image/webp`, private revalidation and ordinary ETag/304 support. A deleted artifact returns 404 even if its cache has not yet been reclaimed. `download=1` takes precedence over `thumbnail=1` and always exports the original, subject to the current-like requirement.
 
 Generated image cleanup clears visibility from unliked image records and reclaims local image files and prompt JSON. Liked images are only hidden from the Generate page and remain on the Liked page. Job history is preserved. This endpoint cannot clean up Roam images.
 

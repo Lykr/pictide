@@ -18,6 +18,7 @@ from .domain import ConflictError, GoneError, NotFoundError, ValidationError, fe
 from .events import EventHub
 from .generation import backend_capabilities, available_canvas_sizes
 from .store.contracts import Storage
+from .store.thumbnails import ThumbnailCache
 from .store.roam_settings import max_history_images, prefetch_count, selection, recommendation_options, pinned_canvas_value
 
 
@@ -51,6 +52,7 @@ class PictideApplication:
     def __init__(self, paths, storage: Storage, tasks, candidates, recommendation,
                  history, cleanup, workflows, roam, recommendation_store=None, general=None):
         self.paths, self.storage, self.tasks = paths, storage, tasks
+        self.thumbnails = ThumbnailCache(storage, paths)
         self.candidates, self.recommendation = candidates, recommendation
         self.history, self.cleanup, self.workflows = history, cleanup, workflows
         self.recommendation_store = recommendation_store
@@ -115,6 +117,7 @@ class PictideApplication:
             self._roam_preparation.cancel()
             await asyncio.gather(self._roam_preparation, return_exceptions=True)
         await self.tasks.stop()
+        await self.thumbnails.stop()
         if self._learning_task is not None:
             await self._learning_task
             self._learning_task = None
@@ -981,11 +984,15 @@ class PictideApplication:
         finally:
             self.events.publish("jobs")
 
-    async def image(self, identifier):
+    async def image(self, identifier, *, thumbnail=False):
         await self.clean_history()
         path = await self.tasks.cache_image(identifier)
         if path is None:
             raise NotFoundError()
+        if thumbnail:
+            path = await self.thumbnails.image(identifier, path)
+            if path is None:
+                raise NotFoundError()
         return path
 
     async def prompts(self, identifier):

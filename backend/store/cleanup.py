@@ -3,24 +3,16 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import logging
 from pathlib import Path, PureWindowsPath
-import stat
 import time
 
+from .assets import is_reparse_point
 from .sqlite import now
 from .contracts import Storage
+from .thumbnails import thumbnail_path
 
 
 LOGGER = logging.getLogger(__name__)
 IMAGE_SUFFIXES = frozenset({".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"})
-
-
-def is_reparse_point(path):
-    try:
-        attributes = path.lstat()
-    except FileNotFoundError:
-        return False
-    return stat.S_ISLNK(attributes.st_mode) or bool(
-        getattr(attributes,"st_file_attributes",0) & getattr(stat,"FILE_ATTRIBUTE_REPARSE_POINT",0x400))
 
 
 def image_paths(paths, relative):
@@ -79,6 +71,7 @@ def delete_pending(repo: Storage, paths, limit):
             db.execute("UPDATE pending_image_deletions SET last_attempt=? WHERE artifact_id=? AND local_path=?",
                        (now(),row["artifact_id"],row["local_path"]))
             try:
+                thumbnail_path(paths, row['artifact_id']).unlink(missing_ok=True)
                 targets = image_paths(paths,row["local_path"])
                 if any(target.resolve() in protected for target in targets):
                     continue

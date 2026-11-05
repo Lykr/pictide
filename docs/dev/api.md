@@ -24,7 +24,7 @@ The entry point for Pictide's currently implemented HTTP API. Read the general c
 - Responses are JSON except images, downloads, and SSE. Success usually returns `200`; task submission returns `202`, and creating a workflow separately returns `201`.
 - Library upload `POST /api/candidate/library` uses multipart/form-data. All other non-GET/HEAD `/api/` requests, including DELETE, must carry `Content-Type: application/json`; send `{}` when there are no parameters. Request bodies must be JSON objects, without duplicate fields or NaN/Infinity. The usual limit is 8 MiB, with 1,100,000 bytes for candidate requests and 2,048 bytes for preference reset requests.
 - For mutation requests, `Origin`, when present, must match the accessed origin; `Sec-Fetch-Site: cross-site` is rejected. Host is restricted to local addresses or the machine's LAN IP allowed by the LAN entry point. General cross-origin calls are not enabled.
-- API responses use `Cache-Control: no-store`. This does not mean image preference scores are recomputed every time; scoring has a separate persistent cache.
+- API responses default to `Cache-Control: no-store`. Image thumbnails explicitly allow private caching with revalidation; see [image reads](reference/api/images.md). Image preference scores also have a separate persistent cache and are not recomputed for every HTTP read.
 - Times are usually ISO 8601 UTC strings; viewing position `viewed_at` is an integer in milliseconds. The maximum safe integer is `9007199254740991`.
 - `{id}` denotes the corresponding resource ID. IDs in lists are opaque identifiers; callers must not depend on how they are generated.
 
@@ -40,7 +40,7 @@ Business errors usually return `{"error":"description"}`. Validation errors in t
 | 409 | Revision, duplicate request content, or name conflict |
 | 410 | Resource has been cleaned up and is no longer accessible |
 | 413 / 415 | Request too large / Content-Type does not meet API requirements |
-| 502 | Upstream backend failed while retrieving an image |
+| 502 | Image retrieval or preview conversion failed |
 
 Some APIs return business unavailability with `200`, such as connection checks with `ok:false`, roam with `paused:true`, and scoring with `status:"unavailable"`. HTTP status alone does not determine business success.
 

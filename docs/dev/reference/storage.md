@@ -13,7 +13,7 @@ The main business database stores application state, the personal preset databas
 | `backends` / `backend_revisions` | Current configuration entries and immutable historical snapshots |
 | `jobs` / `generation_batches` | Individual tasks, batch idempotency, and execution context |
 | `artifacts` / `feedback` | Image source, hidden/cleaned state, and -1/1 feedback; withdrawal removes the current rating |
-| `pending_image_deletions` | Persistent reclamation queue for local images and JSON |
+| `pending_image_deletions` | Persistent reclamation queue for local images, JSON and per-artifact thumbnail caches |
 | `roam_*` | Viewing position, prefetch ownership, settings, anchors, and pause state |
 | `general_settings` | Theme, language, and image transition effects |
 | `canvas_pools` | Independent named pixel-size collections; current image APIs reference pool IDs |

@@ -105,7 +105,7 @@ async def boundary(request, handler):
     response.headers["Referrer-Policy"] = "same-origin"
     response.headers["Content-Security-Policy"] = CSP
     if request.path.startswith("/api/"):
-        response.headers["Cache-Control"] = "no-store"
+        response.headers.setdefault("Cache-Control", "no-store")
     return response
 
 
@@ -364,7 +364,9 @@ async def image(request):
         if request.query.get('download') == '1':
             path = await request.app[APPLICATION].liked_image(identifier)
             return web.FileResponse(path, headers={'Content-Disposition': f'attachment; filename="{identifier}{path.suffix}"'})
-        return web.FileResponse(await request.app[APPLICATION].image(identifier))
+        thumbnail = request.query.get('thumbnail') == '1'
+        return web.FileResponse(await request.app[APPLICATION].image(identifier, thumbnail=thumbnail),
+                                headers={'Content-Type': 'image/webp', 'Cache-Control': 'private, no-cache'} if thumbnail else None)
     except BackendError as exc:
         return web.json_response({"error": str(exc)}, status=502)
 

@@ -32,6 +32,8 @@ Each feature model owns its draft; React views remain mounted across navigation.
 
 `controllers/recent-unlikes.mjs` owns the recovery dialog's independent cursor window, cancellation, and server-relative protection clock. `components/recent-unlikes.tsx` renders it from the Liked header. Application feedback and artifact events invalidate an open window; closing releases its request and timer. Undo and Like again use the application's existing feedback path, including preference learning. `components/artifact-image.tsx` shares thumbnail loading and failure states with the main grids.
 
+Grid images request `image?thumbnail=1` through `ArtifactImage`, with lazy loading and asynchronous decoding. The backend generates and caches bounded WebP previews. Full-size viewers and original/ZIP downloads retain their original-image URLs; frontend display size and blur remain independent of stored image size.
+
 Image-list invalidation preserves the displayed Roam image's identity and loaded state until rendering selects a different image. A retained image keeps the same `src`, so the browser will not emit another load event; resetting its readiness would stall autoplay.
 
 The entire application shares one `/api/events` EventSource. Existing polling fallback remains on disconnection; switching sections does not create a second connection. Candidate uses `/api/candidate/tags|presets|dataset|generate|relations`; see the [Candidate API](reference/api/candidate.md) for methods and fields.

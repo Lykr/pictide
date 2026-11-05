@@ -100,6 +100,12 @@ When the preference scope, roam mode, or anchor changes, App saves settings and 
 
 A failure, uncertain state, or cancellation in the current settings version pauses prefetch. Saving the complete roam settings clears the pause; correcting and saving the current roam backend can also resume it. Historical images and tasks remain, and old failed tasks are not automatically resubmitted. See the [Roam Guide](../../guides/roam.md) and [Prefetch API](../reference/api/roam.md).
 
+## Image Previews
+
+Generate, Liked and Recently unliked grids request the existing image endpoint with `thumbnail=1`. Host passes the choice to App, which reuses Task's `cache_image` to obtain the active artifact's local original, including legacy remote results. App then asks Store's `ThumbnailCache` for a 480px WebP. Original viewing and downloads retain the existing read path.
+
+Store owns conversion, cache files and their deletion. Cache misses run in threads with two conversion slots and share pending work per artifact. They encode before entering the storage write transaction, then recheck the active image and publish atomically under the same transaction boundary used by tombstones and cleanup. The existing deletion queue removes previews by artifact ID, including when a shared original must remain for another artifact. App drains active conversions on shutdown. These derived caches add no database columns or generation tasks.
+
 ## Feedback and Background Learning
 
 ```mermaid
