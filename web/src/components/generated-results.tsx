@@ -7,7 +7,7 @@ import { uiTarget } from "../shared/ui-targets";
 import { t, tr, messageKey, locale } from "../i18n/index.mjs";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Download, Eye, EyeOff, Heart, ImageIcon, LoaderCircle, RotateCw, Trash2 } from "lucide-react";
+import { Download, Eye, EyeOff, Heart, ImageIcon, ListChecks, LoaderCircle, RotateCw, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Toggle } from "./ui/toggle";
@@ -74,6 +74,7 @@ export function GeneratedResults({ collection = "generate", privacyHost }: { col
   };
   const like = (item: GeneratedArtifact, toggle = true) => emit(`${prefix}-feedback`, { id: item.id, toggle });
   const privacyLabel = privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格");
+  const exportLabel = t(selecting ? '退出选择' : '多选导出');
   const privacyControl = <Toggle ref={liked ? targets.privacy : undefined} size="sm" className="generated-privacy-toggle" data-collection={collection} pressed={privacyBlur} onPressedChange={setPrivacyBlur} aria-label={privacyLabel} aria-keyshortcuts="Space" data-tooltip={privacyLabel}>{privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}</Toggle>;
   const refreshTooltip = state.refreshedAt
     ? t("刷新偏好评分 · 上次刷新：{time}", { time: new Date(state.refreshedAt).toLocaleString(locale()) })
@@ -82,17 +83,18 @@ export function GeneratedResults({ collection = "generate", privacyHost }: { col
     {liked && privacyHost && createPortal(<span className="inline-flex items-center gap-1">
       {state.sort === "score" && <IconButton icon={state.loading ? LoaderCircle : RotateCw} className={`generated-privacy-toggle rounded-3xl border-0 ${state.loading ? "[&_svg]:animate-spin" : ""}`} label={state.loading ? t("正在计算偏好评分") : t("刷新偏好评分")} tooltip={refreshTooltip} disabled={busy} onClick={() => emit("liked-refresh")} />}
       {privacyControl}
+      <Toggle size="sm" className="generated-privacy-toggle" pressed={selecting} aria-label={exportLabel} data-tooltip={exportLabel}
+        disabled={busy || !state.artifacts.length} onPressedChange={value => { setSelecting(value); setSelection([]); setExportError(''); }}>
+        <ListChecks aria-hidden="true" />
+      </Toggle>
     </span>, privacyHost)}
-    {liked && !!state.artifacts.length && <div className="mb-4 flex flex-wrap items-center gap-2" aria-label={t('收藏导出')}>
-      <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { setSelecting(!selecting); setSelection([]); setExportError(''); }}>{t(selecting ? '退出选择' : '多选导出')}</Button>
-      {selecting && <>
+    {liked && selecting && <div className="mb-4 flex flex-wrap items-center gap-2" aria-label={t('收藏导出')}>
         <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setSelection(state.artifacts.map(item => item.id))}>{t('全选已加载')}</Button>
         <span className="text-sm text-muted-foreground" role="status">{t('已选 {count} 张', { count: selection.length })}</span>
         <Button type="button" size="sm" disabled={busy || !selection.length || selection.length > 1000} onClick={() => void exportSelection()}>
           {exporting ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Download aria-hidden="true" />}{t('导出 ZIP')}
         </Button>
         {selection.length > 1000 && <span className="text-sm text-muted-foreground">{t('单次最多导出 1000 张图片')}</span>}
-      </>}
     </div>}
     {liked && <LikedTagFilter visible={state.visible} revision={state.revision} disabled={busy} sort={state.sort} />}
     {liked && state.loading && !state.artifacts.length && <div className="hint" role="status">{t("加载中…")}</div>}

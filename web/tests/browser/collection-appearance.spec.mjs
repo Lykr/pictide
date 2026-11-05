@@ -49,7 +49,7 @@ for (const width of [1365, 390]) for (const theme of ['light', 'dark']) {
     const card = collection.locator('.generated-card').first();
     await expect(card.locator('img')).toBeVisible();
     await fillsCard(card);
-    await collection.getByRole('button', { name: '多选导出', exact: true }).click();
+    await page.locator('#liked-privacy-controls').getByRole('button', { name: '多选导出', exact: true }).click();
     const checkbox = card.getByRole('checkbox');
     expect(await checkboxAppearance(checkbox)).toEqual(uncheckedStyle);
     await page.screenshot({ path: testInfo.outputPath('liked-unchecked.png'), animations: 'disabled' });

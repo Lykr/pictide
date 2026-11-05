@@ -14,7 +14,7 @@ Liked images stay in your collection, even when you [clear generation results](g
 
 ## Save and export images
 
-Open a liked image and choose **Download original** to save its original file. In the collection, choose **Select to export**, select images, and choose **Export ZIP**. **Select all loaded** selects the images currently loaded in the list. Load more first to include older images. Each export supports up to 1,000 images.
+Open a liked image and choose **Download original** to save its original file. Choose the **Select to export** icon immediately to the right of the page's blur button, select images, and choose **Export ZIP**. Click the icon again to exit selection. **Select all loaded** selects the images currently loaded in the list. Load more first to include older images. Each export supports up to 1,000 images.
 
 Removing a like starts a 24-hour grace period before automatic age or Roam-count cleanup can delete the image. After the grace period, the ordinary [cleanup rules](settings.md#historical-image-cleanup) apply.
 
