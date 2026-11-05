@@ -51,6 +51,14 @@ Set the API URL in Pictide's Settings:
 
 The Compose file includes the host-gateway mapping for Linux. A host-side ComfyUI on Linux must listen on an address reachable from Docker, for example by starting it with `--listen 0.0.0.0`. `localhost` inside the container refers to Pictide's container. See Docker's [networking guide](https://docs.docker.com/compose/how-tos/networking/) for connecting services across Compose projects.
 
+## Use a phone on the LAN
+
+1. Set `PICTIDE_BIND=0.0.0.0` in `.env`, then run `docker compose up -d` in the same directory.
+2. Open the host's LAN address and published port, for example `http://192.168.50.50:8189`.
+3. Connect ComfyUI or a cloud image API in Settings and start roaming. Open **Settings → General → LAN access** to display a QR code for the current address and scan it on your phone.
+
+Docker's published port controls access to the container. Use the host address when adding Pictide to your phone's Home Screen. See [phone access](../access.md).
+
 ## Update and stop
 
 Download the new release's `compose.yaml` into the same directory, retaining your `.env`, then pull and recreate:

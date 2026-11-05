@@ -16,7 +16,7 @@ export function HistorySettings() {
 <div className="settings-field"><Label htmlFor="history-retention-days"><span className="field-caption">{t("保留天数")}<HelpTip text={t("从图片入库起计时，默认 1 天；0 关闭过期清理，喜欢的图片保留。")} /></span></Label><Input id="history-retention-days" type="number" min="0" max="3650" step="1" required value={state.historyDraft} onChange={event => app.editHistory(event.target.value)} />
 </div>
 </fieldset>
-{"\n    "}<p className="hint retention-warning">{t("到期且未喜欢的本地图片及提示词 JSON 将永久删除。")}<HelpTip text={t("取消喜欢后，已过期图片也会被清理。任务记录和 ComfyUI 文件保留。")} /></p>
+{"\n    "}<p className="hint retention-warning">{t("到期且未喜欢的本地图片及提示词 JSON 将永久删除。")}<HelpTip text={t("撤回喜欢后保留 24 小时缓冲，之后按清理规则处理。任务记录和 ComfyUI 文件保留。")} /></p>
 {"\n    "}
 <div className="dialog-footer">
 

@@ -82,6 +82,7 @@ For disposable caches, frontend backups and validation files, use the [project c
 
 - Each backend save creates an immutable revision; existing tasks reference their submission-time snapshot. Workflow versions are backed up before editing.
 - Liked images are retained across sections. Cleaning up unliked images reclaims images and prompt JSON files while retaining task history.
+- Removing a like records a 24-hour protection deadline in the image row. Age-based and Roam-count automatic cleanup honor it across restarts. Explicit Generate clearing retains its existing deletion semantics.
 - Time-based cleanup and roam history count cleanup run at startup and operation entry points. See [Settings and Cleanup](../guides/settings.md#historical-image-cleanup).
 - Feedback and pending learning records are persisted in one transaction; recommendation processes them in the background. Historical records are interpreted using generation-time snapshots.
 

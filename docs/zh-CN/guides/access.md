@@ -9,8 +9,12 @@
 ## 局域网访问
 
 1. 电脑与手机连接同一个可信局域网。
-2. 按电脑系统开启局域网访问：[Windows](setup/windows.md#局域网访问) · [Linux](setup/linux.md#局域网访问) · [macOS](setup/macos.md#局域网访问)。
-3. 在手机浏览器打开电脑的局域网地址，例如 `http://192.168.50.50:8189`。
+2. 在运行 Pictide 的电脑上，通过 localhost 地址打开「设置 → 通用」，开启「局域网访问」，本次运行立即生效。
+3. 手机扫描显示的二维码，或复制局域网地址。有多个地址时，选择手机所在网络的地址。
+
+切换时本机网页会保持连接。关闭局域网访问会拒绝局域网请求，并断开已连接的远程事件流。希望启动时直接开放，可使用 [Windows](setup/windows.md#局域网访问)、[Linux](setup/linux.md#局域网访问)、[macOS](setup/macos.md#局域网访问) 对应的启动参数。
+
+Docker 用户见 [Docker 手机访问](setup/docker.md#手机访问)，手机使用宿主机映射后的地址和端口。
 
 电脑上的 Pictide 需要保持运行；电脑 IP 变化后使用新地址。无需开放 ComfyUI 端口。
 

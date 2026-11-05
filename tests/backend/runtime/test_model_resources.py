@@ -72,7 +72,7 @@ class ModelPreparationSmoke(unittest.TestCase):
               patch('backend.recommendation.resources.urlopen', side_effect=OSError('connection unavailable')),
               patch('backend.recommendation.resources.time.sleep'),
               patch('backend.host.create_app') as create,
-              patch('backend.host.web.run_app') as listen,
+              patch('backend.host.run_server') as listen,
               patch('backend.host.webbrowser.open') as browser):
             with self.assertRaises(SystemExit) as result:
                 host.main(['--data-dir', str(self.root)])

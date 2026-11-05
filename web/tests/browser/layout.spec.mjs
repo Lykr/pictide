@@ -129,7 +129,7 @@ for (const scenario of scenarios) test(`shared layout: ${scenario.name}`, async 
   await page.keyboard.press('Escape');
   await viewer.locator('.generated-viewer-heading button').last().click();
   await page.goto('/#settings/general');
-  await expect(page.locator('.settings-row')).toHaveCount(7);
+  await expect(page.locator('.settings-row')).toHaveCount(8);
   const tourButton = page.getByRole('button', { name: /^(Start tour|开始引导)$/ });
   const updateButton = page.locator('[data-application-updates] button').first();
   const tourBox = await tourButton.boundingBox(), updateBox = await updateButton.boundingBox();

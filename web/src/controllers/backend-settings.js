@@ -158,12 +158,12 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
     setWorkflowPanelMode('parameters', false);
   }
 
-  async function currentDefaultTemplate() {
+  async function currentDefaultTemplate(recipe = null) {
     const version = workflowLoadRevision;
     const editedId = draft.selectedId;
     const url = draft.url;
     const checkpoint = draft.checkpoint;
-    const payload = { ...connectionDraft(), default_checkpoint:checkpoint };
+    const payload = { ...connectionDraft(), default_checkpoint:checkpoint, ...(recipe ? { recipe } : {}) };
     const id = editedId === '__new__' ? 'new' : editedId;
     const result = await api(`/api/backends/${encodeURIComponent(id)}/template`, { method:'POST', body:JSON.stringify(payload) });
     if (workflowLoadRevision !== version || draft.selectedId !== editedId || draft.url !== url || draft.checkpoint !== checkpoint) throw new Error(t("生图 API、工作流或模型选择已变化，请重新读取默认节点参数。"));
@@ -206,6 +206,17 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
       dismissNotification('settings-operation');
     } catch (error) { settingsNotice(error.message, true); }
     finally { if (workflowLoadRevision === revision) pending('workflow', false); }
+  }
+  async function useRecommendedWorkflow() {
+    pending('template', true);
+    try {
+      const template = await currentDefaultTemplate('anima-turbo-v1-1');
+      applyWorkflowDraft(template);
+      draft.workflowName = 'Anima Turbo v1.1';
+      setNodeParametersExpanded(true);
+      changed();
+    } catch (error) { settingsNotice(error.message, true); }
+    finally { pending('template', false); }
   }
   function connectionDraft() {
     const payload = { name: draft.name.trim(), kind: draft.kind, base_url: draft.url.trim(), prompt_type: draft.prompt_type, llm_id: draft.llm_id || '', canvas_pool_id: draft.kind === 'gemini' ? '' : draft.canvas_pool_id || '' };
@@ -352,7 +363,7 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
   }
 
   return {
-    model, edit, editNode, setNodeParametersExpanded, setWorkflowPanelMode, editDefaultParameters, reloadWorkflows, deleteWorkflow, deleteBackend, importWorkflow, loadModels, testBackend, save, renderBackends, loadBackend, loadWorkflowLibrary,
+    model, edit, editNode, setNodeParametersExpanded, setWorkflowPanelMode, editDefaultParameters, useRecommendedWorkflow, reloadWorkflows, deleteWorkflow, deleteBackend, importWorkflow, loadModels, testBackend, save, renderBackends, loadBackend, loadWorkflowLibrary,
     get initialized() { return settingsInitialized; },
     get dirty() { return settingsDirty; },
   };

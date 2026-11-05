@@ -39,7 +39,7 @@ class DesktopSocketSmoke(unittest.TestCase):
                         patch('backend.host.DataPaths', return_value=paths), \
                         patch('backend.host.PictideApplication.prepare_startup'), \
                         patch('backend.host.create_app', return_value=app), \
-                        patch('backend.host.web.run_app', side_effect=serve):
+                        patch('backend.host.run_server', side_effect=serve):
                     os.environ.pop('PICTIDE_DESKTOP_PARENT_PIPE', None)
                     os.environ.pop('PICTIDE_DESKTOP_PARENT_PID', None)
                     os.environ.pop('PICTIDE_DESKTOP_ARGUMENTS', None)
@@ -102,7 +102,7 @@ class DesktopSocketSmoke(unittest.TestCase):
                     patch('backend.host.sys.stderr', Mock()), patch('backend.host.DataPaths', return_value=paths), \
                     patch('backend.host.PictideApplication.prepare_startup', side_effect=prepare), \
                     patch('backend.host.create_app', return_value=app), \
-                    patch('backend.host.web.run_app', side_effect=serve), patch.dict(os.environ, {STATUS_ENV: str(status)}):
+                    patch('backend.host.run_server', side_effect=serve), patch.dict(os.environ, {STATUS_ENV: str(status)}):
                 host.main(['--desktop-worker', '--cli', '--no-browser', '--port', '0'])
             self.assertEqual(len(owned), 1)
             self.assertEqual(owned[0].fileno(), -1)

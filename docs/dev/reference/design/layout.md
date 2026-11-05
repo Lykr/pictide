@@ -54,7 +54,9 @@ Large views use a shared Dialog with previous, like, and next controls centered;
 The Generate/Liked dialog frame is sized and centered inside the viewport minus its four safe-area insets; internal padding is not a substitute for keeping the frame above the Home indicator. Shared `--safe-area-*` tokens read the browser's device insets. Rotation recalculates the safe rectangle. Immersive images may fill the viewport, while floating controls remain inside the safe area.
 
 
-Liked offers Latest / Preference score sorting and a searchable multi-select tag filter above the grid. The tag filter shows matching liked-image counts, supports individual removal and clear, and scrolls independently. Default tag order is alphabetical; count order is descending with alphabetical ties. Preference-score mode offers manual refresh beside blur, with the last successful refresh time in its tooltip. Use neutral Load more wording. Removing a like uses the shared confirmation dialog. Liked omits generation configuration and task controls.
+Liked offers Latest / Preference score sorting and a searchable multi-select tag filter above the grid. The tag filter shows matching liked-image counts, supports individual removal and clear, and scrolls independently. Default tag order is alphabetical; count order is descending with alphabetical ties. Preference-score mode offers manual refresh beside blur, with the last successful refresh time in its tooltip. Use neutral Load more wording. Removing a like uses the shared confirmation dialog and explains the 24-hour cleanup grace period. Liked omits generation configuration and task controls.
+
+Liked alone adds original-image download in the shared large-view trailing slot. Its grid offers explicit export-selection mode with shared checkboxes, selected count, Select all loaded, and ZIP export. Changing the filter or leaving the view clears selection. Images removed from the list are removed from selection. Export is disabled during a transfer and when the selection is empty or exceeds 1000 images.
 
 ## Prompts
 

@@ -69,6 +69,7 @@ export function ApiSettings() {
 </div></div>
 <WorkflowPicker mode={apiDraft.workflowMode} name={apiDraft.workflowName} options={[{ value: 'default', text: t('默认文生图') }, ...state.workflows.map((item: any) => ({ value: `saved:${item.id}`, text: item.name })), { value: 'custom', text: t('自定义 API 工作流') }]} disabled={settings.pending.workflow} onModeChange={value => api.edit('workflowMode', value)} onNameChange={value => api.edit('workflowName', value)} />
 </div>
+<Button id="recommended-workflow" type="button" className="self-start" variant="outline" hidden={cloud} disabled={settings.pending.template || settings.pending.workflow || settings.pending.saving} onClick={() => void api.useRecommendedWorkflow()}>{t('使用推荐 Anima 工作流')}</Button>
 <section id="default-workflow" hidden={cloud || custom}>
 <div className="settings-field">
 <div className="settings-field-heading"><Label htmlFor="default-checkpoint"><span className="field-caption">{t("模型")}<HelpTip text={t("从配置的 ComfyUI 读取模型，留空时自动选择第一个可用模型。")} /></span></Label><IconButton id="load-models" icon={RefreshCw} label={t("读取 API 模型")} size="icon-xs" onClick={api.loadModels} disabled={settings.pending.models} /></div>

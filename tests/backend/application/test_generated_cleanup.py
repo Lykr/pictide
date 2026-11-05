@@ -1,5 +1,6 @@
 """Generated gallery removals use the shared durable cleanup boundary."""
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -50,7 +51,10 @@ class GeneratedStorageTests(CleanupFixture, unittest.TestCase):
         # Withdrawing later does not restore a dismissed generated result.
         repo.rate(iid, None)
         self.assertEqual(repo.artifacts(source="generate"), [])
-        self.assertEqual(repo.expire_artifacts("2999-01-01T00:00:00Z"), 1)
+        self.assertEqual(repo.expire_artifacts("2999-01-01T00:00:00Z"), 0)
+        after_grace = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
+        with patch('backend.store.sqlite.now', return_value=after_grace):
+            self.assertEqual(repo.expire_artifacts("2999-01-01T00:00:00Z"), 1)
         self.assertEqual(repo.artifact_revision(), 2)
 
     def test_other_actor_likes_protect_and_snapshot_covers_more_than_page(self):

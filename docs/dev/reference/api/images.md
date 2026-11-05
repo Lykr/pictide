@@ -10,6 +10,8 @@
 | --- | --- | --- | --- |
 | GET | `/api/artifacts` | Image list query parameters | Image window; see below |
 | GET | `/api/artifacts/{id}/image` | None | Image file binary |
+| GET | `/api/artifacts/{id}/image?download=1` | None | Original file attachment, restricted to a currently liked image |
+| POST | `/api/liked/export` | `{ids:[image_id,...]}` | ZIP attachment of selected original images |
 | GET | `/api/artifacts/{id}/prompts` | None | JSON download: `{positive,negative}` |
 | PUT | `/api/artifacts/{id}/feedback` | `{value:1 or -1 or null}` | `{artifact,artifact_revision}` |
 | DELETE | `/api/generated` | `{}` | `{removed,hidden,revision,pending_files}` |
@@ -33,6 +35,10 @@ The response is `{artifacts,has_more,has_newer,anchor_id,next_cursor,total,count
 Main fields: `id,job_id,node_id,output_index,created_at,local_path,content_type,deleted_at,generated_hidden_at,roam_hidden_at,positive,negative,seed,width,height,feedback,source,backend_kind,seed_applied,image_url`. `image_url` points to the same-origin image endpoint. `seed` is the image seed; `seed_applied` indicates whether it was actually applied by the backend; it is false for OpenAI Images and Gemini. `backend_kind` identifies the generation adapter; an internal stored seed does not imply a deterministic cloud image. Term information reflects the actual text used at generation time. Nullable `width,height` are the immutable requested task size, rather than measured output dimensions. Roam uses them for Pin current; older/fixed tasks fall back to the loaded image’s native dimensions.
 
 Feedback values are `1` for like, `-1` for dislike, and `null` to withdraw feedback and return to unrated. The response is returned after feedback is persisted. Preference learning and cleanup triggered by this feedback are handled in the background by the orchestration layer, so scoring may temporarily use the previous preference state. Repeatedly setting the same state does not count again toward learning.
+
+Transitioning from liked to another feedback state atomically records a 24-hour `unliked_protected_until` deadline. Automatic age and Roam-count cleanup skip the image until that deadline, including across restarts. Feedback and preference learning still change immediately. Repeating an already withdrawn state preserves the deadline.
+
+Export accepts 1–1000 IDs and deduplicates them. Every selected image must currently be liked. The server builds a temporary ZIP containing the original bytes under unique image-ID filenames, streams it, and removes the temporary file after transfer or disconnection. Export actions appear in Liked. Prompt JSON downloads remain separate.
 
 Generated image cleanup clears visibility from unliked image records and reclaims local image files and prompt JSON. Liked images are only hidden from the Generate page and remain on the Liked page. Job history is preserved. This endpoint cannot clean up Roam images.
 

@@ -34,6 +34,7 @@ export type GeneratedViewerProps = {
   error?: string;
   imageLabel?: string;
   confirmUnlike?: boolean;
+  allowDownload?: boolean;
 };
 const artifactPath = (item: GeneratedArtifact, kind: string) => `/api/artifacts/${encodeURIComponent(item.id)}/${kind}`;
 
@@ -169,7 +170,9 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
       <IconButton icon={ArrowLeft} label={t("上一张 · ←")} disabled={busy || (!older && !hasMore) || !!waitingOlder} onClick={() => navigate("older")} />
       <IconButton icon={Heart} label={item.feedback === 1 ? t("撤回喜欢") : t("喜欢图片 · ↑")} className={item.feedback === 1 ? "generated-viewer-liked" : ""} aria-pressed={item.feedback === 1} disabled={busy} onClick={async () => { if (props.confirmUnlike && item.feedback === 1) await viewerRef.current?.leave(); onLike(item); }} />
       <IconButton icon={ArrowRight} label={t("下一张 · →")} disabled={busy || !newer} onClick={() => navigate("newer")} />
-      </>} />
+      </>} trailing={props.allowDownload && item.feedback === 1 ? <Button asChild variant="ghost" size="icon-sm">
+        <a href={`${artifactPath(item, 'image')}?download=1`} download aria-label={t('下载原图')} data-tooltip={t('下载原图')}><Download aria-hidden="true" /></a>
+      </Button> : undefined} />
   </DialogContent>;
 }
 

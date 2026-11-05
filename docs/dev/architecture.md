@@ -52,6 +52,7 @@ pictide/
     dist/                      Vite distribution assets
   backend/
     host.py                    HTTP API, SSE, static assets, startup, and shutdown
+    listeners.py               Host-owned runner, local/LAN listeners, and runtime access
     desktop/                   Desktop session, launcher, terminal frames/keyboard, localized messages, and Windows tray
     setup/                     Local generation resources/session, Windows preparation UI and hardware detection
     application.py             Application orchestration: generation, candidates, feedback, cleanup

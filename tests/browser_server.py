@@ -52,9 +52,8 @@ async def main():
         runner = web.AppRunner(app, access_log=None)
         await runner.setup()
         try:
-            site = web.TCPSite(runner, '127.0.0.1', 0)
-            await site.start()
-            port = site._server.sockets[0].getsockname()[1]
+            await app[host.NETWORK].start(runner, port=0)
+            port = app[host.NETWORK].port
             print(json.dumps({'url': f'http://127.0.0.1:{port}', 'dataDirectory': str(data)}), flush=True)
             # Closing the owner's pipe releases both the service and temporary data.
             await asyncio.to_thread(sys.stdin.buffer.read)

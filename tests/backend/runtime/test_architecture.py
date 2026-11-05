@@ -74,7 +74,7 @@ from backend.recommendation.contracts import ScoreRequest, FeedbackUpdate, Recom
                              for name in dependencies(application)))
         for node in ast.walk(ast.parse(application.read_text(encoding='utf-8'))):
             if isinstance(node, ast.ImportFrom) and node.level == 1 and node.module == 'generation':
-                self.assertEqual([item.name for item in node.names], ['backend_capabilities'])
+                self.assertEqual([item.name for item in node.names], ['backend_capabilities', 'available_canvas_sizes'])
 
     def test_frontend_has_one_mount_and_no_backend_imports(self):
         mounts = []

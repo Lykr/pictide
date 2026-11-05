@@ -46,6 +46,6 @@ Open History to check generation progress, inspect failures, or cancel tasks you
 
 **History → Image cleanup** sets how long to keep unliked images. The default is **1 day (24 hours)**; set it to `0` to turn off expiration cleanup. Liked images are excluded from automatic cleanup.
 
-Expired images are cleaned up as you use the app. Their local image files and prompts are permanently deleted. Removing a like makes the image eligible again, using its original generation time, so it may be cleaned up soon afterward.
+Expired images are cleaned up as you use the app. Their local image files and prompts are permanently deleted. Removing a like starts a **24-hour grace period** that protects the image from age-based and Roam-count automatic cleanup. Afterward, its original generation time determines age-based eligibility. Repeating the same withdrawal does not extend the grace period.
 
 To keep your complete data collection, make a [backup](backup.md#backup-and-recovery) first.

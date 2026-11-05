@@ -322,7 +322,7 @@ async function feedback(value, toggle = true, animate = false) {
   state.feedbackPending = true;
   renderArtifacts();
   try {
-    if (state.view === 'liked' && nextValue === null && !await confirmAction(t("确定取消喜欢这张图片？取消后将从喜欢页面移除，并受自动清理规则影响。"))) return;
+    if (state.view === 'liked' && nextValue === null && !await confirmAction(t("确定取消喜欢这张图片？取消后将从喜欢页面移除，保留 24 小时缓冲后再按清理规则处理。"))) return;
     const result = await api(`/api/artifacts/${encodeURIComponent(artifact.id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value: nextValue }) }); state.feedbackRevision++; observeArtifactRevision(state, result.revision ?? result.artifact_revision); if (artifactRevision === state.artifactRevision) { const delta = Number(result.artifact.feedback === 1) - Number(artifact.feedback === 1); if (state.likedSort !== 'score' && matchesLikedTags(result.artifact, state.likedTags)) state.pages.liked.total += delta; replaceArtifact(result.artifact); } renderArtifacts();
     if (animate && state.view === 'feed' && state.currentImage === artifact.id) showFeedbackNotice(result.artifact.feedback, artifact.feedback);
   }
@@ -382,7 +382,7 @@ async function feedbackGenerated(id, toggle = true, view = 'generate') {
   if (view === 'liked') state.likedError = ''; else state.generatedMutationError = '';
   state.feedbackPending = true; renderArtifacts();
   try {
-    if (view === 'liked' && value === null && !await confirmAction(t("确定取消喜欢这张图片？取消后将从喜欢页面移除，并受自动清理规则影响。"))) return;
+    if (view === 'liked' && value === null && !await confirmAction(t("确定取消喜欢这张图片？取消后将从喜欢页面移除，保留 24 小时缓冲后再按清理规则处理。"))) return;
     const result = await api(`/api/artifacts/${encodeURIComponent(id)}/feedback`, { method: 'PUT', body: JSON.stringify({ value }) });
     state.feedbackRevision++;
     observeArtifactRevision(state, result.revision ?? result.artifact_revision);

@@ -1,7 +1,7 @@
 """SQLite repository; no HTTP or generation-backend dependency."""
 from collections import Counter
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import math
@@ -74,7 +74,7 @@ class Repository:
             if "backend_pending" not in {row["name"] for row in db.execute("PRAGMA table_info(jobs)")}:
                 db.execute("ALTER TABLE jobs ADD COLUMN backend_pending INTEGER NOT NULL DEFAULT 0")
             columns = {row["name"] for row in db.execute("PRAGMA table_info(artifacts)")}
-            for column in ("local_path","content_type","deleted_at","generated_hidden_at","roam_hidden_at"):
+            for column in ("local_path","content_type","deleted_at","generated_hidden_at","roam_hidden_at","unliked_protected_until"):
                 if column not in columns:
                     db.execute(f"ALTER TABLE artifacts ADD COLUMN {column} TEXT")
             db.executescript("""
@@ -785,11 +785,12 @@ class Repository:
         """Commit tombstones before any file operation; feedback wins by write order."""
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
+            timestamp = now()
             rows = db.execute("""SELECT a.id,a.local_path FROM artifacts a
                 WHERE a.deleted_at IS NULL AND utc_timestamp(a.created_at)<=utc_timestamp(?)
                 AND NOT EXISTS (SELECT 1 FROM feedback f WHERE f.artifact_id=a.id AND f.value=1)
-                ORDER BY a.created_at,a.id LIMIT ?""",(cutoff,limit)).fetchall()
-            timestamp = now()
+                AND (a.unliked_protected_until IS NULL OR utc_timestamp(a.unliked_protected_until)<=utc_timestamp(?))
+                ORDER BY a.created_at,a.id LIMIT ?""",(cutoff,timestamp,limit)).fetchall()
             for row in rows:
                 self._delete_artifact(db, row["id"], row["local_path"], timestamp)
             return len(rows)
@@ -814,9 +815,10 @@ class Repository:
             excess = db.execute("SELECT count(*) " + scope, parameters).fetchone()[0] - max_history
             if excess <= 0:
                 return 0
-            rows = db.execute("SELECT a.id,a.local_path,EXISTS (SELECT 1 FROM feedback f WHERE f.artifact_id=a.id AND f.value=1) AS liked " + scope +
-                              " ORDER BY utc_timestamp(a.created_at),a.id LIMIT ?", (*parameters, min(excess, limit))).fetchall()
             timestamp = now()
+            rows = db.execute("SELECT a.id,a.local_path,EXISTS (SELECT 1 FROM feedback f WHERE f.artifact_id=a.id AND f.value=1) AS liked " + scope +
+                              " AND (a.unliked_protected_until IS NULL OR utc_timestamp(a.unliked_protected_until)<=utc_timestamp(?))"
+                              " ORDER BY utc_timestamp(a.created_at),a.id LIMIT ?", (*parameters, timestamp, min(excess, limit))).fetchall()
             for row in rows:
                 if row["liked"]:
                     db.execute("UPDATE artifacts SET roam_hidden_at=? WHERE id=?", (timestamp, row["id"]))
@@ -837,6 +839,9 @@ class Repository:
                 raise ValidationError("图片不存在。")
             previous = db.execute("SELECT value FROM feedback WHERE artifact_id=? AND actor_id='local'", (iid,)).fetchone()
             previous_value = previous["value"] if previous else None
+            if previous_value == 1 and value != 1:
+                protected_until = (datetime.fromisoformat(now()) + timedelta(hours=24)).isoformat()
+                db.execute("UPDATE artifacts SET unliked_protected_until=? WHERE id=?", (protected_until, iid))
             if value is None:
                 db.execute("DELETE FROM feedback WHERE artifact_id=? AND actor_id='local'", (iid,))
             else:

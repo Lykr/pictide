@@ -8,7 +8,6 @@ import json
 import math
 import logging
 import os
-import socket
 import tempfile
 import time
 from pathlib import Path
@@ -36,11 +35,11 @@ from .task import JobService
 from . import __version__
 from .runtime_logging import capture_exceptions
 from .network import tls_context
+from .listeners import NETWORK, NetworkAccess, lan_addresses, run_server
 
 STATIC = Path(__file__).resolve().parent.parent / "web" / "dist"
 APPLICATION = web.AppKey("application", PictideApplication)
 LOCAL_GENERATION = web.AppKey("local_generation", object)
-ALLOW_LAN = web.AppKey("allow_lan", bool)
 UPDATE_START = web.AppKey("update_start", dict)
 CSP = "default-src 'self'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
 
@@ -53,13 +52,19 @@ async def boundary(request, handler):
             local = urlsplit("http://" + request.host).hostname
         except ValueError:
             local = None
-        allowed = local in {"127.0.0.1", "localhost", "::1"}
-        if not allowed and request.app.get(ALLOW_LAN, False):
+        network = request.app[NETWORK]
+        local_peer = ipaddress.ip_address(request.remote or '127.0.0.1').is_loopback
+        allowed = local in {"127.0.0.1", "localhost", "::1"} and (local_peer or network.enabled)
+        if not allowed and network.enabled:
             address = request.transport.get_extra_info("sockname") if request.transport else None
-            if address and local == address[0]:
-                allowed = ipaddress.ip_address(local).is_private
+            try:
+                allowed = bool(address and (local == address[0] or network.wildcard)
+                               and ipaddress.ip_address(local or '').is_private)
+            except ValueError:
+                allowed = False
         if not allowed:
-            raise web.HTTPForbidden(text="请通过本机地址访问；局域网访问需要使用局域网启动入口。")
+            raise web.HTTPForbidden(text="请通过本机地址访问，并在通用设置中开启局域网访问。")
+        network.track(request)
         if request.path.startswith("/api/") and request.method not in ("GET", "HEAD"):
             origin = request.headers.get("Origin")
             if origin and origin != f"{request.scheme}://{request.host}":
@@ -190,6 +195,29 @@ async def liked_tags(request):
     return web.json_response(await request.app[APPLICATION].liked_tags())
 
 
+class ExportResponse(web.StreamResponse):
+    def __init__(self, path):
+        super().__init__(headers={'Content-Type': 'application/zip',
+                                 'Content-Disposition': 'attachment; filename="pictide-liked.zip"',
+                                 'Content-Length': str(path.stat().st_size)})
+        self.download_path = path
+
+    async def prepare(self, request):
+        try:
+            writer = await super().prepare(request)
+            with self.download_path.open('rb') as stream:
+                while chunk := await asyncio.to_thread(stream.read, 1024 * 1024):
+                    await self.write(chunk)
+            await self.write_eof()
+            return writer
+        finally:
+            await asyncio.to_thread(self.download_path.unlink, missing_ok=True)
+
+
+async def export_liked(request):
+    return ExportResponse(await request.app[APPLICATION].export_liked(await body(request)))
+
+
 async def feedback(request):
     return web.json_response(await request.app[APPLICATION].feedback(request.match_info["id"], await body(request)))
 
@@ -239,6 +267,27 @@ async def llm_action(request):
 async def general_settings(request):
     return web.json_response(await request.app[APPLICATION].general_settings(
         await body(request) if request.method == "PUT" else None))
+
+
+async def network_settings(request):
+    service = request.app[NETWORK]
+    can_configure = local_generation_access(request)
+    if request.method == 'PUT':
+        if not can_configure:
+            raise web.HTTPForbidden(text='Change LAN access on the Pictide computer using localhost.')
+        payload = await body(request)
+        if set(payload) != {'enabled'} or type(payload['enabled']) is not bool:
+            raise ValidationError('LAN settings require an enabled boolean.')
+        try:
+            await service.change(payload['enabled'])
+        except OSError as error:
+            raise ValidationError('Could not open the LAN listener. Check the network and port, then retry.') from error
+        request.app[APPLICATION].events.publish('network')
+    result = await service.status()
+    if result['enabled'] and not can_configure:
+        current = f'{request.scheme}://{request.host}'
+        result['urls'] = list(dict.fromkeys([current, *result['urls']]))
+    return web.json_response({**result, 'can_configure': can_configure})
 
 
 def local_generation_access(request):
@@ -303,7 +352,11 @@ async def roam_view(request):
 
 async def image(request):
     try:
-        return web.FileResponse(await request.app[APPLICATION].image(request.match_info["id"]))
+        identifier = request.match_info['id']
+        if request.query.get('download') == '1':
+            path = await request.app[APPLICATION].liked_image(identifier)
+            return web.FileResponse(path, headers={'Content-Disposition': f'attachment; filename="{identifier}{path.suffix}"'})
+        return web.FileResponse(await request.app[APPLICATION].image(identifier))
     except BackendError as exc:
         return web.json_response({"error": str(exc)}, status=502)
 
@@ -460,7 +513,7 @@ async def update_action(request):
 def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False):
     """Composition root: adapters are assembled here, outside request handlers."""
     app = web.Application(middlewares=[boundary], client_max_size=MAX_BYTES)
-    app[ALLOW_LAN] = allow_lan
+    app[NETWORK] = NetworkAccess(allow_lan)
     paths = DataPaths(data_dir).ensure()
     libraries = CandidateLibraries(paths)
     candidate_store = SQLiteCandidateStore(paths.candidate_database, libraries.selected_path())
@@ -500,6 +553,7 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get('/api/llm-apis/{id}/status', llm_action, name='llm-status'),
         web.post('/api/llm-apis/{id}/{operation:sign-in|cancel|models|disconnect|welcome}', llm_action),
         web.get("/api/settings/general", general_settings), web.put("/api/settings/general", general_settings),
+        web.get('/api/settings/network', network_settings), web.put('/api/settings/network', network_settings),
         web.get('/api/settings/local-generation', local_generation_settings),
         web.put('/api/settings/local-generation', local_generation_settings),
         web.post('/api/settings/local-generation/detect', local_generation_detect),
@@ -515,6 +569,7 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get("/api/jobs", jobs), web.post("/api/jobs", jobs), web.post("/api/jobs/cancel-pending", cancel_pending_jobs),
         web.post("/api/jobs/{id}/cancel", cancel_job),
         web.get("/api/liked/tags", liked_tags),
+        web.post('/api/liked/export', export_liked),
         web.get("/api/liked/ranked", liked_ranked),
         web.post("/api/liked/ranked/refresh", refresh_liked_ranked),
         web.get("/api/artifacts/{id}/preference-score", preference_score),
@@ -685,9 +740,7 @@ def _main(argv=None):
             addresses = []
             if host == '0.0.0.0':
                 try:
-                    addresses = [f'http://{address}:{args.port}' for address in
-                                 sorted(set(socket.gethostbyname_ex(socket.gethostname())[2]))
-                                 if not address.startswith('127.') and address != '0.0.0.0']
+                    addresses = [f'http://{address}:{args.port}' for address in lan_addresses()]
                 except OSError:
                     logger.warning('Could not discover LAN addresses', exc_info=True)
             logger.info('Pictide ready local=%s lan=%s startup_seconds=%.3f', url,
@@ -717,11 +770,11 @@ def _main(argv=None):
             app.on_startup.append(launch_browser)
             app.on_shutdown.append(stop_browser)
         if desktop is not None:
-            web.run_app(app, sock=desktop.socket, access_log=None, print=None)
+            run_server(app, sock=desktop.socket)
         elif worker_socket is not None:
-            web.run_app(app, sock=worker_socket, access_log=None, print=None)
+            run_server(app, sock=worker_socket)
         else:
-            web.run_app(app, host=host, port=args.port, access_log=None, print=None)
+            run_server(app, host=host, port=args.port)
     except KeyboardInterrupt:
         logger.info('Pictide startup cancelled')
     except Exception as error:

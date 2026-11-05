@@ -14,10 +14,18 @@
 
 ### 快速开始
 
+按你现有的条件选择一条路线：
+
+| 现在的情况 | 开始方式 |
+| --- | --- |
+| 已有运行中的 ComfyUI | [连接已有服务并选择工作流](guides/getting-started.md#接入-comfyui) |
+| 在 Windows 上首次安装本地生图 | [通过引导安装 ComfyUI 和 Anima](guides/setup/windows.md#便携版本)，需要 8 GB 独立显存、16 GB 内存，首次资源下载约 7.8 GB |
+| 使用云端生图 API | [连接生图服务](guides/getting-started.md#接入-openai-images-或-gemini)，准备 API Key 和支持生图的模型 |
+
 1. 从 [GitHub Releases](https://github.com/Lykr/pictide/releases) 下载并解压适合系统的便携包。
 2. 启动 Pictide，首次运行等待词库和推荐资源下载完成，再跟随应用内引导开始漫游。
 
-Windows 可在首次启动时安装 ComfyUI 和推荐模型；macOS、Linux 用户需提前准备好 ComfyUI 或其他生图 API。
+使用已有生图服务时，首次启动需下载约 110 MB 的默认词库和推荐模型。macOS、Linux 用户需提前准备好 ComfyUI 或其他生图 API。
 
 启动帮助：[Windows](guides/setup/windows.md#便携版本) · [Linux](guides/setup/linux.md#便携版本) · [macOS](guides/setup/macos.md#便携版本)。
 

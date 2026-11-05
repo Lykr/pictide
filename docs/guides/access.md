@@ -9,8 +9,12 @@ Use the same Pictide library on your phone, tablet, or another computer to keep 
 ## LAN access
 
 1. Connect your computer and phone to the same trusted LAN.
-2. Enable LAN access on the host computer: [Windows](setup/windows.md#lan-access) · [Linux](setup/linux.md#lan-access) · [macOS](setup/macos.md#lan-access).
-3. Open the computer's LAN address on your phone, such as `http://192.168.50.50:8189`.
+2. On the Pictide computer, open its localhost page and enable **Settings → General → LAN access**. The change applies immediately for this session.
+3. Scan the displayed QR code on your phone, or copy the LAN address. If several addresses are available, choose the address for the network your phone uses.
+
+The local page stays connected while you switch access. Disabling access rejects LAN requests and disconnects existing remote streams. For LAN access from startup, use your platform's launch option under [Windows](setup/windows.md#lan-access), [Linux](setup/linux.md#lan-access), or [macOS](setup/macos.md#lan-access).
+
+For Docker, follow [Docker deployment](setup/docker.md#use-a-phone-on-the-lan). The host's published address and port determine phone access.
 
 Keep Pictide running on the computer. If its IP changes, use the new address. You do not need to expose ComfyUI's port.
 

@@ -52,7 +52,7 @@
   "已经是最早的一张。": "This is the oldest image.",
   "还没有可以浏览的图片。": "No images to browse yet.",
   "还没有可以评价的图片。": "No images to rate yet.",
-  "确定取消喜欢这张图片？取消后将从喜欢页面移除，并受自动清理规则影响。": "Remove this like? The image will leave Liked and become subject to automatic cleanup.",
+  "确定取消喜欢这张图片？取消后将从喜欢页面移除，保留 24 小时缓冲后再按清理规则处理。": "Remove this like? The image will leave Liked and receive a 24-hour grace period before cleanup rules apply.",
   "图片已清理或不可用，正在刷新列表。": "Image removed or unavailable. Refreshing the list.",
   "{0} · {1} · {2} · 任务详情": "{0} · {1} · {2} · Task details",
   "展开或收起任务详情": "Expand or collapse task details",

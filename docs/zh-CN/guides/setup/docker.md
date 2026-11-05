@@ -51,6 +51,14 @@ PICTIDE_VOCABULARY=filtered
 
 Compose 已为 Linux 配置宿主机网关。Linux 宿主机上的 ComfyUI 需要监听容器可访问的地址，例如使用 `--listen 0.0.0.0` 启动。容器内的 `localhost` 指向 Pictide 容器自身。
 
+## 手机访问
+
+1. 在 `.env` 中设置 `PICTIDE_BIND=0.0.0.0`，在原目录执行 `docker compose up -d`。
+2. 用宿主机的局域网地址和映射端口打开网页，例如 `http://192.168.50.50:8189`。
+3. 在设置中连接 ComfyUI 或云端生图 API，开始漫游。在「设置 → 通用 → 局域网访问」中显示当前地址的二维码，手机扫码即可访问。
+
+Docker 的端口映射控制容器的访问范围。添加手机主屏幕应用时使用宿主机地址，见[手机访问指南](../access.md)。
+
 ## 更新与停止
 
 将新版本发布页的 `compose.yaml` 下载到原目录，保留 `.env`，然后执行：

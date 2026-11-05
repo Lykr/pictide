@@ -8,6 +8,8 @@
 
 These steps apply to v0.5.0 and later.
 
+For automatic ComfyUI + Anima setup, prepare **8 GB dedicated VRAM and 16 GB RAM**. Initial resources download about **7.8 GB**, including ComfyUI, the generation model, vocabulary, and recommendation model. Setup checks hardware and available disk space before downloading and displays download and startup progress. NVIDIA installation and image generation have been verified.
+
 1. Extract the package and double-click `Pictide.exe`.
 2. On first launch, confirm where to save your data and follow the setup guide. Need an image service? Choose **ComfyUI + Anima Turbo v1.1** to install one.
 3. Wait for preparation to finish. Your browser opens automatically; follow the in-app tour to start roaming.
@@ -21,7 +23,7 @@ Pictide keeps running in the system tray after you close the browser. Right-clic
 <details>
 <summary>Local installation requirements and data location</summary>
 
-Setup checks your hardware and shows the estimated size and model license before downloading. Automatic Anima Turbo setup requires an **8 GB dedicated VRAM / 16 GB RAM** capacity tier. If requirements are unmet or cannot be detected, you can connect an existing image service. NVIDIA installation and image generation have been verified; AMD, Intel, and CPU options have not been tested on their corresponding hardware.
+Setup shows the model license before downloading. If hardware requirements are unmet or cannot be detected, you can [connect an existing image service](../getting-started.md). AMD, Intel, and CPU options have not been tested on their corresponding hardware.
 
 Images, preferences, and downloaded generation resources stay in the folder selected on first launch, defaulting to `data/` beside the program. Choose a folder outside the program directory to keep your data when deleting the program.
 
@@ -41,7 +43,9 @@ Keep `Pictide.exe` and `_internal/` together. Open PowerShell in the portable pa
 
 ## LAN access
 
-Open PowerShell in the portable package directory and run:
+While Pictide is running, open its localhost page and enable **Settings → General → LAN access**, then scan the displayed QR code on your phone. See [LAN access](../access.md).
+
+To allow access from startup, open PowerShell in the portable package directory and run the following command.
 
 ```powershell
 .\Pictide.exe --lan

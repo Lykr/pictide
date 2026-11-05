@@ -412,6 +412,13 @@ class PictideApplication:
         return await self.tasks.connections.models(await self.connection_draft(identifier, payload))
 
     async def workflow_template(self, identifier, payload):
+        if 'recipe' in payload:
+            from .setup.local_generation import RECIPES
+            recipe = RECIPES.get(payload['recipe']) if isinstance(payload['recipe'], str) else None
+            if recipe is None or payload.get('kind', 'comfyui') != 'comfyui':
+                raise ValidationError('请选择有效的 ComfyUI 推荐工作流。')
+            result = recipe.connection(payload.get('base_url', ''))
+            return public_backend(result)
         result = await self.tasks.connections.template(await self.connection_draft(identifier, payload))
         return public_backend(result)
 
@@ -625,6 +632,29 @@ class PictideApplication:
     async def liked_tags(self):
         return {"tags": await asyncio.to_thread(self.storage.liked_tags),
                 "revision": await asyncio.to_thread(self.storage.artifact_revision)}
+
+    async def liked_image(self, identifier):
+        artifact = await asyncio.to_thread(self.storage.artifact, identifier)
+        if not artifact or artifact['feedback'] != 1:
+            raise ValidationError('只能导出当前喜欢的图片，请刷新后重新选择。')
+        return await self.image(identifier)
+
+    async def export_liked(self, payload):
+        identifiers = payload.get('ids')
+        if (set(payload) != {'ids'} or not isinstance(identifiers, list) or not 1 <= len(identifiers) <= 1000
+                or any(not isinstance(value, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', value) for value in identifiers)):
+            raise ValidationError('请选择 1–1000 张喜欢的图片。')
+        images = [(identifier, await self.liked_image(identifier)) for identifier in dict.fromkeys(identifiers)]
+        from .store.exports import export_images
+        pending = asyncio.create_task(asyncio.to_thread(export_images, self.paths, images))
+        try:
+            return await asyncio.shield(pending)
+        except asyncio.CancelledError:
+            target = await pending
+            target.unlink(missing_ok=True)
+            raise
+        except OSError as error:
+            raise ValidationError('图片文件读取失败，请刷新后重新选择。') from error
 
     async def roam_view(self, payload=None):
         if payload is not None:

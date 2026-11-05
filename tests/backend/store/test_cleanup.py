@@ -67,7 +67,9 @@ class CleanupTests(CleanupFixture,unittest.TestCase):
         self.repo.rate(rows[0]["id"],1)
         self.repo.rate(rows[1]["id"],1)
         self.repo.rate(rows[1]["id"],None)
-        self.assertEqual(self.repo.expire_artifacts("2999-01-01T00:00:00Z"),2)
+        after_grace = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
+        with patch('backend.store.sqlite.now', return_value=after_grace):
+            self.assertEqual(self.repo.expire_artifacts("2999-01-01T00:00:00Z"),2)
         self.assertEqual(self.repo.counts(),{"artifacts":1,"liked":1,"roam":0,"generate":1})
         self.assertEqual(self.repo.job(job["id"])["status"],"completed")
         again = self.repo.create_job({"request_id":"batch","backend_id":"test","positive":"p","negative":"n","seed":2})
@@ -140,7 +142,9 @@ class CleanupTests(CleanupFixture,unittest.TestCase):
         self.assertTrue(image.exists())
         self.assertTrue(image.with_suffix(".json").exists())
         self.repo.rate(second,None)
-        self.repo.expire_artifacts("2999-01-01T00:00:00Z")
+        after_grace = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
+        with patch('backend.store.sqlite.now', return_value=after_grace):
+            self.repo.expire_artifacts("2999-01-01T00:00:00Z")
         self.assertEqual(delete_pending(self.repo,self.paths,100),2)
         self.assertFalse(image.exists())
 

@@ -22,6 +22,17 @@
 
 General settings support partial updates, preserving omitted fields. History cleanup applies to unliked images, including unrated and disliked images; liked images are preserved. `cleanup` contains cleanup statistics; see [Data layout](../../data-layout.md).
 
+## Runtime LAN access
+
+| Method | Path | Request | Response |
+| --- | --- | --- | --- |
+| GET | `/api/settings/network` | None | `{enabled,available,can_configure,urls}` |
+| PUT | `/api/settings/network` | `{enabled:boolean}` | Same as GET after changing this session's access |
+
+Only a loopback peer using a localhost Host can change access. Host owns the listeners and this transient state. Enabling adds listeners on private IPv4 interface addresses using the existing port and application runner. Disabling closes those added listeners, rejects subsequent LAN requests, and closes existing remote transports. An initial wildcard listener remains bound with LAN requests denied when disabled. Local connections continue to use their existing listener. Changes apply to this process session, while `--lan` and `--host 0.0.0.0` enable access at startup.
+
+`urls` lists private interface addresses, preferring the primary route. When accessed through a LAN address, the current origin is first so mapped Docker ports remain correct. Docker's published-port configuration controls reachability outside its container. QR codes are rendered locally by the frontend from the selected URL.
+
 ## Local ComfyUI lifecycle
 
 | Method | Path | Request | Response |

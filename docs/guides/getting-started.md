@@ -8,7 +8,7 @@ Connect an image generation service and start exploring, without writing prompts
 
 ## Before you start
 
-Download and extract a portable package, then follow the startup steps for [Windows](setup/windows.md#portable-edition), [Linux](setup/linux.md#portable-edition), or [macOS](setup/macos.md#portable-edition). It includes the runtime and tag library; the recommendation dependency below downloads on first launch.
+Download and extract a portable package, then follow the startup steps for [Windows](setup/windows.md#portable-edition), [Linux](setup/linux.md#portable-edition), or [macOS](setup/macos.md#portable-edition). The package includes its runtime. First startup downloads the default vocabulary and recommendation model, about 110 MB together. Completed resources are reused on later launches.
 
 Windows preparation can download ComfyUI and the recommended Anima model, then connect its default workflow automatically; see the [Windows guide](setup/windows.md#portable-edition). Packages keep image generation models as optional downloads.
 
@@ -22,13 +22,13 @@ On your first visit, choose **Show me around**. With local generation already pr
 
 1. Start ComfyUI with an image generation model installed.
 2. Add ComfyUI under Settings → Image API and enter its address, such as `http://127.0.0.1:8188` (use its actual port).
-3. Keep “Default text-to-image,” load and select a checkpoint, test the connection, and save.
+3. For an SD/SDXL checkpoint, keep **Default text-to-image** and load a model. For an installed Anima Turbo v1.1, choose **Use recommended Anima workflow** to fill its workflow and input/output bindings. Test the connection and save.
 
 The default workflow supports complete SD/SDXL checkpoints. Open Roam, choose “Start roaming,” and wait for your first image. Likes and dislikes help future recommendations adapt to your preferences.
 
 ### Custom workflows
 
-When manually connecting models such as Anima or Flux, or your own process, choose “Custom API workflow.” Import **API-format JSON** exported from ComfyUI, select positive and negative prompt inputs and image output nodes, then save. Regular UI workflow JSON cannot be used directly. Models prepared through Pictide already include their default workflow and bindings.
+For other models or your own process, choose **Custom API workflow**. Import **API-format JSON** exported from ComfyUI, select positive and negative prompt inputs and image output nodes, then save. Regular UI workflow JSON cannot be used directly. The recommended Anima workflow uses the model files listed below and can be selected for a local or remote ComfyUI.
 
 ### Recommended image generation model
 

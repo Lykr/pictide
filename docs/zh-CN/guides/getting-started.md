@@ -8,7 +8,7 @@
 
 ## 启动前准备
 
-下载并解压便携包，按系统启动：[Windows](setup/windows.md#便携版本) · [Linux](setup/linux.md#便携版本) · [macOS](setup/macos.md#便携版本)。便携包已带好运行环境和词库；首次启动还需下载下方的推荐依赖。
+下载并解压便携包，按系统启动：[Windows](setup/windows.md#便携版本) · [Linux](setup/linux.md#便携版本) · [macOS](setup/macos.md#便携版本)。便携包已带好运行环境，首次启动会下载默认词库和推荐模型，合计约 110 MB；后续启动会复用下载好的资源。
 
 Windows 准备引导可下载 ComfyUI 与推荐的 Anima 模型，自动接入默认工作流；步骤见 [Windows 指南](setup/windows.md#便携版本)。生图模型按需下载，发行包保持轻量。
 
@@ -22,13 +22,13 @@ Windows 准备引导可下载 ComfyUI 与推荐的 Anima 模型，自动接入�
 
 1. 启动 ComfyUI，确认已安装生图模型。
 2. 在「设置 → 生图 API」添加 ComfyUI，填写地址，例如 `http://127.0.0.1:8188`（以实际端口为准）。
-3. 使用「默认文生图」，读取并选择 checkpoint，测试连接后保存。
+3. 使用 SD/SDXL checkpoint 时，保留「默认文生图」并读取模型；已有 Anima Turbo v1.1 时，点击「使用推荐 Anima 工作流」，自动填入工作流与输入输出绑定。测试连接后保存。
 
 默认文生图适用于完整的 SD/SDXL checkpoint。准备好后进入「漫游」，点击「开始漫游」，等待第一张图片；喜欢或不喜欢都能帮助后续推荐贴近你的偏好。
 
 ### 自定义工作流
 
-手动接入 Anima、Flux 等模型或自己的流程时，选择「自定义 API 工作流」，导入 ComfyUI 导出的 **API 格式 JSON**，指定正负提示词输入和图片输出节点，再保存。普通界面工作流 JSON 不能直接使用。通过 Pictide 准备的推荐模型已带好默认工作流与绑定。
+接入其他模型或自己的流程时，选择「自定义 API 工作流」，导入 ComfyUI 导出的 **API 格式 JSON**，指定正负提示词输入和图片输出节点，再保存。普通界面工作流 JSON 不能直接使用。推荐 Anima 工作流使用下方列出的模型文件，本机和远程 ComfyUI 都可选用。
 
 ### 推荐使用的生图模型
 
@@ -93,4 +93,4 @@ Danbooru 模式下，云端接入使用正向提示词，漫游预设需将负�
 
 ## 从源码开始
 
-源码运行需要 Python 3.10+，首次还需构建前端并[添加词库](prompts.md#添加与切换词库)。按系统准备：[Windows](setup/windows.md#从源码准备) · [Linux](setup/linux.md#从源码准备) · [macOS](setup/macos.md#从源码准备)。
+源码运行需要 Python 3.10+，首次还需构建前端，启动时会准备缺失的词库和推荐模型。按系统准备：[Windows](setup/windows.md#从源码准备) · [Linux](setup/linux.md#从源码准备) · [macOS](setup/macos.md#从源码准备)。
