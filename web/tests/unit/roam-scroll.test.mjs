@@ -35,7 +35,7 @@ test('arrows retarget from the actual pixel position and rapid presses advance t
   assert.equal(scroll.snapshot().offset, 300 - (150 + 312 * 2));
 });
 
-test('like freezes the actual center image, then next seeks smoothly; manual pause does not resume play', () => {
+test('manual navigation stays smooth while paused; like resumes in place at continuous speed', () => {
   const scroll = fixture();
   scroll.navigate('newer'); scroll.tick(.12, false);
   const paused = scroll.freeze();
@@ -54,10 +54,18 @@ test('like freezes the actual center image, then next seeks smoothly; manual pau
   const state = { imageId: '0', ready: true, active: true, busy: false, blocked: false };
   playback.update(state); playback.toggle();
   assert.equal(timers.length, 0);
-  playback.pauseForLike(); playback.prepareNavigation('newer');
-  playback.update({ ...state, imageId: '1' });
+  playback.pauseForLike();
+  const resumed = fixture();
+  resumed.tick(1, true);
+  const beforeResume = resumed.freeze().offset;
+  assert.equal(playback.resumeFromLike(), true);
   assert.equal(playback.playing, true);
-  playback.pause(); playback.prepareNavigation('newer'); playback.update({ ...state, imageId: '2' });
+  assert.equal(resumed.snapshot().offset, beforeResume);
+  assert.equal(resumed.snapshot().target, null);
+  assert.equal(resumed.tick(1 / 60, playback.playing, 'normal').offset, beforeResume - 48 / 60);
+  playback.pause();
+  assert.equal(playback.resumeFromLike(), false);
+  playback.prepareNavigation('newer'); playback.update({ ...state, imageId: '2' });
   assert.equal(playback.playing, false);
 });
 
@@ -87,4 +95,15 @@ test('view guard protects the oldest visible image independently of the operatio
   assert.equal(cursor.watch('0', 12), null);
   assert.deepEqual(cursor.watch('1', 12), { artifact_id: '1', viewed_at: 12 });
   assert.deepEqual(cursor.watch('0', 11), { artifact_id: '0', viewed_at: 13 });
+});
+
+test('focus and readiness refreshes preserve the in-flight easing curve and velocity', () => {
+  const control = fixture(), refreshed = fixture();
+  control.navigate('newer'); refreshed.navigate('newer');
+  for (let frame = 1; frame <= 30; frame++) {
+    const expected = control.tick(1 / 60, false);
+    if (frame === 8 || frame === 12 || frame === 16) refreshed.layout(pictures(), 600, refreshed.snapshot().focus);
+    const actual = refreshed.tick(1 / 60, false);
+    assert.ok(Math.abs(actual.offset - expected.offset) < .001, `frame ${frame}: refresh interrupted the original motion`);
+  }
 });

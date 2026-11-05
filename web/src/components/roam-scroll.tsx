@@ -37,8 +37,8 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy }: {
     while (last < chronological.length - 1 && last - index < 15 && (last - index < 3 || right < size.width)) right += width(chronological[++last]) + 12;
     return chronological.slice(first, last + 1).map(item => ({ ...item, displayWidth: width(item) }));
   }, [artifacts, currentId, height, size.width, loadVersion]);
-  const latest = useRef({ active, busy, speed, playback, pictures });
-  latest.current = { active, busy, speed, playback, pictures };
+  const latest = useRef({ active, busy, speed, playback, artifacts });
+  latest.current = { active, busy, speed, playback, artifacts };
 
   function paint(snapshot = motion.snapshot()) {
     if (!measured.current) return;
@@ -65,7 +65,8 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy }: {
     }
   }
   function more(direction: string) {
-    const signature = `${direction}:${motion.snapshot().focus}:${artifacts[0]?.id}:${artifacts.at(-1)?.id}`;
+    const current = latest.current.artifacts;
+    const signature = `${direction}:${motion.snapshot().focus}:${current[0]?.id}:${current.at(-1)?.id}`;
     if (requested.current === signature) return;
     requested.current = signature;
     void app.scrollMore(direction).then((available: boolean) => {
@@ -97,7 +98,7 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy }: {
       if (!found) more(direction);
     },
     freeze() { paint(motion.freeze()); },
-  }), [app, motion, artifacts]);
+  }), [app, motion]);
   useLayoutEffect(() => {
     if (!active) { motion.freeze(); reported.current = ''; return; }
     let frame = 0, previous = 0;
@@ -114,7 +115,7 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy }: {
     };
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
-  }, [active, app, motion, artifacts]);
+  }, [active, app, motion]);
 
   return <div ref={viewport} className="roam-scroll" data-testid="roam-scroll" aria-label={t('画轴')}>
     <div ref={track} className="roam-scroll-track">

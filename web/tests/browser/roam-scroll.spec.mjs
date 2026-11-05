@@ -48,10 +48,14 @@ for (const width of [1365, 390]) test(`scroll arrows, like pause and smooth cont
     return { before, after: Number(el.dataset.offset) };
   });
   expect(beforeNext.after).toBeCloseTo(beforeNext.before, 1);
-  await expect(scroll).toHaveAttribute('data-moving', 'true');
-  await expect(scroll).toHaveAttribute('data-focus', items[2].id);
   await expect(page.locator('#roam-playback')).toHaveAttribute('aria-pressed', 'true');
   await expect(scroll).toHaveAttribute('data-moving', 'false');
+  await expect(scroll).toHaveAttribute('data-focus', likedId);
+  await page.waitForTimeout(150);
+  const resumedDistance = beforeNext.before - await offset();
+  expect(resumedDistance).toBeGreaterThan(0);
+  expect(resumedDistance).toBeLessThan(35);
+  await expect(scroll).toHaveAttribute('data-focus', items[2].id);
   await page.locator('#roam-playback').click();
   await page.keyboard.press('ArrowLeft');
   await expect(scroll).toHaveAttribute('data-focus', items[1].id);
@@ -130,4 +134,28 @@ test('scroll restores a middle picture and retains focus across hidden page meas
   await page.locator('[data-view=liked]').click();
   await page.locator('[data-view=feed]').click();
   await expect(scroll).toHaveAttribute('data-focus', items[2].id);
+});
+
+test('switching focus does not stall the strip halfway through navigation', async ({ page, context }) => {
+  const { scroll } = await prepare(page, context, 4);
+  const samples = await scroll.evaluate(element => new Promise(resolve => {
+    const photo = element.querySelector('[data-artifact-id]');
+    const start = photo.getBoundingClientRect().left;
+    const samples = [{ time: performance.now(), distance: 0 }];
+    document.querySelector('#next').click();
+    const sample = time => {
+      samples.push({ time, distance: start - photo.getBoundingClientRect().left });
+      if (element.dataset.moving === 'true' && time - samples[0].time < 2000) requestAnimationFrame(sample);
+      else resolve(samples);
+    };
+    requestAnimationFrame(sample);
+  }));
+  const distance = samples.at(-1).distance;
+  expect(distance).toBeGreaterThan(100);
+  const velocities = samples.slice(1).map((sample, index) => ({
+    progress: sample.distance / distance,
+    speed: (sample.distance - samples[index].distance) / (sample.time - samples[index].time),
+  })).filter(sample => sample.progress > .35 && sample.progress < .65).map(sample => sample.speed);
+  expect(velocities.length).toBeGreaterThanOrEqual(2);
+  expect(Math.min(...velocities)).toBeGreaterThan(Math.max(...velocities) * .35);
 });

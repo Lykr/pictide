@@ -31,7 +31,7 @@ Restore the last viewed Roam image independently of Liked. While its initial or 
 
 Normal Roam waiting uses a 16px spinner beside the heading without an image-covering mask. Immersive loading has its own indicator below.
 
-Playback style is Single or Scroll, shared between Roam options and Settings. Single shows display time; Scroll shows Slow/Normal/Fast speed. Scroll keeps equal-height images at their original aspect ratios, moving continuously left and holding at the last decoded image when waiting. Arrows and navigation buttons smoothly retarget from the actual position. Like freezes the centered picture and attaches a pink outline and small heart to it; Next smoothly resumes. A manual pause remains paused after navigation. Keep liked markers in the visible part of wide pictures when applied, with blur affecting only image content.
+Playback style is Single or Scroll, shared between Roam options and Settings. Single shows display time; Scroll shows Slow/Normal/Fast speed. Scroll keeps equal-height images at their original aspect ratios, moving continuously left and holding at the last decoded image when waiting. Arrows and navigation buttons smoothly retarget from the actual position. Like freezes the centered picture and attaches a pink outline and small heart to it; Next resumes continuous movement from the paused position without centering the next picture. A manual pause remains paused after navigation. Keep liked markers in the visible part of wide pictures when applied, with blur affecting only image content.
 
 ## Privacy and image browsing
 

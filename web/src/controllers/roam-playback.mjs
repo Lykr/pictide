@@ -56,6 +56,12 @@ export function createRoamPlayback({ advance, changed = () => {}, cancelWait = (
       pause();
       resumeAfterLike = true;
     },
+    resumeFromLike() {
+      if (!resumeAfterLike || !active || !imageId || blocked) return false;
+      playing = true; due = false; resumeAfterLike = false; nextAfterLike = null;
+      revision++; arm(); notify();
+      return true;
+    },
     prepareNavigation(direction) {
       if (resumeAfterLike) nextAfterLike = direction === 'newer' ? imageId : null;
     },

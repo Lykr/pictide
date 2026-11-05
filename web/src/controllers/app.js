@@ -244,7 +244,7 @@ function renderArtifacts() {
   const artifact = items[index];
   state.gallery = { artifact, waiting, loading: false,
     previousDisabled: (index >= items.length - 1 && !page.hasMore) || state.feedbackPending || roamWindowLoading || !!roamSwitch,
-    nextDisabled: state.feedbackPending || waiting };
+    nextDisabled: state.feedbackPending || (waiting && (!isScroll() || roamWindowLoading || !!roamSwitch)) };
   if (!artifact) {
     cancelImageTransition(elements.image); roamImageSwitchPending = false; immersive.leave(); state.currentImage = null; state.imageReady = false;
     publishUiState({ imageInfo: null }); syncRoamPlayback(); changed(); return;
@@ -270,6 +270,10 @@ async function moveImage(direction, automatic = null) {
   if (state.feedbackPending || !galleryCursors.ready || roamWindowLoading || roamSwitch) return;
   if (automatic && !automatic()) return;
   if (!automatic && state.view === 'feed') {
+    if (isScroll() && scrollDriver && direction === 'newer' && roamPlayback.resumeFromLike()) {
+      scrollDriver.freeze(); anchorPrefetchDeferred = false; refillRoam();
+      return;
+    }
     roamPlayback.prepareNavigation(direction);
     roamPlayback.restart();
     if (isScroll() && scrollDriver) {

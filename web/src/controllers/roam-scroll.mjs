@@ -1,5 +1,6 @@
 /** Pixel motion only. The application retains navigation, feedback and generation ownership. */
 export const scrollSpeeds = { slow: 24, normal: 48, fast: 80 };
+const ease = progress => progress < .5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2;
 
 export function createRoamScroll() {
   let items = [], viewport = 0, offset = 0, initialized = false;
@@ -46,7 +47,12 @@ export function createRoamScroll() {
       } else offset = previous - find(pivot.id).left + (viewport - previousViewport) / 2;
       if (motion) {
         const target = find(motion.id);
-        if (target) { motion.from = offset; motion.to = centerOffset(target); motion.duration = Math.max(.08, motion.duration - motion.elapsed); motion.elapsed = 0; }
+        if (target) {
+          // A model refresh must not restart easing at zero velocity halfway through a seek.
+          const progress = ease(Math.min(1, motion.elapsed / motion.duration));
+          motion.to = centerOffset(target);
+          motion.from = progress < 1 ? (offset - motion.to * progress) / (1 - progress) : offset;
+        }
         else motion = null;
       }
       if (pending?.id && find(pending.id)?.ready) seek(pending.id);
@@ -73,7 +79,7 @@ export function createRoamScroll() {
       if (motion) {
         motion.elapsed += Math.max(0, seconds);
         const progress = Math.min(1, motion.elapsed / motion.duration);
-        const eased = progress < .5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2;
+        const eased = ease(progress);
         offset = motion.from + (motion.to - motion.from) * eased;
         if (progress === 1) motion = null;
       } else if (playing && !pending && initialized) {
