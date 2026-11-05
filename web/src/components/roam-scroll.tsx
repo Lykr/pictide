@@ -22,6 +22,7 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy }: {
   const markerPositions = useRef(new Map<string, number>());
   const reported = useRef('');
   const requested = useRef('');
+  const measured = useRef(false);
   const height = Math.max(1, size.height - 24);
   const pictures = useMemo(() => {
     const chronological = [...artifacts].reverse();
@@ -40,6 +41,7 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy }: {
   latest.current = { active, busy, speed, playback, pictures };
 
   function paint(snapshot = motion.snapshot()) {
+    if (!measured.current) return;
     if (track.current) track.current.style.transform = `translate3d(${snapshot.offset}px,0,0)`;
     if (viewport.current) {
       viewport.current.dataset.focus = snapshot.focus ?? '';
@@ -72,16 +74,21 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy }: {
   }
   useLayoutEffect(() => {
     const node = viewport.current!;
-    const observer = new ResizeObserver(([entry]) => setSize({ width: entry.contentRect.width, height: entry.contentRect.height }));
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      if (width && height) setSize({ width, height });
+    });
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
   useLayoutEffect(() => {
+    measured.current = active && size.width > 0 && size.height > 0;
+    if (!measured.current) return;
     const ids = new Set(pictures.map(item => item.id));
     for (const id of loaded.current.keys()) if (!ids.has(id)) { loaded.current.delete(id); markerPositions.current.delete(id); }
     for (const item of pictures) if (item.feedback !== 1) markerPositions.current.delete(item.id);
     paint(motion.layout(pictures.map(item => ({ id: item.id, width: item.displayWidth, ready: loaded.current.has(item.id) })), size.width, currentId));
-  }, [pictures, size.width]);
+  }, [pictures, size.width, size.height, active]);
   useLayoutEffect(() => app.bindScroll({
     navigate(direction: string) {
       requested.current = '';
@@ -98,7 +105,7 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy }: {
       const elapsed = previous ? Math.min(.05, (time - previous) / 1000) : 0;
       previous = time;
       const current = latest.current;
-      if (!document.hidden && !current.busy) {
+      if (measured.current && !document.hidden && !current.busy) {
         const snapshot = motion.tick(elapsed, current.playback.playing, current.speed);
         paint(snapshot);
         if (snapshot.waiting) more('newer');

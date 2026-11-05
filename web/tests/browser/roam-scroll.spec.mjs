@@ -121,3 +121,13 @@ test('rapid navigation and feedback during motion target the visible center, inc
   expect(box.x + box.width).toBeLessThanOrEqual(stage.x + stage.width);
   await page.screenshot({ path: testInfo.outputPath('scroll-wide-liked.png') });
 });
+
+test('scroll restores a middle picture and retains focus across hidden page measurements', async ({ page, context }) => {
+  const { scroll, items } = await prepare(page, context, 5);
+  await page.request.put('/api/roam/view', { data: { artifact_id: items[2].id, viewed_at: Date.now() + 500 } });
+  await page.reload();
+  await expect(scroll).toHaveAttribute('data-focus', items[2].id);
+  await page.locator('[data-view=liked]').click();
+  await page.locator('[data-view=feed]').click();
+  await expect(scroll).toHaveAttribute('data-focus', items[2].id);
+});
