@@ -9,7 +9,7 @@ import { t } from '../i18n/index.mjs';
 const empty = () => ({ id: '__new__', name: '', kind: 'openai', base_url: '', model: '', key: '' });
 export function createPromptSettings(api) {
   const model = createModel({ draft: empty(), connections: [], models: [], account: null, loaded: false,
-    busy: false, dirty: false, hasKey: false, signingIn: false, welcome: false });
+    busy: false, operation: '', dirty: false, hasKey: false, signingIn: false, welcome: false });
   const state = model.data;
   let timer, disposed = false;
   const route = (id = state.draft.id) => '/api/llm-apis/' + encodeURIComponent(id);
@@ -40,11 +40,11 @@ export function createPromptSettings(api) {
     emitSignal('prompt-settings-changed');
     return identifier;
   }
-  async function run(action) {
+  async function run(action, operation = '') {
     if (state.busy) return;
-    state.busy = true; model.changed();
+    state.busy = true; state.operation = operation; model.changed();
     try { await action(); } catch (error) { notifyError(error.message); }
-    finally { state.busy = false; model.changed(); }
+    finally { state.busy = false; state.operation = ''; model.changed(); }
   }
   async function models() {
     const id = state.draft.id;
@@ -79,8 +79,8 @@ export function createPromptSettings(api) {
       if (state.dirty && !await confirmAction(t('放弃未保存的 LLM API 修改？'))) return;
       select(id);
     },
-    save: () => run(async () => { await persist(); notifySuccess(t('LLM API 已保存。')); }),
-    models: () => run(models),
+    save: () => run(async () => { await persist(); notifySuccess(t('LLM API 已保存。')); }, 'save'),
+    models: () => run(models, 'models'),
     connect() {
       if (state.busy || state.signingIn) return;
       if (!['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {

@@ -40,8 +40,26 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
   const setPrivacyBlur = (value: boolean) => app.setPrivacy("feed", value);
   useEffect(() => publishUiState({ roamPrivacy: privacyBlur }), [privacyBlur]);
   const refs = useRef<Record<string, any>>({});
+  const settingsNavigation = useRef<HTMLDivElement>(null);
+  const settingsNavigationLabel = t('设置分类');
   const ref = useMemo(() => Object.fromEntries(['image', 'card', 'stage', 'toolbar', 'immersiveEntry', 'immersiveExit', 'options', 'privacy', 'immersivePrivacy', 'liked', 'likedPrivacy', 'feedback'].map(key => [key, (node: HTMLElement | null) => { refs.current[key] = node; }])), []);
   useLayoutEffect(() => app.mount(refs.current), [app]);
+  useLayoutEffect(() => {
+    const list = settingsNavigation.current;
+    if (state.view !== 'settings' || !list) return;
+    const reveal = () => {
+      const selected = list.querySelector<HTMLElement>('[data-state=active]');
+      if (!selected) return;
+      const frame = list.getBoundingClientRect(), tab = selected.getBoundingClientRect();
+      // Scroll only this row; changing sections must not move the page or steal focus.
+      if (tab.left < frame.left + 4) list.scrollLeft -= frame.left + 4 - tab.left;
+      else if (tab.right > frame.right - 4) list.scrollLeft += tab.right - frame.right + 4;
+    };
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [state.view, state.settingsSection, settingsNavigationLabel]);
   useEffect(() => {
     if (!state.feedbackNotice || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const animation = refs.current.feedback?.animate([
@@ -124,7 +142,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 </div>
 <ImageToolbar ref={ref.toolbar} information={<ImageInfo />} trailing={anchorTrigger} navigation={<>
 <IconButton id="previous" icon={ArrowLeft} label={t("上一张较旧图片 · ←")} variant="ghost" type="button" disabled={state.gallery.previousDisabled} onClick={() => app.moveImage("older")} />
-<IconButton id="like" ref={targets["roam.like"]} icon={Heart} label={artifact?.feedback === 1 ? t("已喜欢，点击撤回") : t("喜欢 · ↑")} variant="ghost" type="button" className="feedback" disabled={state.feedbackPending} aria-pressed={artifact?.feedback === 1} onClick={() => app.feedback(1)} />
+<IconButton id="like" ref={targets["roam.like"]} icon={Heart} label={artifact?.feedback === 1 ? t("已喜欢，点击撤回") : t("喜欢 · ↑")} variant="ghost" type="button" className="feedback image-like" disabled={state.feedbackPending} aria-pressed={artifact?.feedback === 1} onClick={() => app.feedback(1)} />
 <IconButton id="dislike" icon={ThumbsDown} label={artifact?.feedback === -1 ? t("已不喜欢，点击撤回") : t("不喜欢 · ↓")} variant="ghost" type="button" className="feedback" disabled={state.feedbackPending} aria-pressed={artifact?.feedback === -1} onClick={() => app.feedback(-1)} />
 <IconButton id="next" ref={targets["roam.next"]} icon={ArrowRight} label={t("下一张较新图片 · →")} variant="ghost" type="button" disabled={state.gallery.nextDisabled} onClick={() => app.moveImage("newer")} />
 </>} />
@@ -139,7 +157,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <GeneratedResults />
 {"\n    "}</section>
 <section id="settings-view" className="settings-view" hidden={state.view !== "settings"}>
-<Tabs value={state.settingsSection} onValueChange={app.setSettingsSection}><TabsList className="settings-navigation" aria-label={t('设置分类')}>{[['general', '通用'], ['roam', '漫游'], ['backend', '生图 API'], ['llm', 'LLM API'], ['canvas', '画幅池'], ['history', '历史']].map(([key, label]) => <TabsTrigger key={key} value={key} data-settings-section={key}>{t(label)}</TabsTrigger>)}</TabsList></Tabs>
+<Tabs value={state.settingsSection} onValueChange={app.setSettingsSection}><TabsList ref={settingsNavigation} className="settings-navigation" aria-label={settingsNavigationLabel}>{[['general', '通用'], ['roam', '漫游'], ['backend', '生图 API'], ['llm', 'LLM API'], ['canvas', '画幅池'], ['history', '历史']].map(([key, label]) => <TabsTrigger key={key} value={key} data-settings-section={key}>{t(label)}</TabsTrigger>)}</TabsList></Tabs>
 <div className="settings-content">
 <section id="settings-general" className="settings-category" hidden={state.settingsSection !== "general"}><GeneralSettings initialError={themeError} />
 <SettingsRow className="settings-data-location" label={t("数据位置")} stackOnMobile><code id="data-directory">{state.dataDirectory || t("读取中…")}</code></SettingsRow>

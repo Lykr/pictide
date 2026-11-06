@@ -34,6 +34,8 @@ These names refer to `web/tests/browser/*.spec.mjs`; commands and further scenar
 
 These geometric and computed-style assertions are the portable baseline; they avoid OS-dependent font rasterization snapshots. Each run also attaches screenshots of anchors, information panels, and settings for visual review. Inspect the relevant screenshots after a shared layout change. A passing geometry check alone does not establish visual quality. Existing notification tests separately protect layout, scroll, and drafts during results and errors.
 
+`design-consistency.spec.mjs` also checks narrow-screen Settings deep links, readable generation actions, label-to-control focus and retained drafts, pending connection feedback, stale test results, and configuration-save progress. Collection and Scroll checks compare like-state colors across their consuming surfaces; collection checks also verify that the normal large-view blur toggle matches the collection state and surface.
+
 Run the focused baseline after the isolated build: `pnpm --dir web exec playwright test tests/browser/layout.spec.mjs`. The standard browser group includes it in release checks. Update the assertions only for an intentional design change, and review all consumers before accepting new behavior.
 
 Keep layout ownership in React feature components and their styles. Feature models and actions supply data through explicit subscriptions and callbacks. Do not add property interception, hidden proxy inputs, or DOM observers to synchronize business state. Browser-only adapters may measure or focus elements, manage fullscreen, and position overlays through refs.

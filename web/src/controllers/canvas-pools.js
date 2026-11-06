@@ -7,7 +7,7 @@ import { t } from '../i18n/index.mjs';
 const row = (size = { width: 1024, height: 1024 }) => ({ key: createRequestId(), width: String(size.width), height: String(size.height) });
 const empty = () => ({ id: '__new__', name: '', sizes: [row()] });
 export function createCanvasPools(api) {
-  const model = createModel({ pools: [], draft: empty(), loaded: false, busy: false, dirty: false });
+  const model = createModel({ pools: [], draft: empty(), loaded: false, busy: false, operation: '', dirty: false });
   const state = model.data;
   let disposed = false, revision = 0;
   function select(id) {
@@ -29,11 +29,11 @@ export function createCanvasPools(api) {
       state.loaded = true; model.changed();
     } catch (error) { if (!disposed) notifyError(error.message); }
   }
-  async function run(action) {
+  async function run(action, operation = '') {
     if (state.busy) return;
-    state.busy = true; revision++; model.changed();
+    state.busy = true; state.operation = operation; revision++; model.changed();
     try { await action(); } catch (error) { notifyError(t(error.message)); }
-    finally { state.busy = false; model.changed(); }
+    finally { state.busy = false; state.operation = ''; model.changed(); }
   }
   return {
     model, load,
@@ -55,7 +55,7 @@ export function createCanvasPools(api) {
         method: 'PUT', body: JSON.stringify({name: state.draft.name, sizes}),
       });
       state.loaded = true; select(id); notifySuccess(() => t('画幅池已保存。'));
-    }),
+    }, 'save'),
     remove: () => run(async () => {
       if (state.draft.id === '__new__' || !await confirmAction(t('删除此画幅池？'))) return;
       state.pools = await api('/api/canvas-pools/' + encodeURIComponent(state.draft.id), {method: 'DELETE', body: '{}'});

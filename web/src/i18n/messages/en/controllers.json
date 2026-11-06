@@ -110,6 +110,7 @@
   "刷新模型，当前 {0} 个可用": "Refresh models. {0} currently available.",
   "读取失败：{0}": "Load failed: {0}",
   "正在测试连接…": "Testing connection…",
+  "API 配置已修改，请重新测试连接。": "API configuration changed. Test the connection again.",
   "连接成功。": "Connected.",
   "连接失败。": "Connection failed.",
   "生图 API 与工作流「{0}」已保存。": "Image API and workflow “{0}” saved.",

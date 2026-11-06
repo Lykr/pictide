@@ -80,6 +80,8 @@ Recently unliked uses a history icon immediately after export, available even wi
 
 Vocabulary selection, upload, and refresh form one management row; full-width tag search follows. Keep controls grouped on narrow screens, constrain long filenames, and page the read-only vocabulary rather than mounting it all.
 
+Arrangement and preview use the same field-label weight and 8px label/control spacing as other forms. Labels target the actual input or choice control. New fixed-term entry aligns with its section's left edge; reserve drag-handle space for existing sortable terms, not for the insertion row.
+
 Preview follows controls → result → collapsed report. Group prompt seed and post-generation behavior, and separately group continuous-frame position and its behavior. Keep advanced search limits collapsed. Status, seed, and continuous-change information appear above results. Positive and negative prompts have soft backgrounds and aligned copy actions; short results do not reserve a fixed empty area.
 
 Positive terms support PMI and cooccurrence inspection through the shared Tooltip on hover, keyboard focus, or touch. Related-term highlighting affects positives only. Use anchor emphasis, success styling for positive associations, warning styling for negative associations, destructive dotted styling for relationships absent from the retained library, and muted dotted styling for unknown terms. Show numerical statistics or the reason they are unavailable; a negative PMI is an association value rather than a conflict verdict. Negative prompts remain plain text with copy support.

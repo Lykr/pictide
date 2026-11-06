@@ -8,7 +8,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { FormSelect } from '../components/form-select';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../components/ui/collapsible';
-import { RefreshCw, SlidersHorizontal, Trash2, ChevronRight, Download } from 'lucide-react';
+import { RefreshCw, SlidersHorizontal, Trash2, ChevronRight, Download, LoaderCircle, Save } from 'lucide-react';
 import { uiTarget } from '../shared/ui-targets';
 import { WorkflowPicker } from '../components/workflow-picker';
 import { WorkflowNodeFields, WorkflowOutputs } from '../components/workflow-node-fields';
@@ -107,6 +107,6 @@ export function ApiSettings() {
 <p className="hint">{apiDraft.kind === 'gemini' ? t('此接口使用比例和分辨率档位，暂不支持像素画幅池。') : apiDraft.kind === 'comfyui' ? t('默认工作流可直接使用；自定义工作流需绑定宽高输入。宽高须为 8 的倍数。') : t('漫游可随机抽取池内尺寸，尺寸需符合当前模型要求。')}</p>
 {apiDraft.canvas_pool_id && <p className="hint break-words">{pools.pools.find((pool: any) => pool.id === apiDraft.canvas_pool_id)?.sizes.map((size: any) => `${size.width}×${size.height}${apiDraft.kind === 'comfyui' && (size.width % 8 || size.height % 8) ? t('（不可用）') : ''}`).join(' · ')}</p>}
 </div>
-<div className="dialog-footer"><Button id="test-backend" ref={targets["api.test"]} type="button" className="quiet" variant="outline" onClick={api.testBackend} disabled={settings.pending.test}>{t("测试连接")}</Button><Button id="save-backend" ref={targets["api.save"]} type="submit" className="primary" variant="default" disabled={settings.pending.saving}>{t("保存 API")}</Button></div>
+<div className="dialog-footer"><Button id="test-backend" ref={targets["api.test"]} type="button" className="quiet" variant="outline" onClick={api.testBackend} disabled={settings.pending.test} aria-busy={settings.pending.test}>{settings.pending.test ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}{t("测试连接")}</Button><Button id="save-backend" ref={targets["api.save"]} type="submit" className="primary" variant="default" disabled={settings.pending.saving} aria-busy={settings.pending.saving}>{settings.pending.saving ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{t("保存 API")}</Button></div>
 </form></>;
 }

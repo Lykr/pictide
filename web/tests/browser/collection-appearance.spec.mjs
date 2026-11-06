@@ -64,6 +64,18 @@ for (const width of [1365, 390]) for (const theme of ['light', 'dark']) {
     await fillsCard(card);
     await page.screenshot({ path: testInfo.outputPath('liked-clear.png'), animations: 'disabled' });
 
+    const likedColor = await card.locator('.generated-card-like').evaluate(element => getComputedStyle(element).color);
+    await page.locator('#liked-privacy-controls').getByRole('button', { name: '退出选择', exact: true }).click();
+    await card.locator('.generated-image-button').click();
+    const viewer = page.locator('.generated-viewer');
+    expect(await viewer.getByRole('button', { name: '撤回喜欢', exact: true }).evaluate(element => getComputedStyle(element).color)).toBe(likedColor);
+    await viewer.getByRole('button', { name: '开启毛玻璃 · 空格', exact: true }).click();
+    const blurSurface = await viewer.getByRole('button', { name: '关闭毛玻璃 · 空格', exact: true }).evaluate(element => getComputedStyle(element).backgroundColor);
+    await viewer.getByRole('button', { name: '关闭图片', exact: true }).click();
+    const gridBlur = page.locator('#liked-privacy-controls').getByRole('button', { name: '关闭毛玻璃 · 空格', exact: true });
+    await expect(gridBlur).toHaveAttribute('aria-pressed', 'true');
+    expect(await gridBlur.evaluate(element => getComputedStyle(element).backgroundColor)).toBe(blurSurface);
+
     await page.goto('/#generate');
     const generated = page.locator('#compose .generated-card').first();
     await fillsCard(generated);

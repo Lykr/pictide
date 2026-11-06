@@ -31,6 +31,7 @@ Use [semantic theme tokens](https://ui.shadcn.com/docs/theming); source code own
 | `border` / `input` / `ring` | Separators, form boundaries, and keyboard focus |
 | `destructive` | Errors and destructive actions |
 | `success` / `warning` | Success and warning states |
+| `favorite` / `favorite-surface` | Personal likes, their controls, and attached image markers |
 
 Pair status colors with text or icons. Shared state styles distinguish success, waiting, error, disabled, and selected states. Page CSS reuses these tokens.
 
@@ -41,5 +42,7 @@ Treat the image as the primary surface. Frames, controls, and surrounding panels
 Clip image content and blur to the frame's shape. Keep borders, selection marks, loading states, and feedback outside the blurred content so they remain legible. Avoid edge gaps, corner bleed, and page-specific border or shadow overrides of shared viewers.
 
 Preference, selection, progress, and destructive actions carry different meanings. A heart identifies a personal preference; a checkbox identifies export selection; an error color identifies a problem. Use icon shape and state as well as color. Feedback accents should come from a shared theme recipe, with light and dark variants, rather than unrelated page-local constants.
+
+Liked hearts share the `image-like` recipe across Roam, thumbnails, and large views. Scroll outlines and attached hearts use the same favorite tokens. Image overlays retain a legible surface; export selection remains neutral and error/deletion colors remain destructive.
 
 Separate decorative motion from playback. Same-image feedback and background refresh do not start an image transition. A running transition preserves its position and progress when data updates. Reduced motion removes decorative effects; deliberate Scroll playback remains an explicit Play/Pause interaction with Single playback available as an alternative.

@@ -27,7 +27,6 @@
 .generated-viewer-loading { background: var(--secondary); }
 .generated-viewer-paging { z-index: 2; background: color-mix(in oklch, var(--card) 45%, transparent); }
 .generated-viewer-loading svg, .generated-viewer-paging svg { width: 24px; height: 24px; }
-.generated-viewer-liked svg { fill: currentColor; }
 .generated-viewer.image-card.immersive {
   position: fixed;
   inset: 0;

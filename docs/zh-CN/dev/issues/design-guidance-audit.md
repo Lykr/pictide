@@ -44,6 +44,8 @@
 - **偏好颜色缺少统一归属。** `web/src/components/roam-scroll.css` 为喜欢边框和爱心写入局部色值；`web/src/styles/feed.css` 的收藏缩略图喜欢按钮使用 `--destructive`。视觉规范已明确个人偏好、批量选择和错误是不同语义，反馈装饰应采用共享主题规则。后续需统一具体配色实现。
 - **连接测试把等待提示也放进通知。** `web/src/controllers/backend-settings.js` 在测试开始时调用 `settingsNotice('正在测试连接…')`。组件规范明确进度留在操作处，测试完成或失败再给独立结果通知；后续应按此收敛重复反馈。
 
+上述两项已在后续[前端页面设计一致性修订](frontend-design-consistency.md)中处理；此处保留审查时的发现。
+
 ## 核对证据
 
 - 静态核对：`feed.tsx`、`editor.tsx`、`features/`、共享组件与样式，以及现有浏览器检查。

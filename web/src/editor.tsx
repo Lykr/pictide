@@ -52,11 +52,11 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 const normalized = (text: string) => text.trim().replaceAll("_", " ").toLowerCase();
-function Choice({ label, value, onChange, options, disabled }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; text: string }[]; disabled?: boolean }) {
-  return <Select value={value} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label}><SelectValue placeholder={label} /></SelectTrigger><SelectContent>{options.map(item => <SelectItem value={item.value} key={item.value}>{item.text}</SelectItem>)}</SelectContent></Select>;
+function Choice({ id, label, value, onChange, options, disabled }: { id: string; label: string; value: string; onChange: (value: string) => void; options: { value: string; text: string }[]; disabled?: boolean }) {
+  return <Select value={value} onValueChange={onChange} disabled={disabled}><SelectTrigger id={id} aria-label={label}><SelectValue placeholder={label} /></SelectTrigger><SelectContent>{options.map(item => <SelectItem value={item.value} key={item.value}>{item.text}</SelectItem>)}</SelectContent></Select>;
 }
-function Field({ label, help, children }: { label: string; help?: string; children: ReactNode }) {
-  return <div className="cooc-field"><Label><span>{label}</span>{help && <HelpTip text={help} />}</Label>{children}</div>;
+function Field({ id, label, help, children }: { id: string; label: string; help?: string; children: ReactNode }) {
+  return <div className="cooc-field"><div className="cooc-field-heading"><Label htmlFor={id}>{label}</Label>{help && <HelpTip text={help} />}</div>{children}</div>;
 }
 function usePromptsVisible() {
   const [visible, setVisible] = useState(() => window.location.hash === "#prompts");
@@ -116,7 +116,7 @@ function FixedTags({ label, values, onChange, disabled, positive = false }: { la
   return <section className="cooc-fixed">
     <div className="cooc-section-heading"><h2>{label}</h2><HelpTip text={t("每次生成均保留这些词，按列表顺序输出。")} /></div>
     <Command shouldFilter={false} className="h-auto overflow-visible bg-transparent p-0"><Popover open={open && !disabled} onOpenChange={setOpen}>
-      <PopoverAnchor asChild><div className="cooc-fixed-picker"><span aria-hidden="true" /><div className="min-w-0"><CommandInput disabled={disabled} value={query} placeholder={t("输入提示词，回车添加")} aria-label={tr`添加${label}`} data-tooltip={t("输入完整提示词并回车添加，也可选择词库匹配项。")} onFocus={() => setOpen(true)} onClick={() => setOpen(true)} onValueChange={(value: string) => { setQuery(value); setOpen(true); navigating.current = false; }} onKeyDown={event => {
+      <PopoverAnchor asChild><div className="cooc-fixed-picker"><div className="min-w-0"><CommandInput disabled={disabled} value={query} placeholder={t("输入提示词，回车添加")} aria-label={tr`添加${label}`} data-tooltip={t("输入完整提示词并回车添加，也可选择词库匹配项。")} onFocus={() => setOpen(true)} onClick={() => setOpen(true)} onValueChange={(value: string) => { setQuery(value); setOpen(true); navigating.current = false; }} onKeyDown={event => {
         if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) { if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); } return; }
         if (event.key === "ArrowDown" || event.key === "ArrowUp") navigating.current = true;
         if (event.key === "Enter" && query.trim() && (!navigating.current || !options.length)) { event.preventDefault(); event.stopPropagation(); add(query); }
@@ -153,7 +153,8 @@ export function EditorWorkspace() {
   const [preset, setPreset] = useState<Preset>({ id: "", name: t("新预设"), document: { ...defaults } });
   const [saved, setSaved] = useState("");
   const [blockedText, setBlockedText] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [operation, setOperation] = useState('');
+  const busy = !!operation;
   const [loaded, setLoaded] = useState(false);
   const [notice, setNotice] = useState("");
   const [success, setSuccess] = useState(false);
@@ -250,7 +251,7 @@ export function EditorWorkspace() {
     return () => { offSignal("candidate-library-changed", changed); libraryRequest.current++; };
   }, []);
   const libraryOperation = async (action: string, filename?: string, file?: File) => {
-    setBusy(true); setLibraryAction(action); setLibraryError("");
+    setOperation('library'); setLibraryAction(action); setLibraryError("");
     try {
       if (file) {
         const body = new FormData(); body.append("file", file);
@@ -262,21 +263,21 @@ export function EditorWorkspace() {
       if (filename) await api("/api/candidate/library", { method: "PUT", body: JSON.stringify({ filename }) });
       await refreshLibrary();
     } catch (error) { setLibraryError(message(error)); }
-    finally { setBusy(false); setLibraryAction(""); }
+    finally { setOperation(''); setLibraryAction(""); }
   };
   const update = <K extends keyof PresetDocument>(key: K, value: PresetDocument[K]) => { setPreset(current => ({ ...current, document: { ...current.document, [key]: value } })); setSuccess(false); };
   const discard = async () => !dirty || await confirmAction(t("当前预设有未保存的修改，继续会放弃这些修改。"));
   const selectPreset = async (id: string) => {
     if (id === preset.id || !(await discard())) return;
     const request = ++presetRequest.current;
-    setBusy(true); setNotice("");
+    setOperation('select'); setNotice("");
     try {
       const next = await api<Preset>(`/api/candidate/presets/${encodeURIComponent(id)}`);
       if (request !== presetRequest.current) return;
       await activatePreset(id);
       loadPreset(next); setResult(null); setSuccess(false); setLoaded(true);
     } catch (error) { if (request === presetRequest.current) setNotice(message(error)); }
-    finally { if (request === presetRequest.current) setBusy(false); }
+    finally { if (request === presetRequest.current) setOperation(''); }
   };
   const create = async (copy = false) => {
     if (!copy && !(await discard())) return;
@@ -297,7 +298,7 @@ export function EditorWorkspace() {
     if (preset.document.base_positive.length > preset.document.max_tags) throw new Error(t("固定正向词数量超过标签上限。"));
   };
   const save = async () => {
-    setBusy(true); setNotice(""); setSuccess(false);
+    setOperation('save'); setNotice(""); setSuccess(false);
     try {
       const draft = withCooccurrenceFloor(preset, cooccurrenceFloor.current);
       setPreset(draft); validate(draft);
@@ -308,11 +309,11 @@ export function EditorWorkspace() {
       await activatePreset(next.id);
       setSuccess(next.document.min_cooccurrence >= cooccurrenceFloor.current);
       notifySuccess(t("已保存"), { id: "preset-save" });
-    } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
+    } catch (error) { setNotice(message(error)); } finally { setOperation(''); }
   };
   const remove = async () => {
     if (!preset.id || !(await confirmAction(tr`删除预设“${preset.name}”？此操作无法撤销。`))) return;
-    setBusy(true); setNotice("");
+    setOperation('remove'); setNotice("");
     try {
       await api(`/api/candidate/presets/${encodeURIComponent(preset.id)}`, { method: "DELETE", body: "{}" });
       const listing = await api<{ presets: { id: string; name: string }[] }>("/api/candidate/presets"); setPresets(listing.presets);
@@ -320,10 +321,10 @@ export function EditorWorkspace() {
       loadPreset(next); setResult(null); setSuccess(false);
       emitSignal("candidate-presets-changed");
       await activatePreset(next.id);
-    } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
+    } catch (error) { setNotice(message(error)); } finally { setOperation(''); }
   };
   const preview = async () => {
-    setBusy(true); setNotice("");
+    setOperation('preview'); setNotice("");
     try {
       const draft = withCooccurrenceFloor(preset, cooccurrenceFloor.current);
       setPreset(draft); validate(draft);
@@ -331,10 +332,10 @@ export function EditorWorkspace() {
       setResult(next);
       if (mode !== "random_each_run") setSeed(counterAfter(mode === "sequence" ? next.sequence?.seed ?? seed : next.seed, seedControl, Number.MAX_SAFE_INTEGER));
       if (mode === "sequence") setStep(counterAfter(step, stepControl, 1000));
-    } catch (error) { setNotice(message(error)); } finally { setBusy(false); }
+    } catch (error) { setNotice(message(error)); } finally { setOperation(''); }
   };
   const controlOptions = [{ value: "fixed", text: t("固定") }, { value: "increment", text: t("递增") }, { value: "decrement", text: t("递减") }, { value: "randomize", text: t("随机") }];
-  const numberField = (key: keyof Omit<PresetDocument, "base_positive" | "base_negative" | "blocked_keywords">, label: string, help: string, min?: number, max?: number, increment: number | "any" = 1) => <Field label={label} help={help}><Input aria-label={label} type="number" min={min} max={max} step={increment} value={Number.isNaN(preset.document[key]) ? "" : preset.document[key]} required disabled={busy} onChange={event => update(key, event.target.valueAsNumber)} onBlur={key === "min_cooccurrence" ? () => setPreset(current => withCooccurrenceFloor(current, cooccurrenceFloor.current)) : undefined} /></Field>;
+  const numberField = (key: keyof Omit<PresetDocument, "base_positive" | "base_negative" | "blocked_keywords">, label: string, help: string, min?: number, max?: number, increment: number | "any" = 1) => <Field id={`cooc-${key}`} label={label} help={help}><Input id={`cooc-${key}`} aria-label={label} type="number" min={min} max={max} step={increment} value={Number.isNaN(preset.document[key]) ? "" : preset.document[key]} required disabled={busy} onChange={event => update(key, event.target.valueAsNumber)} onBlur={key === "min_cooccurrence" ? () => setPreset(current => withCooccurrenceFloor(current, cooccurrenceFloor.current)) : undefined} /></Field>;
   const pages = Math.max(1, Math.ceil(tags.total / tags.page_size));
   return <section id="prompts-view" className="editor-page workspace-content" aria-label={t("提示词")}>
     <header className="editor-toolbar"><h1>{t("提示词")}</h1><span className="spacer" /><Badge variant="secondary" data-tooltip={tr`数据来源：${String(dataset.source || t("尚未导入"))}`}>{dataset.status === "ready" ? t("词库就绪") : t("词库未就绪")}</Badge></header>
@@ -381,9 +382,9 @@ export function EditorWorkspace() {
             </InputGroup>
             <IconButton icon={Plus} label={t("新建预设")} disabled={busy} onClick={() => create()} />
             <IconButton icon={Copy} label={t("复制预设")} disabled={busy || !loaded} onClick={() => create(true)} />
-            <IconButton icon={Trash2} label={t("删除预设")} disabled={busy || !preset.id} onClick={remove} />
+            <IconButton icon={operation === 'remove' ? LoaderCircle : Trash2} className={operation === 'remove' ? '[&_svg]:animate-spin' : ''} label={t("删除预设")} disabled={busy || !preset.id} aria-busy={operation === 'remove'} onClick={remove} />
             <span className="spacer" /><span className="text-xs text-muted-foreground" role="status">{loaded && dirty ? t("未保存") : ""}</span>
-            <Button disabled={busy || !dirty} onClick={save} data-tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")}>{busy ? <LoaderCircle className="animate-spin" /> : success ? <Check /> : <Save />}{t("保存")}</Button>
+            <Button disabled={busy || !dirty} aria-busy={operation === 'save'} onClick={save} data-tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")}>{operation === 'save' ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : success ? <Check aria-hidden="true" /> : <Save aria-hidden="true" />}{t("保存")}</Button>
           </div>
         </section>
         {tab === "settings" ? <form className="cooc-settings" onSubmit={event => { event.preventDefault(); save(); }}>
@@ -397,8 +398,8 @@ export function EditorWorkspace() {
               {numberField("min_cooccurrence", t("最低共现次数"), tr`每对标签须共同出现至少此次数，并且关系已收录于当前词库。当前词库下限为 ${minCooccurrence} 次。`, minCooccurrence, Number.MAX_SAFE_INTEGER)}
               {numberField("change_budget", t("连续变化预算"), t("限制连续序列和顺流漫游每帧的标签增删数，替换计 2 次。固定词保留；无合法变化时保持上一帧，预算 0 不变。"), 0, 1000)}
             </div>
-            <Field label={t("屏蔽关键词")} help={t("跳过包含关键词的新抽取标签。固定正负词与停泊保持的提示词不重新过滤。")}>
-              <Textarea aria-label={t("屏蔽关键词")} data-tooltip={t("每行一个关键词；忽略大小写，空格与下划线等价。")} placeholder={t("每行一个关键词，例如：\nhair\nblack socks")} rows={3} disabled={busy} value={blockedText} onChange={event => {
+            <Field id="cooc-blocked-keywords" label={t("屏蔽关键词")} help={t("跳过包含关键词的新抽取标签。固定正负词与停泊保持的提示词不重新过滤。")}>
+              <Textarea id="cooc-blocked-keywords" aria-label={t("屏蔽关键词")} data-tooltip={t("每行一个关键词；忽略大小写，空格与下划线等价。")} placeholder={t("每行一个关键词，例如：\nhair\nblack socks")} rows={3} disabled={busy} value={blockedText} onChange={event => {
                 const text = event.target.value;
                 setBlockedText(text);
                 update("blocked_keywords", [...new Set(text.split(/\r?\n/).map(item => item.trim()).filter(Boolean))]);
@@ -416,29 +417,29 @@ export function EditorWorkspace() {
           </Collapsible>
           <button type="submit" hidden />
         </form> : <section className="cooc-preview">
-          <Field label={t("生图 API")}><FormSelect aria-label={t("预览生图 API")} value={previewBackend} disabled={busy} onValueChange={value => { setPreviewBackend(value); setResult(null); }} options={[{ value: "", label: t("仅预览标签") }, ...appState.backends.map((item: any) => ({ value: item.id, label: item.name }))]} /></Field>
+          <Field id="cooc-preview-backend" label={t("生图 API")}><FormSelect id="cooc-preview-backend" aria-label={t("预览生图 API")} value={previewBackend} disabled={busy} onValueChange={value => { setPreviewBackend(value); setResult(null); }} options={[{ value: "", label: t("仅预览标签") }, ...appState.backends.map((item: any) => ({ value: item.id, label: item.name }))]} /></Field>
           <Collapsible className="cooc-preview-options">
             <div className="cooc-preview-toolbar">
-              <Field label={t("生成模式")}>
-                <Choice label={t("预览生成模式")} value={mode} onChange={value => setMode(value as Mode)} options={[{ value: "random_each_run", text: t("每次随机") }, { value: "fixed_seed", text: t("固定种子") }, { value: "sequence", text: t("连续序列") }]} disabled={busy} />
+              <Field id="cooc-preview-mode" label={t("生成模式")}>
+                <Choice id="cooc-preview-mode" label={t("预览生成模式")} value={mode} onChange={value => setMode(value as Mode)} options={[{ value: "random_each_run", text: t("每次随机") }, { value: "fixed_seed", text: t("固定种子") }, { value: "sequence", text: t("连续序列") }]} disabled={busy} />
               </Field>
               <div className="cooc-preview-actions">
                 <CollapsibleTrigger asChild><Button variant="ghost" size="sm"><Settings2 />{t("搜索设置")}</Button></CollapsibleTrigger>
-                <Button variant="secondary" disabled={busy || !loaded} onClick={preview} data-tooltip={t("使用当前预设草稿生成提示词，不生成图片，也不保存修改。")}>{busy ? <LoaderCircle className="animate-spin" /> : <Sparkles />}{t("预览")}</Button>
+                <Button variant="secondary" disabled={busy || !loaded} aria-busy={operation === 'preview'} onClick={preview} data-tooltip={t("使用当前预设草稿生成提示词，不生成图片，也不保存修改。")}>{operation === 'preview' ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}{t("预览")}</Button>
               </div>
             </div>
             {mode !== "random_each_run" && <div className="cooc-preview-parameters">
               <div className="cooc-preview-parameter-group">
-                <Field label={t("提示词种子")}><Input aria-label={t("预览提示词种子")} type="number" min={0} max={Number.MAX_SAFE_INTEGER} step={1} value={seed} disabled={busy} onChange={event => setSeed(event.target.valueAsNumber)} /></Field>
-                <Field label={t("种子生成后")}><Choice label={t("预览种子生成后")} value={seedControl} onChange={setSeedControl} options={controlOptions} disabled={busy} /></Field>
+                <Field id="cooc-preview-seed" label={t("提示词种子")}><Input id="cooc-preview-seed" aria-label={t("预览提示词种子")} type="number" min={0} max={Number.MAX_SAFE_INTEGER} step={1} value={seed} disabled={busy} onChange={event => setSeed(event.target.valueAsNumber)} /></Field>
+                <Field id="cooc-preview-seed-control" label={t("种子生成后")}><Choice id="cooc-preview-seed-control" label={t("预览种子生成后")} value={seedControl} onChange={setSeedControl} options={controlOptions} disabled={busy} /></Field>
               </div>
               {mode === "sequence" && <div className="cooc-preview-parameter-group">
-                <Field label={t("帧序号")}><Input aria-label={t("预览帧序号")} type="number" min={0} max={1000} step={1} value={step} disabled={busy} onChange={event => setStep(event.target.valueAsNumber)} /></Field>
-                <Field label={t("帧序号生成后")}><Choice label={t("预览帧序号生成后")} value={stepControl} onChange={setStepControl} options={controlOptions} disabled={busy} /></Field>
+                <Field id="cooc-preview-step" label={t("帧序号")}><Input id="cooc-preview-step" aria-label={t("预览帧序号")} type="number" min={0} max={1000} step={1} value={step} disabled={busy} onChange={event => setStep(event.target.valueAsNumber)} /></Field>
+                <Field id="cooc-preview-step-control" label={t("帧序号生成后")}><Choice id="cooc-preview-step-control" label={t("预览帧序号生成后")} value={stepControl} onChange={setStepControl} options={controlOptions} disabled={busy} /></Field>
               </div>}
             </div>}
             <CollapsibleContent>
-              <div className="cooc-preview-search"><Field label={t("搜索上限")} help={t("所有模式共用的搜索步数上限。达到上限时返回已生成的提示词。") }><Input aria-label={t("预览搜索上限")} type="number" min={1} max={1000000} value={maxSteps} step={1} disabled={busy} onChange={event => setMaxSteps(event.target.valueAsNumber)} /></Field></div>
+              <div className="cooc-preview-search"><Field id="cooc-preview-max-steps" label={t("搜索上限")} help={t("所有模式共用的搜索步数上限。达到上限时返回已生成的提示词。") }><Input id="cooc-preview-max-steps" aria-label={t("预览搜索上限")} type="number" min={1} max={1000000} value={maxSteps} step={1} disabled={busy} onChange={event => setMaxSteps(event.target.valueAsNumber)} /></Field></div>
             </CollapsibleContent>
           </Collapsible>
           {result ? <section className="cooc-preview-results" aria-label={t("预览结果")}>

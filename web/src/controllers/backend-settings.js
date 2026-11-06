@@ -326,18 +326,27 @@ export function createBackendSettings({ state, api, checkBackendAvailability, sh
     finally { pending('models', false); }
   }
   async function testBackend() {
+    if (model.data.pending.test) return;
     const revision = apiDraftRevision;
     publishUiState({ apiTestPending: true, apiTestedRevision: -1 });
-    pending('test', true); settingsNotice(() => t("正在测试连接…"), false, 'info');
+    dismissNotification('settings-operation');
+    pending('test', true);
     try {
       const payload = draftBackend();
       const id = draft.selectedId === '__new__' ? 'new' : draft.selectedId;
       const result = await api(`/api/backends/${encodeURIComponent(id)}/check`, { method: 'POST', body: JSON.stringify(payload) });
-      if (result.ok && revision === apiDraftRevision) publishUiState({ apiTestedRevision: revision });
+      if (revision !== apiDraftRevision) {
+        settingsNotice(() => t("API 配置已修改，请重新测试连接。"), false, 'info');
+        return;
+      }
+      if (result.ok) publishUiState({ apiTestedRevision: revision });
       settingsNotice(result.message || (result.ok ? t("连接成功。") : t("连接失败。")), !result.ok);
       if (id !== 'new' && result.ok) showBackendAvailability(true);
     }
-    catch (error) { settingsNotice(error.message, true); }
+    catch (error) {
+      if (revision !== apiDraftRevision) settingsNotice(() => t("API 配置已修改，请重新测试连接。"), false, 'info');
+      else settingsNotice(error.message, true);
+    }
     finally { pending('test', false); publishUiState({ apiTestPending: false }); }
   }
   async function save() {

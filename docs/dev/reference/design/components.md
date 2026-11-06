@@ -29,6 +29,8 @@ Keep an action's name and icon consistent wherever it appears. Show selected sta
 
 Usually give each action area one primary button. Keep short labels for save, generate, and confirm. Use Lucide icons for familiar tools such as copy, refresh, close, sort, download, and image navigation; keep names alongside navigation icons. Loading shows the running action and prevents duplicate submission.
 
+Explicit configuration saves use the Save icon. While an action is pending, replace its icon with the shared spinner and set `aria-busy`, keeping its label and button dimensions stable. Indicate the actual operation: reading models or deleting a configuration must not make Save look as though it is saving.
+
 React icon buttons use `web/src/components/actions.tsx`'s `IconButton`, normally `ghost` / `icon-sm`, with a localized accessible name and tooltip. State changes update both accessible names and tooltips while preserving icons.
 
 ## Copy and contextual help
@@ -65,9 +67,11 @@ Loading progress, unsaved markers, empty states, unavailable-image placeholders,
 
 Each interaction has a clear save contract. Immediate controls show their applied value and retain or restore the previous value on failure. Explicit-save forms retain a draft until Save succeeds. Switching sections or receiving background data must not overwrite an edited draft. Test results belong to the tested draft; editing it makes the old result insufficient evidence for the new values. Testing a connection does not silently save its configuration.
 
+If an Image API draft changes while its connection test is running, retain the edits and ask for a new test rather than presenting the older draft's success or failure as the current result. Keep pending progress on the test action; completion uses the shared result notification.
+
 Disable conflicting and duplicate operations while pending. Save may remain available on an unchanged form when it explicitly retries a paused operation; do not impose a universal dirty-only rule. Hidden mode-specific fields retain their drafts while inactive fields do not block an unrelated submission. See [Settings](layout.md#settings) for the different effect scopes.
 
-General settings, application updates, and the data location use `components/settings-row.tsx`. Its stylesheet owns label/control columns, spacing, mobile stacking, and section separators. Callers provide labels and controls; use `stackOnMobile` for wide controls and `separated` for a new group. Keep state and save operations in the owning feature component.
+General settings, application updates, and the data location use `components/settings-row.tsx`. Its stylesheet owns label/control columns, spacing, mobile stacking, and section separators. Callers provide labels and controls; use `stackOnMobile` for wide controls, `separated` for a new group, and `align="start"` for long groups such as network access and ComfyUI startup. A group's caption follows its first control rather than the middle of a QR code or expanded form. Keep state and save operations in the owning feature component.
 
 Place labels above controls and associate them with `label` / `htmlFor`. Place help beside the label. Placeholders illustrate values rather than replacing names. Use 8–12px within compact groups and 16–24px between sections; help icons use `ghost` / `icon-xs`. Fields retain constraints, invalid state, and required focus behavior; detailed errors, including native validation errors, use shared notifications. Frontend input limits complement server validation.
 

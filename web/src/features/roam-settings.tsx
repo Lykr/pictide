@@ -9,6 +9,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '../components/ui/i
 import { RoamSettingsChoices, RoamDisplayChoices } from '../components/roam-playback';
 import { PreferenceActions } from '../components/preference-actions';
 import { backendCapabilities } from '../controllers/backend-controls.mjs';
+import { LoaderCircle, Save } from 'lucide-react';
 export function RoamSettings() {
   const app = useApplication(), state = useModel(app.model);
   const roamInput = (key: string) => ({ value: state.roamDraft[key], onChange: (event: React.ChangeEvent<HTMLInputElement>) => app.editRoam({ [key]: event.target.value }) });
@@ -30,6 +31,6 @@ export function RoamSettings() {
 </div>
 </fieldset>
 <PreferenceActions />
-<div className="dialog-footer"><Button id="roam-save" type="submit" disabled={state.roamSaving}>{t("保存设置")}</Button></div>
+<div className="dialog-footer"><Button id="roam-save" type="submit" disabled={state.roamSaving} aria-busy={state.roamSaving}>{state.roamSaving ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{t("保存设置")}</Button></div>
 </form>;
 }

@@ -1,6 +1,6 @@
 import '../styles/local-generation.css';
 import { useEffect, useState } from 'react';
-import { ChevronDown, LoaderCircle, Search } from 'lucide-react';
+import { ChevronDown, LoaderCircle, Save, Search } from 'lucide-react';
 import { useApplication, useModel } from '../shared/application-context';
 import { t, messageKey } from '../i18n/index.mjs';
 import { notifySuccess } from '../shared/notifications.mjs';
@@ -37,7 +37,7 @@ export function LocalGenerationSettings() {
   const save = async () => {
     if (await controller.save()) notifySuccess(() => t('已保存，下次启动 Pictide 时生效。'), { id: 'local-generation-saved' });
   };
-  return <SettingsRow separated stackOnMobile className="local-generation-settings" label={t('ComfyUI 随应用启停')}>
+  return <SettingsRow separated stackOnMobile align="start" className="local-generation-settings" label={t('ComfyUI 随应用启停')}>
     {state.canConfigure === null ? <div className="flex flex-col items-start gap-2"><span className="text-sm text-muted-foreground">{t(state.error ? '读取启停设置失败。' : '正在读取…')}</span>
       {state.error && <Button type="button" variant="outline" onClick={() => void controller.load()}>{t('重试')}</Button>}</div> : state.canConfigure === false ?
       <p className="text-sm text-muted-foreground">{t('请在运行 Pictide 的电脑上通过本机地址配置。')}</p> :
@@ -86,8 +86,8 @@ export function LocalGenerationSettings() {
           </Collapsible>
         </div>}
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" disabled={busy || !state.dirty} onClick={() => void save()}>
-            {state.busy === 'save' && <LoaderCircle className="animate-spin" aria-hidden="true" />}{t('保存启停设置')}
+          <Button type="button" disabled={busy || !state.dirty} aria-busy={state.busy === 'save'} onClick={() => void save()}>
+            {state.busy === 'save' ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{t('保存启停设置')}
           </Button>
           {state.dirty && <span className="text-sm text-muted-foreground">{t('有未保存的修改')}</span>}
         </div>

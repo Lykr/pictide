@@ -147,7 +147,9 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
     <DialogTitle className="sr-only">{props.imageLabel ?? t("生成的图片")}</DialogTitle>
     <div className="generated-viewer-heading">
       <IconButton ref={entryRef} icon={Maximize} label={t("沉浸模式")} aria-pressed={immersive} disabled={busy} />
-      <IconButton icon={privacyBlur ? EyeOff : Eye} label={privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格")} aria-pressed={privacyBlur} onClick={() => onPrivacyChange(!privacyBlur)} />
+      <Toggle size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={onPrivacyChange} aria-label={privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格")} aria-keyshortcuts="Space" data-tooltip={privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格")}>
+        {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+      </Toggle>
       <IconButton icon={X} label={t("关闭图片")} onClick={() => onActiveChange(null)} />
     </div>
     <div className="immersive-actions" role="toolbar" aria-label={t("沉浸模式设置")}>
@@ -168,7 +170,7 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
         </Popover>
       } navigation={<>
       <IconButton icon={ArrowLeft} label={t("上一张 · ←")} disabled={busy || (!older && !hasMore) || !!waitingOlder} onClick={() => navigate("older")} />
-      <IconButton icon={Heart} label={item.feedback === 1 ? t("撤回喜欢") : t("喜欢图片 · ↑")} className={item.feedback === 1 ? "generated-viewer-liked" : ""} aria-pressed={item.feedback === 1} disabled={busy} onClick={async () => { if (props.confirmUnlike && item.feedback === 1) await viewerRef.current?.leave(); onLike(item); }} />
+      <IconButton icon={Heart} label={item.feedback === 1 ? t("撤回喜欢") : t("喜欢图片 · ↑")} className="image-like" aria-pressed={item.feedback === 1} disabled={busy} onClick={async () => { if (props.confirmUnlike && item.feedback === 1) await viewerRef.current?.leave(); onLike(item); }} />
       <IconButton icon={ArrowRight} label={t("下一张 · →")} disabled={busy || !newer} onClick={() => navigate("newer")} />
       </>} trailing={props.allowDownload && item.feedback === 1 ? <Button asChild variant="ghost" size="icon-sm">
         <a href={`${artifactPath(item, 'image')}?download=1`} download aria-label={t('下载原图')} data-tooltip={t('下载原图')}><Download aria-hidden="true" /></a>

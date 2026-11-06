@@ -37,6 +37,8 @@ for (const width of [1365, 390]) test(`scroll arrows, like pause and smooth cont
   const photo = scroll.locator(`[data-artifact-id="${likedId}"]`);
   await expect(photo).toHaveAttribute('data-liked', 'true');
   await expect(photo.locator('[data-liked-marker]')).toBeVisible();
+  const likedColor = await photo.locator('[data-liked-marker]').evaluate(element => getComputedStyle(element).color);
+  await expect.poll(() => page.locator('#like').evaluate(element => getComputedStyle(element).color)).toBe(likedColor);
   const paused = await offset();
   await page.waitForTimeout(120);
   expect(await offset()).toBeCloseTo(paused, 1);

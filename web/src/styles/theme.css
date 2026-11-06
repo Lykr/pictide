@@ -31,6 +31,8 @@
   --destructive: oklch(0.577 0.245 27.325);
   --success: oklch(0.43 0.1 150);
   --warning: oklch(0.48 0.1 65);
+  --favorite: oklch(0.52 0.2 8);
+  --favorite-surface: color-mix(in oklch, var(--favorite) 12%, var(--card));
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -139,6 +141,10 @@ body { position: fixed; inset: 0; }
 
 .field-label { display: inline-flex; align-items: center; gap: 4px; }
 
+/* Preference is distinct from export selection and destructive actions. */
+.image-like[aria-pressed=true] { color: var(--favorite); background: var(--favorite-surface); }
+.image-like[aria-pressed=true] svg { fill: currentColor; }
+
 [data-slot=multi-select] > [data-slot=label] { display: flex; align-items: center; gap: 8px; min-height: 24px; margin: 0; }
 .workflow-picker [data-slot=command-input-wrapper] { padding: 0; }
 [data-slot=select-content], [data-slot=popover-content] { z-index: 70; }
@@ -157,6 +163,7 @@ body { position: fixed; inset: 0; }
   color-scheme: dark;
   --success: oklch(0.72 0.12 150);
   --warning: oklch(0.78 0.12 65);
+  --favorite: oklch(0.78 0.14 8);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

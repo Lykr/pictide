@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../components/ui/collapsible';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, LoaderCircle, Save } from 'lucide-react';
 import { JobHistory } from '../components/job-history';
 export function HistorySettings() {
   const app = useApplication(), state = useModel(app.model);
@@ -20,7 +20,7 @@ export function HistorySettings() {
 {"\n    "}
 <div className="dialog-footer">
 
-<Button id="history-save" type="submit" className="primary" variant="default" data-tooltip={t("保存后立即检查；之后在启动、浏览或生成等操作时按需清理。")} disabled={state.historyBusy}>{t("保存设置")}</Button>
+<Button id="history-save" type="submit" className="primary" variant="default" data-tooltip={t("保存后立即检查；之后在启动、浏览或生成等操作时按需清理。")} disabled={state.historyBusy} aria-busy={state.historyBusy}>{state.historyBusy ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{t("保存设置")}</Button>
 </div>
 {"\n  "}</form></CollapsibleContent></Collapsible>
 <JobHistory /></>;

@@ -7,6 +7,7 @@ import { copyText } from '../lib/copy-text';
 import { notifySuccess } from '../shared/notifications.mjs';
 import { useErrorNotice } from './notifications';
 import { SettingsRow } from './settings-row';
+import { IconButton } from './actions';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
@@ -46,7 +47,7 @@ export function NetworkSettings() {
     try { await copyText(url); notifySuccess(t('已复制'), { id: 'clipboard' }); }
     catch { setError(t('复制失败，请选中文本复制')); }
   };
-  return <SettingsRow separated stackOnMobile label={t('局域网访问')}>
+  return <SettingsRow separated stackOnMobile align="start" label={t('局域网访问')}>
     <div className="flex min-w-0 flex-col items-start gap-3" data-network-settings="">
       <Label htmlFor="network-enabled" className="gap-2">
         <Checkbox id="network-enabled" checked={status?.enabled ?? false}
@@ -65,8 +66,8 @@ export function NetworkSettings() {
         {url ? <>
           <div className="flex w-full min-w-0 items-center gap-2">
             <a className="min-w-0 break-all text-sm underline" href={url}>{url}</a>
-            <Button type="button" variant="ghost" size="icon-sm" aria-label={t('复制访问地址')} onClick={() => void copy()}><Copy aria-hidden="true" /></Button>
-            <Button type="button" variant="ghost" size="icon-sm" aria-label={t('刷新访问地址')} disabled={busy} onClick={() => void load()}><RefreshCw aria-hidden="true" /></Button>
+            <IconButton icon={Copy} label={t('复制访问地址')} onClick={() => void copy()} />
+            <IconButton icon={busy ? LoaderCircle : RefreshCw} className={busy ? '[&_svg]:animate-spin' : ''} label={t('刷新访问地址')} disabled={busy} onClick={() => void load()} />
           </div>
           <QRCodeSVG value={url} size={160} marginSize={4} title={t('手机扫码访问 Pictide')} className="max-w-full rounded-md" />
           <p className="text-sm text-muted-foreground">{t('地址对应本机的不同网卡。手机连接同一局域网后扫码，连接受阻时检查防火墙的专用网络权限。')}</p>
