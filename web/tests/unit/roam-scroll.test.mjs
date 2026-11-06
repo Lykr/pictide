@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRoamScroll } from '../../src/controllers/roam-scroll.mjs';
 import { createRoamPlayback } from '../../src/controllers/roam-playback.mjs';
-import { createGalleryCursors } from '../../src/controllers/roam-navigation.mjs';
 
 const pictures = (widths = [300, 300, 300, 300]) => widths.map((width, i) => ({ id: String(i), width, ready: true }));
 const fixture = (widths, initial = '0') => { const scroll = createRoamScroll(); scroll.layout(pictures(widths), 600, initial); return scroll; };
@@ -86,15 +85,6 @@ test('a pending boundary navigation moves smoothly after the new picture arrives
   assert.equal(scroll.snapshot().offset, before);
   assert.equal(scroll.snapshot().target, '1');
   assert.ok(scroll.tick(.02, false).offset < before);
-});
-
-test('view guard protects the oldest visible image independently of the operation focus', () => {
-  const cursor = createGalleryCursors(); cursor.restore({ artifact_id: '0', viewed_at: 10 });
-  assert.equal(cursor.select('feed', '1', 11, false), null);
-  assert.equal(cursor.get('feed'), '1');
-  assert.equal(cursor.watch('0', 12), null);
-  assert.deepEqual(cursor.watch('1', 12), { artifact_id: '1', viewed_at: 12 });
-  assert.deepEqual(cursor.watch('0', 11), { artifact_id: '0', viewed_at: 13 });
 });
 
 test('focus and readiness refreshes preserve the in-flight easing curve and velocity', () => {

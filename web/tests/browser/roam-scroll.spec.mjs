@@ -159,3 +159,45 @@ test('switching focus does not stall the strip halfway through navigation', asyn
   expect(velocities.length).toBeGreaterThanOrEqual(2);
   expect(Math.min(...velocities)).toBeGreaterThan(Math.max(...velocities) * .35);
 });
+
+test('editing anchors keeps the centered picture and honors the history limit', async ({ page, context }) => {
+  await page.route(/\/api\/artifacts\/[^/]+\/image$/, route => route.fulfill({
+    contentType: 'image/svg+xml',
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="640"><rect width="320" height="640" fill="#60766a"/></svg>',
+  }));
+  const { scroll, items } = await prepare(page, context, 5);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect(scroll).toHaveAttribute('data-focus', items[2].id);
+  await expect(scroll).toHaveAttribute('data-moving', 'false');
+  const visible = await scroll.evaluate(element => {
+    const bounds = element.getBoundingClientRect();
+    return [...element.querySelectorAll('[data-artifact-id]')].filter(photo => {
+      const rect = photo.getBoundingClientRect(); return rect.right > bounds.left && rect.left < bounds.right;
+    }).map(photo => photo.dataset.artifactId);
+  });
+  expect(visible.indexOf(items[2].id)).toBeGreaterThan(0);
+  await expect.poll(async () => (await (await page.request.get('/api/roam/view')).json()).artifact_id).toBe(items[2].id);
+  expect((await page.request.put('/api/settings/roam', { data: { prefetch_count: 0, max_history_images: 1 } })).ok()).toBe(true);
+  await page.locator('.roam-anchor-trigger').click();
+  const current = scroll.locator(`[data-artifact-id="${items[2].id}"]`);
+  const position = await current.evaluate(element => element.getBoundingClientRect().left);
+  const input = page.getByRole('combobox', { name: 'Add anchor', exact: true });
+  if (!await input.isVisible()) await page.locator('.roam-anchor-add').getByRole('button', { name: 'Add anchor', exact: true }).click();
+  await input.fill('scroll anchor fixture');
+  await input.press('Enter');
+  await expect.poll(async () => (await (await page.request.get('/api/settings/roam')).json()).pinned_positive).toContain('scroll anchor fixture');
+  await expect(scroll).toHaveAttribute('data-focus', items[2].id);
+  const remaining = (await (await page.request.get(`/api/artifacts?source=roam&around=${items[2].id}`)).json()).artifacts.map(item => item.id);
+  expect(remaining).toContain(items[2].id);
+  expect(remaining).toContain(items[1].id);
+  expect(remaining).not.toContain(items[0].id);
+  expect(remaining).not.toContain(items[3].id);
+  expect(await current.evaluate(element => element.getBoundingClientRect().left)).toBeCloseTo(position, 0);
+  await page.locator('.roam-anchor-term').filter({ hasText: 'scroll anchor fixture' }).click({ button: 'right' });
+  await expect.poll(async () => (await (await page.request.get('/api/settings/roam')).json()).excluded_positive).toContain('scroll anchor fixture');
+  await expect(scroll).toHaveAttribute('data-focus', items[2].id);
+  await page.getByRole('button', { name: 'Clear anchors', exact: true }).click();
+  await expect.poll(async () => (await (await page.request.get('/api/settings/roam')).json()).excluded_positive).toEqual([]);
+  await expect(scroll).toHaveAttribute('data-focus', items[2].id);
+});

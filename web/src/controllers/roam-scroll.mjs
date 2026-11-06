@@ -23,9 +23,7 @@ export function createRoamScroll() {
   }
   function snapshot() {
     const focus = itemAtCenter();
-    // Persist the oldest still-visible picture, so cleanup cannot remove a neighbor on screen.
-    const oldest = items.find(item => item.left + item.width + offset > 0 && item.left + offset < viewport);
-    return { offset, focus: focus?.id ?? null, oldest: oldest?.id ?? focus?.id ?? null,
+    return { offset, focus: focus?.id ?? null,
       moving: !!motion, pending: !!pending, target: motion?.id ?? pending?.id ?? null };
   }
   return {

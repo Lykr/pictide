@@ -51,7 +51,7 @@ Canvas-pool mode samples uniformly from the current API's usable sizes. An unlin
 
 `artifact_id` may be null; when non-null, it must identify a visible Roam image. `viewed_at` is a nonnegative safe integer, and only a strictly newer timestamp causes an update. If the original image has been hidden or cleaned up, GET may resolve the position to a neighboring image.
 
-Scroll playback operates on the image covering the viewport center (nearest image edge if the center is in a gap). It persists the oldest still-visible image through the same viewing-position API to protect visible neighbors from history cleanup. Reload restores that saved image. Presentation-only options preserve generation settings, prefetched images, and paused errors. Single-image display time remains saved while Scroll uses its separate speed.
+Scroll playback operates on the image covering the viewport center (nearest image edge if the center is in a gap). It persists that centered image through the same viewing-position API, so anchor changes retain the image being viewed. Reload restores that image; older images follow the configured history limit. Presentation-only options preserve generation settings, prefetched images, and paused errors. Single-image display time remains saved while Scroll uses its separate speed.
 
 The Ensure response includes `enabled,prefetch_count,target,waiting_for_liked_tags,preference_learning,ready,pending,roam_pending,paused`, with `job,error,recommendation_error,backend_id,preset_id` included as applicable. `ready` is the number of viewable images after the anchor, `pending` is the number of unfinished jobs across the application, and `roam_pending` is the number of unfinished Roam jobs that have not been invalidated.
 

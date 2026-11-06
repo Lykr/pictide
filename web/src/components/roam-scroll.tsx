@@ -58,7 +58,7 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy }: {
       }
     }
     const pixels = loaded.current.get(snapshot.focus ?? '');
-    const signature = `${snapshot.focus}:${snapshot.oldest}:${pixels?.width}:${pixels?.height}`;
+    const signature = `${snapshot.focus}:${pixels?.width}:${pixels?.height}`;
     if (latest.current.active && signature !== reported.current) {
       reported.current = signature;
       app.scrollFrame({ ...snapshot, ready: !!pixels, ...pixels });

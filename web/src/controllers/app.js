@@ -735,8 +735,8 @@ function imageFailed() {
 }
 function scrollFrame(frame) {
   if (!isScroll() || state.view !== 'feed' || !roamPageActive || document.hidden) return;
-  if (frame.oldest) saveRoamView(galleryCursors.watch(frame.oldest));
   if (!frame.focus || !state.artifacts.some(item => item.id === frame.focus)) return;
+  saveRoamView(galleryCursors.watch(frame.focus));
   if (state.activeId !== frame.focus) {
     selectImage(frame.focus, 'feed'); renderArtifacts(); refillRoam();
   }
