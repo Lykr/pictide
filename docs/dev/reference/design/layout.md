@@ -4,6 +4,18 @@
 
 [UI design system](../../design-system.md) · [Components](components.md)
 
+## Page roles
+
+| Page | User goal | Information priority |
+| --- | --- | --- |
+| Roam | Discover and guide the next images | Current image and feedback, then anchors and playback, then exploration settings. |
+| Generate | Create images from a deliberate request | Prompt and applicable generation options, submit/cancel actions, then independent results. |
+| Liked | Revisit, find, recover, and export favorites | Collection and filters, then view/export/recovery tools; generation configuration stays elsewhere. |
+| Prompts | Prepare reusable prompt choices | Read-only vocabulary, editable preset arrangement, then preview and optional diagnostic detail. |
+| Settings | Connect services and configure behavior | Select the configuration or effect scope, edit relevant fields, then test/save and status. |
+
+Page headings identify the task; group headings identify a meaningful part of it. Keep routine actions in predictable page or image toolbars. Reveal advanced options when they apply, preserving the same action and draft across desktop, phone, and immersion.
+
 ## Application shell
 
 Ordinary pages share `.workspace-content`: centered, at most 1200px wide, with 24px desktop padding and 16px at widths up to 1024px. Roam and Prompts share the same horizontal boundaries. Reserve scrollbar space to avoid jumps between sections. The desktop sidebar is 144px wide with short names and icons; narrower layouts adapt navigation rather than widening it on large screens.
@@ -33,6 +45,8 @@ Normal Roam waiting uses a 16px spinner beside the heading without an image-cove
 
 Playback style is Single or Scroll, shared between Roam options and Settings. Single shows display time; Scroll shows Slow/Normal/Fast speed. Scroll keeps equal-height images at their original aspect ratios, moving continuously left and holding at the last decoded image when waiting. Arrows and navigation buttons smoothly retarget from the actual position. Like freezes the centered picture and attaches a pink outline and small heart to it; Next resumes continuous movement from the paused position without centering the next picture. A manual pause remains paused after navigation. Keep liked markers in the visible part of wide pictures when applied, with blur affecting only image content.
 
+In Scroll, the picture covering the center is the current image for information, feedback, anchors, and the saved viewing position. Saving anchors preserves that image and its position; older images follow the configured history policy. Background updates and newly ready neighbors must not restart an in-flight movement. Submitted generation and the user's playback intent remain separate: a job may finish after leaving the page while playback stays paused.
+
 ## Privacy and image browsing
 
 Blur defaults on at page initialization and applies from the first image paint. It affects the image rather than tools, errors, or progress. Keep blur state while navigating within the page; refresh restores protection. Roam and Generate maintain separate states, and each page synchronizes its toolbar and large-view controls.
@@ -51,7 +65,7 @@ Generate's cancel-pending action only cancels that page's queued work. Submissio
 
 Generate and Liked share a compact responsive thumbnail grid and large-image viewer, with separate data and blur state. Thumbnail images use centered `cover`; full images use `contain`. Like controls appear on hover or focus and stay visible on touch devices. Thumbnails omit permanent seed and tool rows. Results tools offer blur and clear; clearing explains which unliked images are deleted and which liked images only leave Generate.
 
-Large views use a shared Dialog with previous, like, and next controls centered; information sits at the lower left, and blur sits beside the upper-right close action. Full image downloads are absent; information retains prompt JSON download. Preserve the image during pagination waits and cache rereads; close only when no image remains. Escape exits immersive mode before closing the viewer.
+Large views use a shared Dialog with previous, like, and next controls centered; information sits at the lower left, and blur sits beside the upper-right close action. Information retains prompt JSON download; original-image downloads are specific to Liked. Preserve the image during pagination waits and cache rereads; close only when no image remains. Escape exits immersive mode before closing the viewer.
 
 The Generate/Liked dialog frame is sized and centered inside the viewport minus its four safe-area insets; internal padding is not a substitute for keeping the frame above the Home indicator. Shared `--safe-area-*` tokens read the browser's device insets. Rotation recalculates the safe rectangle. Immersive images may fill the viewport, while floating controls remain inside the safe area.
 
@@ -70,17 +84,39 @@ Preview follows controls → result → collapsed report. Group prompt seed and 
 
 Positive terms support PMI and cooccurrence inspection through the shared Tooltip on hover, keyboard focus, or touch. Related-term highlighting affects positives only. Use anchor emphasis, success styling for positive associations, warning styling for negative associations, destructive dotted styling for relationships absent from the retained library, and muted dotted styling for unknown terms. Show numerical statistics or the reason they are unavailable; a negative PMI is an association value rather than a conflict verdict. Negative prompts remain plain text with copy support.
 
+## First use and guided help
+
+Guide users through the real application toward a first image, feedback, and an anchor edit. Reuse the normal controls and navigation instead of a second setup interface. Progress follows actual saved configuration and successful actions; a running connection test, an old like, or a prepared image is not a newly completed guided action. Keep skip, dismiss, and resume available without discarding application drafts.
+
+Place guidance near its target while leaving the target, image actions, and navigation usable. Bound cards and highlights to the viewport and safe area; long text scrolls within the available space. Dialogs and open menus keep their own input and Escape handling. General settings provides the explicit restart entry. A guide describes what to do next without initiating paid/provider work on the user's behalf.
+
 ## Settings
 
-Use General, Roam, Image API, LLM API, and History tabs under a single Settings heading. Forms share a 780px content width, `.settings-field`, and `.settings-stack`: label rows at least 24px high, 8px to controls, 16px between related fields, and 24px between sections. Two-column groups stack on narrow screens. Default Input / Select height is 36px; units use InputGroup. Place save actions at the lower right and connection tests at the left.
+Use General, Roam, Image API, LLM API, Canvas pools, and History tabs under a single Settings heading. Forms share a 780px content width, `.settings-field`, and `.settings-stack`: label rows at least 24px high, 8px to controls, 16px between related fields, and 24px between sections. Two-column groups stack on narrow screens. Default Input / Select height is 36px; units use InputGroup. Place save actions at the lower right and connection tests at the left. On phones, overflowing tab rows scroll horizontally and keep the selected section visible.
+
+### General
 
 General uses aligned rows for language, theme, image transitions, onboarding, and data location. Show only the data directory path with a soft background and monospace body text; wrap long paths and stack label/value on narrow screens. Avoid nested decorative cards.
 
-Roam includes prefetching, history limit, backend, playback, preference scope, mode, and recommendation strength. The active prompt preset is selected on Prompts rather than duplicated in Settings. History limit is an integer from 0 to 100000, initially 0; help explains disabled limits, older-image counting, exclusion of current/prefetched images, oldest-first pruning, deletion of unliked local images/JSON, and retention of liked images outside Roam.
+Make effect timing visible. Appearance choices apply immediately and persist; LAN access applies immediately to this running session. Network addresses and QR codes describe access to this same application, and unavailable or remote-only controls explain where they can be configured. Local ComfyUI startup settings use an explicit Save for the next launch; show the current process state separately from that draft. Update checks require an explicit action, with ongoing download/install status beside their controls.
+
+### Roam
+
+Roam includes prefetching, history limit, backend, playback, preference scope, mode, and recommendation strength. The active prompt preset is selected on Prompts rather than duplicated in Settings. History-count help explains that 0 disables quantity cleanup, only older images count, current/prefetched images are excluded, pruning starts oldest-first, and liked files remain available outside Roam. Exact limits and defaults belong to the [Roam configuration](../api/roam.md#configuration). The settings form saves explicitly; the compact options and anchor controls apply their scoped changes directly without overwriting unrelated settings drafts.
+
+### Image API
 
 Image API uses one editable workflow selection/name control. Node parameters use a shared, initially collapsed Collapsible, reset to collapsed when switching backends. Opening the heading remains visually light. JSON, import, loading defaults, and validation errors expand it as needed. Preserve all drafts while collapsed; group fields by node, with single fields full-width and multiple fields in two columns. Input bindings and output selection stack on narrow screens.
 
-LLM API independently manages named API-key or ChatGPT connections. Natural-language Image APIs show a selector referencing these configurations and a Manage LLM APIs action; Danbooru hides it. Configuration changes preserve drafts across tabs. ChatGPT uses an explicit browser sign-in, an account/model selector, a first-use plan dialog and a usage link. Only operation progress stays inline; errors and results use floating notifications.
+### LLM API
+
+LLM API independently manages named API-key or ChatGPT connections. Natural-language Image APIs show a selector referencing these configurations and a Manage LLM APIs action; Danbooru hides it. Configuration changes preserve drafts across tabs. ChatGPT uses an explicit browser sign-in, an account/model selector, a first-use plan dialog and a usage link. Show loading, sign-in, connected, and failed states distinctly; successful testing or sign-in does not imply that an unrelated configuration draft was saved. Only operation progress stays inline; errors and results use floating notifications.
+
+### Canvas pools
+
+Canvas pools are reusable named configurations, edited independently of Image APIs. Put existing/new selection and the name first, followed by paired pixel width and height rows with add/remove actions and an explicit Save. Preserve one complete size row, clear units, and stable row identity while editing. On narrow screens keep each width × height pair and its remove action together. References and deletion failures should identify the configuration that must be changed; selecting or editing a pool must not silently rewrite another API's draft.
+
+### History
 
 History combines task records with initially collapsed image cleanup. Keep task pagination at 15 items and preserve mounted forms across tabs. The sidebar has no independent tasks entry. The top-level availability indicator reflects read-only checks of saved backends at configuration load/save rather than periodic probing. Global Settings uses Lucide Settings; Roam options uses Settings2.
 

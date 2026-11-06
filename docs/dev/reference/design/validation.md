@@ -11,6 +11,23 @@
 5. Check normal, loading, empty, error, disabled, selected, and unsaved states. Include keyboard focus, long text, narrow screens, dialog scrolling, and translated labels.
 6. Preserve the user's drafts and data; close your verification instances and tabs afterward.
 
+## Coverage by surface
+
+For a new or changed surface, record its purpose, primary action, save/effect scope, feedback location, and empty/loading/error behavior in the owning design reference. Check intentional differences across its consumers. An implemented detail or a passing test is evidence to review, not a reason to make an accidental inconsistency the design rule.
+
+| Surface | Design contracts to check | Representative browser evidence |
+| --- | --- | --- |
+| Roam, Single and Scroll | Current-image identity, motion continuity, waiting, pause/resume, anchor saves | `roam-playback`, `roam-scroll`, `anchor-suggestions`, `canvas-anchors` |
+| Generate | Applicable fields, retained drafts, batch submission versus completion, result viewing | `generation-sizes`, `natural-prompts`, `layout` |
+| Liked and recovery | Feedback versus selection, thumbnail/full-image roles, export scope, recovery and retained filters | `collection-appearance`, `thumbnails`, `liked-recovery` |
+| Prompts | Read-only library versus editable arrangement, search/IME, unsaved work, preview hierarchy | `natural-prompts`, `anchor-suggestions` |
+| General settings | Immediate preferences, session-only network effects, next-launch startup drafts, update progress | `first-use`, `local-generation`, `updates` |
+| API and canvas configuration | Selection/new drafts, test versus save, credentials, conditional fields, size-row editing | `llm-connections`, `canvas-pools`, `react-forms` |
+| History | Paging, expanded details, current task status and cancellation scope | `smoke` |
+| Guidance and shared overlays | Real action progress, dismissal/resume, target access, focus, locale, safe area | `smoke`, `first-use`, `layout`, `request-id` |
+
+These names refer to `web/tests/browser/*.spec.mjs`; commands and further scenarios remain in [focused checks](../../testing.md). Screenshot review and interaction checks serve different purposes. Verify the states involved in the change rather than treating this table as a claim that every state was exercised in one audit.
+
 ## Layout regression baseline
 
 `web/tests/browser/layout.spec.mjs` checks the real application at desktop, phone, and wide viewports with light/dark themes and English/Chinese labels. It asserts centered navigation, information-button placement, viewport-bounded panels, equal immersive panel widths and surfaces, focus return, reduced-motion behavior, aligned settings controls, and long-path wrapping. A separate scenario injects nonzero safe-area token values and checks the Generate/Liked frame through portrait/landscape rotation and entering/leaving immersion; desktop mobile emulation alone does not provide iOS device insets. It exercises Roam, Liked, and Generate with simulated generation.
@@ -23,7 +40,7 @@ Keep layout ownership in React feature components and their styles. Feature mode
 
 The only frontend entry is `web/index.html → web/src/main.tsx`. Prompts is the `#prompts` view in the same application. Navigation retains drafts and each section's position. HTTP serves APIs, events, and built assets.
 
-Preset switching, deletion, and reload protect unsaved edits. Save is enabled only for valid changes. Vocabulary loading is paged. Help explains PMI, minimum cooccurrence, fixed terms in total counts, and additions/removals in change budgets; preview shows actual stop reasons and sequence information.
+Preset switching, deletion, and reload protect unsaved edits. Save follows the form's documented contract, including explicit retry on unchanged settings where applicable; field validation and pending-state checks remain in effect. Vocabulary loading is paged. Help explains PMI, minimum cooccurrence, fixed terms in total counts, and additions/removals in change budgets; preview shows actual stop reasons and sequence information.
 
 Use [components](components.md) for controls and notifications and [layout](layout.md) for shell, responsive behavior, image panels, settings, keyboard, and touch acceptance. Keep exact token values and component behavior in source, and maintain each shared rule in its owning reference.
 

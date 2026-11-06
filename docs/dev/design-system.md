@@ -6,6 +6,18 @@
 
 Keep browsing and guiding images simple. Use compact controls, a clear hierarchy, and progressive disclosure so images remain the focus across Roam, Generate, Liked, Prompts, and Settings.
 
+## Design principles
+
+| Principle | Design consequence |
+| --- | --- |
+| Give each page a clear job | Roam discovers, Generate creates deliberately, Liked collects, Prompts prepares reusable descriptions, and Settings connects and configures. Put the next useful action ahead of secondary tools and advanced detail. |
+| Keep the image and the user's work stable | Preserve the current image, drafts, selection, focus, and scroll through unrelated updates. An edit changes its intended target; background refresh must not silently choose another target. |
+| Match meaning before appearance | The same action uses the same name, icon, state, and shared component recipe. Intentional differences follow context, such as thumbnail cropping versus full-image containment, or desktop versus touch targets. |
+| Make effects and scope explicit | Distinguish a draft from saved configuration, this session from the next launch, task acceptance from completion, and removing a view item from deleting its file. Users should know what an action changes. |
+| Make feedback proportional | A changed heart or selection can acknowledge a direct action. Keep waiting beside the affected work; use notifications for results or problems that need separate attention. Preserve a clear way to pause, retry, or recover where the product supports it. |
+
+These principles guide new cases; the references below own their concrete rules. Document a deliberate variation with its user-facing reason rather than copying a local exception into another page. Product scope remains in [About Pictide](../guides/about.md#product-scope).
+
 ## Shared foundation
 
 The [shadcn preset](https://ui.shadcn.com/create?preset=b1VlIttI) uses Radix, Luma, Neutral, Inter, and Lucide. Its configuration lives in `web/shadcn-preset.json` and `web/components.json`. Reuse `web/src/components/ui/`; shared tokens and recipes belong in `web/src/styles/theme.css`. Page styles own layout and business presentation.

@@ -4,6 +4,18 @@
 
 [UI design system](../../design-system.md) · [Layout and interaction](layout.md)
 
+## Control semantics
+
+| Control | Meaning |
+| --- | --- |
+| Button | Perform an action, such as generate, save, retry, copy, or delete. |
+| Toggle | Show an on/off state in the working surface, such as image blur or export-selection mode. |
+| ToggleGroup | Choose one of a short set of visible alternatives. |
+| Select / searchable combobox | Choose from a longer or changing collection, such as an API, preset, or vocabulary tag. |
+| Checkbox | Set an independent form option or select an item for a batch operation. |
+
+Keep an action's name and icon consistent wherever it appears. Show selected state for a continuing mode, pending state for an operation, and disabled state for an unavailable action. Provide an accessible name for icon-only controls and a discoverable reason when availability depends on another choice.
+
 ## Buttons
 
 | Variant | Use |
@@ -29,7 +41,17 @@ Unchanged page status, unsaved markers, and current progress stay with their con
 
 ## Floating notifications
 
-All errors, validation failures, save conflicts, and temporary results share `components/notifications.tsx`. React views and feature actions call `shared/notifications.mjs`; state-driven errors use `useErrorNotice()`.
+Errors, validation failures, save conflicts, and explicit save/test results share `components/notifications.tsx`. React views and feature actions call `shared/notifications.mjs`; state-driven errors use `useErrorNotice()`.
+
+Choose feedback by what the user needs to notice:
+
+| Situation | Feedback |
+| --- | --- |
+| Direct state change, such as blur, a like, or export selection | Update the affected control or image. Successful unlike actions do not add a notification. |
+| Work is still pending | Keep progress beside the affected control, result, or image; do not announce completion yet. |
+| Explicit save, connection test, copy, or restore completes | Use the shared result notification when a separate acknowledgement is useful. |
+| Validation, request failure, or save conflict | Explain the failure through the shared error notice, retain the user's work, and expose the relevant retry or field. |
+| A previous task failed | Keep its details in task history; do not replay old errors as new notifications on every refresh. |
 
 Notifications sit at the viewport's upper right, respecting safe areas, theme, and locale. They preserve layout, scroll position, drafts, and input focus. Display at most three and merge repeated notices from the same source. Radix Toast provides close, swipe dismissal, F8 focus, and optional retry through the original business action.
 
@@ -37,9 +59,13 @@ Update-check results (up to date, a new version, or manual-update guidance) use 
 
 Success and informational notices default to 4.5 seconds; errors and warnings to 10 seconds. Hover, keyboard focus, and window blur pause the timer. Mount into the active dialog or immersive container; use the native top layer where supported and fixed positioning otherwise. Notices remain interactive in fullscreen and dialogs, and errors preserve immersive mode.
 
-Loading progress, unsaved markers, empty states, unavailable-image placeholders, and historical task error details remain page content. Roam keyboard and standalone swipe feedback keeps its brief icon/text acknowledgement over the image, including in immersive mode; failed feedback requests use error notifications. Other result messages use the shared notification layer rather than inserting banners or changing button labels.
+Loading progress, unsaved markers, empty states, unavailable-image placeholders, and historical task error details remain page content. Roam keyboard and standalone swipe feedback keeps its brief icon/text acknowledgement over the image, including in immersive mode; failed feedback requests use error notifications. Scroll feedback stays attached to the affected picture. Results that need a notification use the shared layer rather than inserting banners or changing button labels.
 
 ## Forms and editing
+
+Each interaction has a clear save contract. Immediate controls show their applied value and retain or restore the previous value on failure. Explicit-save forms retain a draft until Save succeeds. Switching sections or receiving background data must not overwrite an edited draft. Test results belong to the tested draft; editing it makes the old result insufficient evidence for the new values. Testing a connection does not silently save its configuration.
+
+Disable conflicting and duplicate operations while pending. Save may remain available on an unchanged form when it explicitly retries a paused operation; do not impose a universal dirty-only rule. Hidden mode-specific fields retain their drafts while inactive fields do not block an unrelated submission. See [Settings](layout.md#settings) for the different effect scopes.
 
 General settings, application updates, and the data location use `components/settings-row.tsx`. Its stylesheet owns label/control columns, spacing, mobile stacking, and section separators. Callers provide labels and controls; use `stackOnMobile` for wide controls and `separated` for a new group. Keep state and save operations in the owning feature component.
 
@@ -52,6 +78,10 @@ Use one editable Command / Popover combobox for workflow selection and naming. R
 Workflow node parameters occupy one panel. JSON mode replaces the parameter controls in that panel and shares their draft. Import replaces the same draft and updates valid bindings. Invalid JSON remains editable until corrected. Keep the JSON and import buttons beside the panel heading.
 
 Show only fields needed by the selected random or continuous mode, retaining hidden drafts and shared controls. Fixed-term entry uses shared vocabulary search or complete free text, keyboard selection and Enter, with no extra add button. Exclude existing terms from suggestions, treat positive and negative matching separately, and preserve IME composition. Drag ordering and move controls remain available; saving persists the complete preset.
+
+## Action scope and recovery
+
+Use labels and confirmation text to distinguish withdrawing a like, removing an image from a view, deleting an original file, and deleting a reusable configuration. Keep consequences and affected scope with the action that needs them. Confirm consequential changes or discarded work where required by the feature; do not add confirmation to every reversible control change. Reuse the existing recovery flow and configured retention policy rather than inventing a second protection mechanism in a page.
 
 ## Pagination and lists
 

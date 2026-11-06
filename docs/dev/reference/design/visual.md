@@ -33,3 +33,13 @@ Use [semantic theme tokens](https://ui.shadcn.com/docs/theming); source code own
 | `success` / `warning` | Success and warning states |
 
 Pair status colors with text or icons. Shared state styles distinguish success, waiting, error, disabled, and selected states. Page CSS reuses these tokens.
+
+## Image surfaces and visual meaning
+
+Treat the image as the primary surface. Frames, controls, and surrounding panels establish boundaries without competing with it. Thumbnail crops and full-image containment serve different browsing needs; their rules belong in [layout and interaction](layout.md#generate-and-liked). A displayed frame size must not imply that the stored original was resized.
+
+Clip image content and blur to the frame's shape. Keep borders, selection marks, loading states, and feedback outside the blurred content so they remain legible. Avoid edge gaps, corner bleed, and page-specific border or shadow overrides of shared viewers.
+
+Preference, selection, progress, and destructive actions carry different meanings. A heart identifies a personal preference; a checkbox identifies export selection; an error color identifies a problem. Use icon shape and state as well as color. Feedback accents should come from a shared theme recipe, with light and dark variants, rather than unrelated page-local constants.
+
+Separate decorative motion from playback. Same-image feedback and background refresh do not start an image transition. A running transition preserves its position and progress when data updates. Reduced motion removes decorative effects; deliberate Scroll playback remains an explicit Play/Pause interaction with Single playback available as an alternative.

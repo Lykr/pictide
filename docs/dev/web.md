@@ -30,7 +30,7 @@ Each feature model owns its draft; React views remain mounted across navigation.
 
 `components/generated-results.tsx` and `generated-viewer.tsx` manage the Generate/Liked grids and full-size viewer. The roam controller manages the current image, prefetch, and autoplay; `components/page-controls.tsx` manages ordinary pagination. The [Image API](reference/api/images.md) defines source, count, and feedback semantics.
 
-`controllers/recent-unlikes.mjs` owns the recovery dialog's independent cursor window, cancellation, and server-relative protection clock. `components/recent-unlikes.tsx` renders it from the Liked header. Application feedback and artifact events invalidate an open window; closing releases its request and timer. Undo and Like again use the application's existing feedback path, including preference learning. `components/artifact-image.tsx` shares thumbnail loading and failure states with the main grids.
+`controllers/recent-unlikes.mjs` owns the recovery dialog's independent cursor window, cancellation, and server-relative protection clock. `components/recent-unlikes.tsx` renders it from the Liked header. Application feedback and artifact events invalidate an open window; closing releases its request and timer. Like again uses the application's existing feedback path, including preference learning. `components/artifact-image.tsx` shares thumbnail loading and failure states with the main grids.
 
 Grid images request `image?thumbnail=1` through `ArtifactImage`, with lazy loading and asynchronous decoding. The backend generates and caches bounded WebP previews. Full-size viewers and original/ZIP downloads retain their original-image URLs; frontend display size and blur remain independent of stored image size.
 
