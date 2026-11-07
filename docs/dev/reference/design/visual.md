@@ -41,6 +41,8 @@ Treat the image as the primary surface. Frames, controls, and surrounding panels
 
 Clip image content and blur to the frame's shape. Keep borders, selection marks, loading states, and feedback outside the blurred content so they remain legible. Avoid edge gaps, corner bleed, and page-specific border or shadow overrides of shared viewers.
 
+Roam's light privacy wash belongs inside the mounted Single image surface and is removed with that surface. Scroll blurs each picture without creating a wash on the shared stage; do not create a stage-wide pseudo-element and hide it through descendant selectors. Switching playback styles must not leave a differently tinted horizontal band across pictures or gaps.
+
 Preference, selection, progress, and destructive actions carry different meanings. A heart identifies a personal preference; a checkbox identifies export selection; an error color identifies a problem. Use icon shape and state as well as color. Feedback accents should come from a shared theme recipe, with light and dark variants, rather than unrelated page-local constants.
 
 Liked hearts share the `image-like` recipe across Roam, thumbnails, and large views. Scroll outlines and attached hearts use the same favorite tokens. Image overlays retain a legible surface; export selection remains neutral and error/deletion colors remain destructive.

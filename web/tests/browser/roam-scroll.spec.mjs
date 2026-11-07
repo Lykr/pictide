@@ -94,6 +94,49 @@ test('scroll waits for new images, preserves settings and switches back to singl
   expect(items).toHaveLength(1);
 });
 
+test.describe('PWA privacy surfaces', () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+  for (const theme of ['light', 'dark']) test(`blur stays on individual pictures after mode changes in ${theme}`, async ({ page, context }, testInfo) => {
+    await page.route(/\/static\/ui\/[^/]+\.css$/, async route => {
+      const response = await route.fetch();
+      // Desktop engines cannot select iOS's installed-app display mode directly.
+      const css = (await response.text()).replaceAll('(display-mode:standalone)', '(min-width:0px)').replaceAll('(display-mode:browser)', '(max-width:0px)');
+      await route.fulfill({ response, body: css });
+    });
+    await context.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));
+    await page.request.put('/api/settings/general', { data: { theme, language: 'en' } });
+    const { scroll } = await prepare(page, context, 2);
+    const stage = page.locator('#image-card .image-stage');
+    const noSharedWash = async () => {
+      expect(await stage.evaluate(node => getComputedStyle(node, '::after').content), 'Scroll must not generate a stage-wide privacy wash').toBe('none');
+      await expect(stage.locator('.roam-privacy-wash')).toHaveCount(0);
+      expect(await scroll.locator('img').first().evaluate(node => getComputedStyle(node).filter)).toBe('blur(48px)');
+      expect(await scroll.locator('.roam-scroll-picture').first().evaluate(node => getComputedStyle(node).filter)).toBe('none');
+    };
+    await noSharedWash();
+    await page.locator('#roam-options').click();
+    await page.locator('.roam-options-panel').getByRole('radio', { name: 'Single', exact: true }).click();
+    await page.locator('#roam-options').click();
+    await expect(page.locator('#main-image')).toBeVisible();
+    await expect(stage.locator('.roam-single-image > .roam-privacy-wash')).toBeVisible();
+    const privacy = page.locator('#roam-privacy');
+    await privacy.click();
+    await expect(stage.locator('.roam-privacy-wash')).toHaveCount(0);
+    expect(await page.locator('#main-image').evaluate(node => getComputedStyle(node).filter)).toBe('none');
+    await privacy.click();
+    await page.locator('#roam-options').click();
+    await page.locator('.roam-options-panel').getByRole('radio', { name: 'Scroll', exact: true }).click();
+    await page.locator('#roam-options').click();
+    await expect(scroll).toBeVisible();
+    await noSharedWash();
+    for (const viewport of [{ width: 844, height: 390 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await noSharedWash();
+    }
+    await page.screenshot({ path: testInfo.outputPath('pwa-scroll-blur.png'), animations: 'disabled' });
+  });
+});
+
 test('rapid navigation and feedback during motion target the visible center, including wide images', async ({ page, context }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.route(/\/api\/artifacts\/[^/]+\/image$/, async route => route.fulfill({

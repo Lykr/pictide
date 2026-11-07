@@ -9,7 +9,6 @@
 .roam-scroll-liked svg { width: 15px; height: 15px; fill: currentColor; }
 .roam-scroll-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted-foreground); }
 .roam-scroll-loading svg { width: 20px; height: 20px; animation: roam-spin 1s linear infinite; }
-/* Blur only image content; feedback stays attached to the identified picture. */
-.feed-page.privacy-blurred .roam-active .image-stage:has(.roam-scroll)::after { display: none; }
+/* Scroll owns only per-picture blur; Single's wash is not mounted in this view. */
 .feed-page.privacy-blurred .roam-scroll-picture { background: var(--card); }
 @media (prefers-reduced-motion: reduce) { .roam-scroll-loading svg { animation: none; } }
