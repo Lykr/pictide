@@ -34,7 +34,7 @@
 .feed-page .roam-active .image-stage { overflow: hidden; isolation: isolate; }
 .roam-single-image { position: absolute; inset: 0; }
 .roam-privacy-wash { position: absolute; inset: 0; background: color-mix(in oklch, var(--card) 40%, transparent); pointer-events: none; }
-.feed-page.privacy-blurred .roam-active .image-stage img { filter: blur(48px); }
+.feed-page.privacy-blurred .roam-active .roam-single-image img { filter: blur(48px); }
 .feed-page .view-heading { display: flex; align-items: center; gap: 8px; }
 .feed-page .roam-loading { display: grid; place-items: center; color: var(--muted-foreground); }
 .feed-page .roam-loading svg { width: 16px; height: 16px; animation: roam-spin 1s linear infinite; }

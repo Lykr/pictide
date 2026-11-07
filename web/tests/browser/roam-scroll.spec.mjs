@@ -110,7 +110,9 @@ test.describe('PWA privacy surfaces', () => {
     const noSharedWash = async () => {
       expect(await stage.evaluate(node => getComputedStyle(node, '::after').content), 'Scroll must not generate a stage-wide privacy wash').toBe('none');
       await expect(stage.locator('.roam-privacy-wash')).toHaveCount(0);
-      expect(await scroll.locator('img').first().evaluate(node => getComputedStyle(node).filter)).toBe('blur(48px)');
+      await expect(scroll.locator('img').first()).toBeHidden();
+      await expect(scroll.locator('canvas').first()).toBeVisible();
+      expect(await scroll.locator('canvas').first().evaluate(node => getComputedStyle(node).filter)).toBe('none');
       expect(await scroll.locator('.roam-scroll-picture').first().evaluate(node => getComputedStyle(node).filter)).toBe('none');
     };
     await noSharedWash();
@@ -135,6 +137,53 @@ test.describe('PWA privacy surfaces', () => {
     }
     await page.screenshot({ path: testInfo.outputPath('pwa-scroll-blur.png'), animations: 'disabled' });
   });
+});
+
+test('scroll privacy covers decoded pictures without seams through reveal, resizing and playback', async ({ page, context }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route(/\/api\/artifacts\/[^/]+\/image$/, route => route.fulfill({
+    contentType: 'image/svg+xml',
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="3072"><defs><pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse"><path fill="#d04c8f" d="M0 0h64v64H0z"/><path fill="#40a3b5" d="M0 0h32v32H0zm32 32h32v32H32z"/></pattern></defs><path fill="url(#grid)" d="M0 0h2048v3072H0z"/></svg>',
+  }));
+  const { scroll } = await prepare(page, context, 3);
+  const covered = async () => {
+    await expect.poll(() => scroll.locator('.roam-scroll-picture').evaluateAll(pictures => pictures.every(picture => {
+      const canvas = picture.querySelector('canvas'), image = picture.querySelector('img');
+      if (!canvas || canvas.width > 192 || canvas.height !== 192 || !image.hidden) return false;
+      const frame = picture.getBoundingClientRect(), preview = canvas.getBoundingClientRect();
+      if (Math.abs(preview.height - frame.height) > 1 || Math.abs(preview.width - frame.width) > 1) return false;
+      const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+      // A high-frequency two-color pattern must become a smooth, opaque mix
+      // throughout the image, including both sides of the reported lower band.
+      for (let y = 0; y < canvas.height; y++) {
+        const i = (y * canvas.width + Math.floor(canvas.width / 2)) * 4;
+        if (Math.abs(pixels[i] - 136) > 10 || Math.abs(pixels[i + 1] - 120) > 10 || Math.abs(pixels[i + 2] - 162) > 10 || pixels[i + 3] !== 255) return false;
+      }
+      return true;
+    }))).toBe(true);
+  };
+  await covered();
+  const original = await scroll.locator('img').first().elementHandle();
+  await page.locator('#roam-privacy').click();
+  await expect(scroll.locator('canvas')).toHaveCount(0);
+  await expect(scroll.locator('img').first()).toBeVisible();
+  expect(await original.evaluate(image => image.isConnected && image.complete && image.naturalHeight === 3072)).toBe(true);
+  await page.locator('#roam-privacy').click();
+  await covered();
+  for (const viewport of [{ width: 844, height: 390 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await covered();
+  }
+  await page.locator('#roam-playback').click();
+  const start = await scroll.getAttribute('data-offset');
+  await expect.poll(() => scroll.getAttribute('data-offset')).not.toBe(start);
+  await page.locator('#like').click();
+  await expect(page.locator('#roam-playback')).toHaveAttribute('aria-pressed', 'false');
+  await covered();
+  await page.locator('#roam-immersive').click();
+  await expect(page.locator('#image-card')).toHaveClass(/immersive/);
+  await covered();
+  await page.screenshot({ path: testInfo.outputPath('scroll-raster-privacy.png'), animations: 'disabled' });
 });
 
 test('rapid navigation and feedback during motion target the visible center, including wide images', async ({ page, context }, testInfo) => {

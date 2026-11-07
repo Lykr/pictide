@@ -41,7 +41,7 @@ Treat the image as the primary surface. Frames, controls, and surrounding panels
 
 Clip image content and blur to the frame's shape. Keep borders, selection marks, loading states, and feedback outside the blurred content so they remain legible. Avoid edge gaps, corner bleed, and page-specific border or shadow overrides of shared viewers.
 
-Roam's light privacy wash belongs inside the mounted Single image surface and is removed with that surface. Scroll blurs each picture without creating a wash on the shared stage; do not create a stage-wide pseudo-element and hide it through descendant selectors. Switching playback styles must not leave a differently tinted horizontal band across pictures or gaps.
+Roam's light privacy wash belongs inside the mounted Single image surface and is removed with that surface. Scroll displays a small, pre-blurred bitmap for each picture instead of applying live CSS filters to the moving strip. Hide the original until blur is turned off, keep the entire picture covered through resizing, and keep selection marks sharp. These bitmaps live only in memory; image files remain unchanged. Scroll has no wash on the shared stage. Switching playback styles must not leave a differently tinted horizontal band across pictures or gaps.
 
 Preference, selection, progress, and destructive actions carry different meanings. A heart identifies a personal preference; a checkbox identifies export selection; an error color identifies a problem. Use icon shape and state as well as color. Feedback accents should come from a shared theme recipe, with light and dark variants, rather than unrelated page-local constants.
 

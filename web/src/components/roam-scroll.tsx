@@ -3,14 +3,15 @@ import { Heart, LoaderCircle } from 'lucide-react';
 import { t } from '../i18n/index.mjs';
 import { useApplication, useUiFact } from '../shared/application-context';
 import { createRoamScroll } from '../controllers/roam-scroll.mjs';
+import { ScrollPrivacyImage } from './scroll-privacy';
 import './roam-scroll.css';
 
 type Picture = { id: string; width?: number; height?: number; feedback?: number | null };
 type Loaded = { width: number; height: number };
 
 /** React owns the pictures; refs only measure and animate the strip between model updates. */
-export function RoamScroll({ artifacts, currentId, active, speed, busy }: {
-  artifacts: Picture[]; currentId: string; active: boolean; speed: string; busy: boolean;
+export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred }: {
+  artifacts: Picture[]; currentId: string; active: boolean; speed: string; busy: boolean; blurred: boolean;
 }) {
   const app = useApplication();
   const playback = useUiFact('playback', { playing: false });
@@ -123,9 +124,8 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy }: {
         data-selected={item.id === currentId && !playback.playing} data-liked={item.feedback === 1}
         style={{ width: item.displayWidth, height }} aria-label={t('查看这张图片')} aria-current={item.id === currentId ? 'true' : undefined}
         onClick={() => { app.pauseScroll(); motion.select(item.id); paint(); }}>
-        <img alt={t('生成的图片')} draggable={false} src={`/api/artifacts/${encodeURIComponent(item.id)}/image`} decoding="async"
-          onLoad={event => {
-            const image = event.currentTarget;
+        <ScrollPrivacyImage src={`/api/artifacts/${encodeURIComponent(item.id)}/image`} height={height} blurred={blurred}
+          onLoad={image => {
             loaded.current.set(item.id, { width: image.naturalWidth, height: image.naturalHeight });
             setLoadVersion(version => version + 1);
           }} onError={() => app.scrollImageFailed(item.id)} />
