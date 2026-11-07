@@ -14,7 +14,7 @@ try:
 except ImportError:
     np = None
 
-from backend.recommendation.contracts import ResetState, FeedbackUpdate, PolicyRecord, ScoreCandidate, ScoreRequest, ScoreTerm
+from backend.recommendation.contracts import ResetState, FeedbackUpdate, PolicyRecord, PolicyStamp, ScoreCandidate, ScoreRequest, ScoreTerm
 from backend.recommendation.encoder import MiniLMEncoder
 from backend.recommendation.service import RecommendationService
 from backend.recommendation.features import FeatureEncoder, content_key, dense_features, feature_version
@@ -46,6 +46,10 @@ class MemoryStore:
 
     def load_policy(self, user, version):
         return self.states.get((user, version))
+
+    def policy_stamp(self, user, version):
+        record = self.states.get((user, version))
+        return PolicyStamp(self.get_reset_state(user), record.revision if record else None)
 
     def load_evidence(self, user, version):
         return tuple(item for (u, v, _), item in self.evidence.items() if (u, v) == (user, version))

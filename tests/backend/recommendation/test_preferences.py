@@ -78,22 +78,31 @@ class PreferenceInspectionTests(unittest.TestCase):
 
     def test_snapshot_retries_after_interleaved_reset(self):
         self.learn()
-        values = iter([ResetState(), ResetState(), ResetState(1, 1, "now"), ResetState(1, 1, "now"), ResetState(1, 1, "now")])
-        with patch.object(self.store, "get_reset_state", side_effect=lambda user: next(values)):
+        reset = ResetState()
+        original = self.store.load_evidence
+        def read(user, version):
+            nonlocal reset
+            self.store.states.clear()
+            self.store.evidence.clear()
+            reset = ResetState(1, 1, "now")
+            return original(user, version)
+        with patch.object(self.store, "get_reset_state", side_effect=lambda user: reset), \
+             patch.object(self.store, "load_evidence", side_effect=read):
             view = self.service.preferences("local")
         self.assertTrue(view.available)
         self.assertEqual(view.reset_revision, 1)
+        self.assertEqual(view.terms, ())
 
     def test_interleaved_reset_and_new_policy_with_same_revision_retries(self):
         self.learn(("old forest",))
         reset = ResetState()
-        original = self.store.load_policy
+        original = self.store.load_evidence
         reads = 0
         other = RecommendationService(self.store, self.encoder)
         def read(user, version):
             nonlocal reads, reset
             reads += 1
-            if reads == 2:
+            if reads == 1:
                 self.store.states.clear()
                 self.store.evidence.clear()
                 reset = ResetState(1, 1, "now")
@@ -101,7 +110,7 @@ class PreferenceInspectionTests(unittest.TestCase):
                 other.apply_feedback(update)
             return original(user, version)
         with patch.object(self.store, "get_reset_state", side_effect=lambda user: reset), \
-             patch.object(self.store, "load_policy", side_effect=read):
+             patch.object(self.store, "load_evidence", side_effect=read):
             view = self.service.preferences("local")
         self.assertTrue(view.available)
         self.assertEqual(view.state_revision, 1)

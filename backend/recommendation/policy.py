@@ -5,7 +5,8 @@ from .features import SEMANTIC_DIMENSION
 POLICY_VERSION = "bayes-linear-v2:signed:prior=1:noise=1:exploration=1"
 
 
-def unpack(record, extra_keys=()):
+def decode(record, extra_keys=()):
+    """Restore mutable A/b buffers; callers validate before using uncached state."""
     import numpy as np
     old_keys = record.term_keys if record else ()
     if len(set(old_keys)) != len(old_keys):
@@ -22,6 +23,11 @@ def unpack(record, extra_keys=()):
         reward[:old_dim] = np.frombuffer(record.reward, dtype="<f8")
         if record.revision < 0 or record.evidence_count < 0:
             raise ValueError("Invalid policy counters")
+    return keys, precision, reward
+
+
+def unpack(record, extra_keys=()):
+    keys, precision, reward = decode(record, extra_keys)
     validate(precision, reward)
     return keys, precision, reward
 
@@ -64,18 +70,29 @@ def mean(precision, reward):
     return _posterior_mean(validate(precision, reward), reward)
 
 
-def scoring_parameters(precision, reward, seed=None):
-    import numpy as np
+def posterior(precision, reward):
+    """Validate once and retain both deterministic products for reuse."""
     factor = validate(precision, reward)
-    center = _posterior_mean(factor, reward)
-    if seed is None:
-        return center, center
-    noise = np.random.default_rng(seed).standard_normal(len(reward))
-    # L^-T z has covariance (L L^T)^-1, retaining all feature correlations.
-    parameters = center + _triangular_solve(factor.T, noise, False)
+    return factor, _posterior_mean(factor, reward)
+
+
+def draw(factor, center, seed, extra_count=0):
+    """Sample a cached posterior, extending unseen axes with independent priors."""
+    import numpy as np
+    noise = np.random.default_rng(seed).standard_normal(len(center) + extra_count)
+    learned = noise[:len(center)] if factor is None else _triangular_solve(factor.T, noise[:len(center)], False)
+    parameters = np.concatenate((center + learned, noise[len(center):]))
     if not np.isfinite(parameters).all():
         raise ValueError("Non-finite sampled parameters")
-    return center, parameters
+    return parameters
+
+
+def scoring_parameters(precision, reward, seed=None):
+    factor, center = posterior(precision, reward)
+    if seed is None:
+        return center, center
+    # L^-T z has covariance (L L^T)^-1, retaining all feature correlations.
+    return center, draw(factor, center, seed)
 
 
 def sample(precision, reward, seed):
@@ -84,5 +101,10 @@ def sample(precision, reward, seed):
 
 def pack(keys, precision, reward, revision, count):
     validate(precision, reward)
+    return encode(keys, precision, reward, revision, count)
+
+
+def encode(keys, precision, reward, revision, count):
+    """Serialize A/b after validation; factors and means stay in memory only."""
     return PolicyRecord(revision, tuple(keys), precision.astype("<f8").tobytes(),
                         reward.astype("<f8").tobytes(), count)

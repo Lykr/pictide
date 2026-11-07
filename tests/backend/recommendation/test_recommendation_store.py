@@ -5,10 +5,11 @@ from dataclasses import replace
 import json
 from pathlib import Path
 import struct
+import sqlite3
 import tempfile
 import unittest
 from unittest.mock import patch
-from backend.recommendation.contracts import FeedbackUpdate, PolicyRecord, ScoreCandidate, ScoreTerm
+from backend.recommendation.contracts import FeedbackUpdate, PolicyRecord, PolicyStamp, ResetState, ScoreCandidate, ScoreTerm
 from backend.store.recommendation import SQLiteRecommendationStore
 from backend.store.sqlite import Repository
 
@@ -21,6 +22,33 @@ class RecommendationStoreTests(unittest.TestCase):
         self.repo.save_backend({'id':'local','kind':'comfyui','bindings':{},'workflow':{}})
         self.candidate=ScoreCandidate('combo','forest, standing','blurry',
             (ScoreTerm('forest'),ScoreTerm('standing'),ScoreTerm('blurry','negative')))
+    def test_policy_stamp_tracks_missing_learned_and_reset_states_without_reading_buffers(self):
+        self.assertEqual(self.store.policy_stamp('local', 'v1'), PolicyStamp(ResetState(), None))
+        iid = self.image()
+        self.repo.rate(iid, 1)
+        update = self.pending()[0]
+        self.assertTrue(self.store.commit_feedback(update, self.state(1), 0))
+        original = self.repo.connection
+        @contextmanager
+        def metadata_only():
+            with original() as db:
+                def authorize(action, table, column, *_):
+                    if action == sqlite3.SQLITE_READ and table == 'recommendation_policy' and column in ('precision', 'reward', 'term_keys'):
+                        return sqlite3.SQLITE_DENY
+                    return sqlite3.SQLITE_OK
+                db.set_authorizer(authorize)
+                yield db
+        with patch.object(self.repo, 'connection', side_effect=metadata_only):
+            self.assertEqual(self.store.policy_stamp('local', 'v1'), PolicyStamp(ResetState(), 1))
+            self.assertEqual(self.store.policy_stamp('other', 'v1'), PolicyStamp(ResetState(), None))
+            self.assertEqual(self.store.policy_stamp('local', 'v2'), PolicyStamp(ResetState(), None))
+        self.store.reset_user('local', 'reset', 0)
+        reset = self.store.get_reset_state('local')
+        self.assertEqual(self.store.policy_stamp('local', 'v1'), PolicyStamp(reset, None))
+        self.assertEqual(self.store.policy_stamp('local', 'v2'), PolicyStamp(reset, None))
+        self.repo.rate(iid, -1)
+        self.assertTrue(self.store.commit_feedback(self.pending()[0], self.state(1), 0))
+        self.assertEqual(self.store.policy_stamp('local', 'v1'), PolicyStamp(reset, 1))
     def image(self,roam=True,snapshot=None):
         import uuid
         job=self.repo.create_job({'request_id':str(uuid.uuid4()),'backend_id':'local',

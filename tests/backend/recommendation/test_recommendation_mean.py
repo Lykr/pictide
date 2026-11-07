@@ -51,12 +51,14 @@ class MeanScoringSmokeTests(unittest.TestCase):
         center = policy.mean(precision, reward)
         expected = dense_features(prepared, keys) @ center
         self.assertEqual(center[SEMANTIC_DIMENSION + keys.index(content_key("new 0", "positive"))], 0.)
-        with patch.object(policy, "mean", wraps=policy.mean) as solve, \
+        with patch.object(np.linalg, "cholesky", wraps=np.linalg.cholesky) as solve, \
+             patch.object(self.store, "load_policy", wraps=self.store.load_policy) as reads, \
              patch.object(self.service.features, "prepare", wraps=self.service.features.prepare) as prepare, \
              patch.object(self.store, "observe_score_range", wraps=self.store.observe_score_range) as ranges:
             first = self.score(candidates)
             second = self.score(candidates)
-        self.assertEqual(solve.call_count, 1)
+        self.assertEqual(solve.call_count, 0, "Learning already prepared the shared posterior")
+        self.assertEqual(reads.call_count, 0, "A cache hit must not read the state buffers")
         self.assertEqual([len(call.args[0]) for call in prepare.call_args_list], [128, 128, 1] * 2)
         self.assertEqual(ranges.call_count, 2, "Observe only once per complete request")
         np.testing.assert_allclose([item.score for item in first.scores], expected, atol=1e-12)
@@ -65,21 +67,21 @@ class MeanScoringSmokeTests(unittest.TestCase):
     def test_learning_reset_and_encoder_version_refresh_cached_mean(self):
         self.learn()
         image = candidate()
-        with patch.object(policy, "mean", wraps=policy.mean) as solve:
+        with patch.object(np.linalg, "cholesky", wraps=np.linalg.cholesky) as solve:
             positive = self.score([image]).scores[0].score
             self.learn(-1, revision=2)
             negative = self.score([image]).scores[0].score
             self.assertAlmostEqual(positive, -negative)
-            self.assertEqual(solve.call_count, 2)
+            self.assertEqual(solve.call_count, 1)
             self.service.reset_preferences("local", "reset", 0)
-            self.assertIsNone(self.service._mean_cache)
+            self.assertIsNone(self.service._posterior_cache)
             self.assertEqual(self.score([image]).scores[0].score, 0.)
             self.learn()
             self.score([image])
-            self.assertEqual(solve.call_count, 3)
+            self.assertEqual(solve.call_count, 2)
             self.encoder.version = "another-encoder"
             self.assertEqual(self.score([image]).scores[0].score, 0.)
-            self.assertEqual(solve.call_count, 3, "Cold-start mean needs no matrix solve")
+            self.assertEqual(solve.call_count, 2, "Cold-start mean needs no matrix solve")
 
     def test_external_reset_with_reused_state_revision_cannot_reuse_mean(self):
         self.learn()
@@ -88,7 +90,7 @@ class MeanScoringSmokeTests(unittest.TestCase):
         other = RecommendationService(self.store, self.encoder)
         other.apply_feedback(FeedbackUpdate("local", "new", 1, -1,
             candidate(positive=("forest", "forest", "standing"), negative=("blurry",)), self.version))
-        with patch.object(policy, "mean", wraps=policy.mean) as solve:
+        with patch.object(np.linalg, "cholesky", wraps=np.linalg.cholesky) as solve:
             second = self.score([candidate()]).scores[0].score
         self.assertEqual(solve.call_count, 1)
         self.assertAlmostEqual(first, -second)

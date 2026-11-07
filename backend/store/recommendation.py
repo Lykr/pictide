@@ -5,7 +5,7 @@ import json
 import math
 import struct
 
-from ..recommendation.contracts import (FeedbackUpdate, PolicyRecord, ResetResult, ResetState,
+from ..recommendation.contracts import (FeedbackUpdate, PolicyRecord, PolicyStamp, ResetResult, ResetState,
                                         ScoreCandidate, ScoreTerm)
 from ..domain import ConflictError
 
@@ -186,6 +186,18 @@ class SQLiteRecommendationStore:
         with self.repository.connection() as db:
             db.executemany("INSERT INTO recommendation_vectors VALUES (?,?,?) ON CONFLICT(encoder_version,text) "
                            "DO UPDATE SET vector=excluded.vector", rows)
+
+    def policy_stamp(self, user_id, feature_version):
+        # One statement gives both versions from the same SQLite read snapshot.
+        with self.repository.connection() as db:
+            row = db.execute(
+                "SELECT p.revision AS policy_revision, coalesce(r.revision,0) AS reset_revision, "
+                "coalesce(r.event_floor,0) AS event_floor, r.reset_at "
+                "FROM (SELECT 1) LEFT JOIN recommendation_policy p ON p.user_id=? AND p.feature_version=? "
+                "LEFT JOIN recommendation_resets r ON r.user_id=?",
+                (user_id, feature_version, user_id)).fetchone()
+        return PolicyStamp(ResetState(row["reset_revision"], row["event_floor"], row["reset_at"]),
+                           row["policy_revision"])
 
     def load_policy(self, user_id, feature_version):
         with self.repository.connection() as db:
