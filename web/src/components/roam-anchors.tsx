@@ -6,7 +6,7 @@ import { useErrorNotice } from "./notifications";
 import { getUiState, publishUiState, subscribeUiState } from "../shared/ui-state.mjs";
 import { uiTarget } from "../shared/ui-targets";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactElement, type ReactNode } from "react";
-import { Anchor, Ban, LoaderCircle, LockKeyhole, Plus, Trash2, X } from "lucide-react";
+import { Anchor, LoaderCircle, LockKeyhole, Plus, Trash2, X } from "lucide-react";
 import { t, tr } from "../i18n/index.mjs";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -151,8 +151,10 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
         const key = anchorKey(text);
         const isExcluded = excluded.has(key), fromPreset = fixed.has(key), selected = pinned.has(key);
         const label = isExcluded ? t("已排除，右键撤销") : fromPreset ? t("来自预设") : selected ? t("取消锚点") : t("设为锚点");
-        return <Button key={key} variant={selected || isExcluded ? "secondary" : "outline"} size="sm" className="roam-anchor-term"
+        return <Button key={key} variant="outline" size="sm" className="roam-anchor-term"
+          data-pinned={selected} data-excluded={isExcluded} data-pending={pending === text}
           aria-label={text + " · " + label} aria-pressed={selected} data-tooltip={label} disabled={disabled} aria-disabled={fromPreset && !isExcluded || undefined}
+          onKeyDown={event => { if (event.key === " " || event.key === "Enter") event.stopPropagation(); }}
           onClick={() => { if (!fromPreset || isExcluded) void save(text); }}
           onPointerDown={event => { rightButtonTerm.current = event.pointerType === "mouse" && event.button === 2 ? key : null; }}
           onContextMenu={event => {
@@ -161,8 +163,9 @@ export function RoamAnchors({ children }: { children: (trigger: ReactNode, panel
             event.preventDefault();
             void save(text, true);
           }}>
-          {pending === text ? <LoaderCircle className="size-3 animate-spin" /> : isExcluded ? <Ban className="size-3" aria-hidden="true" /> : fromPreset ? <LockKeyhole className="size-3" /> : selected ? <Anchor className="size-3" /> : null}
+          {fromPreset && <LockKeyhole className="size-3" aria-hidden="true" />}
           <span className={isExcluded ? "line-through" : undefined}>{text}</span>
+          {pending === text && <span className="roam-anchor-pending" aria-hidden="true"><LoaderCircle className="size-3 animate-spin" /></span>}
         </Button>;
       })}
     </div>

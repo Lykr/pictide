@@ -73,6 +73,8 @@ Packaging changes additionally run `python -m unittest tests.scripts.test_portab
 
 Ordinary branch pushes do not trigger Actions. This update applies to subsequent version tags; it does not rebuild v0.5.0.
 
+Anchor layout changes additionally run `web/tests/browser/anchor-layout.spec.mjs`. It compares every chip’s order, position, width, height and scroll position before/during/after pinning and exclusions, including keyboard activation, normal/immersive views and phone layouts. Canvas controls retain a single row and touch targets; shared search and canvas behavior remain covered by `anchor-suggestions` and `canvas-anchors`.
+
 The group lists live in `scripts/check.py` and `web/scripts/test.mjs`. Keep them focused on user-visible outcomes and durable data behavior. Run individual existing tests when a change needs more specific coverage. Playwright setup and browser options follow the [official documentation](https://playwright.dev/docs/browsers).
 
 Roam-from-Liked changes use `tests.backend.roam.test_roam_start`, the manual-origin case in `test_roam_modes`, and `web/tests/browser/liked-roam-start.spec.mjs`. Verify Generate and hidden Roam origins, original-file/source/feedback preservation, increasing list revisions, old prefetch invalidation, prompt-preparation cancellation, and Flow/Anchor reference prompts. Browser checks cover single/scroll playback, desktop/phone/PWA layouts, reload, English labels, pending dismissal and failed-start retry. These fixtures use simulated providers and temporary data.

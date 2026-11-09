@@ -15,15 +15,18 @@ test("complete preset and anchor entries retain their source", () => {
 });
 
 
-test("preset terms stay first and anchors follow selection order across images", () => {
+test("preset terms stay first and image tags keep their order while pinning", () => {
   const fixed = ["masterpiece", "illustration"];
   const positive = "garden, sunlight, illustration, masterpiece";
   assert.deepEqual(anchorTerms(positive, ["sunlight", "garden"], fixed),
-    ["masterpiece", "illustration", "sunlight", "garden"]);
+    ["masterpiece", "illustration", "garden", "sunlight"]);
   assert.deepEqual(anchorTerms(positive, ["garden"], fixed),
     ["masterpiece", "illustration", "garden", "sunlight"]);
   assert.deepEqual(anchorTerms(positive, ["garden", "sunlight"], fixed),
     ["masterpiece", "illustration", "garden", "sunlight"]);
   assert.deepEqual(anchorTerms("mountains", ["garden", "masterpiece", "sunlight"], fixed),
-    ["masterpiece", "illustration", "garden", "sunlight", "mountains"]);
+    ["masterpiece", "illustration", "mountains", "garden", "sunlight"]);
+  assert.deepEqual(anchorTerms(positive, [], fixed, ['sunlight']),
+    ["masterpiece", "illustration", "garden", "sunlight"]);
+  assert.deepEqual(anchorTerms('Garden, blue_sky', ['garden'], []), ['Garden', 'blue sky']);
 });

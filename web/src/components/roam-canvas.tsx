@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { LoaderCircle, LockKeyhole, Scan, X } from 'lucide-react';
+import { LoaderCircle, Scan, X } from 'lucide-react';
 import { useApplication, useModel, useUiFact } from '../shared/application-context';
 import { runUiCommand } from '../shared/ui-state.mjs';
 import { backendCapabilities } from '../controllers/backend-controls.mjs';
@@ -50,9 +50,6 @@ export function RoamCanvas() {
   return <section ref={root} className="roam-anchor-canvas" aria-label={t('画幅')}>
     <div className="roam-canvas-heading">
       <Label htmlFor="roam-canvas-size">{t('画幅')}</Label>
-      {pinned && <span className="roam-canvas-state"><LockKeyhole className="size-3" aria-hidden="true" />{t('已固定')}</span>}
-      {busy && <LoaderCircle className="size-3 animate-spin" aria-label={t('正在保存…')} />}
-      {pinned && <Button variant="ghost" size="icon-sm" className="ml-auto" aria-label={t('清除画幅固定')} data-tooltip={t('恢复漫游画幅设置')} disabled={busy} onClick={() => void save('')}><X aria-hidden="true" /></Button>}
     </div>
     <div className="roam-canvas-controls">
       <div className="roam-canvas-select">
@@ -64,7 +61,8 @@ export function RoamCanvas() {
           </SelectContent>
         </Select>
       </div>
-      <Button variant="outline" size="sm" disabled={!options || busy || !currentUsable} onClick={() => void save(current)} data-tooltip={current ? tr`固定当前图片的画幅：${current.replace('x', '×')}` : t('图片载入后可固定当前画幅')}><Scan aria-hidden="true" />{t('固定当前')}</Button>
+      <Button variant="ghost" size="icon-sm" aria-label={t('固定当前')} disabled={!options || busy || !currentUsable} onClick={() => void save(current)} data-tooltip={current ? tr`固定当前图片的画幅：${current.replace('x', '×')}` : t('图片载入后可固定当前画幅')}>{busy ? <LoaderCircle className="size-4 animate-spin" aria-label={t('正在保存…')} /> : <Scan aria-hidden="true" />}</Button>
+      <Button variant="ghost" size="icon-sm" aria-label={t('清除画幅固定')} data-tooltip={t('恢复漫游画幅设置')} disabled={!pinned || busy} onClick={() => void save('')}><X aria-hidden="true" /></Button>
     </div>
     {(!supported || value && !usable(value)) && <p className="hint roam-canvas-note">{t(supported ? '当前生图 API 不支持所选像素尺寸。' : '当前生图 API 不支持像素画幅。')}</p>}
   </section>;

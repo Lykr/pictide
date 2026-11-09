@@ -28,6 +28,8 @@ Preference scope offers All, which explores the full vocabulary, or Liked, which
 
 To keep an element from the current image, open Anchors at the bottom right, select a prompt term, or enter your own description. It carries into later roaming prompts while other elements can change. The input suggests matching tags from the selected vocabulary; click one, or use ↑ / ↓ and Enter to select it. Direct Enter still adds your full text, including custom descriptions. How closely an image follows it depends on the model.
 
+Pinned tags use a filled style and stay in their original positions, so you can select several without chasing moving tags.
+
 Right-click a tag to exclude that exact term from the positive prompts in Drift and Flow, even if it was pinned or fixed by the preset. Excluded tags stay in the same list with a strike-through. Right-click again to undo. The image model determines what appears in the image.
 
 After editing, move to the next image to continue in the new direction. Pins and exclusions are remembered between visits. Locked terms come from your [preset](prompts.md#libraries-and-presets) and can be edited on Prompts. Anchor mode keeps the entire prompt; switch modes to edit individual anchors.

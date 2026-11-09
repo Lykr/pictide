@@ -103,7 +103,7 @@ for (const scenario of scenarios) test(`shared layout: ${scenario.name}`, async 
   const viewer = page.locator('.generated-viewer');
   await expect(viewer).toBeVisible();
   await toolbarLayout(viewer);
-  await viewer.locator('.generated-viewer-heading button').first().click();
+  await viewer.getByRole('button', { name: /^(Immersive mode|沉浸模式)$/ }).click();
   await expect(viewer).toHaveClass(/immersive/);
   await viewer.locator('[data-toolbar-slot=information] button').click();
   expect(await panelLayout(page, viewer, viewer.locator('.image-info-popover'))).toBe(infoWidth);
@@ -113,7 +113,7 @@ for (const scenario of scenarios) test(`shared layout: ${scenario.name}`, async 
   await page.keyboard.press('Escape');
   await expect(viewer).not.toHaveClass(/immersive/);
   await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
-  await expect(viewer.locator('.generated-viewer-heading button').first()).toBeFocused();
+  await expect(viewer.getByRole('button', { name: /^(Immersive mode|沉浸模式)$/ })).toBeFocused();
   await viewer.locator('.generated-viewer-heading button').last().click();
   await expect(viewer).toBeHidden();
   await page.locator('[data-view=generate]').click();

@@ -11,11 +11,11 @@ export function anchorTerms(positive, pins, fixed, excluded = []) {
   const current = [];
   for (let index = 0; index < parts.length;) {
     const group = groups.find(item => item.parts.every((part, offset) => keys[index + offset] === part));
-    current.push(group ? group.text : parts[index]);
+    current.push(group && group.parts.length > 1 ? group.text : parts[index]);
     index += group ? group.parts.length : 1;
   }
   const labels = new Map();
-  for (const text of [...known, ...current]) {
+  for (const text of [...fixed.map(normalize), ...current, ...pins.map(normalize), ...excluded.map(normalize)]) {
     const key = anchorKey(text);
     if (!labels.has(key)) labels.set(key, text);
   }
