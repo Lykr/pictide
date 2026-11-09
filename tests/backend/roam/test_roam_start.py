@@ -69,6 +69,9 @@ class RoamStartTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_manual_original_is_referenced_and_survives_reopening_the_database(self):
         selected, path = self.image()
+        self.application.roam.save_options(anchors={'pinned_positive': ['old subject'],
+            'excluded_positive': ['old exclusion'], 'pinned_canvas': {'width': 768, 'height': 1024},
+            'preset_base_positive': ['preset style']})
         before = self.application.roam.get()
         with self.repo.connection() as db:
             feedback = [tuple(row) for row in db.execute('SELECT * FROM feedback')]
@@ -78,6 +81,9 @@ class RoamStartTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.repo.roam_view(), view)
         after = self.application.roam.get()
         self.assertNotEqual(before.pop('epoch'), after.pop('epoch'))
+        for key, value in {'pinned_positive': [], 'excluded_positive': [], 'pinned_canvas': None}.items():
+            self.assertEqual(after[key], value)
+            before[key] = value
         self.assertEqual(before, after)
         self.assertEqual(self.repo.artifacts(source='roam')[0]['source'], 'generate')
         self.assertEqual(self.repo.artifacts(source='generate')[0]['id'], selected['id'])
@@ -143,6 +149,9 @@ class RoamStartTests(unittest.IsolatedAsyncioTestCase):
         selected, _ = self.image(roam=True)
         not_liked, _ = self.image(liked=False)
         self.repo.roam_view({'artifact_id': selected['id'], 'viewed_at': 1})
+        self.application.roam.save_options(anchors={'pinned_positive': ['keep this'],
+            'excluded_positive': ['keep excluded'], 'pinned_canvas': {'width': 768, 'height': 1024},
+            'preset_base_positive': []})
         before = self.application.roam.get(), self.repo.roam_view(), self.repo.counts()
         for payload in ({}, {'artifact_id': None}, {'artifact_id': ''}, {'artifact_id': 'x' * 101},
                         {'artifact_id': 'missing'}, {'artifact_id': not_liked['id']},

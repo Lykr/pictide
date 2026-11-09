@@ -12,7 +12,7 @@ Click an image to view it in full; see [Image browsing](images.md) for more. You
 
 Liked images stay in your collection, even when you [clear generation results](generate.md#clear-generation-results).
 
-To continue exploring from a favorite, open it and choose **Roam from here**, the compass immediately left of the immersive-mode button. Roam opens on that original, paused, and continues with your current Roam settings. Old future prefetch is discarded; the image stays liked and keeps its original source. This also works for favorites already hidden from Roam or Generate.
+To continue exploring from a favorite, open it and choose **Roam from here**, the compass immediately left of the immersive-mode button. Roam opens on that original, paused, with old manual prompt pins, exclusions and the pinned canvas cleared. Your current preset and other Roam settings remain in use. Old future prefetch is discarded; the image stays liked and keeps its original source. This also works for favorites already hidden from Roam or Generate.
 
 ## Save and export images
 

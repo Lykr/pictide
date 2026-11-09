@@ -209,8 +209,10 @@ class RoamSettings:
             db.execute("INSERT INTO roam_view VALUES ('local',?,?) ON CONFLICT(actor_id) DO UPDATE SET "
                        "artifact_id=excluded.artifact_id,viewed_at=excluded.viewed_at", (identifier, timestamp))
             document['epoch'] = uuid.uuid4().hex
+            document.update(pinned_positive=[], excluded_positive=[], pinned_canvas=None)
             Repository.discard_roam_prefetch(db)
             self._save_settings(db, document)
+            self._save_anchors(db, document)
         return {'artifact_id': identifier, 'viewed_at': timestamp}
 
     def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None, use_canvas_pool=None, playback_style=None, scroll_speed=None):

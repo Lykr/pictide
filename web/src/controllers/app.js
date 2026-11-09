@@ -579,6 +579,8 @@ async function applyRoamSettings(settings, savedFields = []) {
   roamAnchorRetried = false;
   const current = state.artifacts.find(item => item.id === galleryCursors.get('feed'));
   const reset = observeArtifactRevision(state, settings.artifact_revision);
+  // An explicit liked-origin jump owns its new cursor/window and finishes the switch.
+  if (roamStarting) return;
   if (roamSwitch) {
     // Keep the current picture visible while reading the new window. No old
     // request may merge its future images after this settings transition.
@@ -617,6 +619,7 @@ async function startRoamFromLiked(identifier) {
   try {
     await roamViewPending;
     const position = await api('/api/roam/start', { method: 'POST', body: JSON.stringify({ artifact_id: identifier }) });
+    await applyRoamSettings(await api('/api/settings/roam'));
     const window = await api(roamArtifactPath(position.artifact_id));
     if (!window.artifacts.some(item => item.id === identifier)) throw new Error(t('图片已清理或读取失败'));
     const applied = applyPage('feed', window, { replace: true });
