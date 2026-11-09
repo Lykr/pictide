@@ -5,6 +5,8 @@ import { bindTouchNavigation } from '../../src/controllers/touch-navigation.mjs'
 function fixture(installed = false) {
   const stage = new EventTarget();
   stage.clientWidth = 360;
+  let imageSurface = false;
+  stage.hasAttribute = name => imageSurface && name === 'data-touch-navigation';
   const directions = [], ratings = [];
   let enabled = true;
   const dispose = bindTouchNavigation(stage, { navigate: direction => directions.push(direction), adjustFeedback: direction => ratings.push(direction), verticalEnabled: () => installed, enabled: () => enabled });
@@ -16,8 +18,24 @@ function fixture(installed = false) {
     stage.dispatchEvent(event);
     return event;
   };
-  return { stage, directions, ratings, touch, finger, dispose, browser: () => { installed = false; }, disable: () => { enabled = false; } };
+  return { stage, directions, ratings, touch, finger, dispose, picture: () => { imageSurface = true; }, browser: () => { installed = false; }, disable: () => { enabled = false; } };
 }
+
+test('clickable pictures accept swipes while taps keep their normal click behavior', () => {
+  const f = fixture(true);
+  f.picture();
+  f.touch('touchstart', [f.finger(200)], undefined, true);
+  assert.equal(f.touch('touchmove', [f.finger(120)]).defaultPrevented, true);
+  f.touch('touchend', [], [f.finger(120)]);
+  f.touch('touchstart', [f.finger(100)], undefined, true);
+  f.touch('touchend', [], [f.finger(180)]);
+  f.touch('touchstart', [f.finger(200)], undefined, true);
+  assert.equal(f.touch('touchmove', [f.finger(201)]).defaultPrevented, false);
+  f.touch('touchend', [], [f.finger(201)]);
+  assert.deepEqual(f.directions, ['newer', 'older']);
+  assert.deepEqual(f.ratings, []);
+  f.dispose();
+});
 
 test('single-finger image swipes navigate once, leaving taps and vertical scrolling alone', () => {
   const f = fixture();

@@ -120,7 +120,7 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
 
   return <div ref={viewport} className="roam-scroll" data-testid="roam-scroll" aria-label={t('画轴')}>
     <div ref={track} className="roam-scroll-track">
-      {pictures.map(item => <button key={item.id} type="button" className="roam-scroll-picture" data-artifact-id={item.id}
+      {pictures.map(item => <button key={item.id} type="button" className="roam-scroll-picture" data-artifact-id={item.id} data-touch-navigation
         data-selected={item.id === currentId && !playback.playing} data-liked={item.feedback === 1}
         style={{ width: item.displayWidth, height }} aria-label={t('查看这张图片')} aria-current={item.id === currentId ? 'true' : undefined}
         onClick={() => { app.pauseScroll(); motion.select(item.id); paint(); }}>

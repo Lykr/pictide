@@ -94,6 +94,69 @@ test('scroll waits for new images, preserves settings and switches back to singl
   expect(items).toHaveLength(1);
 });
 
+test.describe('PWA picture gestures', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  for (const immersive of [false, true]) test(`native swipes navigate Scroll smoothly and retain playback intent, immersive=${immersive}`, async ({ page, context, browserName }) => {
+    test.skip(browserName !== 'chromium', 'Native touch injection uses the Chromium protocol.');
+    await context.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));
+    await page.route(/\/static\/ui\/[^/]+\.css$/, async route => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: (await response.text()).replaceAll('(display-mode:standalone)', '(min-width:0px)').replaceAll('(display-mode:browser)', '(max-width:0px)') });
+    });
+    const { scroll, items } = await prepare(page, context);
+    if (immersive) await page.locator('#roam-immersive').click();
+    const session = await context.newCDPSession(page);
+    const offset = () => scroll.evaluate(node => Number(node.dataset.offset));
+    const swipe = async dx => {
+      const box = await scroll.boundingBox();
+      const x = box.x + box.width / 2, y = box.y + box.height / 2;
+      // Hit the actual picture content, so its button participates in event targeting.
+      expect(await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.roam-scroll-picture'), { x, y })).toBe(true);
+      await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+      for (let step = 1; step <= 5; step++) {
+        await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * step / 5, y }] });
+      }
+      await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+
+    const start = await offset();
+    await swipe(-100);
+    await expect(scroll).toHaveAttribute('data-moving', 'true');
+    await expect.poll(offset).toBeLessThan(start - 1);
+    await expect(scroll).toHaveAttribute('data-focus', items[1].id);
+    await expect(scroll).toHaveAttribute('data-moving', 'false');
+    await expect(page.locator('#roam-playback')).toHaveAttribute('aria-pressed', 'false');
+    await swipe(100);
+    await expect(scroll).toHaveAttribute('data-focus', items[0].id);
+    await expect(scroll).toHaveAttribute('data-moving', 'false');
+    await expect(page.locator('#like')).toHaveAttribute('aria-pressed', 'false');
+
+    // A native swipe must not synthesize a picture click that pauses autoplay.
+    // Start through the retained button even when immersive controls are hidden.
+    await page.locator('#roam-playback').evaluate(button => button.click());
+    await expect(page.locator('#roam-playback')).toHaveAttribute('aria-pressed', 'true');
+    await swipe(-100);
+    await expect(scroll).toHaveAttribute('data-focus', items[1].id);
+    await expect(scroll).toHaveAttribute('data-moving', 'false');
+    await expect(page.locator('#roam-playback')).toHaveAttribute('aria-pressed', 'true');
+
+    await page.keyboard.press('ArrowUp');
+    await expect(page.locator('#roam-playback')).toHaveAttribute('aria-pressed', 'false');
+    const likedId = await scroll.getAttribute('data-focus');
+    const paused = await offset();
+    await swipe(-100);
+    await expect(page.locator('#roam-playback')).toHaveAttribute('aria-pressed', 'true');
+    await expect(scroll).toHaveAttribute('data-moving', 'false');
+    await expect(scroll).toHaveAttribute('data-focus', likedId);
+    expect(paused - await offset()).toBeLessThan(25);
+
+    // A short tap still pauses and focuses the picture.
+    await scroll.tap();
+    await expect(page.locator('#roam-playback')).toHaveAttribute('aria-pressed', 'false');
+    await session.detach();
+  });
+});
+
 test.describe('PWA privacy surfaces', () => {
   test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   for (const theme of ['light', 'dark']) test(`blur stays on individual pictures after mode changes in ${theme}`, async ({ page, context }, testInfo) => {
