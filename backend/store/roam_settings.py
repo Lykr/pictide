@@ -196,6 +196,13 @@ class RoamSettings:
             if row is None:
                 raise NotFoundError('Choose an existing liked image to start Roam.')
             source = json.loads(row['prompt_snapshot']) if row['prompt_snapshot'] else row
+            fixed = {' '.join(text.replace('_', ' ').split()).casefold() for text in document['preset_base_positive']}
+            pins = {}
+            for term in source['positive'].split(','):
+                text = ' '.join(term.replace('_', ' ').split())
+                key = text.casefold()
+                if text and key not in fixed:
+                    pins.setdefault(key, text)
             candidate = row['candidate'] or encode({'candidate_id': '', 'positive': source['positive'],
                                                    'negative': source['negative'], 'terms': []})
             db.execute("INSERT INTO roam_origins VALUES (?,?) ON CONFLICT(artifact_id) DO UPDATE SET candidate=excluded.candidate",
@@ -209,7 +216,7 @@ class RoamSettings:
             db.execute("INSERT INTO roam_view VALUES ('local',?,?) ON CONFLICT(actor_id) DO UPDATE SET "
                        "artifact_id=excluded.artifact_id,viewed_at=excluded.viewed_at", (identifier, timestamp))
             document['epoch'] = uuid.uuid4().hex
-            document.update(pinned_positive=[], excluded_positive=[], pinned_canvas=None)
+            document.update(pinned_positive=list(pins.values()), excluded_positive=[], pinned_canvas=None)
             Repository.discard_roam_prefetch(db)
             self._save_settings(db, document)
             self._save_anchors(db, document)

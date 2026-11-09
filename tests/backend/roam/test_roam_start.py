@@ -81,7 +81,7 @@ class RoamStartTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.repo.roam_view(), view)
         after = self.application.roam.get()
         self.assertNotEqual(before.pop('epoch'), after.pop('epoch'))
-        for key, value in {'pinned_positive': [], 'excluded_positive': [], 'pinned_canvas': None}.items():
+        for key, value in {'pinned_positive': ['garden', 'sky'], 'excluded_positive': [], 'pinned_canvas': None}.items():
             self.assertEqual(after[key], value)
             before[key] = value
         self.assertEqual(before, after)
@@ -143,7 +143,23 @@ class RoamStartTests(unittest.IsolatedAsyncioTestCase):
         reference = self.repo.roam_prompt_reference(self.application.roam.get()['epoch'], selected['id'])
         self.assertEqual(reference['positive'], 'garden, sky')
         self.assertEqual(reference['negative'], 'blurry')
+        self.assertEqual(self.application.roam.get()['pinned_positive'], ['garden', 'sky'])
         self.assertEqual(self.repo.artifact(selected['id'])['source'], 'generate')
+
+    async def test_source_tags_are_pinned_once_except_current_preset_fixed_terms(self):
+        selected, _ = self.image(snapshot={
+            'positive': ' Garden, blue_sky, BLUE  SKY, sunset, SUNSET, , garden ', 'negative': 'blurry'})
+        self.application.roam.save_options(anchors={'pinned_positive': ['old subject'],
+            'excluded_positive': ['sunset'], 'pinned_canvas': {'width': 768, 'height': 1024},
+            'preset_base_positive': ['garden', 'Blue Sky']})
+        await self.start(selected['id'])
+        settings = self.application.roam.get()
+        self.assertEqual(settings['pinned_positive'], ['sunset'])
+        self.assertEqual(settings['preset_base_positive'], ['garden', 'Blue Sky'])
+        self.assertEqual(settings['excluded_positive'], [])
+        self.assertIsNone(settings['pinned_canvas'])
+        await self.start(selected['id'])
+        self.assertEqual(self.application.roam.get()['pinned_positive'], ['sunset'])
 
     async def test_invalid_requests_leave_cursor_epoch_and_prefetch_unchanged(self):
         selected, _ = self.image(roam=True)

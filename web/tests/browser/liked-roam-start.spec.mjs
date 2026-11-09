@@ -54,9 +54,9 @@ for (const style of ['single', 'scroll']) for (const width of [1365, 390]) {
     expect((await (await page.request.get('/api/roam/view')).json()).artifact_id).toBe(image.id);
     const settings = await (await page.request.get('/api/settings/roam')).json();
     expect(settings.prompt_mode).toBe('along'); expect(settings.playback_style).toBe(style); expect(settings.prefetch_count).toBe(0);
-    expect(settings.pinned_positive).toEqual([]); expect(settings.excluded_positive).toEqual([]); expect(settings.pinned_canvas).toBeNull();
+    expect(settings.pinned_positive).toEqual(['garden']); expect(settings.excluded_positive).toEqual([]); expect(settings.pinned_canvas).toBeNull();
     const anchor = page.locator('#image-card').getByRole('button', { name: '锚点', exact: true });
-    await expect(anchor.locator('.roam-anchor-count')).toHaveCount(0);
+    await expect(anchor.locator('.roam-anchor-count')).toHaveText('1');
     await anchor.click();
     await expect(page.getByRole('button', { name: /old subject|old exclusion/ })).toHaveCount(0);
     await anchor.click();
