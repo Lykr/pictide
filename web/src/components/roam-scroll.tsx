@@ -24,6 +24,8 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
   const reported = useRef('');
   const requested = useRef('');
   const measured = useRef(false);
+  const clock = useRef(0);
+  const animation = useRef<{ revision: number; effect: Animation } | null>(null);
   const height = Math.max(1, size.height - 24);
   const pictures = useMemo(() => {
     const chronological = [...artifacts].reverse();
@@ -43,7 +45,32 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
 
   function paint(snapshot = motion.snapshot()) {
     if (!measured.current) return;
-    if (track.current) track.current.style.transform = `translate3d(${snapshot.offset}px,0,0)`;
+    const strip = track.current, path = snapshot.animation;
+    if (strip) {
+      if (path && Math.abs(path.to - path.from) > .01) {
+        if (animation.current?.revision !== path.revision) {
+          animation.current?.effect.cancel();
+          const distance = path.to - path.from;
+          const start = path.velocity * path.duration / (3 * distance);
+          const end = 1 - path.endVelocity * path.duration / (3 * distance);
+          const effect = strip.animate([
+            { transform: `translate3d(${path.from}px,0,0)` },
+            { transform: `translate3d(${path.to}px,0,0)` },
+          ], { duration: path.duration * 1000, easing: `cubic-bezier(${1 / 3},${start},${2 / 3},${end})`, fill: 'both' });
+          effect.startTime = (clock.current || performance.now()) - path.elapsed * 1000;
+          animation.current = { revision: path.revision, effect };
+        }
+        const effect = animation.current!.effect;
+        if (latest.current.busy || document.hidden) {
+          effect.pause(); effect.currentTime = path.elapsed * 1000;
+        } else if (effect.playState === 'paused') {
+          effect.play(); effect.startTime = (clock.current || performance.now()) - path.elapsed * 1000;
+        }
+      } else {
+        strip.style.transform = `translate3d(${snapshot.offset}px,0,0)`;
+        animation.current?.effect.cancel(); animation.current = null;
+      }
+    }
     if (viewport.current) {
       viewport.current.dataset.focus = snapshot.focus ?? '';
       viewport.current.dataset.moving = String(snapshot.moving);
@@ -64,6 +91,14 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
       reported.current = signature;
       app.scrollFrame({ ...snapshot, ready: !!pixels, ...pixels });
     }
+  }
+  function advance(time: number) {
+    const now = Math.max(time, clock.current);
+    const elapsed = clock.current ? (now - clock.current) / 1000 : 0;
+    clock.current = now;
+    const current = latest.current;
+    return measured.current && !document.hidden && !current.busy
+      ? motion.tick(elapsed, current.playback.playing, current.speed) : motion.snapshot();
   }
   function more(direction: string) {
     const current = latest.current.artifacts;
@@ -93,29 +128,30 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
   }, [pictures, size.width, size.height, active]);
   useLayoutEffect(() => app.bindScroll({
     navigate(direction: string) {
+      advance(performance.now());
       requested.current = '';
       const found = motion.navigate(direction);
       paint();
       if (!found) more(direction);
     },
-    freeze() { paint(motion.freeze()); },
+    freeze() { advance(performance.now()); paint(motion.freeze()); },
   }), [app, motion]);
   useLayoutEffect(() => {
-    if (!active) { motion.freeze(); reported.current = ''; return; }
-    let frame = 0, previous = 0;
+    if (!active) {
+      animation.current?.effect.cancel(); animation.current = null;
+      motion.freeze(); reported.current = ''; clock.current = 0; return;
+    }
+    let frame = 0;
     const animate = (time: number) => {
-      const elapsed = previous ? Math.min(.05, (time - previous) / 1000) : 0;
-      previous = time;
-      const current = latest.current;
-      if (measured.current && !document.hidden && !current.busy) {
-        const snapshot = motion.tick(elapsed, current.playback.playing, current.speed);
+      if (measured.current) {
+        const snapshot = advance(time);
         paint(snapshot);
-        if (snapshot.waiting) more('newer');
+        if ('waiting' in snapshot && snapshot.waiting) more('newer');
       }
       frame = requestAnimationFrame(animate);
     };
     frame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(frame);
+    return () => { cancelAnimationFrame(frame); animation.current?.effect.cancel(); animation.current = null; clock.current = 0; };
   }, [active, app, motion]);
 
   return <div ref={viewport} className="roam-scroll" data-testid="roam-scroll" aria-label={t('画轴')}>
@@ -123,7 +159,7 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
       {pictures.map(item => <button key={item.id} type="button" className="roam-scroll-picture" data-artifact-id={item.id} data-touch-navigation
         data-selected={item.id === currentId && !playback.playing} data-liked={item.feedback === 1}
         style={{ width: item.displayWidth, height }} aria-label={t('查看这张图片')} aria-current={item.id === currentId ? 'true' : undefined}
-        onClick={() => { app.pauseScroll(); motion.select(item.id); paint(); }}>
+        onClick={() => { advance(performance.now()); app.pauseScroll(); motion.select(item.id); paint(); }}>
         <ScrollPrivacyImage src={`/api/artifacts/${encodeURIComponent(item.id)}/image`} height={height} blurred={blurred}
           onLoad={image => {
             loaded.current.set(item.id, { width: image.naturalWidth, height: image.naturalHeight });

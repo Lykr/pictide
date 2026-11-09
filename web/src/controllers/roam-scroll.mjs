@@ -1,9 +1,15 @@
 /** Pixel motion only. The application retains navigation, feedback and generation ownership. */
 export const scrollSpeeds = { slow: 24, normal: 48, fast: 80 };
-const ease = progress => progress < .5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2;
+const blend = progress => progress * progress * (3 - 2 * progress);
+const tangent = (motion, progress) => motion.duration * (motion.velocity * progress * (1 - progress) ** 2
+  + motion.endVelocity * progress * progress * (progress - 1));
+const speedAt = (motion, progress) => (motion.to - motion.from) * 6 * progress * (1 - progress) / motion.duration
+  + motion.velocity * (1 - 4 * progress + 3 * progress * progress)
+  + motion.endVelocity * (3 * progress * progress - 2 * progress);
 
 export function createRoamScroll() {
   let items = [], viewport = 0, offset = 0, initialized = false;
+  let velocity = 0, drift = 0, animationRevision = 0;
   let motion = null, pending = null;
   const centerOffset = item => viewport / 2 - item.center;
   const itemAtCenter = () => {
@@ -14,17 +20,23 @@ export function createRoamScroll() {
     }, null)?.item;
   };
   const find = id => items.find(item => item.id === id);
+  const endVelocity = id => {
+    const index = items.findIndex(item => item.id === id);
+    return items[index + 1]?.ready ? drift : 0;
+  };
   function seek(id) {
     const item = find(id);
     if (!item?.ready) { pending = { id }; return; }
     const to = centerOffset(item);
-    motion = { id, from: offset, to, elapsed: 0, duration: Math.max(.36, Math.min(.72, Math.abs(to - offset) / 900)) };
+    motion = { id, revision: ++animationRevision, from: offset, to, velocity, endVelocity: endVelocity(id), elapsed: 0,
+      duration: Math.max(.28, Math.min(.6, Math.abs(to - offset) / 1100)) };
     pending = null;
   }
   function snapshot() {
     const focus = itemAtCenter();
     return { offset, focus: focus?.id ?? null,
-      moving: !!motion, pending: !!pending, target: motion?.id ?? pending?.id ?? null };
+      moving: !!motion, pending: !!pending, target: motion?.id ?? pending?.id ?? null,
+      animation: motion ? { ...motion } : null };
   }
   return {
     snapshot,
@@ -46,10 +58,13 @@ export function createRoamScroll() {
       if (motion) {
         const target = find(motion.id);
         if (target) {
-          // A model refresh must not restart easing at zero velocity halfway through a seek.
-          const progress = ease(Math.min(1, motion.elapsed / motion.duration));
-          motion.to = centerOffset(target);
-          motion.from = progress < 1 ? (offset - motion.to * progress) / (1 - progress) : offset;
+          // Rebase geometry without restarting either position or velocity.
+          const time = Math.min(1, motion.elapsed / motion.duration), progress = blend(time);
+          const to = centerOffset(target);
+          const from = progress < 1 ? (offset - to * progress - tangent(motion, time)) / (1 - progress) : offset;
+          if (Math.abs(from - motion.from) > 1e-5 || Math.abs(to - motion.to) > 1e-5) {
+            motion = { ...motion, from, to, revision: ++animationRevision };
+          }
         }
         else motion = null;
       }
@@ -71,25 +86,37 @@ export function createRoamScroll() {
       seek(item.id); return true;
     },
     select(id) { motion = null; pending = null; seek(id); },
-    freeze() { motion = null; pending = null; return snapshot(); },
-    tick(seconds, playing, speed = 'normal') {
+    freeze() { motion = null; pending = null; velocity = 0; return snapshot(); },
+    tick: function tick(seconds, playing, speed = 'normal') {
       let waiting = false;
+      drift = playing ? -(scrollSpeeds[speed] ?? scrollSpeeds.normal) : 0;
       if (motion) {
-        motion.elapsed += Math.max(0, seconds);
+        const ending = endVelocity(motion.id);
+        if (ending !== motion.endVelocity) {
+          motion = { ...motion, revision: ++animationRevision, from: offset, velocity, endVelocity: ending, elapsed: 0,
+            duration: Math.max(.08, motion.duration - motion.elapsed) };
+        }
+        const elapsed = Math.min(Math.max(0, seconds), motion.duration - motion.elapsed);
+        motion.elapsed += elapsed;
         const progress = Math.min(1, motion.elapsed / motion.duration);
-        const eased = ease(progress);
-        offset = motion.from + (motion.to - motion.from) * eased;
-        if (progress === 1) motion = null;
+        offset = motion.from + (motion.to - motion.from) * blend(progress) + tangent(motion, progress);
+        velocity = speedAt(motion, progress);
+        if (progress === 1) {
+          motion = null;
+          if (seconds > elapsed) return tick(seconds - elapsed, playing, speed);
+        }
       } else if (playing && !pending && initialized) {
         const index = items.findIndex(item => item.id === itemAtCenter()?.id);
         if (index >= 0 && items[index].ready) {
           let lastReady = index;
           while (items[lastReady + 1]?.ready) lastReady++;
           const limit = centerOffset(items[lastReady]);
-          offset = Math.min(offset, Math.max(limit, offset - Math.max(0, seconds) * (scrollSpeeds[speed] ?? scrollSpeeds.normal)));
+          offset = Math.min(offset, Math.max(limit, offset + Math.max(0, seconds) * drift));
           waiting = offset <= limit;
+          velocity = waiting ? 0 : drift;
         }
-      }
+        else velocity = 0;
+      } else velocity = 0;
       return { ...snapshot(), waiting };
     },
   };

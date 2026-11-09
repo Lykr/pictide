@@ -97,3 +97,35 @@ test('focus and readiness refreshes preserve the in-flight easing curve and velo
     assert.ok(Math.abs(actual.offset - expected.offset) < .001, `frame ${frame}: refresh interrupted the original motion`);
   }
 });
+
+test('autoplay and repeated navigation carry velocity into each new destination', () => {
+  const scroll = fixture([500, 500, 500, 500]);
+  const delta = 1e-5;
+  const speed = () => {
+    const before = scroll.snapshot().offset;
+    return (scroll.tick(delta, true, 'fast').offset - before) / delta;
+  };
+  scroll.tick(.1, true, 'fast');
+  let before = speed();
+  scroll.navigate('newer');
+  assert.ok(Math.abs(speed() - before) < 1, 'first navigation must inherit autoplay speed');
+  scroll.tick(.16, true, 'fast');
+  for (const direction of ['newer', 'older', 'older']) {
+    before = speed();
+    scroll.navigate(direction);
+    assert.ok(Math.abs(speed() - before) < 1, `${direction} restarted at zero speed`);
+  }
+});
+
+test('seeking hands off to autoplay without losing the remainder of a frame', () => {
+  const whole = fixture([500, 500, 500, 500]);
+  const split = fixture([500, 500, 500, 500]);
+  whole.tick(.1, true, 'fast'); split.tick(.1, true, 'fast');
+  whole.navigate('newer'); split.navigate('newer');
+  whole.tick(.8, true, 'fast');
+  for (let frame = 0; frame < 80; frame++) split.tick(.01, true, 'fast');
+  assert.equal(whole.snapshot().moving, false);
+  assert.ok(Math.abs(whole.snapshot().offset - split.snapshot().offset) < 1e-7);
+  const before = whole.snapshot().offset;
+  assert.ok(Math.abs(whole.tick(1 / 60, true, 'fast').offset - before + 80 / 60) < 1e-7);
+});

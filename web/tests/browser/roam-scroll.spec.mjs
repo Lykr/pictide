@@ -295,18 +295,27 @@ test('scroll restores a middle picture and retains focus across hidden page meas
 
 test('switching focus does not stall the strip halfway through navigation', async ({ page, context }) => {
   const { scroll } = await prepare(page, context, 4);
-  const samples = await scroll.evaluate(element => new Promise(resolve => {
+  const result = await scroll.evaluate(element => new Promise(resolve => {
     const photo = element.querySelector('[data-artifact-id]');
+    const track = element.querySelector('.roam-scroll-track');
     const start = photo.getBoundingClientRect().left;
     const samples = [{ time: performance.now(), distance: 0 }];
     document.querySelector('#next').click();
+    const animation = track.getAnimations()[0];
+    let retainedAnimation = !!animation;
+    // Page work must not make the strip depend on JavaScript painting every frame.
+    setTimeout(() => { const until = performance.now() + 100; while (performance.now() < until) {} }, 60);
     const sample = time => {
       samples.push({ time, distance: start - photo.getBoundingClientRect().left });
-      if (element.dataset.moving === 'true' && time - samples[0].time < 2000) requestAnimationFrame(sample);
-      else resolve(samples);
+      if (element.dataset.moving === 'true' && time - samples[0].time < 2000) {
+        retainedAnimation &&= track.getAnimations()[0] === animation;
+        requestAnimationFrame(sample);
+      } else resolve({ samples, retainedAnimation });
     };
     requestAnimationFrame(sample);
   }));
+  expect(result.retainedAnimation, 'native animation survives focus updates and a busy main thread').toBe(true);
+  const { samples } = result;
   const distance = samples.at(-1).distance;
   expect(distance).toBeGreaterThan(100);
   const velocities = samples.slice(1).map((sample, index) => ({
