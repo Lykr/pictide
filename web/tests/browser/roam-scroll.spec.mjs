@@ -47,16 +47,17 @@ for (const width of [1365, 390]) test(`scroll arrows, like pause and smooth cont
   const beforeNext = await scroll.evaluate(el => {
     const before = Number(el.dataset.offset);
     document.querySelector('#next').click();
-    return { before, after: Number(el.dataset.offset) };
+    return { before, after: Number(el.dataset.offset), time: performance.now() };
   });
   expect(beforeNext.after).toBeCloseTo(beforeNext.before, 1);
   await expect(page.locator('#roam-playback')).toHaveAttribute('aria-pressed', 'true');
   await expect(scroll).toHaveAttribute('data-moving', 'false');
   await expect(scroll).toHaveAttribute('data-focus', likedId);
   await page.waitForTimeout(150);
-  const resumedDistance = beforeNext.before - await offset();
+  const resumed = await scroll.evaluate(el => new Promise(resolve => requestAnimationFrame(time => resolve({ time, offset: Number(el.dataset.offset) }))));
+  const resumedDistance = beforeNext.before - resumed.offset;
   expect(resumedDistance).toBeGreaterThan(0);
-  expect(resumedDistance).toBeLessThan(35);
+  expect(Math.abs(resumedDistance - 80 * (resumed.time - beforeNext.time) / 1000)).toBeLessThan(2);
   await expect(scroll).toHaveAttribute('data-focus', items[2].id);
   await page.locator('#roam-playback').click();
   await page.keyboard.press('ArrowLeft');
@@ -162,6 +163,7 @@ test.describe('PWA picture gestures', () => {
 
     await page.keyboard.press('ArrowUp');
     await expect(page.locator('#roam-playback')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#like')).toBeEnabled();
     const likedId = await scroll.getAttribute('data-focus');
     const paused = await offset();
     await swipe(-100);
@@ -358,8 +360,11 @@ test('retargeting a long scroll window never cancels the visible transform', asy
     await route.fulfill({ response, body: (await response.text()).replaceAll('(display-mode:standalone)', '(min-width:0px)').replaceAll('(display-mode:browser)', '(max-width:0px)') });
   });
   const { scroll, items } = await prepare(page, context, 12);
-  await page.request.put('/api/roam/view', { data: { artifact_id: items[5].id, viewed_at: Date.now() + 1000 } });
-  await page.reload();
+  for (let index = 1; index <= 5; index++) {
+    await page.keyboard.press('ArrowRight');
+    await expect(scroll).toHaveAttribute('data-focus', items[index].id);
+    await expect(scroll).toHaveAttribute('data-moving', 'false');
+  }
   await expect(scroll).toHaveAttribute('data-focus', items[5].id);
   await expect.poll(() => scroll.locator('img').evaluateAll(images => images.every(image => image.complete && image.naturalWidth > 0))).toBe(true);
   const visibleError = () => scroll.evaluate(element => Math.abs(new DOMMatrix(getComputedStyle(element.querySelector('.roam-scroll-track')).transform).m41 - Number(element.dataset.offset)));
@@ -368,6 +373,12 @@ test('retargeting a long scroll window never cancels the visible transform', asy
     window.scrollNativeEffect = element.querySelector('.roam-scroll-track').getAnimations()[0];
     const original = Animation.prototype.cancel;
     window.scrollCancellationJumps = [];
+    window.scrollCurveWrites = 0;
+    const setKeyframes = KeyframeEffect.prototype.setKeyframes;
+    KeyframeEffect.prototype.setKeyframes = function (...args) {
+      if (this.target?.classList.contains('roam-scroll-track')) window.scrollCurveWrites++;
+      return setKeyframes.apply(this, args);
+    };
     Animation.prototype.cancel = function (...args) {
       const track = this.effect?.target;
       if (!track?.classList.contains('roam-scroll-track') || !track.isConnected) return original.apply(this, args);
@@ -387,6 +398,41 @@ test('retargeting a long scroll window never cancels the visible transform', asy
   await expect.poll(visibleError).toBeLessThan(1);
   expect(await page.evaluate(() => window.scrollCancellationJumps.every(distance => distance < 1)), 'retargeting must not expose the previous inline transform').toBe(true);
   expect(await scroll.evaluate(element => element.querySelector('.roam-scroll-track').getAnimations()[0] === window.scrollNativeEffect), 'retargeting and settling must keep the same native effect').toBe(true);
+  expect(await page.evaluate(() => window.scrollCurveWrites), 'only the two navigation commands should replace the curve').toBe(2);
+});
+
+test('autoplay crosses picture boundaries without rebasing the visible strip', async ({ page, context }) => {
+  test.setTimeout(45000);
+  await page.setViewportSize({ width: 390, height: 520 });
+  await context.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));
+  await page.route(/\/static\/ui\/[^/]+\.css$/, async route => {
+    const response = await route.fetch();
+    await route.fulfill({ response, body: (await response.text()).replaceAll('(display-mode:standalone)', '(min-width:0px)').replaceAll('(display-mode:browser)', '(max-width:0px)') });
+  });
+  await page.route(/\/api\/artifacts\/[^/]+\/image$/, route => route.fulfill({ contentType: 'image/svg+xml',
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><rect width="160" height="640" fill="#52796f"/></svg>' }));
+  const { scroll, items } = await prepare(page, context, 12);
+  for (let index = 1; index <= 5; index++) {
+    await page.keyboard.press('ArrowRight');
+    await expect(scroll).toHaveAttribute('data-focus', items[index].id);
+    await expect(scroll).toHaveAttribute('data-moving', 'false');
+  }
+  await expect(scroll).toHaveAttribute('data-focus', items[5].id);
+  await expect.poll(() => scroll.locator('img').evaluateAll(images => images.every(image => image.complete && image.naturalWidth))).toBe(true);
+  const samples = await scroll.evaluate((element, target) => new Promise(resolve => {
+    const samples = [];
+    document.querySelector('#roam-playback').click();
+    const start = performance.now();
+    const sample = () => {
+      samples.push({ offset: Number(element.dataset.offset), origin: parseFloat(element.querySelector('[data-artifact-id]').style.left) || 0 });
+      if (element.dataset.focus !== target && performance.now() - start < 15000) requestAnimationFrame(sample);
+      else { document.querySelector('#roam-playback').click(); resolve(samples); }
+    };
+    requestAnimationFrame(sample);
+  }), items[8].id);
+  await expect(scroll).toHaveAttribute('data-focus', items[8].id);
+  expect(samples.at(-1).origin).toBeGreaterThan(samples[0].origin);
+  expect(Math.max(...samples.slice(1).map((frame, index) => frame.offset - samples[index].offset))).toBeLessThan(1);
 });
 
 test('editing anchors keeps the centered picture and honors the history limit', async ({ page, context }) => {
@@ -411,6 +457,7 @@ test('editing anchors keeps the centered picture and honors the history limit', 
   await page.locator('.roam-anchor-trigger').click();
   const current = scroll.locator(`[data-artifact-id="${items[2].id}"]`);
   const position = await current.evaluate(element => element.getBoundingClientRect().left);
+  const offsetBeforeCleanup = await scroll.getAttribute('data-offset');
   const input = page.getByRole('combobox', { name: 'Add anchor', exact: true });
   if (!await input.isVisible()) await page.locator('.roam-anchor-add').getByRole('button', { name: 'Add anchor', exact: true }).click();
   await input.fill('scroll anchor fixture');
@@ -423,6 +470,7 @@ test('editing anchors keeps the centered picture and honors the history limit', 
   expect(remaining).not.toContain(items[0].id);
   expect(remaining).not.toContain(items[3].id);
   expect(await current.evaluate(element => element.getBoundingClientRect().left)).toBeCloseTo(position, 0);
+  expect(Number(await scroll.getAttribute('data-offset'))).toBeCloseTo(Number(offsetBeforeCleanup), 4);
   await page.locator('.roam-anchor-term').filter({ hasText: 'scroll anchor fixture' }).click({ button: 'right' });
   await expect.poll(async () => (await (await page.request.get('/api/settings/roam')).json()).excluded_positive).toContain('scroll anchor fixture');
   await expect(scroll).toHaveAttribute('data-focus', items[2].id);

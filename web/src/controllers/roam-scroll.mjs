@@ -57,10 +57,10 @@ export function createRoamScroll() {
   }
   return {
     snapshot,
-    layout(next, width, initialId, gap = 12) {
+    layout(next, width, initialId, gap = 12, origin = 0) {
       const previousOffset = offset, pivot = itemAtCenter(), previous = pivot ? offset + pivot.left : 0;
       const previousViewport = viewport;
-      let left = 0;
+      let left = origin;
       items = next.map(item => {
         const result = { ...item, left, center: left + item.width / 2 };
         left += item.width + gap;

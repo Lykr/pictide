@@ -21,6 +21,8 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
   const viewport = useRef<HTMLDivElement>(null), track = useRef<HTMLDivElement>(null);
   const motion = useMemo(() => createRoamScroll(), []);
   const loaded = useRef(new Map<string, Loaded>());
+  const geometry = useRef(new Map<string, Loaded>());
+  const anchor = useRef<{ id: string; left: number } | null>(null);
   const markerPositions = useRef(new Map<string, number>());
   const reported = useRef('');
   const requested = useRef('');
@@ -28,18 +30,31 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
   const clock = useRef(0);
   const animation = useRef<ReturnType<typeof createScrollAnimation> | null>(null);
   const height = Math.max(1, size.height - 24);
-  const pictures = useMemo(() => {
+  const { pictures, origin, nextAnchor } = useMemo(() => {
     const chronological = [...artifacts].reverse();
     const index = Math.max(0, chronological.findIndex(item => item.id === currentId));
     const width = (item: Picture) => {
-      const pixels = loaded.current.get(item.id) ?? item;
+      const pixels = geometry.current.get(item.id) ?? item;
       return height * ((pixels.width || 3) / (pixels.height || 4));
     };
     // Cover the viewport plus preload space on each side, with a bounded DOM window.
     let first = index, last = index, left = 0, right = 0;
     while (first > 0 && index - first < 15 && (index - first < 3 || left < size.width)) left += width(chronological[--first]) + 12;
     while (last < chronological.length - 1 && last - index < 15 && (last - index < 3 || right < size.width)) right += width(chronological[++last]) + 12;
-    return chronological.slice(first, last + 1).map(item => ({ ...item, displayWidth: width(item) }));
+    const before = (end: number) => chronological.slice(0, end).reduce((sum, item) => sum + width(item) + 12, 0);
+    const previous = chronological.findIndex(item => item.id === anchor.current?.id);
+    const base = previous >= 0 ? anchor.current!.left - before(previous) : 0;
+    const origin = base + before(first);
+    let position = origin;
+    return {
+      pictures: chronological.slice(first, last + 1).map(item => {
+        const result = { ...item, displayWidth: width(item), displayLeft: position };
+        position += result.displayWidth + 12;
+        return result;
+      }),
+      origin,
+      nextAnchor: { id: currentId, left: base + before(index) },
+    };
   }, [artifacts, currentId, height, size.width, loadVersion]);
   const latest = useRef({ active, busy, speed, playback, artifacts });
   latest.current = { active, busy, speed, playback, artifacts };
@@ -101,11 +116,14 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
   useLayoutEffect(() => {
     measured.current = active && size.width > 0 && size.height > 0;
     if (!measured.current) return;
+    anchor.current = nextAnchor;
     const ids = new Set(pictures.map(item => item.id));
+    const retained = new Set(artifacts.map(item => item.id));
+    for (const id of geometry.current.keys()) if (!retained.has(id)) geometry.current.delete(id);
     for (const id of loaded.current.keys()) if (!ids.has(id)) { loaded.current.delete(id); markerPositions.current.delete(id); }
     for (const item of pictures) if (item.feedback !== 1) markerPositions.current.delete(item.id);
-    paint(motion.layout(pictures.map(item => ({ id: item.id, width: item.displayWidth, ready: loaded.current.has(item.id) })), size.width, currentId));
-  }, [pictures, size.width, size.height, active]);
+    paint(motion.layout(pictures.map(item => ({ id: item.id, width: item.displayWidth, ready: loaded.current.has(item.id) })), size.width, currentId, 12, origin));
+  }, [pictures, origin, size.width, size.height, active]);
   useLayoutEffect(() => app.bindScroll({
     navigate(direction: string) {
       advance(performance.now());
@@ -138,11 +156,12 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
     <div ref={track} className="roam-scroll-track">
       {pictures.map(item => <button key={item.id} type="button" className="roam-scroll-picture" data-artifact-id={item.id} data-touch-navigation
         data-selected={item.id === currentId && !playback.playing} data-liked={item.feedback === 1}
-        style={{ width: item.displayWidth, height }} aria-label={t('查看这张图片')} aria-current={item.id === currentId ? 'true' : undefined}
+        style={{ left: item.displayLeft, width: item.displayWidth, height }} aria-label={t('查看这张图片')} aria-current={item.id === currentId ? 'true' : undefined}
         onClick={() => { advance(performance.now()); app.pauseScroll(); motion.select(item.id); paint(); }}>
         <ScrollPrivacyImage src={`/api/artifacts/${encodeURIComponent(item.id)}/image`} height={height} blurred={blurred}
           onLoad={image => {
             loaded.current.set(item.id, { width: image.naturalWidth, height: image.naturalHeight });
+            geometry.current.set(item.id, { width: image.naturalWidth, height: image.naturalHeight });
             setLoadVersion(version => version + 1);
           }} onError={() => app.scrollImageFailed(item.id)} />
         {!loaded.current.has(item.id) && <span className="roam-scroll-loading" aria-label={t('正在读取图片…')}><LoaderCircle aria-hidden="true" /></span>}

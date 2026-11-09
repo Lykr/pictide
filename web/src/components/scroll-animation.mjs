@@ -1,6 +1,6 @@
 /** Keep one native transform effect for the strip, including pauses and autoplay. */
 export function createScrollAnimation(strip) {
-  let native = null, revision = null, heldOffset = NaN;
+  let native = null, revision = null, heldOffset = NaN, endpoint = NaN;
   const transform = offset => `translate3d(${offset}px,0,0)`;
   const keyframes = (from, to = from) => [{ transform: transform(from) }, { transform: transform(to) }];
   return {
@@ -10,6 +10,9 @@ export function createScrollAnimation(strip) {
         native.pause(); native.currentTime = 0;
       }
       const effect = native.effect, path = frame.animation;
+      // A naturally completed curve already holds this position. Rewriting it
+      // at arrival needlessly invalidates WebKit's composited image surface.
+      if (!paused && !path && revision !== null && Math.abs(frame.offset - endpoint) < .01) return;
       if (paused || !path || Math.abs(path.to - frame.offset) < .01) {
         if (revision !== null || heldOffset !== frame.offset) {
           native.pause();
@@ -32,7 +35,7 @@ export function createScrollAnimation(strip) {
       effect.updateTiming({ duration: duration * 1000, easing: `cubic-bezier(${1 / 3},${start},${2 / 3},${end})`, fill: 'both' });
       native.currentTime = 0;
       native.play(); native.startTime = time;
-      revision = path.revision; heldOffset = NaN;
+      revision = path.revision; heldOffset = NaN; endpoint = path.to;
     },
     dispose() { native?.cancel(); native = null; },
   };

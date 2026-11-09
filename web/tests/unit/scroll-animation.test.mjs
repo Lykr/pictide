@@ -40,3 +40,11 @@ test('retargets, pauses, and autoplay share one effect without exposing the base
   f.view.dispose();
   assert.equal(f.cancelled(), 1);
 });
+
+test('arriving at the image center retains the completed curve without rewriting keyframes', () => {
+  const f = fixture();
+  f.view.paint({ offset: -80, velocity: -500, animation: f.path }, 1000);
+  const writes = f.frames.length;
+  f.view.paint({ offset: -400, velocity: 0, animation: null }, 1400);
+  assert.equal(f.frames.length, writes);
+});

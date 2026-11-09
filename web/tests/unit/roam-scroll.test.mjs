@@ -144,3 +144,14 @@ test('autoplay keeps its native trajectory until a boundary or layout actually c
   assert.equal(scroll.freeze().animation, null);
   assert.equal(scroll.tick(.1, false).animation, null);
 });
+
+test('reserving offscreen leading space keeps coordinates and seek trajectory unchanged', () => {
+  const scroll = fixture([300, 300, 300, 300, 300, 300], '3');
+  scroll.navigate('newer'); scroll.tick(.12, false);
+  const before = scroll.snapshot();
+  scroll.layout(pictures([300, 300, 300, 300, 300, 300]).slice(1), 600, before.focus, 12, 312);
+  const after = scroll.snapshot();
+  assert.equal(after.offset, before.offset);
+  assert.equal(after.velocity, before.velocity);
+  assert.equal(after.animation.revision, before.animation.revision);
+});
