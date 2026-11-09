@@ -129,3 +129,18 @@ test('seeking hands off to autoplay without losing the remainder of a frame', ()
   const before = whole.snapshot().offset;
   assert.ok(Math.abs(whole.tick(1 / 60, true, 'fast').offset - before + 80 / 60) < 1e-7);
 });
+
+test('autoplay keeps its native trajectory until a boundary or layout actually changes', () => {
+  const scroll = fixture([500, 500, 500, 500], '1');
+  const first = scroll.tick(.1, true, 'fast');
+  const second = scroll.tick(.1, true, 'fast');
+  assert.equal(second.animation.revision, first.animation.revision);
+  assert.equal(second.velocity, -80);
+  scroll.layout(pictures([500, 500, 500, 500]), 600, '1');
+  assert.equal(scroll.snapshot().animation.revision, first.animation.revision);
+  scroll.layout(pictures([500, 500, 500, 500]).slice(1), 600, '1');
+  assert.notEqual(scroll.snapshot().animation.revision, first.animation.revision);
+  assert.equal(scroll.snapshot().offset, second.offset + 512);
+  assert.equal(scroll.freeze().animation, null);
+  assert.equal(scroll.tick(.1, false).animation, null);
+});

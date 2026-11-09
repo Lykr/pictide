@@ -10,7 +10,7 @@ const speedAt = (motion, progress) => (motion.to - motion.from) * 6 * progress *
 export function createRoamScroll() {
   let items = [], viewport = 0, offset = 0, initialized = false;
   let velocity = 0, drift = 0, animationRevision = 0;
-  let motion = null, pending = null;
+  let motion = null, cruise = null, pending = null;
   const centerOffset = item => viewport / 2 - item.center;
   const itemAtCenter = () => {
     const center = viewport / 2 - offset;
@@ -24,7 +24,24 @@ export function createRoamScroll() {
     const index = items.findIndex(item => item.id === id);
     return items[index + 1]?.ready ? drift : 0;
   };
+  function advanceCruise(seconds = 0) {
+    const index = items.findIndex(item => item.id === itemAtCenter()?.id);
+    if (index < 0 || !items[index].ready) { cruise = null; velocity = 0; return false; }
+    let lastReady = index;
+    while (items[lastReady + 1]?.ready) lastReady++;
+    const limit = centerOffset(items[lastReady]);
+    offset = Math.min(offset, Math.max(limit, offset + Math.max(0, seconds) * drift));
+    const waiting = offset <= limit;
+    velocity = waiting ? 0 : drift;
+    if (waiting) cruise = null;
+    else if (!cruise || cruise.to !== limit || cruise.velocity !== drift) {
+      cruise = { revision: ++animationRevision, from: offset, to: limit, velocity: drift, endVelocity: drift,
+        duration: (limit - offset) / drift, elapsed: 0 };
+    } else cruise.elapsed = (offset - cruise.from) / drift;
+    return waiting;
+  }
   function seek(id) {
+    cruise = null;
     const item = find(id);
     if (!item?.ready) { pending = { id }; return; }
     const to = centerOffset(item);
@@ -34,14 +51,14 @@ export function createRoamScroll() {
   }
   function snapshot() {
     const focus = itemAtCenter();
-    return { offset, focus: focus?.id ?? null,
+    return { offset, velocity, focus: focus?.id ?? null,
       moving: !!motion, pending: !!pending, target: motion?.id ?? pending?.id ?? null,
-      animation: motion ? { ...motion } : null };
+      animation: motion || cruise ? { ...(motion ?? cruise) } : null };
   }
   return {
     snapshot,
     layout(next, width, initialId, gap = 12) {
-      const pivot = itemAtCenter(), previous = pivot ? offset + pivot.left : 0;
+      const previousOffset = offset, pivot = itemAtCenter(), previous = pivot ? offset + pivot.left : 0;
       const previousViewport = viewport;
       let left = 0;
       items = next.map(item => {
@@ -55,15 +72,15 @@ export function createRoamScroll() {
         const initial = find(initialId) || items[0];
         offset = centerOffset(initial); initialized = true;
       } else offset = previous - find(pivot.id).left + (viewport - previousViewport) / 2;
+      if (Math.abs(offset - previousOffset) > 1e-5) cruise = null;
       if (motion) {
         const target = find(motion.id);
         if (target) {
           // Rebase geometry without restarting either position or velocity.
-          const time = Math.min(1, motion.elapsed / motion.duration), progress = blend(time);
           const to = centerOffset(target);
-          const from = progress < 1 ? (offset - to * progress - tangent(motion, time)) / (1 - progress) : offset;
-          if (Math.abs(from - motion.from) > 1e-5 || Math.abs(to - motion.to) > 1e-5) {
-            motion = { ...motion, from, to, revision: ++animationRevision };
+          if (Math.abs(offset - previousOffset) > 1e-5 || Math.abs(to - motion.to) > 1e-5) {
+            motion = { ...motion, from: offset, to, velocity, elapsed: 0,
+              duration: Math.max(.001, motion.duration - motion.elapsed), revision: ++animationRevision };
           }
         }
         else motion = null;
@@ -74,6 +91,7 @@ export function createRoamScroll() {
         const item = base < 0 ? null : items[base + (pending.direction === 'newer' ? 1 : -1)];
         if (item) seek(item.id);
       }
+      if (!motion && !pending && drift) advanceCruise();
       return snapshot();
     },
     navigate(direction) {
@@ -86,7 +104,7 @@ export function createRoamScroll() {
       seek(item.id); return true;
     },
     select(id) { motion = null; pending = null; seek(id); },
-    freeze() { motion = null; pending = null; velocity = 0; return snapshot(); },
+    freeze() { motion = null; cruise = null; pending = null; velocity = 0; drift = 0; return snapshot(); },
     tick: function tick(seconds, playing, speed = 'normal') {
       let waiting = false;
       drift = playing ? -(scrollSpeeds[speed] ?? scrollSpeeds.normal) : 0;
@@ -104,19 +122,11 @@ export function createRoamScroll() {
         if (progress === 1) {
           motion = null;
           if (seconds > elapsed) return tick(seconds - elapsed, playing, speed);
+          if (playing && !pending) waiting = advanceCruise();
         }
       } else if (playing && !pending && initialized) {
-        const index = items.findIndex(item => item.id === itemAtCenter()?.id);
-        if (index >= 0 && items[index].ready) {
-          let lastReady = index;
-          while (items[lastReady + 1]?.ready) lastReady++;
-          const limit = centerOffset(items[lastReady]);
-          offset = Math.min(offset, Math.max(limit, offset + Math.max(0, seconds) * drift));
-          waiting = offset <= limit;
-          velocity = waiting ? 0 : drift;
-        }
-        else velocity = 0;
-      } else velocity = 0;
+        waiting = advanceCruise(seconds);
+      } else { velocity = 0; cruise = null; }
       return { ...snapshot(), waiting };
     },
   };

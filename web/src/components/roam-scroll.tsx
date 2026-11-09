@@ -4,6 +4,7 @@ import { t } from '../i18n/index.mjs';
 import { useApplication, useUiFact } from '../shared/application-context';
 import { createRoamScroll } from '../controllers/roam-scroll.mjs';
 import { ScrollPrivacyImage } from './scroll-privacy';
+import { createScrollAnimation } from './scroll-animation.mjs';
 import './roam-scroll.css';
 
 type Picture = { id: string; width?: number; height?: number; feedback?: number | null };
@@ -25,7 +26,7 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
   const requested = useRef('');
   const measured = useRef(false);
   const clock = useRef(0);
-  const animation = useRef<{ revision: number; effect: Animation } | null>(null);
+  const animation = useRef<ReturnType<typeof createScrollAnimation> | null>(null);
   const height = Math.max(1, size.height - 24);
   const pictures = useMemo(() => {
     const chronological = [...artifacts].reverse();
@@ -45,31 +46,10 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
 
   function paint(snapshot = motion.snapshot()) {
     if (!measured.current) return;
-    const strip = track.current, path = snapshot.animation;
+    const strip = track.current;
     if (strip) {
-      if (path && Math.abs(path.to - path.from) > .01) {
-        if (animation.current?.revision !== path.revision) {
-          animation.current?.effect.cancel();
-          const distance = path.to - path.from;
-          const start = path.velocity * path.duration / (3 * distance);
-          const end = 1 - path.endVelocity * path.duration / (3 * distance);
-          const effect = strip.animate([
-            { transform: `translate3d(${path.from}px,0,0)` },
-            { transform: `translate3d(${path.to}px,0,0)` },
-          ], { duration: path.duration * 1000, easing: `cubic-bezier(${1 / 3},${start},${2 / 3},${end})`, fill: 'both' });
-          effect.startTime = (clock.current || performance.now()) - path.elapsed * 1000;
-          animation.current = { revision: path.revision, effect };
-        }
-        const effect = animation.current!.effect;
-        if (latest.current.busy || document.hidden) {
-          effect.pause(); effect.currentTime = path.elapsed * 1000;
-        } else if (effect.playState === 'paused') {
-          effect.play(); effect.startTime = (clock.current || performance.now()) - path.elapsed * 1000;
-        }
-      } else {
-        strip.style.transform = `translate3d(${snapshot.offset}px,0,0)`;
-        animation.current?.effect.cancel(); animation.current = null;
-      }
+      animation.current ??= createScrollAnimation(strip);
+      animation.current.paint(snapshot, clock.current || performance.now(), latest.current.busy || document.hidden);
     }
     if (viewport.current) {
       viewport.current.dataset.focus = snapshot.focus ?? '';
@@ -138,7 +118,7 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
   }), [app, motion]);
   useLayoutEffect(() => {
     if (!active) {
-      animation.current?.effect.cancel(); animation.current = null;
+      animation.current?.dispose(); animation.current = null;
       motion.freeze(); reported.current = ''; clock.current = 0; return;
     }
     let frame = 0;
@@ -151,7 +131,7 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
       frame = requestAnimationFrame(animate);
     };
     frame = requestAnimationFrame(animate);
-    return () => { cancelAnimationFrame(frame); animation.current?.effect.cancel(); animation.current = null; clock.current = 0; };
+    return () => { cancelAnimationFrame(frame); animation.current?.dispose(); animation.current = null; clock.current = 0; };
   }, [active, app, motion]);
 
   return <div ref={viewport} className="roam-scroll" data-testid="roam-scroll" aria-label={t('画轴')}>
