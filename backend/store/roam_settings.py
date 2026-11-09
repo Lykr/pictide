@@ -3,10 +3,11 @@ from contextlib import contextmanager
 import json
 import sqlite3
 import threading
+import time
 import uuid
 
-from ..domain import ValidationError
-from .sqlite import Repository
+from ..domain import NotFoundError, ValidationError
+from .sqlite import Repository, encode
 
 def max_history_images(value):
     if type(value) is not int or not 0 <= value <= 100000:
@@ -182,6 +183,35 @@ class RoamSettings:
             Repository.discard_roam_prefetch(db)
             self._save_settings(db, document)
         return document
+
+    def start(self, identifier):
+        """Reference a liked image and replace the future window in one transaction."""
+        with self.lock, self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            document = self._get(db)
+            row = db.execute("SELECT j.positive,j.negative,j.prompt_snapshot,r.candidate,a.roam_hidden_at FROM artifacts a "
+                             "JOIN jobs j ON j.id=a.job_id LEFT JOIN roam_jobs r ON r.job_id=j.id "
+                             "JOIN feedback f ON f.artifact_id=a.id AND f.actor_id='local' AND f.value=1 "
+                             "WHERE a.id=? AND a.deleted_at IS NULL", (identifier,)).fetchone()
+            if row is None:
+                raise NotFoundError('Choose an existing liked image to start Roam.')
+            source = json.loads(row['prompt_snapshot']) if row['prompt_snapshot'] else row
+            candidate = row['candidate'] or encode({'candidate_id': '', 'positive': source['positive'],
+                                                   'negative': source['negative'], 'terms': []})
+            db.execute("INSERT INTO roam_origins VALUES (?,?) ON CONFLICT(artifact_id) DO UPDATE SET candidate=excluded.candidate",
+                       (identifier, candidate))
+            db.execute("UPDATE artifacts SET roam_hidden_at=NULL WHERE id=?", (identifier,))
+            # Compensate for clearing the counted hidden marker, and invalidate old pages.
+            db.execute("INSERT INTO artifact_revision_offset VALUES (1,?) ON CONFLICT(id) DO UPDATE SET value=value+excluded.value",
+                       (1 + int(row['roam_hidden_at'] is not None),))
+            saved = db.execute("SELECT viewed_at FROM roam_view WHERE actor_id='local'").fetchone()
+            timestamp = max(time.time_ns() // 1_000_000, saved['viewed_at'] + 1 if saved else 0)
+            db.execute("INSERT INTO roam_view VALUES ('local',?,?) ON CONFLICT(actor_id) DO UPDATE SET "
+                       "artifact_id=excluded.artifact_id,viewed_at=excluded.viewed_at", (identifier, timestamp))
+            document['epoch'] = uuid.uuid4().hex
+            Repository.discard_roam_prefetch(db)
+            self._save_settings(db, document)
+        return {'artifact_id': identifier, 'viewed_at': timestamp}
 
     def save(self, count, backend_id="", preset_id="", max_history=0, playback_interval=None, liked_tags_only=None, prompt_mode=None, candidate_count=None, recommendation=None, anchors=None, use_canvas_pool=None, playback_style=None, scroll_speed=None):
         display = display_options(playback_style, scroll_speed)

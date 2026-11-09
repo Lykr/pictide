@@ -4,7 +4,7 @@ import { ImageToolbarPopover } from "./image-toolbar-popover";
 import { notifyError } from "../shared/notifications.mjs";
 import { t } from "../i18n/index.mjs";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Download, Eye, EyeOff, Heart, Info, LoaderCircle, Maximize, Minimize, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Compass, Download, Eye, EyeOff, Heart, Info, LoaderCircle, Maximize, Minimize, X } from "lucide-react";
 import { IconButton } from "./actions";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
@@ -35,6 +35,7 @@ export type GeneratedViewerProps = {
   imageLabel?: string;
   confirmUnlike?: boolean;
   allowDownload?: boolean;
+  onRoam?: (item: GeneratedArtifact) => Promise<void>;
 };
 const artifactPath = (item: GeneratedArtifact, kind: string) => `/api/artifacts/${encodeURIComponent(item.id)}/${kind}`;
 
@@ -66,7 +67,21 @@ function ViewerImage({ item, privacyBlur, label, onNavigate, busy, transition, p
 }
 
 function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }) {
-  const { item, items, onActiveChange, privacyBlur, onPrivacyChange, busy, onLike, hasMore, loadingMore, onMore, error } = props;
+  const { item, items, onActiveChange, privacyBlur, onPrivacyChange, onLike, hasMore, loadingMore, onMore, error } = props;
+  const [roamPending, setRoamPending] = useState(false);
+  const roaming = useRef(false);
+  const busy = props.busy || roamPending;
+  const startRoam = async () => {
+    if (!props.onRoam || busy || roaming.current) return;
+    roaming.current = true; setRoamPending(true);
+    try {
+      await viewerRef.current?.leave();
+      await props.onRoam(item);
+      onActiveChange(null);
+    } catch (failure) {
+      notifyError(failure instanceof Error ? failure.message : String(failure));
+    } finally { roaming.current = false; setRoamPending(false); }
+  };
   const imageChange = useRef({ id: item.id, transition: false });
   if (imageChange.current.id !== item.id) imageChange.current = { id: item.id, transition: true };
   const [cardElement, setCardElement] = useState<HTMLDivElement | null>(null);
@@ -143,14 +158,17 @@ function ViewerContent(props: GeneratedViewerProps & { item: GeneratedArtifact }
   useEffect(() => { setInfoOpen(false); }, [item.id]);
 
   return <DialogContent ref={setCardElement} className="generated-viewer image-card" showCloseButton={false} aria-describedby={undefined} tabIndex={-1}
-    onEscapeKeyDown={event => { if (event.defaultPrevented || viewerRef.current?.active) { event.preventDefault(); viewerRef.current?.leave(); } }}>
+    onCloseAutoFocus={event => { if (roaming.current) event.preventDefault(); }}
+    onInteractOutside={event => { if (roaming.current) event.preventDefault(); }}
+    onEscapeKeyDown={event => { if (roaming.current || event.defaultPrevented || viewerRef.current?.active) { event.preventDefault(); if (!roaming.current) viewerRef.current?.leave(); } }}>
     <DialogTitle className="sr-only">{props.imageLabel ?? t("生成的图片")}</DialogTitle>
     <div className="generated-viewer-heading">
+      {props.onRoam && <IconButton icon={roamPending ? LoaderCircle : Compass} className={roamPending ? '[&_svg]:animate-spin' : undefined} label={t('从此漫游')} disabled={busy} onClick={() => void startRoam()} />}
       <IconButton ref={entryRef} icon={Maximize} label={t("沉浸模式")} aria-pressed={immersive} disabled={busy} />
       <Toggle size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={onPrivacyChange} aria-label={privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格")} aria-keyshortcuts="Space" data-tooltip={privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格")}>
         {privacyBlur ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
       </Toggle>
-      <IconButton icon={X} label={t("关闭图片")} onClick={() => onActiveChange(null)} />
+      <IconButton icon={X} label={t("关闭图片")} disabled={roamPending} onClick={() => onActiveChange(null)} />
     </div>
     <div className="immersive-actions" role="toolbar" aria-label={t("沉浸模式设置")}>
       <Toggle size="sm" className="size-8 p-0" pressed={privacyBlur} onPressedChange={onPrivacyChange} aria-label={privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格")} aria-keyshortcuts="Space" data-tooltip={privacyBlur ? t("关闭毛玻璃 · 空格") : t("开启毛玻璃 · 空格")}>

@@ -71,7 +71,8 @@ class RoamPipelineTests(unittest.IsolatedAsyncioTestCase):
         self.pool = PromptPool(self.backend)
         self.app.candidates = SimpleNamespace(provider=self.pool,
             list_presets=lambda: {"presets": [{"id": "neutral", "name": "Neutral"}]},
-            normalize_roam_anchors=lambda preset, pins: dict(preset_base_positive=[], pinned_positive=pins))
+            normalize_roam_anchors=lambda preset, pins, exclusions: dict(
+                preset_base_positive=[], pinned_positive=pins, excluded_positive=exclusions))
         self.scorer = Scorer()
         self.app.recommendation = self.scorer
         self.app.recommendation_store = None

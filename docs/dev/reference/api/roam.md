@@ -12,6 +12,7 @@
 | PUT | `/api/settings/roam` | Configuration fields; see update rules | Saved configuration and state |
 | GET | `/api/roam/view` | None | `{artifact_id,viewed_at}` |
 | PUT | `/api/roam/view` | `{artifact_id,viewed_at}` | Actual saved and resolved viewing position |
+| POST | `/api/roam/start` | `{artifact_id}`; an existing liked image ID | New viewing position `{artifact_id,viewed_at}` |
 | POST | `/api/roam/ensure` | `{anchor_id:null or image ID,demand:false}`; both fields may be omitted | Prefetch state; may include a newly created `job` |
 
 ### Configuration
@@ -48,6 +49,8 @@ A non-null `pinned_canvas` takes priority over both canvas-pool mode and the API
 Canvas-pool mode samples uniformly from the current API's usable sizes. An unlinked API keeps its fixed size. App selects width and height after any natural-language preparation and before persisting the job; Task reuses those stored pixels for submission and recovery. The candidate, recommendation, and LLM inputs are unchanged. See [canvas pool configuration](backends.md#canvas-pools).
 
 ### Viewing position and prefetching
+
+POST `/api/roam/start` starts Roam from any liked original, including Generate images and hidden Roam images. Store atomically references the artifact, restores its Roam visibility, advances the saved viewing position and list revision, and invalidates old future prefetch. Queued old work is cancelled; already accepted old work remains hidden when it finishes. Original files, source, likes, and preference evidence are unchanged. Generate origins remain Generate results unless previously hidden there. Current Roam settings remain in force; this call creates no image job. The browser opens the selected image paused, replacing its old window and scroll position; ordinary Ensure requests resume prefetch. Flow resolves a manual origin's source tags against the current vocabulary and preset; if no compatible combination exists, it uses the existing fresh-candidate fallback. Anchor reuses the saved source prompts. Unavailable or no-longer-liked images return 404; malformed bodies return 400.
 
 `artifact_id` may be null; when non-null, it must identify a visible Roam image. `viewed_at` is a nonnegative safe integer, and only a strictly newer timestamp causes an update. If the original image has been hidden or cleaned up, GET may resolve the position to a neighboring image.
 

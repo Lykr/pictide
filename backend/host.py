@@ -358,6 +358,10 @@ async def roam_view(request):
         await body(request) if request.method == "PUT" else None))
 
 
+async def start_roam(request):
+    return web.json_response(await request.app[APPLICATION].start_roam(await body(request)))
+
+
 async def image(request):
     try:
         identifier = request.match_info['id']
@@ -572,6 +576,7 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get("/api/recommendation/preferences", preferences),
         web.post("/api/recommendation/preferences/reset", reset_preferences),
         web.post("/api/roam/ensure", ensure_roam),
+        web.post("/api/roam/start", start_roam),
         web.get("/api/roam/view", roam_view), web.put("/api/roam/view", roam_view),
         web.put("/api/backends/{id}", connection),
         web.delete("/api/backends/{id}", connection),

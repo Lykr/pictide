@@ -12,6 +12,8 @@ Click an image to view it in full; see [Image browsing](images.md) for more. You
 
 Liked images stay in your collection, even when you [clear generation results](generate.md#clear-generation-results).
 
+To continue exploring from a favorite, open it and choose **Roam from here**, the compass immediately left of the immersive-mode button. Roam opens on that original, paused, and continues with your current Roam settings. Old future prefetch is discarded; the image stays liked and keeps its original source. This also works for favorites already hidden from Roam or Generate.
+
 ## Save and export images
 
 Open a liked image and choose **Download original** to save its original file. Choose the **Select to export** icon immediately to the right of the page's blur button, select images, and choose **Export ZIP**. Click the icon again to exit selection. **Select all loaded** selects the images currently loaded in the list. Load more first to include older images. Each export supports up to 1,000 images.

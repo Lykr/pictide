@@ -665,6 +665,28 @@ class PictideApplication:
         except OSError as error:
             raise ValidationError('图片文件读取失败，请刷新后重新选择。') from error
 
+    async def start_roam(self, payload):
+        identifier = payload.get('artifact_id')
+        if set(payload) != {'artifact_id'} or not isinstance(identifier, str) or not 1 <= len(identifier) <= 100:
+            raise ValidationError('Specify a liked image artifact_id to start Roam.')
+        if self.update_installing:
+            raise ConflictError('Pictide is updating; generation is temporarily paused.')
+        # Resolve the original before committing the new cursor; no file copy or generation.
+        artifact = await asyncio.to_thread(self.storage.artifact, identifier)
+        if not artifact or artifact['feedback'] != 1:
+            raise NotFoundError('Choose an existing liked image to start Roam.')
+        await self.image(identifier)
+        async with self._roam_lock:
+            result = await self.tasks.database(self.roam.start, identifier)
+            preparation = self._roam_preparation
+            self._roam_preparation = None
+            if preparation and not preparation.done():
+                preparation.cancel()
+                await asyncio.gather(preparation, return_exceptions=True)
+        self.events.publish('roam_settings')
+        self.events.publish('artifacts')
+        return result
+
     async def roam_view(self, payload=None):
         if payload is not None:
             await self.tasks.database(self.storage.roam_view, payload)

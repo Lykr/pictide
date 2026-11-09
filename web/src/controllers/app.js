@@ -89,7 +89,7 @@ state.roamDisplay = { playback_style: 'single', scroll_speed: 'normal' };
 let roamError = '';
 let roamAnchorRetried = false;
 let roamPageActive = true, roamVersion = 0;
-let roamSettingsSaving = false, roamSwitch = null;
+let roamSettingsSaving = false, roamSwitch = null, roamStarting = false;
 let anchorPrefetchDeferred = false;
 const roamPlayback = createRoamPlayback({
   advance: current => moveImage('newer', current),
@@ -598,7 +598,7 @@ async function applyRoamSettings(settings, savedFields = []) {
   }
 }
 async function loadRoamSettings({ preserveDraft = false } = {}) {
-  if (roamSettingsLoading || roamSettingsSaving) return;
+  if (roamSettingsLoading || roamSettingsSaving || roamStarting) return;
   roamSettingsLoading = true;
   const version = roamVersion;
   try {
@@ -608,6 +608,30 @@ async function loadRoamSettings({ preserveDraft = false } = {}) {
     renderRoamBackends();
   } catch (error) { notifyError(() => tr`设置读取失败：${error.message}`, { id: 'roam-settings' }); }
   finally { roamSettingsLoading = false; }
+}
+async function startRoamFromLiked(identifier) {
+  if (roamStarting || state.feedbackPending || state.generatedMutationPending) return;
+  roamStarting = true;
+  beginRoamSwitch();
+  roamSwitch.resume = false;
+  try {
+    await roamViewPending;
+    const position = await api('/api/roam/start', { method: 'POST', body: JSON.stringify({ artifact_id: identifier }) });
+    const window = await api(roamArtifactPath(position.artifact_id));
+    if (!window.artifacts.some(item => item.id === identifier)) throw new Error(t('图片已清理或读取失败'));
+    const applied = applyPage('feed', window, { replace: true });
+    if (!applied.accepted) throw new Error(t('图片已清理或读取失败'));
+    galleryCursors.select('feed', identifier, position.viewed_at, false);
+    galleryCursors.watch(identifier, position.viewed_at);
+    state.roamSession = (state.roamSession || 0) + 1;
+    state.currentImage = null; state.imageReady = false; state.imageFailed = false;
+    anchorPrefetchDeferred = false;
+    clearRoamError();
+    setView('feed');
+  } finally {
+    roamStarting = false;
+    finishRoamSwitch();
+  }
 }
 async function saveRoamSettings(patch) {
   if (roamSettingsSaving) throw new Error(t("正在保存漫游设置，请稍候。"));
@@ -834,7 +858,7 @@ disposers.push(onSignal('language-changed', () => { changed(); generation.model.
     for (const dispose of disposers.splice(0)) dispose();
   };
 }
-return { model, generation, backendSettings, promptSettings, canvasPools, localGeneration, recentUnlikes, restoreLike, mount, commands, setPrivacy, setView, setSettingsSection, openSettings, moveImage, feedback,
+return { model, generation, backendSettings, promptSettings, canvasPools, localGeneration, recentUnlikes, restoreLike, startRoamFromLiked, mount, commands, setPrivacy, setView, setSettingsSection, openSettings, moveImage, feedback,
   requestNextRoamImage, imageLoaded, imageFailed, cancelJob, jobPager, saveHistory, submitRoamSettings,
   scrollFrame, scrollMore,
   bindScroll(driver) { scrollDriver = driver; return () => { if (scrollDriver === driver) scrollDriver = null; }; },

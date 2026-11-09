@@ -129,7 +129,7 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <IconButton id="roam-immersive-exit" icon={Minimize} label={t("退出沉浸模式")} ref={ref.immersiveExit} hidden={!state.immersive} />
 </div>
 <div className="image-stage" ref={node => { ref.stage(node); targets["roam.image"](node); }}>
-{state.roamDisplay.playback_style === 'scroll' && artifact ? <RoamScroll artifacts={state.artifacts} currentId={artifact.id} active={state.view === 'feed'} speed={state.roamDisplay.scroll_speed} busy={state.feedbackPending || state.gallery.loading} blurred={privacyBlur} /> : <div className="roam-single-image">
+{state.roamDisplay.playback_style === 'scroll' && artifact ? <RoamScroll key={state.roamSession || 0} artifacts={state.artifacts} currentId={artifact.id} active={state.view === 'feed'} speed={state.roamDisplay.scroll_speed} busy={state.feedbackPending || state.gallery.loading} blurred={privacyBlur} /> : <div className="roam-single-image">
   <img id="main-image" alt={t("生成的图片")} draggable={false} ref={ref.image} src={artifact ? `/api/artifacts/${encodeURIComponent(artifact.id)}/image` : undefined} onLoad={app.imageLoaded} onError={app.imageFailed} />
   {privacyBlur && <span className="roam-privacy-wash" aria-hidden="true" />}
 </div>}

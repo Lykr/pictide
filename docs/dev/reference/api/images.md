@@ -32,6 +32,8 @@
 
 The response is `{artifacts,has_more,has_newer,anchor_id,next_cursor,total,counts,source,revision}`. Images are normally ordered newest first by time and ID. `counts` contains global counts for `artifacts,roam,generate,liked`; `total` is the count for the current filter. `next_cursor` is the last item's ID when older images remain, or null otherwise.
 
+`source=roam` selects visible Roam membership, including liked Generate originals chosen through [Roam from here](roam.md#viewing-position-and-prefetching). Each artifact's `source` still identifies its original generation source. A referenced original can therefore appear in both Roam and Generate; the section counts need not sum to `artifacts`.
+
 ### Artifact
 
 Main fields: `id,job_id,node_id,output_index,created_at,local_path,content_type,deleted_at,generated_hidden_at,roam_hidden_at,positive,negative,seed,width,height,feedback,source,backend_kind,seed_applied,image_url`. `image_url` points to the same-origin image endpoint. `seed` is the image seed; `seed_applied` indicates whether it was actually applied by the backend; it is false for OpenAI Images and Gemini. `backend_kind` identifies the generation adapter; an internal stored seed does not imply a deterministic cloud image. Term information reflects the actual text used at generation time. Nullable `width,height` are the immutable requested task size, rather than measured output dimensions. Roam uses them for Pin current; older/fixed tasks fall back to the loaded image’s native dimensions.

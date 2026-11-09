@@ -88,6 +88,15 @@ class Repository:
                 job_id TEXT PRIMARY KEY REFERENCES jobs(id),
                 epoch TEXT NOT NULL, candidate TEXT NOT NULL, created_at TEXT NOT NULL, discarded_at TEXT);
             CREATE INDEX IF NOT EXISTS roam_jobs_epoch ON roam_jobs(epoch);
+            CREATE TABLE IF NOT EXISTS roam_origins (
+                artifact_id TEXT PRIMARY KEY REFERENCES artifacts(id),
+                candidate TEXT NOT NULL);
+            CREATE VIEW IF NOT EXISTS roam_images AS
+                SELECT a.id AS artifact_id FROM artifacts a
+                WHERE EXISTS (SELECT 1 FROM roam_jobs r WHERE r.job_id=a.job_id)
+                   OR EXISTS (SELECT 1 FROM roam_origins o WHERE o.artifact_id=a.id);
+            CREATE TABLE IF NOT EXISTS artifact_revision_offset (
+                id INTEGER PRIMARY KEY CHECK(id=1), value INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS roam_runs (
                 epoch TEXT PRIMARY KEY, error TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS roam_view (
@@ -318,12 +327,12 @@ class Repository:
     @staticmethod
     def _roam_state(db, epoch, anchor_id):
         if anchor_id is None:
-            ready = db.execute("SELECT count(*) FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL").fetchone()[0]
+            ready = db.execute("SELECT count(*) FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL").fetchone()[0]
         else:
-            anchor = db.execute("SELECT a.created_at,a.id FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id WHERE a.id=? AND a.deleted_at IS NULL AND a.roam_hidden_at IS NULL", (anchor_id,)).fetchone()
+            anchor = db.execute("SELECT a.created_at,a.id FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id WHERE a.id=? AND a.deleted_at IS NULL AND a.roam_hidden_at IS NULL", (anchor_id,)).fetchone()
             if anchor is None:
                 raise NotFoundError("当前漫游图片已清理或不存在，请刷新后重试。")
-            ready = db.execute("SELECT count(*) FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL "
+            ready = db.execute("SELECT count(*) FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL "
                                "AND (a.created_at>? OR (a.created_at=? AND a.id>?))",
                                (anchor["created_at"], anchor["created_at"], anchor["id"])).fetchone()[0]
         failure = db.execute("SELECT j.status,j.error FROM roam_jobs r JOIN jobs j ON j.id=r.job_id "
@@ -378,7 +387,7 @@ class Repository:
         newer = " AND (created_at>? OR (created_at=? AND id>?))" if anchor else ""
         parameters = (anchor["created_at"], anchor["created_at"], anchor["id"]) if anchor else ()
         db.execute("UPDATE artifacts SET roam_hidden_at=? WHERE deleted_at IS NULL AND roam_hidden_at IS NULL "
-                   "AND EXISTS (SELECT 1 FROM roam_jobs r WHERE r.job_id=artifacts.job_id)" + newer,
+                   "AND EXISTS (SELECT 1 FROM roam_images r WHERE r.artifact_id=artifacts.id)" + newer,
                    (timestamp, *parameters))
         db.execute("UPDATE roam_jobs SET discarded_at=? WHERE discarded_at IS NULL "
                    "AND job_id IN (SELECT id FROM jobs WHERE status IN ('queued','submitting','running','unknown'))", (timestamp,))
@@ -399,7 +408,12 @@ class Repository:
                     anchor_id = saved["artifact_id"] if saved else None
                 row = db.execute("SELECT r.candidate,j.id AS job_id,j.positive,j.negative FROM artifacts a JOIN jobs j ON j.id=a.job_id "
                                  "JOIN roam_jobs r ON r.job_id=j.id WHERE a.id=? AND a.deleted_at IS NULL "
-                                 "AND a.roam_hidden_at IS NULL AND r.discarded_at IS NULL", (anchor_id,)).fetchone()
+                                 "AND a.roam_hidden_at IS NULL", (anchor_id,)).fetchone()
+                if row is None:
+                    row = db.execute("SELECT o.candidate,j.id AS job_id,j.positive,j.negative FROM roam_origins o "
+                                     "JOIN artifacts a ON a.id=o.artifact_id JOIN jobs j ON j.id=a.job_id "
+                                     "WHERE a.id=? AND a.deleted_at IS NULL AND a.roam_hidden_at IS NULL",
+                                     (anchor_id,)).fetchone()
             if row is None:
                 return None
             snapshot = json.loads(row["candidate"])
@@ -520,7 +534,7 @@ class Repository:
     @staticmethod
     def _counts(db):
         total = db.execute("SELECT count(*) FROM artifacts WHERE deleted_at IS NULL").fetchone()[0]
-        roam = db.execute("SELECT count(*) FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL").fetchone()[0]
+        roam = db.execute("SELECT count(*) FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL").fetchone()[0]
         generated = db.execute("SELECT count(*) FROM artifacts a WHERE a.deleted_at IS NULL AND a.generated_hidden_at IS NULL AND NOT EXISTS (SELECT 1 FROM roam_jobs r WHERE r.job_id=a.job_id)").fetchone()[0]
         return {"artifacts": total, "roam": roam, "generate": generated,
                 "liked":db.execute("SELECT count(*) FROM feedback f JOIN artifacts a ON a.id=f.artifact_id WHERE a.deleted_at IS NULL AND f.actor_id='local' AND f.value=1").fetchone()[0]}
@@ -592,19 +606,19 @@ class Repository:
     @staticmethod
     def _roam_anchor(db, identifier):
         """Keep a removed cursor near its original position, preferring older."""
-        row = db.execute("SELECT a.id,a.created_at,a.deleted_at,a.roam_hidden_at FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id WHERE a.id=?", (identifier,)).fetchone()
+        row = db.execute("SELECT a.id,a.created_at,a.deleted_at,a.roam_hidden_at FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id WHERE a.id=?", (identifier,)).fetchone()
         if row and row["deleted_at"] is None and row["roam_hidden_at"] is None:
             return row
         if row:
-            older = db.execute("SELECT a.id,a.created_at FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id "
+            older = db.execute("SELECT a.id,a.created_at FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id "
                                "WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL AND (a.created_at<? OR (a.created_at=? AND a.id<?)) "
                                "ORDER BY a.created_at DESC,a.id DESC LIMIT 1", (row["created_at"], row["created_at"], row["id"])).fetchone()
             if older:
                 return older
-            return db.execute("SELECT a.id,a.created_at FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id "
+            return db.execute("SELECT a.id,a.created_at FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id "
                               "WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL AND (a.created_at>? OR (a.created_at=? AND a.id>?)) "
                               "ORDER BY a.created_at,a.id LIMIT 1", (row["created_at"], row["created_at"], row["id"])).fetchone()
-        return db.execute("SELECT a.id,a.created_at FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id "
+        return db.execute("SELECT a.id,a.created_at FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id "
                           "WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL ORDER BY a.created_at DESC,a.id DESC LIMIT 1").fetchone()
 
     def roam_view(self, payload=None):
@@ -618,7 +632,7 @@ class Repository:
             db.execute("BEGIN IMMEDIATE" if payload is not None else "BEGIN")
             saved = db.execute("SELECT artifact_id,viewed_at FROM roam_view WHERE actor_id='local'").fetchone()
             if payload is not None and (saved is None or timestamp > saved["viewed_at"]):
-                if identifier is not None and not db.execute("SELECT a.id FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id WHERE a.id=? AND a.deleted_at IS NULL AND a.roam_hidden_at IS NULL", (identifier,)).fetchone():
+                if identifier is not None and not db.execute("SELECT a.id FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id WHERE a.id=? AND a.deleted_at IS NULL AND a.roam_hidden_at IS NULL", (identifier,)).fetchone():
                     raise NotFoundError("当前漫游图片已清理或不存在。")
                 db.execute("INSERT INTO roam_view VALUES ('local',?,?) ON CONFLICT(actor_id) DO UPDATE SET artifact_id=excluded.artifact_id,viewed_at=excluded.viewed_at", (identifier, timestamp))
                 saved = {"artifact_id": identifier, "viewed_at": timestamp}
@@ -643,7 +657,9 @@ class Repository:
             if selected_tags:
                 db.create_function("has_prompt_tags", 1, lambda positive: selected_tags <= prompt_tags(positive), deterministic=True)
                 where_tags = "has_prompt_tags(COALESCE(json_extract(j.prompt_snapshot,'$.positive'),j.positive))"
-            where_source = "1" if source == "all" else ("EXISTS" if source == "roam" else "NOT EXISTS") + " (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id)"
+            where_source = ("1" if source == "all" else
+                            "EXISTS (SELECT 1 FROM roam_images s WHERE s.artifact_id=a.id)" if source == "roam" else
+                            "NOT EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id)")
             # Keep hidden/deleted markers usable for stable pagination, but never
             # return them as generated results (all/liked still retain hidden likes).
             where_visible = "a.generated_hidden_at IS NULL" if source == "generate" else "a.roam_hidden_at IS NULL" if source == "roam" else "1"
@@ -656,10 +672,10 @@ class Repository:
             if around is not None:
                 anchor = self._roam_anchor(db, around)
                 if anchor:
-                    rank = db.execute("SELECT count(*) FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id "
+                    rank = db.execute("SELECT count(*) FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id "
                                       "WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL AND (a.created_at>? OR (a.created_at=? AND a.id>?))",
                                       (anchor["created_at"], anchor["created_at"], anchor["id"])).fetchone()[0]
-                    available = db.execute("SELECT count(*) FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL").fetchone()[0]
+                    available = db.execute("SELECT count(*) FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL").fetchone()[0]
                     offset = max(0, min(rank - limit // 2, available - limit))
             rows = db.execute(f"""SELECT a.*,j.positive,j.negative,j.prompt_snapshot,j.seed,j.width,j.height,f.value AS feedback,
                 CASE WHEN EXISTS (SELECT 1 FROM roam_jobs s WHERE s.job_id=a.job_id) THEN 'roam' ELSE 'generate' END AS source,
@@ -723,8 +739,9 @@ class Repository:
 
     @staticmethod
     def _artifact_revision(db):
-        # Both irreversible visibility transitions invalidate in-flight pages.
-        return db.execute("SELECT count(deleted_at)+count(generated_hidden_at)+count(roam_hidden_at) FROM artifacts").fetchone()[0]
+        # Restoring a hidden origin must advance, rather than decrease, the revision.
+        return db.execute("SELECT count(deleted_at)+count(generated_hidden_at)+count(roam_hidden_at) "
+                          "+COALESCE((SELECT value FROM artifact_revision_offset WHERE id=1),0) FROM artifacts").fetchone()[0]
 
     def artifact_revision(self):
         with self.connection() as db:
@@ -845,7 +862,7 @@ class Repository:
             anchor = self._roam_anchor(db, saved["artifact_id"]) if saved and saved["artifact_id"] else None
             if anchor is None:
                 return 0
-            scope = """FROM artifacts a JOIN roam_jobs r ON r.job_id=a.job_id
+            scope = """FROM artifacts a JOIN roam_images r ON r.artifact_id=a.id
                 WHERE a.deleted_at IS NULL AND a.roam_hidden_at IS NULL
                 AND (utc_timestamp(a.created_at)<utc_timestamp(?)
                      OR (utc_timestamp(a.created_at)=utc_timestamp(?) AND a.id<?))"""

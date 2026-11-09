@@ -105,6 +105,6 @@ export function GeneratedResults({ collection = "generate", privacyHost }: { col
       <IconButton icon={Heart} className="generated-card-like image-like" label={item.feedback === 1 ? t("已喜欢，点击撤回") : t("喜欢图片")} aria-pressed={item.feedback === 1} disabled={busy} onClick={() => like(item)} />
     </Card>)}</div>
     {state.hasMore && <div className="load-more-row"><Button variant="outline" type="button" disabled={state.loading || busy} onClick={() => emit(`${prefix}-more`)} data-tooltip={tr`已加载 ${state.artifacts.length} / ${state.total} 张图片`}>{state.loading ? t("加载中…") : liked && state.sort === "score" ? t("加载更多") : t("更早图片")}</Button></div>}
-    <GeneratedViewer imageLabel={label} confirmUnlike={liked} allowDownload={liked} items={state.artifacts} activeId={state.visible ? selectedId : null} onActiveChange={setSelectedId} privacyBlur={privacyBlur} onPrivacyChange={setPrivacyBlur} busy={busy} onLike={like} hasMore={state.hasMore} loadingMore={state.loading} onMore={() => emit(`${prefix}-more`)} error={state.error} />
+    <GeneratedViewer imageLabel={label} confirmUnlike={liked} allowDownload={liked} onRoam={liked ? item => app.startRoamFromLiked(item.id) : undefined} items={state.artifacts} activeId={state.visible ? selectedId : null} onActiveChange={setSelectedId} privacyBlur={privacyBlur} onPrivacyChange={setPrivacyBlur} busy={busy} onLike={like} hasMore={state.hasMore} loadingMore={state.loading} onMore={() => emit(`${prefix}-more`)} error={state.error} />
   </section>;
 }

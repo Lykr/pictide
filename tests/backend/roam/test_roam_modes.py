@@ -93,6 +93,34 @@ class RoamModesSmoke(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status,400)
         self.assertEqual((await (await self.client.get("/api/settings/roam")).json())["prompt_mode"],"stay")
 
+    async def test_manual_liked_origin_supplies_flow_tags_and_anchor_reuses_source_prompts(self):
+        await self.app.tasks.stop()
+        job = self.app.storage.create_job({'request_id': 'manual-origin', 'backend_id': 'local',
+            'positive': 'A garden under sunlight.', 'negative': '', 'seed': 7,
+            'prompt_snapshot': {'positive': 'illustration, garden, sunlight', 'negative': 'blurry'}})
+        image_path = self.app.paths.images / 'origin.png'
+        image_path.write_bytes(b'original')
+        self.app.storage.complete(job['id'], [{'node_id': '9', 'index': 0,
+            'local_path': image_path.relative_to(self.app.paths.root).as_posix()}])
+        image = self.app.storage.artifacts()[0]
+        self.app.storage.rate(image['id'], 1)
+        for mode in ('along', 'stay'):
+            await self.put({'prefetch_count': 0, 'backend_id': 'local', 'preset_id': 'neutral', 'prompt_mode': mode})
+            response = await self.client.post('/api/roam/start', json={'artifact_id': image['id']})
+            self.assertEqual(response.status, 200, await response.text())
+            reference = self.app.storage.roam_prompt_reference(self.app.roam.get()['epoch'], image['id'])
+            self.assertEqual(reference['positive'], 'illustration, garden, sunlight')
+            prepared = self.app.candidates._prepare_generation({'preset_id': 'neutral'}, previous_candidate=reference)
+            self.assertEqual({tag['name'] for tag in prepared.previous}, {'garden', 'sunlight'})
+            response = await self.client.post('/api/roam/ensure', json={'anchor_id': image['id'], 'demand': True})
+            result = await response.json()
+            self.assertEqual(response.status, 200, result)
+            current = result['job']
+            if mode == 'stay':
+                self.assertEqual((current['positive'], current['negative']), ('illustration, garden, sunlight', 'blurry'))
+            else:
+                self.assertLessEqual(len(set(reference['positive'].split(', ')) ^ set(current['positive'].split(', '))), 2)
+
     async def test_along_follows_selected_parent_instead_of_other_pool_candidates(self):
         from backend.recommendation.contracts import CandidateScore, RecommendationStatus, ScoreResult
         class LastScorer:

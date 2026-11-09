@@ -173,6 +173,8 @@ class CandidateService:
         """Resolve the actual prior positive combination against today's preset and vocabulary."""
         texts = [term["text"].strip().replace("_", " ") for term in reference["terms"]
                  if term["channel"] == "positive"]
+        if not reference['terms']:
+            texts = [text.strip().replace('_', ' ') for text in reference['positive'].split(',') if text.strip()]
         if ", ".join(texts) != reference["positive"].strip().replace("_", " "):
             return None  # An edited text is not represented by its historical snapshot.
         fixed_texts = {term["text"] for term in fixed}

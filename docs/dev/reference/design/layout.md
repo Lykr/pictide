@@ -67,6 +67,8 @@ Generate and Liked share a compact responsive thumbnail grid and large-image vie
 
 Large views use a shared Dialog with previous, like, and next controls centered; information sits at the lower left, and blur sits beside the upper-right close action. Information retains prompt JSON download; original-image downloads are specific to Liked. Preserve the image during pagination waits and cache rereads; close only when no image remains. Escape exits immersive mode before closing the viewer.
 
+Liked's large-image heading adds a **Roam from here** compass immediately before the immersive-mode button. Reuse the shared icon-button recipe, tooltip and accessible label. Pending navigation disables repeated submission and viewer dismissal; failures keep the original open and use the shared error notification. Success closes the viewer and opens the chosen original in paused Roam, preserving its source and like. Generate and recovery viewers do not offer this action.
+
 The Generate/Liked dialog frame is sized and centered inside the viewport minus its four safe-area insets; internal padding is not a substitute for keeping the frame above the Home indicator. Shared `--safe-area-*` tokens read the browser's device insets. Rotation recalculates the safe rectangle. Immersive images may fill the viewport, while floating controls remain inside the safe area.
 
 

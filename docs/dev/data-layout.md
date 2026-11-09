@@ -83,6 +83,7 @@ For disposable caches, frontend backups and validation files, use the [project c
 
 - Each backend save creates an immutable revision; existing tasks reference their submission-time snapshot. Workflow versions are backed up before editing.
 - Liked images are retained across sections. Cleaning up unliked images reclaims images and prompt JSON files while retaining task history.
+- Starting Roam from a like stores a `roam_origins` artifact reference and prompt snapshot, with no image/job copy or source reassignment. The `roam_images` view unifies native Roam images and referenced originals for browsing and history cleanup. `artifact_revision_offset` preserves increasing list revisions when a hidden origin becomes visible again.
 - Generate, Liked and Recently unliked grids share preview caches. The existing image-deletion queue also reclaims each deleted artifact's preview, preserving previews and originals still referenced by other artifacts. No preview is created at startup; cache conversion and cleanup serialize their final file changes against deletion tombstones.
 - Removing a like records a 24-hour protection deadline in the image row. Age-based and Roam-count automatic cleanup honor it across restarts. Explicit Generate clearing retains its existing deletion semantics.
 - Time-based cleanup and roam history count cleanup run at startup and operation entry points. See [Settings and Cleanup](../guides/settings.md#historical-image-cleanup).
