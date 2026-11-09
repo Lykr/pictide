@@ -96,6 +96,26 @@ test('scroll waits for new images, preserves settings and switches back to singl
 
 test.describe('PWA picture gestures', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  for (const style of ['single', 'scroll']) test(`image taps toggle immersive menus in ${style}`, async ({ page, context }) => {
+    await context.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));
+    await prepare(page, context);
+    if (style === 'single') {
+      await page.request.put('/api/settings/roam', { data: { playback_style: 'single' } });
+      await page.reload();
+    }
+    await page.locator('#roam-immersive').click();
+    const card = page.locator('#image-card'), stage = card.locator('.image-stage');
+    await expect(card).toHaveClass(/immersive/);
+    await stage.tap();
+    await expect(card).toHaveClass(/immersive-controls-hidden/);
+    await expect(card.locator('.image-toolbar')).toHaveAttribute('aria-hidden', 'true');
+    await stage.tap();
+    await expect(card).not.toHaveClass(/immersive-controls-hidden/);
+    await page.locator('#roam-immersive-privacy').tap();
+    await expect(card).not.toHaveClass(/immersive-controls-hidden/);
+    await stage.tap();
+    await expect(card).toHaveClass(/immersive-controls-hidden/);
+  });
   for (const immersive of [false, true]) test(`native swipes navigate Scroll smoothly and retain playback intent, immersive=${immersive}`, async ({ page, context, browserName }) => {
     test.skip(browserName !== 'chromium', 'Native touch injection uses the Chromium protocol.');
     await context.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));

@@ -186,7 +186,7 @@ test('image shortcuts hide panels without focus or pointer-leave waking them; po
 });
 
 
-test('standalone touch wakes hidden panels only after a tap; four-way swipes stay hidden', () => {
+test('standalone taps toggle panels while four-way swipes keep them hidden', () => {
   const f = fixture();
   f.window.matchMedia = () => ({ matches: true });
   const pointer = (type, x, y, extra = {}) => {
@@ -220,6 +220,14 @@ test('standalone touch wakes hidden panels only after a tap; four-way swipes sta
     pointer('pointerup', 203, 204);
     assert.equal(hidden(), false);
     assert.equal(f.toolbar.inert, false);
+    pointer('pointerdown', 200, 200); pointer('pointerup', 200, 200);
+    assert.equal(hidden(), true);
+    f.card.dispatchEvent(new Event('focusin'));
+    f.toolbar.dispatchEvent(new Event('pointerleave'));
+    assert.equal(hidden(), true, 'follow-up focus must not reopen explicitly hidden menus');
+    assert.equal(f.toolbar.inert, true);
+    pointer('pointerdown', 200, 200); pointer('pointerup', 200, 200);
+    assert.equal(hidden(), false);
   } finally { f.viewer.leave(); }
 });
 

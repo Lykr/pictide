@@ -51,9 +51,10 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
       hovered = false;
       if (event.isPrimary === false) { touchGesture = null; return; }
       if (!inControls(event.target)) {
-        // Defer waking until release distinguishes a tap from navigation/rating swipes.
+        // Decide on release so navigation/rating swipes do not toggle menus.
         shortcutInput = true;
-        touchGesture = { id: event.pointerId, x: event.clientX, y: event.clientY, started: event.timeStamp, moved: false };
+        touchGesture = { id: event.pointerId, x: event.clientX, y: event.clientY, started: event.timeStamp, moved: false,
+          hide: !card.classList.contains('immersive-controls-hidden') };
         card.focus({ preventScroll: true });
         return;
       }
@@ -68,7 +69,9 @@ export function createImmersiveViewer({ card, toolbar, entry, focusReturn = entr
     const gesture = touchGesture; touchGesture = null;
     if (!gesture.moved && event.timeStamp - gesture.started <= 500
         && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) < 12) {
-      shortcutInput = false; controls.wake();
+      if (gesture.hide && !anchorsOpen() && !imageInfoOpen()) {
+        shortcutInput = true; controls.hide();
+      } else { shortcutInput = false; controls.wake(); }
     }
   };
   const pointerCancel = () => { touchGesture = null; };
