@@ -348,7 +348,7 @@ body.pictide-immersive { overflow: hidden; }
 .roam-anchors > :not(.roam-anchor-terms) { flex-shrink: 0; }
 .roam-anchor-terms { display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; gap: 4px; padding: 6px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .feed-page .roam-anchor-term { position: relative; height: auto; min-height: 28px; max-width: 100%; padding: 3px 8px; font-size: 12px; line-height: 18px; white-space: normal; text-align: left; overflow-wrap: anywhere; transition-property: background-color, border-color, color, opacity, box-shadow; }
-.feed-page .roam-anchor-term[data-pinned=true] { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.feed-page .roam-anchor-term[data-pinned=true] { background: var(--secondary); border-color: transparent; color: var(--secondary-foreground); }
 .feed-page .roam-anchor-term[data-excluded=true] { background: color-mix(in oklch, var(--destructive) 8%, var(--card)); border-color: color-mix(in oklch, var(--destructive) 40%, var(--border)); color: var(--destructive); }
 .roam-anchor-term[data-pending=true] > :not(.roam-anchor-pending) { visibility: hidden; }
 .roam-anchor-pending { position: absolute; inset: 0; display: grid; place-items: center; }
