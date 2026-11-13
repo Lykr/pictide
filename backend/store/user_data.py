@@ -24,6 +24,7 @@ FORMAT_VERSION = 1
 MAX_ARCHIVE_BYTES = 4 * 1024**3
 MAX_EXPANDED_BYTES = 8 * 1024**3
 MAX_DATA_BYTES = 128 * 1024**2
+MAX_POLICY_BYTES = 1024**3
 MAX_ITEMS = 100_000
 IDENTIFIER = re.compile(r"[A-Za-z0-9_-]{1,100}")
 
@@ -64,7 +65,7 @@ def _member(name):
     path = PurePosixPath(name)
     if not path.parts or any(part in ("", ".", "..") for part in path.parts):
         raise ValidationError("The user-data archive contains an invalid path.")
-    if path.parts[0] not in {"manifest.json", "data.json", "images", "prompts"}:
+    if path.parts[0] not in {"manifest.json", "data.json", "images", "prompts", "state"}:
         raise ValidationError("The user-data archive contains an unsupported file.")
     return path.as_posix()
 
@@ -103,13 +104,23 @@ def _recommendation_snapshot(db, feature_version):
     policy_row = db.execute(
         "SELECT * FROM recommendation_policy WHERE user_id='local' AND feature_version=?",
         (feature_version,)).fetchone()
-    events = db.execute(
-        "SELECT revision,artifact_id,value,candidate FROM recommendation_events "
-        "WHERE user_id='local' ORDER BY revision").fetchall()
     evidence = db.execute(
         "SELECT artifact_id,revision,value,candidate FROM recommendation_evidence "
         "WHERE user_id='local' AND feature_version=? ORDER BY revision",
         (feature_version,)).fetchall()
+    # Restore needs the latest event for each artifact plus the exact revisions
+    # referenced by evidence. Older journal entries are not transferable state.
+    events = db.execute("""
+        SELECT e.revision,e.artifact_id,e.value,e.candidate
+        FROM recommendation_events e
+        WHERE e.user_id='local' AND (
+            e.revision IN (SELECT revision FROM recommendation_evidence
+                           WHERE user_id='local' AND feature_version=?)
+            OR e.revision = (SELECT MAX(newer.revision)
+                             FROM recommendation_events newer
+                             WHERE newer.user_id=e.user_id
+                               AND newer.artifact_id=e.artifact_id))
+        ORDER BY e.revision""", (feature_version,)).fetchall()
     reset = db.execute("SELECT revision,event_floor,reset_at FROM recommendation_resets "
                        "WHERE user_id='local'").fetchone()
     score_range = db.execute(
@@ -141,7 +152,9 @@ def _recommendation_snapshot(db, feature_version):
             } for row in evidence],
             "reset": ({
                 "revision": reset["revision"],
-                "event_floor": reset["event_floor"],
+                # The compact journal contains only current evidence and the
+                # latest event per artifact, so pre-reset history is absent.
+                "event_floor": 0,
                 "reset_at": reset["reset_at"],
             } if reset else None),
             "score_range": ({
@@ -225,6 +238,17 @@ def export_user_data(paths, storage, app_version, feature_version, policy_versio
     for item in liked:
         _validate_liked(item)
     _validate_recommendation(document, feature_version, policy_version)
+    state_files = []
+    state = recommendation["policy"]
+    if state is not None:
+        precision = base64.b64decode(state.pop("precision"))
+        reward = base64.b64decode(state.pop("reward"))
+        state["precision_file"] = "state/precision.bin"
+        state["reward_file"] = "state/reward.bin"
+        state_files = [
+            ("state/precision.bin", precision),
+            ("state/reward.bin", reward),
+        ]
     data = _json(document).encode("utf-8")
     if len(liked) > MAX_ITEMS:
         raise ValidationError("There are too many liked images to export in one user-data archive.")
@@ -238,6 +262,8 @@ def export_user_data(paths, storage, app_version, feature_version, policy_versio
     try:
         with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             _write_bytes(archive, "data.json", data, files)
+            for name, content in state_files:
+                _write_bytes(archive, name, content, files, compression=zipfile.ZIP_STORED)
             for image_member, prompt_member, source, item in images:
                 _write_file(archive, image_member, source, files)
                 prompt = _json({
@@ -330,6 +356,12 @@ def _verify_archive(archive, manifest, data, names):
         if item["prompts"] != f"prompts/{identifier}.json":
             raise ValidationError("The user-data archive has an invalid prompt filename.")
         _validate_liked(item)
+    state = data.get("recommendation", {}).get("policy") if isinstance(data.get("recommendation"), dict) else None
+    if isinstance(state, dict):
+        for key in ("precision", "reward"):
+            member = state.get(f"{key}_file")
+            if member is not None:
+                expected.add(_member(member))
     if {name for name in declared if name != "data.json"} != expected - {"data.json"}:
         raise ValidationError("The user-data archive has unreferenced files.")
 
@@ -435,8 +467,6 @@ def _validate_recommendation(data, feature_version, current_policy_version):
             raise ValidationError("The user-data archive has an invalid reset state.")
         _integer(reset.get("revision"), "Reset revision", 1)
         floor = _integer(reset.get("event_floor"), "Reset event floor")
-        if floor and floor not in event_revisions:
-            raise ValidationError("The user-data archive has an invalid reset boundary.")
         _timestamp(reset.get("reset_at"), "Reset time")
     score_range = recommendation.get("score_range")
     if score_range is not None:
@@ -470,6 +500,23 @@ def _read_json(archive, name, limit):
         return json.loads(archive.read(name).decode("utf-8-sig"))
     except (UnicodeError, json.JSONDecodeError):
         raise ValidationError("The user-data archive contains invalid JSON.") from None
+
+
+def _hydrate_policy_state(archive, data):
+    recommendation = data.get("recommendation")
+    state = recommendation.get("policy") if isinstance(recommendation, dict) else None
+    if not isinstance(state, dict):
+        return
+    for key in ("precision", "reward"):
+        if key in state:
+            continue
+        member = state.get(f"{key}_file")
+        if member is None:
+            continue
+        member = _member(member)
+        if archive.getinfo(member).file_size > MAX_POLICY_BYTES:
+            raise ValidationError("The user-data archive contains an oversized preference matrix.")
+        state[key] = base64.b64encode(archive.read(member)).decode("ascii")
 
 
 def _extract(archive, member, target, paths, expected):
@@ -621,7 +668,7 @@ def _import_database(storage, prepared, recommendation):
         if reset is not None:
             floor = revision_map.get(reset["event_floor"])
             if floor is None and reset["event_floor"] != 0:
-                raise ValidationError("The user-data archive has an invalid reset boundary.")
+                floor = max(revision_map.values(), default=0)
             db.execute("INSERT INTO recommendation_resets VALUES ('local',?,?,?)",
                        (reset["revision"], floor or 0, reset["reset_at"]))
         score_range = recommendation["score_range"]
@@ -652,6 +699,7 @@ def import_user_data(paths, storage, archive_path, feature_version, policy_versi
             if manifest.get("feature_version") != feature_version or manifest.get("policy_version") != policy_version:
                 raise ValidationError("This user-data archive was created with an incompatible Pictide version.")
             _verify_archive(archive, manifest, data, names)
+            _hydrate_policy_state(archive, data)
             recommendation = _validate_recommendation(data, feature_version, policy_version)
             with storage.connection() as db:
                 identifiers = {row["id"] for row in db.execute("SELECT id FROM artifacts")}

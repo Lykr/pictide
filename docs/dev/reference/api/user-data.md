@@ -20,9 +20,11 @@ manifest.json
 data.json
 images/<artifact-id>.<extension>
 prompts/<artifact-id>.json
+state/precision.bin
+state/reward.bin
 ```
 
-The manifest records the format and Pictide versions, recommendation feature and policy versions, item counts, and SHA-256 metadata for every other entry. `data.json` contains currently liked original-image metadata, exact prompt text and snapshots, current feedback, recommendation events and evidence, the current posterior precision and reward buffers, reset boundary, and score range.
+The manifest records the format and Pictide versions, recommendation feature and policy versions, item counts, and SHA-256 metadata for every other entry. `data.json` contains currently liked original-image metadata, exact prompt text and snapshots, current feedback, the latest recommendation event needed for each artifact, current evidence, the reset boundary, and score range. Large posterior precision and reward matrices are stored as binary `state/` entries instead of inflating JSON. Historical journal entries that are not referenced by current evidence are omitted.
 
 API keys, ChatGPT tokens, non-liked image files, presets, canvas pools, general and roam settings, caches, models, statistical libraries, and runtime files are not exported. The archive is a portable liked collection and learned-preference transfer, not a replacement for a complete data-directory backup.
 

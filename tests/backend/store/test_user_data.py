@@ -91,6 +91,31 @@ class UserDataArchiveTests(unittest.TestCase):
         self.assertEqual((result["liked_imported"], result["liked_skipped"]), (0, 1))
         self.assertEqual(destination.counts()["liked"], 1)
 
+    def test_historical_event_journal_does_not_inflate_export(self):
+        artifact = self.like()
+        candidate = json.dumps({
+            "candidate_id": "candidate-1", "positive": "garden, sunlight",
+            "negative": "blurry",
+            "terms": [
+                {"text": "garden", "channel": "positive"},
+                {"text": "sunlight", "channel": "positive"},
+                {"text": "blurry", "channel": "negative"},
+            ],
+        }, separators=(",", ":"))
+        with self.source.connection() as db:
+            for _ in range(200):
+                db.execute("INSERT INTO recommendation_events(user_id,artifact_id,value,candidate) "
+                           "VALUES ('local',?,1,?)", (artifact["id"], candidate))
+            revision = db.execute("SELECT MAX(revision) FROM recommendation_events").fetchone()[0]
+            db.execute("INSERT INTO recommendation_evidence VALUES ('local',?,?,?,?,?)",
+                       (self.feature_version, artifact["id"], revision, 1, candidate))
+        archive, _ = self.export()
+        with zipfile.ZipFile(archive) as bundle:
+            manifest = json.loads(bundle.read("manifest.json"))
+            data = json.loads(bundle.read("data.json"))
+        self.assertEqual(manifest["counts"]["recommendation_events"], 1)
+        self.assertEqual(len(data["recommendation"]["events"]), 1)
+
     def test_checksum_and_version_mismatch_make_no_database_changes(self):
         artifact = self.like()
         archive, _ = self.export()
@@ -153,6 +178,10 @@ class UserDataArchiveTests(unittest.TestCase):
             db.execute("INSERT INTO recommendation_evidence VALUES ('local',?,?,?,?,?)",
                        (self.feature_version, artifact["id"], revision, 1, candidate))
         archive, _ = self.export()
+        with zipfile.ZipFile(archive) as bundle:
+            names = set(bundle.namelist())
+        self.assertIn("state/precision.bin", names)
+        self.assertIn("state/reward.bin", names)
         destination_paths = DataPaths(Path(self.temporary.name) / "destination").ensure()
         destination = Repository(destination_paths.database)
         result = import_user_data(destination_paths, destination, archive,
