@@ -37,6 +37,8 @@ def initialize_recommendation(db):
     CREATE TABLE IF NOT EXISTS recommendation_resets (
         user_id TEXT PRIMARY KEY, revision INTEGER NOT NULL,
         event_floor INTEGER NOT NULL, reset_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS recommendation_learning_boundaries (
+        user_id TEXT PRIMARY KEY, event_floor INTEGER NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS recommendation_reset_requests (
         user_id TEXT NOT NULL, request_id TEXT NOT NULL, expected_revision INTEGER NOT NULL,
         reset_revision INTEGER NOT NULL, reset_at TEXT NOT NULL,
@@ -148,6 +150,7 @@ class SQLiteRecommendationStore:
             db.execute("DELETE FROM recommendation_score_range WHERE user_id=?", (user_id,))
             db.execute("DELETE FROM recommendation_policy WHERE user_id=?", (user_id,))
             db.execute("DELETE FROM recommendation_evidence WHERE user_id=?", (user_id,))
+            db.execute("DELETE FROM recommendation_learning_boundaries WHERE user_id=?", (user_id,))
             db.execute("INSERT INTO recommendation_resets VALUES (?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET "
                        "revision=excluded.revision,event_floor=excluded.event_floor,reset_at=excluded.reset_at",
                        (user_id, revision, floor, reset_at))
@@ -242,14 +245,20 @@ class SQLiteRecommendationStore:
                        "reward=excluded.reward,evidence_count=excluded.evidence_count",
                        (user_id, feature_version, state.revision, json.dumps(state.term_keys),
                         state.precision, state.reward, state.evidence_count))
+            floor = max((update.revision for update in updates), default=0)
+            db.execute("INSERT INTO recommendation_learning_boundaries VALUES (?,?,?) "
+                       "ON CONFLICT(user_id) DO UPDATE SET event_floor=excluded.event_floor,"
+                       "created_at=excluded.created_at",
+                       (user_id, floor, datetime.now(timezone.utc).isoformat()))
 
     def pending_feedback(self, user_id, feature_version):
         with self.repository.connection() as db:
             rows = db.execute("SELECT e.* FROM recommendation_events e LEFT JOIN recommendation_evidence a "
                               "ON a.user_id=e.user_id AND a.artifact_id=e.artifact_id AND a.feature_version=? "
                               "WHERE e.user_id=? AND e.revision>coalesce(a.revision,0) "
-                              "AND e.revision>coalesce((SELECT event_floor FROM recommendation_resets "
-                              "WHERE user_id=e.user_id),0) AND NOT EXISTS "
+                              "AND e.revision>max(coalesce((SELECT event_floor FROM recommendation_resets "
+                              "WHERE user_id=e.user_id),0),coalesce((SELECT event_floor FROM "
+                              "recommendation_learning_boundaries WHERE user_id=e.user_id),0)) AND NOT EXISTS "
                               "(SELECT 1 FROM recommendation_events newer WHERE newer.user_id=e.user_id "
                               "AND newer.artifact_id=e.artifact_id AND newer.revision>e.revision) ORDER BY e.revision",
                               (feature_version, user_id)).fetchall()
@@ -261,6 +270,8 @@ class SQLiteRecommendationStore:
         with self.repository.connection() as db:
             db.execute("BEGIN IMMEDIATE")
             if db.execute("SELECT 1 FROM recommendation_resets WHERE user_id=?", (user_id,)).fetchone():
+                return
+            if db.execute("SELECT 1 FROM recommendation_learning_boundaries WHERE user_id=?", (user_id,)).fetchone():
                 return
             rows = db.execute("SELECT f.artifact_id,f.value FROM feedback f JOIN artifacts a ON a.id=f.artifact_id "
                               "WHERE f.actor_id=? AND f.value IN (-1,1) AND NOT EXISTS "
@@ -279,7 +290,10 @@ class SQLiteRecommendationStore:
             db.execute("BEGIN IMMEDIATE")
             reset = db.execute("SELECT event_floor FROM recommendation_resets WHERE user_id=?",
                                (update.user_id,)).fetchone()
-            if reset and update.revision <= reset["event_floor"]:
+            boundary = db.execute("SELECT event_floor FROM recommendation_learning_boundaries WHERE user_id=?",
+                                  (update.user_id,)).fetchone()
+            if max(reset["event_floor"] if reset else 0,
+                   boundary["event_floor"] if boundary else 0) >= update.revision:
                 return False
             current = db.execute("SELECT revision FROM recommendation_policy WHERE user_id=? AND feature_version=?",
                                  (update.user_id, update.feature_version)).fetchone()

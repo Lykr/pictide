@@ -85,6 +85,7 @@ Recommendation reuses `db/pictide.sqlite3` without creating another database:
 | `recommendation_policy` | Stable content-key index, float64 full precision matrix, accumulated feedback vector, revision, and valid evidence count, per user and feature version |
 | `recommendation_events` | Monotonic revisions of like/dislike/withdrawal state changes and actual generated combination snapshots; written in the same transaction as feedback |
 | `recommendation_resets` | User reset revision, time, and feedback-event watermark, isolating learning events from before the reset |
+| `recommendation_learning_boundaries` | Import-time event floor that prevents retained feedback outside an imported preference profile from being replayed |
 | `recommendation_reset_requests` | Idempotent reset request results, so retries do not clear preferences accumulated later |
 | `recommendation_evidence` | Latest applied evidence per user, feature version, and image, including withdrawal state, preventing duplicate or out-of-order accumulation |
 

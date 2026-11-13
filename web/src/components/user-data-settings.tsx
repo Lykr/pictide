@@ -9,6 +9,7 @@ import { PreferenceActions } from './preference-actions';
 import { ImageCleanupSettings } from '../features/history-settings';
 import { SettingsRow } from './settings-row';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 
 async function responseError(response: Response) {
   const body = await response.json().catch(() => null);
@@ -20,16 +21,23 @@ export function UserDataSettings() {
   const input = useRef<HTMLInputElement>(null);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [includeLiked, setIncludeLiked] = useState(true);
+  const [includePreferences, setIncludePreferences] = useState(true);
   const [error, setError] = useState('');
   useErrorNotice(t(messageKey(error)), { id: 'user-data' });
   const busy = exporting || importing;
   const local = state.userDataLocal === true;
+  const selected = includeLiked || includePreferences;
 
   const exportData = async () => {
-    if (busy || !local) return;
+    if (busy || !local || !selected) return;
     setExporting(true); setError('');
     try {
-      const response = await fetch('/api/user-data/export', { headers: { Accept: 'application/zip' } });
+      const response = await fetch('/api/user-data/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/zip' },
+        body: JSON.stringify({ liked_images: includeLiked, preferences: includePreferences }),
+      });
       if (!response.ok) throw new Error(await responseError(response));
       const disposition = response.headers.get('Content-Disposition') || '';
       const filename = disposition.match(/filename="([^"]+)"/)?.[1] || 'pictide-user-data.zip';
@@ -48,7 +56,7 @@ export function UserDataSettings() {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file || busy || !local) return;
-    if (!await confirmAction(t('导入用户数据？将添加压缩包中的喜欢图片，并替换当前学习偏好。现有数据库会先自动备份。'))) return;
+    if (!await confirmAction(t('导入用户数据？仅会应用压缩包包含的数据：包括喜欢图片时会添加缺失图片；包括学习偏好时会替换当前学习状态。未包含的数据保持不变。现有数据库会先自动备份。'))) return;
     setImporting(true); setError('');
     try {
       const response = await fetch('/api/user-data/import', {
@@ -56,9 +64,14 @@ export function UserDataSettings() {
       });
       if (!response.ok) throw new Error(await responseError(response));
       const result = await response.json();
-      notifySuccess(t('已导入 {liked} 张喜欢图片和 {evidence} 条偏好证据', {
-        liked: result.liked_imported.toLocaleString(), evidence: result.preference_evidence.toLocaleString(),
-      }), { id: 'user-data-import' });
+      const likedCount = result.liked_imported.toLocaleString();
+      const evidenceCount = result.preference_evidence.toLocaleString();
+      const summary = result.categories?.liked_images && result.categories?.preferences
+        ? t('已导入 {liked} 张喜欢图片和 {evidence} 条偏好证据', { liked: likedCount, evidence: evidenceCount })
+        : result.categories?.liked_images
+          ? t('已导入 {liked} 张喜欢图片', { liked: likedCount })
+          : t('已导入 {evidence} 条偏好证据', { evidence: evidenceCount });
+      notifySuccess(summary, { id: 'user-data-import' });
       setTimeout(() => window.location.reload(), 700);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
@@ -74,8 +87,18 @@ export function UserDataSettings() {
       <span className="text-sm text-muted-foreground">{t('包含喜欢图片、反馈和已学习的偏好。')}</span>
     </div>}>
       <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+          <label className="flex items-center gap-2" htmlFor="user-data-include-liked">
+            <Checkbox id="user-data-include-liked" checked={includeLiked} onCheckedChange={value => setIncludeLiked(value === true)} disabled={busy} />
+            {t('喜欢图片和提示词')}
+          </label>
+          <label className="flex items-center gap-2" htmlFor="user-data-include-preferences">
+            <Checkbox id="user-data-include-preferences" checked={includePreferences} onCheckedChange={value => setIncludePreferences(value === true)} disabled={busy} />
+            {t('反馈和学习偏好')}
+          </label>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button id="user-data-export" type="button" variant="outline" disabled={busy || !local} onClick={() => void exportData()}>
+          <Button id="user-data-export" type="button" variant="outline" disabled={busy || !local || !selected} onClick={() => void exportData()}>
             {exporting ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Download aria-hidden="true" />}
             {t('导出用户数据')}
           </Button>
@@ -85,6 +108,7 @@ export function UserDataSettings() {
           </Button>
           <input ref={input} id="user-data-file" className="sr-only" type="file" accept=".zip,application/zip" aria-label={t('选择用户数据压缩包')} onChange={event => void importData(event)} />
         </div>
+        {!selected && <p className="hint">{t('至少选择一种要导出的数据。')}</p>}
         {!local && <p className="hint">{t('请在运行 Pictide 的电脑上通过本机地址操作。')}</p>}
       </div>
     </SettingsRow>

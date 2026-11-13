@@ -6,14 +6,15 @@
 
 | Method | Path | Request | Response |
 | --- | --- | --- | --- |
-| GET | `/api/user-data/export` | None | Portable ZIP attachment |
+| GET | `/api/user-data/export` | None | Portable ZIP containing both categories |
+| POST | `/api/user-data/export` | `{liked_images:boolean,preferences:boolean}` | Selected categories as a ZIP attachment |
 | POST | `/api/user-data/import` | ZIP bytes with `Content-Type: application/zip` | Import summary |
 
 Both operations require a loopback peer and a localhost `Host`. They are unavailable through the LAN listener because the application has no account authentication.
 
 ## Export format
 
-The ZIP contains:
+Both export forms require at least one selected category. The ZIP contains:
 
 ```text
 manifest.json
@@ -24,7 +25,9 @@ state/precision.bin
 state/reward.bin
 ```
 
-The manifest records the format and Pictide versions, recommendation feature and policy versions, item counts, and SHA-256 metadata for every other entry. `data.json` contains currently liked original-image metadata, exact prompt text and snapshots, current feedback, the latest recommendation event needed for each artifact, current evidence, the reset boundary, and score range. Large posterior precision and reward matrices are stored as binary `state/` entries instead of inflating JSON. Historical journal entries that are not referenced by current evidence are omitted.
+Image and state entries exist only when their category is selected. The manifest and `data.json` record `categories.liked_images` and `categories.preferences`; version-1 archives without category metadata are treated as containing both. The manifest also records the format and Pictide versions, recommendation feature and policy versions, item counts, and SHA-256 metadata for every other entry.
+
+The liked category contains original-image metadata, exact prompt text and snapshots, and current like records. The preferences category contains the latest recommendation event needed for each artifact, current evidence, the reset boundary, score range, and posterior policy. Large precision and reward matrices are stored as binary `state/` entries instead of inflating JSON. Historical journal entries that are not referenced by current evidence are omitted.
 
 API keys, ChatGPT tokens, non-liked image files, presets, canvas pools, general and roam settings, caches, models, statistical libraries, and runtime files are not exported. The archive is a portable liked collection and learned-preference transfer, not a replacement for a complete data-directory backup.
 
@@ -34,7 +37,9 @@ The server builds the archive under `tmp/` and removes it after the response com
 
 Import is limited to one compressed archive no larger than 4 GiB and 8 GiB expanded. The server validates paths, entry counts, JSON documents, image metadata, recommendation evidence, policy matrices, and every checksum before copying files or changing the database.
 
-The recommendation policy version must match the running application. If the recommendation feature/model version differs, Pictide imports the model-independent event snapshots, discards the incompatible posterior matrix and derived evidence, and rebuilds learning with the current local model. The response reports `preferences_migrated` when rebuilding completes immediately or `preference_rebuild_pending` when it must resume in the background. Invalid, malformed, truncated, oversized, or policy-incompatible archives return `400` without changing liked images, feedback, preferences, or database records.
+The recommendation policy version must match when preferences are included. If the recommendation feature/model version differs, Pictide imports the model-independent event snapshots, discards the incompatible posterior matrix and derived evidence, and rebuilds learning with the current local model. The response reports `preferences_migrated` when rebuilding completes immediately or `preference_rebuild_pending` when it must resume in the background.
+
+Only selected categories are applied. Archives containing liked images only leave current recommendation state unchanged. Preference-only archives add no images. When preferences are applied, Pictide establishes an internal learning boundary so existing retained likes are not immediately replayed into the imported profile; later new feedback continues to learn. Invalid, malformed, truncated, oversized, or policy-incompatible archives return `400` without changing data.
 
 Before an import, Pictide creates a consistent SQLite backup under `backups/before-user-data-import-<timestamp>/pictide.sqlite3`. The import then:
 
@@ -51,6 +56,7 @@ Active generation tasks or another settings write in progress block import with 
   "liked_imported": 12,
   "liked_skipped": 1,
   "preference_evidence": 43,
+  "categories": {"liked_images": true, "preferences": true},
   "backup": "backups/before-user-data-import-.../pictide.sqlite3",
   "artifact_revision": 27
 }

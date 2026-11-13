@@ -209,6 +209,22 @@ class RecommendationStoreTests(unittest.TestCase):
         self.repo.rate(iid,1)
         restart=SQLiteRecommendationStore(Repository(self.repo.path))
         self.assertEqual(restart.pending_feedback('local','v1'),self.pending())
+
+    def test_learning_boundary_blocks_retained_feedback_but_allows_new_events(self):
+        iid=self.image()
+        with self.repo.connection() as db:
+            db.execute("INSERT INTO feedback VALUES (?,'local',1,'2026-01-01')", (iid,))
+            db.execute("INSERT INTO recommendation_learning_boundaries VALUES "
+                       "('local',0,'2026-01-01')")
+        self.store.seed_feedback('local','v1')
+        self.assertEqual(self.pending(),())
+        self.repo.rate(iid,-1)
+        update=self.pending()[0]
+        self.assertEqual(update.value,-1)
+        with self.repo.connection() as db:
+            db.execute("UPDATE recommendation_learning_boundaries SET event_floor=? WHERE user_id='local'",
+                       (update.revision,))
+        self.assertEqual(self.pending(),())
     def test_retract_uses_retained_snapshot(self):
         iid=self.image();self.repo.rate(iid,1)
         with self.repo.connection() as db:db.execute('DELETE FROM roam_jobs')

@@ -15,14 +15,27 @@ test('user data owns migration, preferences, cleanup, and data location', async 
   await expect(page.locator('#data-directory')).toHaveText(/.+/);
   await expect(page.getByRole('button', { name: '导出用户数据', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: '导入用户数据', exact: true })).toBeEnabled();
+  const liked = page.getByRole('checkbox', { name: '喜欢图片和提示词', exact: true });
+  const preferences = page.getByRole('checkbox', { name: '反馈和学习偏好', exact: true });
+  await expect(liked).toBeChecked();
+  await expect(preferences).toBeChecked();
+  await liked.uncheck();
+  await preferences.uncheck();
+  await expect(page.getByRole('button', { name: '导出用户数据', exact: true })).toBeDisabled();
+  await expect(page.getByText('至少选择一种要导出的数据。', { exact: true })).toBeVisible();
+  await preferences.check();
+  await expect(page.getByRole('button', { name: '导出用户数据', exact: true })).toBeEnabled();
   await expect(page.getByText('用户偏好', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '导出用户偏好', exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '图片清理', exact: true })).toBeVisible();
   await expect(page.locator('#history-retention-days')).toBeVisible();
   await expect(page.locator('#settings-general')).toBeHidden();
   await expect(page.locator('#settings-history')).toBeHidden();
 
   const download = page.waitForEvent('download');
+  const exported = page.waitForRequest(request => request.url().endsWith('/api/user-data/export'));
   await page.getByRole('button', { name: '导出用户数据', exact: true }).click();
+  expect((await exported).postDataJSON()).toEqual({ liked_images: false, preferences: true });
   expect((await download).suggestedFilename()).toMatch(/^pictide-user-data-\d{8}T\d{6}\.zip$/);
 });
 
@@ -31,6 +44,7 @@ test('user data import confirms replacement and reports validated counts', async
   await page.route('**/api/user-data/import', route => route.fulfill({
     json: {
       liked_imported: 3, liked_skipped: 1, preference_evidence: 9,
+      categories: { liked_images: true, preferences: true },
       backup: 'backups/before-user-data-import/test/pictide.sqlite3', artifact_revision: 12,
     },
   }));
@@ -40,7 +54,7 @@ test('user data import confirms replacement and reports validated counts', async
     name: 'pictide-user-data.zip', mimeType: 'application/zip', buffer: Buffer.from('zip'),
   });
   const dialog = page.getByRole('alertdialog');
-  await expect(dialog).toContainText('替换当前学习偏好');
+  await expect(dialog).toContainText('未包含的数据保持不变');
   await dialog.getByRole('button', { name: '确认', exact: true }).click();
   expect((await response).status()).toBe(200);
   await expect(page.locator('.notification-card[data-state=open]')).toContainText(

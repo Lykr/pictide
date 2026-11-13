@@ -137,7 +137,12 @@
   "导入用户数据": "Import user data",
   "选择用户数据压缩包": "Choose user-data archive",
   "请在运行 Pictide 的电脑上通过本机地址操作。": "Use the localhost address on the computer running Pictide.",
-  "导入用户数据？将添加压缩包中的喜欢图片，并替换当前学习偏好。现有数据库会先自动备份。": "Import user data? Liked images in the archive will be added and the current learned preferences will be replaced. The existing database will be backed up first.",
+  "导入用户数据？仅会应用压缩包包含的数据：包括喜欢图片时会添加缺失图片；包括学习偏好时会替换当前学习状态。未包含的数据保持不变。现有数据库会先自动备份。": "Import user data? Only the categories in the archive will be applied: included liked images will be added, and included learned preferences will replace the current learning state. Data not in the archive stays unchanged. The existing database will be backed up first.",
+  "喜欢图片和提示词": "Liked images and prompts",
+  "反馈和学习偏好": "Feedback and learned preferences",
+  "至少选择一种要导出的数据。": "Select at least one data category to export.",
   "已导入 {liked} 张喜欢图片和 {evidence} 条偏好证据": "Imported {liked} liked images and {evidence} preference records",
+  "已导入 {liked} 张喜欢图片": "Imported {liked} liked images",
+  "已导入 {evidence} 条偏好证据": "Imported {evidence} preference records",
   "用户数据已导出": "User data exported"
 }

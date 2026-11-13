@@ -13,8 +13,8 @@
 
 Report fields: `available,error,feature_version,state_revision,reset_revision,reset_at,evidence_count,term_count,page,page_size,total_pages,terms`. Each term is `{text,channel,weight,evidence_count}`. Channels are `positive / negative`; weights are model parameters, rather than probabilities.
 
-The default page size is 15. `all=1` returns all learned terms for frontend JSON export through the same endpoint. Viewing and exporting do not trigger learning, do not include the complete learning matrix, and cannot restore training state. Only the page and all query parameters are accepted.
+The default page size is 15. `all=1` returns all learned terms for internal preference inspection. Viewing does not trigger learning, does not include the complete learning matrix, and cannot restore training state. Only the page and all query parameters are accepted.
 
 For reset, `request_id` contains 1–128 letters, digits, underscores, or hyphens; use the latest report value for `expected_reset_revision`. Duplicate requests can be retried safely, and revision conflicts return 409. Reset clears the learning state and score cache, preserves images and feedback, and does not automatically replay pre-reset feedback as new learning.
 
-The JSON report is readable but is not restorable. Use [User Data](user-data.md) to export and import the complete learned state together with liked images.
+Use [User Data](user-data.md) to export and import the complete learned state, with or without liked images.

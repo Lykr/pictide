@@ -51,6 +51,16 @@ class UserDataHTTPTests(unittest.IsolatedAsyncioTestCase):
         with zipfile.ZipFile(BytesIO(archive)) as bundle:
             self.assertEqual(json_manifest(bundle)["counts"]["liked_images"], 1)
 
+        preferences = await self.client.post(
+            "/api/user-data/export",
+            json={"liked_images": False, "preferences": True})
+        self.assertEqual(preferences.status, 200)
+        with zipfile.ZipFile(BytesIO(await preferences.read())) as bundle:
+            manifest = json_manifest(bundle)
+            self.assertEqual(manifest["categories"],
+                             {"liked_images": False, "preferences": True})
+            self.assertFalse(any(name.startswith("images/") for name in bundle.namelist()))
+
         imported = await self.client.post("/api/user-data/import", data=archive,
                                           headers={"Content-Type": "application/zip"})
         self.assertEqual(imported.status, 200)

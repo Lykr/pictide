@@ -22,7 +22,9 @@ Under **LLM API**, manage named text-service connections using API keys or ChatG
 
 ## User data
 
-Open **Settings → User data** to see the current data directory, transfer liked images and learned preferences, review or reset preferences, and manage historical image cleanup. **Export user data** creates a ZIP containing your current liked originals, prompt text, feedback used for learning, and learned preference state. **Import user data** validates the archive, backs up the database first, adds missing liked images, and replaces the current learned preferences.
+Open **Settings → User data** to see the current data directory, transfer liked images and learned preferences, review or reset preferences, and manage historical image cleanup. Choose one or both export categories: **Liked images and prompts** or **Feedback and learned preferences**. Export creates a ZIP containing only the selected data, and at least one category is required.
+
+**Import user data** applies only categories present in the archive. Included liked images are added without duplicating existing files. Included preference state replaces the current learned preferences while preserving data outside that category. The database is backed up before import.
 
 The transfer archive does not contain API keys, language-model tokens, image APIs, workflows, presets, canvas pools, models, libraries, or general and roam settings. Use a complete [data-directory backup](backup.md) when moving the whole installation.
 

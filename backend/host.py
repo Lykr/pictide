@@ -234,7 +234,8 @@ async def export_liked(request):
 async def export_user_data(request):
     if not local_generation_access(request):
         raise web.HTTPForbidden(text="Export user data on the computer running Pictide using localhost.")
-    path, filename = await request.app[APPLICATION].export_user_data()
+    path, filename = await request.app[APPLICATION].export_user_data(
+        await body(request) if request.method == "POST" else None)
     return ExportResponse(path, filename)
 
 
@@ -594,6 +595,7 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get("/api/bootstrap", bootstrap), web.get("/api/events", events),
         web.get('/api/updates', updates), web.post('/api/updates/{operation:check|download|install}', update_action),
         web.get('/api/user-data/export', export_user_data),
+        web.post('/api/user-data/export', export_user_data),
         web.post('/api/user-data/import', import_user_data),
         web.get("/api/settings/prompting", prompt_settings), web.put("/api/settings/prompting", prompt_settings),
         web.get('/api/canvas-pools', canvas_pools), web.put('/api/canvas-pools/{id}', canvas_pools),

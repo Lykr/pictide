@@ -172,8 +172,11 @@ def _recommendation_snapshot(db, feature_version):
     return result
 
 
-def export_user_data(paths, storage, app_version, feature_version, policy_version):
+def export_user_data(paths, storage, app_version, feature_version, policy_version,
+                     *, include_liked=True, include_preferences=True):
     """Build a temporary ZIP from one coherent database read and liked originals."""
+    if not include_liked and not include_preferences:
+        raise ValidationError("Select at least one user-data category to export.")
     with storage.connection() as db:
         db.execute("BEGIN")
         rows = db.execute("""
@@ -188,8 +191,8 @@ def export_user_data(paths, storage, app_version, feature_version, policy_versio
             FROM feedback f JOIN artifacts a ON a.id=f.artifact_id
             JOIN jobs j ON j.id=a.job_id JOIN backend_revisions b ON b.id=j.revision_id
             WHERE f.actor_id='local' AND f.value=1 AND a.deleted_at IS NULL
-            ORDER BY a.created_at,a.id""").fetchall()
-        recommendation = _recommendation_snapshot(db, feature_version)
+            ORDER BY a.created_at,a.id""").fetchall() if include_liked else []
+        recommendation = _recommendation_snapshot(db, feature_version) if include_preferences else None
         liked, images = [], []
         for row in rows:
             identifier = _identifier(row["id"], "Liked image ID")
@@ -237,14 +240,19 @@ def export_user_data(paths, storage, app_version, feature_version, policy_versio
 
     document = {
         "format_version": FORMAT_VERSION,
+        "categories": {
+            "liked_images": include_liked,
+            "preferences": include_preferences,
+        },
         "liked": liked,
         "recommendation": recommendation,
     }
     for item in liked:
         _validate_liked(item)
-    _validate_recommendation(document, feature_version, policy_version)
+    if include_preferences:
+        _validate_recommendation(document, feature_version, policy_version)
     state_files = []
-    state = recommendation["policy"]
+    state = recommendation["policy"] if recommendation is not None else None
     if state is not None:
         precision = base64.b64decode(state.pop("precision"))
         reward = base64.b64decode(state.pop("reward"))
@@ -283,11 +291,15 @@ def export_user_data(paths, storage, app_version, feature_version, policy_versio
                 "created_at": created_at,
                 "feature_version": feature_version,
                 "policy_version": policy_version,
+                "categories": {
+                    "liked_images": include_liked,
+                    "preferences": include_preferences,
+                },
                 "counts": {
                     "liked_images": len(liked),
                     "feedback": len(liked),
-                    "recommendation_events": len(recommendation["events"]),
-                    "recommendation_evidence": len(recommendation["evidence"]),
+                    "recommendation_events": len(recommendation["events"]) if recommendation else 0,
+                    "recommendation_evidence": len(recommendation["evidence"]) if recommendation else 0,
                 },
                 "files": files,
             }
@@ -300,6 +312,22 @@ def export_user_data(paths, storage, app_version, feature_version, policy_versio
     except BaseException:
         temporary.unlink(missing_ok=True)
         raise
+
+
+def _archive_categories(manifest, data):
+    categories = manifest.get("categories")
+    if categories is None:
+        # Version-1 archives created before selective export always contained both.
+        return {"liked_images": True, "preferences": True}
+    if (not isinstance(categories, dict)
+            or set(categories) != {"liked_images", "preferences"}
+            or any(type(categories[key]) is not bool for key in categories)
+            or not any(categories.values())):
+        raise ValidationError("The user-data archive has invalid category selection.")
+    declared = data.get("categories")
+    if declared is not None and declared != categories:
+        raise ValidationError("The user-data archive categories are inconsistent.")
+    return categories
 
 
 def _verify_archive(archive, manifest, data, names):
@@ -339,6 +367,7 @@ def _verify_archive(archive, manifest, data, names):
                 actual.update(chunk)
         if actual_size != size or actual.hexdigest() != digest:
             raise ValidationError(f"User-data archive checksum mismatch for {name}.")
+    categories = _archive_categories(manifest, data)
     liked = data.get("liked")
     if not isinstance(liked, list) or len(liked) > MAX_ITEMS:
         raise ValidationError("The user-data archive has an invalid liked-image list.")
@@ -361,7 +390,12 @@ def _verify_archive(archive, manifest, data, names):
         if item["prompts"] != f"prompts/{identifier}.json":
             raise ValidationError("The user-data archive has an invalid prompt filename.")
         _validate_liked(item)
-    state = data.get("recommendation", {}).get("policy") if isinstance(data.get("recommendation"), dict) else None
+    if not categories["liked_images"] and liked:
+        raise ValidationError("The user-data archive contains unselected liked images.")
+    recommendation = data.get("recommendation")
+    if not categories["preferences"] and recommendation is not None:
+        raise ValidationError("The user-data archive contains unselected preference data.")
+    state = recommendation.get("policy") if isinstance(recommendation, dict) else None
     if isinstance(state, dict):
         for key in ("precision", "reward"):
             member = state.get(f"{key}_file")
@@ -573,7 +607,8 @@ def _prepare_files(archive, data, manifest, paths, identifiers):
     return prepared, created, skipped
 
 
-def _import_database(storage, prepared, recommendation, *, migrate_preferences=False):
+def _import_database(storage, prepared, recommendation, *, import_preferences=True,
+                     migrate_preferences=False):
     imported = skipped = 0
     with storage.connection() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -643,45 +678,51 @@ def _import_database(storage, prepared, recommendation, *, migrate_preferences=F
                        (identifier, item["feedback"]["updated_at"]))
             imported += 1
 
-        db.execute("DELETE FROM recommendation_policy WHERE user_id='local'")
-        db.execute("DELETE FROM recommendation_events WHERE user_id='local'")
-        db.execute("DELETE FROM recommendation_evidence WHERE user_id='local'")
-        db.execute("DELETE FROM recommendation_resets WHERE user_id='local'")
-        db.execute("DELETE FROM recommendation_reset_requests WHERE user_id='local'")
-        db.execute("DELETE FROM recommendation_score_range WHERE user_id='local'")
-        db.execute("DELETE FROM artifact_preference_scores")
-        revision_map = {}
-        for event in recommendation["events"]:
-            cursor = db.execute(
-                "INSERT INTO recommendation_events(user_id,artifact_id,value,candidate) VALUES ('local',?,?,?)",
-                (event["artifact_id"], event["value"], _candidate(event["candidate"])))
-            revision_map[event["revision"]] = cursor.lastrowid
-        if not migrate_preferences:
-            for row in recommendation["evidence"]:
-                revision = revision_map.get(row["revision"])
-                if revision is None:
-                    raise ValidationError("The user-data archive has recommendation evidence without its event.")
-                db.execute("INSERT INTO recommendation_evidence VALUES ('local',?,?,?,?,?)",
-                           (recommendation["feature_version"], row["artifact_id"], revision, row["value"],
-                            _candidate(row["candidate"])))
-            state = recommendation["policy"]
-            if state is not None:
-                db.execute("INSERT INTO recommendation_policy VALUES ('local',?,?,?,?,?,?)",
-                           (recommendation["feature_version"], state["revision"], _json(state["term_keys"]),
-                            base64.b64decode(state["precision"]), base64.b64decode(state["reward"]),
-                            state["evidence_count"]))
-        reset = recommendation["reset"]
-        if reset is not None:
-            floor = revision_map.get(reset["event_floor"])
-            if floor is None and reset["event_floor"] != 0:
-                floor = max(revision_map.values(), default=0)
-            db.execute("INSERT INTO recommendation_resets VALUES ('local',?,?,?)",
-                       (reset["revision"], floor or 0, reset["reset_at"]))
-        score_range = recommendation["score_range"]
-        if score_range is not None and not migrate_preferences:
-            db.execute("INSERT INTO recommendation_score_range VALUES ('local',?,?,?,?)",
-                       (recommendation["feature_version"], recommendation["policy_version"],
-                        score_range["min"], score_range["max"]))
+        if import_preferences:
+            db.execute("DELETE FROM recommendation_policy WHERE user_id='local'")
+            db.execute("DELETE FROM recommendation_events WHERE user_id='local'")
+            db.execute("DELETE FROM recommendation_evidence WHERE user_id='local'")
+            db.execute("DELETE FROM recommendation_resets WHERE user_id='local'")
+            db.execute("DELETE FROM recommendation_reset_requests WHERE user_id='local'")
+            db.execute("DELETE FROM recommendation_learning_boundaries WHERE user_id='local'")
+            db.execute("DELETE FROM recommendation_score_range WHERE user_id='local'")
+            db.execute("DELETE FROM artifact_preference_scores")
+            revision_map = {}
+            for event in recommendation["events"]:
+                cursor = db.execute(
+                    "INSERT INTO recommendation_events(user_id,artifact_id,value,candidate) VALUES ('local',?,?,?)",
+                    (event["artifact_id"], event["value"], _candidate(event["candidate"])))
+                revision_map[event["revision"]] = cursor.lastrowid
+            if not migrate_preferences:
+                for row in recommendation["evidence"]:
+                    revision = revision_map.get(row["revision"])
+                    if revision is None:
+                        raise ValidationError("The user-data archive has recommendation evidence without its event.")
+                    db.execute("INSERT INTO recommendation_evidence VALUES ('local',?,?,?,?,?)",
+                               (recommendation["feature_version"], row["artifact_id"], revision, row["value"],
+                                _candidate(row["candidate"])))
+                state = recommendation["policy"]
+                if state is not None:
+                    db.execute("INSERT INTO recommendation_policy VALUES ('local',?,?,?,?,?,?)",
+                               (recommendation["feature_version"], state["revision"], _json(state["term_keys"]),
+                                base64.b64decode(state["precision"]), base64.b64decode(state["reward"]),
+                                state["evidence_count"]))
+            reset = recommendation["reset"]
+            if reset is not None:
+                floor = revision_map.get(reset["event_floor"])
+                if floor is None and reset["event_floor"] != 0:
+                    floor = max(revision_map.values(), default=0)
+                db.execute("INSERT INTO recommendation_resets VALUES ('local',?,?,?)",
+                           (reset["revision"], floor or 0, reset["reset_at"]))
+            if not migrate_preferences:
+                boundary = max(revision_map.values(), default=0)
+                db.execute("INSERT INTO recommendation_learning_boundaries VALUES ('local',?,?)",
+                           (boundary, datetime.now(timezone.utc).isoformat()))
+            score_range = recommendation["score_range"]
+            if score_range is not None and not migrate_preferences:
+                db.execute("INSERT INTO recommendation_score_range VALUES ('local',?,?,?,?)",
+                           (recommendation["feature_version"], recommendation["policy_version"],
+                            score_range["min"], score_range["max"]))
     return imported, skipped
 
 
@@ -703,22 +744,29 @@ def import_user_data(paths, storage, archive_path, feature_version, policy_versi
             if not isinstance(manifest, dict) or not isinstance(data, dict) or data.get("format_version") != FORMAT_VERSION:
                 raise ValidationError("The user-data archive has an invalid manifest or data document.")
             archive_feature = manifest.get("feature_version")
-            if not isinstance(archive_feature, str) or manifest.get("policy_version") != policy_version:
-                raise ValidationError("This user-data archive uses an incompatible preference policy.")
-            migrate_preferences = archive_feature != feature_version
             _verify_archive(archive, manifest, data, names)
-            _hydrate_policy_state(archive, data)
-            recommendation = _validate_recommendation(data, archive_feature, policy_version)
+            categories = _archive_categories(manifest, data)
+            recommendation = None
+            migrate_preferences = False
+            if categories["preferences"]:
+                if not isinstance(archive_feature, str) or manifest.get("policy_version") != policy_version:
+                    raise ValidationError("This user-data archive uses an incompatible preference policy.")
+                migrate_preferences = archive_feature != feature_version
+                _hydrate_policy_state(archive, data)
+                recommendation = _validate_recommendation(data, archive_feature, policy_version)
             with storage.connection() as db:
                 identifiers = {row["id"] for row in db.execute("SELECT id FROM artifacts")}
                 if db.execute("SELECT 1 FROM jobs WHERE status IN "
                               "('queued','submitting','running') LIMIT 1").fetchone():
                     raise ConflictError("Finish running or queued generation tasks before importing user data.")
             backup = _backup_database(paths)
-            prepared, created, skipped_existing = _prepare_files(archive, data, manifest, paths, identifiers)
+            prepared, created, skipped_existing = _prepare_files(
+                archive, data, manifest, paths, identifiers) if categories["liked_images"] else ([], [], 0)
             try:
                 imported, skipped_in_transaction = _import_database(
-                    storage, prepared, recommendation, migrate_preferences=migrate_preferences)
+                    storage, prepared, recommendation,
+                    import_preferences=categories["preferences"],
+                    migrate_preferences=migrate_preferences)
             except BaseException:
                 for path in created:
                     path.unlink(missing_ok=True)
@@ -726,8 +774,10 @@ def import_user_data(paths, storage, archive_path, feature_version, policy_versi
             return {
                 "liked_imported": imported,
                 "liked_skipped": skipped_existing + skipped_in_transaction,
-                "preference_evidence": sum(row["value"] is not None for row in recommendation["evidence"]),
+                "preference_evidence": (sum(row["value"] is not None for row in recommendation["evidence"])
+                                        if recommendation is not None else 0),
                 "preference_rebuild_required": migrate_preferences,
+                "categories": categories,
                 "backup": backup,
                 "artifact_revision": storage.artifact_revision(),
             }

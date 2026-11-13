@@ -122,7 +122,7 @@ Canvas pools are reusable named configurations, edited independently of Image AP
 
 ### User data
 
-User data is the single owner of the data directory, liked-image and preference transfer, preference review/reset, and always-visible image cleanup. Show only the data directory path with a soft background and monospace body text; wrap long paths and stack label/value on narrow screens. Export and import are localhost-only. After an archive is selected, Import confirms that liked images will be added and current learned preferences replaced before upload; later validation failures remain inline or in the shared notification layer.
+User data is the single owner of the data directory, liked-image and preference transfer, preference review/reset, and always-visible image cleanup. Show only the data directory path with a soft background and monospace body text; wrap long paths and stack label/value on narrow screens. Export offers independent liked-image and learned-preference checkboxes with both selected by default and requires at least one category. Import applies only categories present in the archive and confirms that unselected data remains unchanged. Keep diagnostic JSON export inside advanced preference inspection, not beside primary transfer actions. Export and import are localhost-only; later validation failures remain inline or in the shared notification layer.
 
 ### History
 

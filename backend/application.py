@@ -202,13 +202,23 @@ class PictideApplication:
             raise ValidationError("页码必须是 1 至 9007199254740991 的整数。")
         return asdict(await asyncio.to_thread(self.recommendation.preferences, "local", int(digits), all_terms=all_terms))
 
-    async def export_user_data(self):
+    async def export_user_data(self, payload=None):
+        if payload is None:
+            options = {"liked_images": True, "preferences": True}
+        else:
+            if (set(payload) != {"liked_images", "preferences"}
+                    or any(type(payload[key]) is not bool for key in payload)
+                    or not any(payload.values())):
+                raise ValidationError("Select at least one user-data category to export.")
+            options = payload
         async with self._user_data_lock:
             status = await asyncio.to_thread(self.recommendation.status)
             from .store.user_data import export_user_data
             pending = asyncio.create_task(asyncio.to_thread(
                 export_user_data, self.paths, self.storage, __version__,
-                status.feature_version, status.policy_version))
+                status.feature_version, status.policy_version,
+                include_liked=options["liked_images"],
+                include_preferences=options["preferences"]))
             try:
                 return await asyncio.shield(pending)
             except asyncio.CancelledError:
