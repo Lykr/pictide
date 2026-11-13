@@ -29,33 +29,37 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
   const measured = useRef(false);
   const clock = useRef(0);
   const animation = useRef<ReturnType<typeof createScrollAnimation> | null>(null);
-  const height = Math.max(1, size.height - 24);
+  const trackHeight = Math.max(1, size.height - 24);
+  const maxPictureWidth = Math.max(1, size.width - 24);
   const { pictures, origin, nextAnchor } = useMemo(() => {
     const chronological = [...artifacts].reverse();
     const index = Math.max(0, chronological.findIndex(item => item.id === currentId));
-    const width = (item: Picture) => {
+    const fitted = (item: Picture) => {
       const pixels = geometry.current.get(item.id) ?? item;
-      return height * ((pixels.width || 3) / (pixels.height || 4));
+      const aspect = (pixels.width || 3) / (pixels.height || 4);
+      const displayWidth = Math.min(maxPictureWidth, trackHeight * aspect);
+      const displayHeight = displayWidth / aspect;
+      return { displayWidth, displayHeight, displayTop: (trackHeight - displayHeight) / 2 };
     };
     // Cover the viewport plus preload space on each side, with a bounded DOM window.
     let first = index, last = index, left = 0, right = 0;
-    while (first > 0 && index - first < 15 && (index - first < 3 || left < size.width)) left += width(chronological[--first]) + 12;
-    while (last < chronological.length - 1 && last - index < 15 && (last - index < 3 || right < size.width)) right += width(chronological[++last]) + 12;
-    const before = (end: number) => chronological.slice(0, end).reduce((sum, item) => sum + width(item) + 12, 0);
+    while (first > 0 && index - first < 15 && (index - first < 3 || left < size.width)) left += fitted(chronological[--first]).displayWidth + 12;
+    while (last < chronological.length - 1 && last - index < 15 && (last - index < 3 || right < size.width)) right += fitted(chronological[++last]).displayWidth + 12;
+    const before = (end: number) => chronological.slice(0, end).reduce((sum, item) => sum + fitted(item).displayWidth + 12, 0);
     const previous = chronological.findIndex(item => item.id === anchor.current?.id);
     const base = previous >= 0 ? anchor.current!.left - before(previous) : 0;
     const origin = base + before(first);
     let position = origin;
     return {
       pictures: chronological.slice(first, last + 1).map(item => {
-        const result = { ...item, displayWidth: width(item), displayLeft: position };
+        const result = { ...item, ...fitted(item), displayLeft: position };
         position += result.displayWidth + 12;
         return result;
       }),
       origin,
       nextAnchor: { id: currentId, left: base + before(index) },
     };
-  }, [artifacts, currentId, height, size.width, loadVersion]);
+  }, [artifacts, currentId, trackHeight, maxPictureWidth, size.width, loadVersion]);
   const latest = useRef({ active, busy, speed, playback, artifacts });
   latest.current = { active, busy, speed, playback, artifacts };
 
@@ -156,9 +160,9 @@ export function RoamScroll({ artifacts, currentId, active, speed, busy, blurred 
     <div ref={track} className="roam-scroll-track">
       {pictures.map(item => <button key={item.id} type="button" className="roam-scroll-picture" data-artifact-id={item.id} data-touch-navigation
         data-selected={item.id === currentId && !playback.playing} data-liked={item.feedback === 1}
-        style={{ left: item.displayLeft, width: item.displayWidth, height }} aria-label={t('查看这张图片')} aria-current={item.id === currentId ? 'true' : undefined}
+        style={{ left: item.displayLeft, top: item.displayTop, width: item.displayWidth, height: item.displayHeight }} aria-label={t('查看这张图片')} aria-current={item.id === currentId ? 'true' : undefined}
         onClick={() => { advance(performance.now()); app.pauseScroll(); motion.select(item.id); paint(); }}>
-        <ScrollPrivacyImage src={`/api/artifacts/${encodeURIComponent(item.id)}/image`} height={height} blurred={blurred}
+        <ScrollPrivacyImage src={`/api/artifacts/${encodeURIComponent(item.id)}/image`} height={item.displayHeight} blurred={blurred}
           onLoad={image => {
             loaded.current.set(item.id, { width: image.naturalWidth, height: image.naturalHeight });
             geometry.current.set(item.id, { width: image.naturalWidth, height: image.naturalHeight });

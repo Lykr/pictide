@@ -97,6 +97,37 @@ test('scroll waits for new images, preserves settings and switches back to singl
 
 test.describe('PWA picture gestures', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  for (const [name, width, height] of [['portrait', 800, 1200], ['wide', 1600, 600]]) test(`active ${name} Scroll picture stays fully inside the PWA stage`, async ({ page, context }, testInfo) => {
+    await context.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));
+    await page.route(/\/static\/ui\/[^/]+\.css$/, async route => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: (await response.text()).replaceAll('(display-mode:standalone)', '(min-width:0px)').replaceAll('(display-mode:browser)', '(max-width:0px)') });
+    });
+    await page.route(/\/api\/artifacts\/[^/]+\/image$/, route => route.fulfill({
+      contentType: 'image/svg+xml',
+      body: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="#52796f"/></svg>`,
+    }));
+    const { scroll } = await prepare(page, context, 2);
+    await expect(scroll).toHaveAttribute('data-moving', 'false');
+    await expect(scroll).toHaveAttribute('data-focus', /.+/);
+    const bounds = await scroll.evaluate(element => {
+      const stage = element.getBoundingClientRect();
+      const picture = element.querySelector(`[data-artifact-id="${element.dataset.focus}"]`).getBoundingClientRect();
+      return {
+        left: picture.left - stage.left,
+        right: stage.right - picture.right,
+        top: picture.top - stage.top,
+        bottom: stage.bottom - picture.bottom,
+        aspect: picture.width / picture.height,
+      };
+    });
+    expect(bounds.left).toBeGreaterThanOrEqual(11);
+    expect(bounds.right).toBeGreaterThanOrEqual(11);
+    expect(bounds.top).toBeGreaterThanOrEqual(11);
+    expect(bounds.bottom).toBeGreaterThanOrEqual(11);
+    expect(Math.abs(bounds.aspect - width / height)).toBeLessThan(.01);
+    await page.screenshot({ path: testInfo.outputPath(`pwa-scroll-${name}-bounds.png`), animations: 'disabled' });
+  });
   for (const style of ['single', 'scroll']) test(`image taps toggle immersive menus in ${style}`, async ({ page, context }) => {
     await context.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));
     await prepare(page, context);
