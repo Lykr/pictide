@@ -12,6 +12,7 @@ Applies throughout the repository. English is the authoritative source.
 - Protect user data, unrelated work, and existing history. Keep development and verification isolated from the user's running application.
 - Respect established ownership and module boundaries. Carry out approved work autonomously; seek confirmation for boundary changes under the development workflow.
 - Verify changes in proportion to their impact. Report evidence and limitations accurately, distinguishing implemented, deployed, released, and unverified behavior.
+- Preserve durable guidance. When a user provides a rule, preference, or lesson that should affect future work, record it in the appropriate maintained document, including this file for repository-wide collaboration rules, so it survives the conversation and remains discoverable.
 - Maintain each rule in its owning document. Update that document when behavior changes; keep this file limited to principles and routing.
 
 ## Task routing
