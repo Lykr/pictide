@@ -34,7 +34,7 @@ The server builds the archive under `tmp/` and removes it after the response com
 
 Import is limited to one compressed archive no larger than 4 GiB and 8 GiB expanded. The server validates paths, entry counts, JSON documents, image metadata, recommendation evidence, policy matrices, and every checksum before copying files or changing the database.
 
-The archive's recommendation feature and policy versions must match the running application. Invalid, malformed, truncated, oversized, or incompatible archives return `400` without changing liked images, feedback, preferences, or database records.
+The recommendation policy version must match the running application. If the recommendation feature/model version differs, Pictide imports the model-independent event snapshots, discards the incompatible posterior matrix and derived evidence, and rebuilds learning with the current local model. The response reports `preferences_migrated` when rebuilding completes immediately or `preference_rebuild_pending` when it must resume in the background. Invalid, malformed, truncated, oversized, or policy-incompatible archives return `400` without changing liked images, feedback, preferences, or database records.
 
 Before an import, Pictide creates a consistent SQLite backup under `backups/before-user-data-import-<timestamp>/pictide.sqlite3`. The import then:
 

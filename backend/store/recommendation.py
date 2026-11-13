@@ -225,6 +225,24 @@ class SQLiteRecommendationStore:
                               "ORDER BY revision", (user_id, feature_version)).fetchall()
         return tuple(self._update(row, feature_version) for row in rows)
 
+    def replace_learning_state(self, user_id, feature_version, updates, state):
+        with self.repository.connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("DELETE FROM recommendation_evidence WHERE user_id=? AND feature_version=?",
+                       (user_id, feature_version))
+            for update in updates:
+                snapshot = _encode(update.candidate)
+                _decode(snapshot)
+                db.execute("INSERT INTO recommendation_evidence VALUES (?,?,?,?,?,?)",
+                           (user_id, feature_version, update.artifact_id, update.revision,
+                            update.value, snapshot))
+            db.execute("INSERT INTO recommendation_policy VALUES (?,?,?,?,?,?,?) "
+                       "ON CONFLICT(user_id,feature_version) DO UPDATE SET revision=excluded.revision, "
+                       "term_keys=excluded.term_keys,precision=excluded.precision,"
+                       "reward=excluded.reward,evidence_count=excluded.evidence_count",
+                       (user_id, feature_version, state.revision, json.dumps(state.term_keys),
+                        state.precision, state.reward, state.evidence_count))
+
     def pending_feedback(self, user_id, feature_version):
         with self.repository.connection() as db:
             rows = db.execute("SELECT e.* FROM recommendation_events e LEFT JOIN recommendation_evidence a "

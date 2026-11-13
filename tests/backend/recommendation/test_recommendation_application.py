@@ -118,6 +118,19 @@ class RecommendationApplicationTests(unittest.IsolatedAsyncioTestCase):
         np.testing.assert_allclose(np.frombuffer(restored.reward, dtype="<f8"), 0, atol=1e-12)
         self.assertEqual(self.app.recommendation_store.pending_feedback("local", self.version), ())
 
+    async def test_batch_rebuild_uses_latest_events_without_replaying_one_by_one(self):
+        images = self.output(2)
+        await self.rate(images[0], -1)
+        await self.rate(images[1], 1)
+        with self.app.storage.connection() as db:
+            db.execute("DELETE FROM recommendation_policy WHERE user_id='local'")
+            db.execute("DELETE FROM recommendation_evidence WHERE user_id='local'")
+        result = self.app.recommendation.rebuild_from_events("local")
+        self.assertEqual((result.status, result.state_revision), ("rebuilt", 2))
+        state = self.policy()
+        self.assertEqual(state.evidence_count, 2)
+        self.assertEqual(self.app.recommendation_store.pending_feedback("local", self.version), ())
+
     async def test_negative_failure_replays_on_restart_and_reset_blocks_old_evidence(self):
         image = self.output(1)[0]
         with patch.object(self.app.recommendation, "apply_feedback", side_effect=RuntimeError("simulated failure")):

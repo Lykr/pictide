@@ -228,6 +228,17 @@ class PictideApplication:
             invalidate = getattr(self.recommendation, "invalidate_cache", None)
             if invalidate is not None:
                 await asyncio.to_thread(invalidate)
+            if result.pop("preference_rebuild_required", False):
+                try:
+                    rebuilt = await asyncio.to_thread(self.recommendation.rebuild_from_events, "local")
+                    result["preferences_migrated"] = rebuilt.status == "rebuilt"
+                    result["preference_rebuild_pending"] = rebuilt.status != "rebuilt"
+                    self._recommendation_error = None
+                except Exception:
+                    logging.getLogger(__name__).exception("Imported preference evidence remains pending")
+                    self._recommendation_error = "推荐学习暂不可用，反馈已保存，将在下次操作重试。"
+                    result["preferences_migrated"] = False
+                    result["preference_rebuild_pending"] = True
         self._recommendation_error = None
         for topic in ("jobs", "artifacts", "feedback", "recommendation"):
             self.events.publish(topic)

@@ -177,6 +177,39 @@ class RecommendationService:
             self._posterior_cache = None
             return result
 
+    def rebuild_from_events(self, user_id):
+        """Build one policy from the latest event per artifact on the current model."""
+        self._identity(user_id, "user_id")
+        with self._lock:
+            status = self.status()
+            if not status.available:
+                return LearningResult(0, "pending")
+            version = status.feature_version
+            updates = self.store.pending_feedback(user_id, version)
+            if not updates:
+                revision = self.store.policy_stamp(user_id, version).revision or 0
+                return LearningResult(revision, "unchanged")
+            active = [item for item in updates if item.value is not None]
+            keys = tuple(sorted({key for item in active for key in
+                                 (content_key(term.text, term.channel) for term in item.candidate.terms)}))
+            import numpy as np
+            dimension = SEMANTIC_DIMENSION + len(keys)
+            precision = np.eye(dimension, dtype=np.float64)
+            reward = np.zeros(dimension, dtype=np.float64)
+            for start in range(0, len(active), 64):
+                batch = active[start:start + 64]
+                vectors = dense_features(self.features.prepare([item.candidate for item in batch]), keys)
+                for item, vector in zip(batch, vectors):
+                    precision += np.outer(vector, vector)
+                    reward += item.value * vector
+            revision = max(item.revision for item in updates)
+            state = policy.encode(keys, precision, reward, revision, len(active))
+            factor, center = policy.posterior(precision, reward)
+            self.store.replace_learning_state(user_id, version, updates, state)
+            stamp = self.store.policy_stamp(user_id, version)
+            self._remember(user_id, version, stamp, keys, factor, center, len(active))
+            return LearningResult(revision, "rebuilt")
+
     def score(self, request):
         with self._lock:
             self._identity(request.request_id, "request_id")

@@ -9,6 +9,7 @@ from backend.domain import ConflictError, ValidationError
 from backend.paths import DataPaths
 from backend.recommendation import policy
 from backend.store.user_data import export_user_data, import_user_data
+from backend.store.recommendation import _decode, _encode
 from backend.store.sqlite import Repository
 
 
@@ -116,7 +117,7 @@ class UserDataArchiveTests(unittest.TestCase):
         self.assertEqual(manifest["counts"]["recommendation_events"], 1)
         self.assertEqual(len(data["recommendation"]["events"]), 1)
 
-    def test_checksum_and_version_mismatch_make_no_database_changes(self):
+    def test_checksum_and_policy_mismatch_make_no_database_changes(self):
         artifact = self.like()
         archive, _ = self.export()
         corrupted = Path(self.temporary.name) / "corrupted.zip"
@@ -134,8 +135,39 @@ class UserDataArchiveTests(unittest.TestCase):
         self.assertEqual(destination.counts()["liked"], 0)
         with self.assertRaisesRegex(ValidationError, "incompatible"):
             import_user_data(destination_paths, destination, archive,
-                             "another-feature", policy.POLICY_VERSION)
+                             self.feature_version, "another-policy")
         self.assertEqual(destination.counts()["liked"], 0)
+
+    def test_feature_mismatch_imports_events_for_current_model_rebuild(self):
+        artifact = self.like()
+        candidate = json.dumps({
+            "candidate_id": "candidate-1", "positive": "garden, sunlight",
+            "negative": "blurry",
+            "terms": [
+                {"text": "garden", "channel": "positive"},
+                {"text": "sunlight", "channel": "positive"},
+                {"text": "blurry", "channel": "negative"},
+            ],
+        }, separators=(",", ":"))
+        with self.source.connection() as db:
+            db.execute("INSERT INTO recommendation_events(user_id,artifact_id,value,candidate) "
+                       "VALUES ('local',?,1,?)", (artifact["id"], candidate))
+            revision = db.execute("SELECT MAX(revision) FROM recommendation_events").fetchone()[0]
+            db.execute("INSERT INTO recommendation_evidence VALUES ('local',?,?,?,?,?)",
+                       (self.feature_version, artifact["id"], revision, 1, candidate))
+        archive, _ = self.export()
+        destination_paths = DataPaths(Path(self.temporary.name) / "destination").ensure()
+        destination = Repository(destination_paths.database)
+        result = import_user_data(destination_paths, destination, archive,
+                                  "current-feature", policy.POLICY_VERSION)
+        self.assertTrue(result["preference_rebuild_required"])
+        self.assertEqual(result["liked_imported"], 1)
+        with destination.connection() as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM recommendation_events").fetchone()[0], 1)
+            imported_candidate = db.execute("SELECT candidate FROM recommendation_events").fetchone()["candidate"]
+            self.assertEqual(db.execute("SELECT count(*) FROM recommendation_evidence").fetchone()[0], 0)
+            self.assertEqual(db.execute("SELECT count(*) FROM recommendation_policy").fetchone()[0], 0)
+        self.assertEqual(imported_candidate, _encode(_decode(imported_candidate)))
 
     def test_import_waits_for_active_generation_tasks(self):
         self.like()
