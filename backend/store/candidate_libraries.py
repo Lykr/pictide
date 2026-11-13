@@ -118,6 +118,23 @@ class CandidateLibraries:
             self._save_selection(filename)
             return path
 
+    def delete(self, filename):
+        with self._lock:
+            path = self._path(filename)
+            selected = self._selection()
+            replacement = selected
+            if selected == filename:
+                replacement = next((item["filename"] for item in self.listing()["libraries"]
+                                    if item["filename"] != filename), "")
+            try:
+                path.unlink()
+            except OSError as error:
+                raise CandidateError("词库正在使用或无法删除，请稍后重试。") from error
+            self._summaries.pop(path, None)
+            if selected == filename:
+                self._save_selection(replacement)
+            return {"deleted": filename, "selected": replacement}
+
     def refresh_path(self, filename):
         return self.select(filename) if filename else self.empty_path()
 

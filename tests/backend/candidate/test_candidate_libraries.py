@@ -57,6 +57,9 @@ class LibrarySmoke(unittest.IsolatedAsyncioTestCase):
         response = await self.client.put("/api/candidate/library", json={"filename": filename})
         self.assertEqual(response.status, 200, await response.text())
 
+    async def delete(self, filename):
+        return await self.client.delete("/api/candidate/library", json={"filename": filename})
+
     async def test_upload_copy_select_and_restart_keep_personal_preset(self):
         self.assertEqual((await (await self.client.get("/api/candidate/library")).json())["libraries"], [])
         response = await self.upload(self.first.read_bytes(), "vocabulary.sqlite3")
@@ -169,6 +172,38 @@ class LibrarySmoke(unittest.IsolatedAsyncioTestCase):
         new_service = self.client.server.app[APPLICATION].candidates
         self.assertIsNot(old_service, new_service)
         self.assertEqual({x["name"] for x in new_service.list_tags()["tags"]}, {"red_sky", "forest"})
+
+    async def test_delete_selected_library_switches_to_next_or_empty_without_touching_presets(self):
+        first = await (await self.upload(self.first.read_bytes(), "first.sqlite3")).json()
+        second = await (await self.upload(self.second.read_bytes(), "second.sqlite3")).json()
+        await self.select(first["filename"])
+        response = await self.delete(first["filename"])
+        self.assertEqual(response.status, 200, await response.text())
+        result = await response.json()
+        self.assertEqual((result["deleted"], result["selected"]), (first["filename"], second["filename"]))
+        self.assertFalse((self.data / "libraries" / first["filename"]).exists())
+        tags = await (await self.client.get("/api/candidate/tags")).json()
+        self.assertEqual({item["name"] for item in tags["tags"]}, {"red_sky", "forest"})
+
+        response = await self.delete(second["filename"])
+        self.assertEqual(response.status, 200, await response.text())
+        listing = await (await self.client.get("/api/candidate/library")).json()
+        self.assertEqual(listing, {"selected": "", "libraries": []})
+        tags = await (await self.client.get("/api/candidate/tags")).json()
+        self.assertEqual(tags["tags"], [])
+        presets = await (await self.client.get("/api/candidate/presets")).json()
+        self.assertIn("default", {item["id"] for item in presets["presets"]})
+
+    async def test_delete_rejects_invalid_or_missing_library_without_changing_selection(self):
+        first = await (await self.upload(self.first.read_bytes(), "active.sqlite3")).json()
+        await self.select(first["filename"])
+        for filename in ("../outside.sqlite3", "missing.sqlite3", ".empty.sqlite3"):
+            with self.subTest(filename=filename):
+                response = await self.delete(filename)
+                self.assertEqual(response.status, 400)
+        listing = await (await self.client.get("/api/candidate/library")).json()
+        self.assertEqual(listing["selected"], first["filename"])
+        self.assertTrue((self.data / "libraries" / first["filename"]).exists())
 
 
 if __name__ == "__main__":

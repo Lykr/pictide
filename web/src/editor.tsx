@@ -253,17 +253,29 @@ export function EditorWorkspace() {
   const libraryOperation = async (action: string, filename?: string, file?: File) => {
     setOperation('library'); setLibraryAction(action); setLibraryError("");
     try {
-      if (file) {
+      if (action === "delete") {
+        const response = await fetch("/api/candidate/library", {
+          method: "DELETE", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : tr`请求失败（${response.status}）`);
+        notifySuccess(t("词库已删除"), { id: "candidate-library" });
+      } else if (file) {
         const body = new FormData(); body.append("file", file);
         const response = await fetch("/api/candidate/library", { method: "POST", body });
         const data = await response.json();
         if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : data.error?.message || tr`请求失败（${response.status}）`);
         filename = (data as Library).filename;
       }
-      if (filename) await api("/api/candidate/library", { method: "PUT", body: JSON.stringify({ filename }) });
+      if (filename && action !== "delete") await api("/api/candidate/library", { method: "PUT", body: JSON.stringify({ filename }) });
       await refreshLibrary();
     } catch (error) { setLibraryError(message(error)); }
     finally { setOperation(''); setLibraryAction(""); }
+  };
+  const deleteLibrary = async () => {
+    if (!library.selected || !await confirmAction(t("删除当前词库 {filename}？删除后会切换到下一个可用词库；没有其他词库时使用空词库。预设、图片和任务不会删除。", { filename: library.selected }))) return;
+    await libraryOperation("delete", library.selected);
   };
   const update = <K extends keyof PresetDocument>(key: K, value: PresetDocument[K]) => { setPreset(current => ({ ...current, document: { ...current.document, [key]: value } })); setSuccess(false); };
   const discard = async () => !dirty || await confirmAction(t("当前预设有未保存的修改，继续会放弃这些修改。"));
@@ -358,6 +370,7 @@ export function EditorWorkspace() {
               }} />
               <IconButton icon={libraryAction === "upload" ? LoaderCircle : Upload} className={libraryAction === "upload" ? "[&>svg]:animate-spin" : ""} label={libraryAction === "upload" ? t("正在上传词库") : t("上传词库")} onClick={() => libraryInput.current?.click()} disabled={busy} />
               <IconButton icon={libraryAction === "refresh" ? LoaderCircle : RefreshCw} className={libraryAction === "refresh" ? "[&>svg]:animate-spin" : ""} label={t("刷新词库")} onClick={() => void libraryOperation("refresh")} disabled={busy || tagLoading} />
+              <IconButton icon={libraryAction === "delete" ? LoaderCircle : Trash2} className={libraryAction === "delete" ? "[&>svg]:animate-spin" : ""} label={libraryAction === "delete" ? t("正在删除词库") : t("删除当前词库")} onClick={() => void deleteLibrary()} disabled={busy || !library.selected} />
             </div>
           </div>
           <Input className="cooc-library-search" aria-label={t("搜索词库标签")} placeholder={t("搜索标签")} value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} />

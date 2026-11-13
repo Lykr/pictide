@@ -34,6 +34,8 @@ On startup, Pictide downloads a vocabulary if none is valid; unattended startup 
 
 Under Prompts → Library → Upload, select the downloaded `.sqlite3` file. It is selected automatically after upload. You can also place a finished library in `libraries/` under your data directory, refresh, and select it. Multiple versions can coexist. Switching preserves your personal presets and fixed terms; newly generated prompts use the selected library.
 
+Use the trash button beside the library controls to permanently delete the current vocabulary. After confirmation, Pictide switches to the next available vocabulary; if none remain, it uses an empty vocabulary. Presets, images, tasks, feedback, and learned preferences are not deleted.
+
 ## Data preparation
 
 To build your own library from raw data, see [Corpus Processing](../dev/corpus.md). For everyday use, download a ready-made edition.

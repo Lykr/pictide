@@ -11,8 +11,11 @@
 | GET | `/api/candidate/library` | 无 | `{selected,libraries:[{filename,tag_count,relation_count,bytes}]}` |
 | POST | `/api/candidate/library` | multipart/form-data，字段 `file`，`.sqlite3` 或 `.sqlite3.gz` | 201，`{filename,tag_count,relation_count,bytes}` |
 | PUT | `/api/candidate/library` | JSON `{filename}` | `{selected}`，立即使用 |
+| DELETE | `/api/candidate/library` | JSON `{filename}` | `{selected,libraries,deleted}` |
 
 文件放在所选数据目录的 `libraries/`。GET 刷新目录和所选文件状态；有效文件需要 tags、correlations、dataset 表，来源为 ready，dataset.min_cooccurrence 是词库保留关系的正整数下限。上传和 gzip 解压各支持最大 2 GiB，同名自动编号，仅复制统计表。页面在上传成功后调用 PUT 自动选用。选择保存到个人配置库，已有预设、任务和预取保留，状态变化复用 candidate 事件。
+
+DELETE 永久删除一个已验证的词库文件。删除当前词库后按文件名顺序切换到下一个有效词库；没有其他词库时切换到内置空词库。预设、图片、任务、反馈和学习偏好不变；无效、缺失或正在使用的文件返回 `400`，当前选择保持不变。
 
 ## 候选词库、预设与预览
 

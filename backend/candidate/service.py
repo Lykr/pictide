@@ -75,6 +75,9 @@ class CandidateService:
     def add_library(self, path, filename):
         return self.libraries.add(path, filename)
 
+    def delete_library(self, filename):
+        return self.libraries.delete(filename)
+
     def select_library(self, filename):
         if not isinstance(filename, str):
             raise CandidateError("请选择词库文件。")

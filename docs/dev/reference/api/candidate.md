@@ -11,8 +11,11 @@
 | GET | `/api/candidate/library` | None | `{selected,libraries:[{filename,tag_count,relation_count,bytes}]}` |
 | POST | `/api/candidate/library` | multipart/form-data, field `file`, `.sqlite3` or `.sqlite3.gz` | 201; `{filename,tag_count,relation_count,bytes}` |
 | PUT | `/api/candidate/library` | JSON `{filename}` | `{selected}`; takes effect immediately |
+| DELETE | `/api/candidate/library` | JSON `{filename}` | `{selected,libraries,deleted}` |
 
 Files are stored in `libraries/` under the selected data directory. GET refreshes the directory and selected file status. A valid file requires the tags, correlations, and dataset tables, a source status of ready, and dataset.min_cooccurrence as a positive-integer lower bound for relations retained in the library. Uploads and gzip decompression each support a maximum of 2 GiB. Duplicate filenames are automatically numbered, and only statistical tables are copied. After a successful upload, the page calls PUT to select the file automatically. The selection is saved in the personal configuration database; existing presets, jobs, and prefetched results are preserved. Status changes reuse the candidate event.
+
+DELETE permanently removes one validated library file. Deleting the selected library switches to the next valid library in filename order, or to the built-in empty library when none remain. Presets, images, jobs, feedback, and learned preferences are unchanged. Invalid, missing, or in-use files return `400` without changing the selection.
 
 ## Candidate tag library, presets, and previews
 

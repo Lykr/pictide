@@ -27,6 +27,8 @@ Thumbnail changes use `tests.backend.store.test_thumbnails`, `tests.backend.appl
 
 User-data transfer and Settings → User data changes use `python -m unittest tests.backend.store.test_user_data tests.backend.application.test_user_data -v` and `web/tests/browser/user-data.spec.mjs`. They cover archive checksums and version rejection, liked-image round trips, exact prompt JSON, complete preference state, duplicate imports, active-task protection, automatic database backup, localhost-only HTTP access, tab placement, preference and cleanup ownership, export naming, import confirmation, and imported/skipped counts.
 
+Vocabulary deletion changes use `tests.backend.candidate.test_candidate_libraries`. Checks cover deleting the active library, deterministic next-library selection, empty fallback, preserved personal presets, invalid paths, missing files, and selection retention after failure.
+
 | Group | Checks | Requirements |
 | --- | --- | --- |
 | `core` (default) | Focused smokes: terminal keyboard/frame consistency, startup vocabulary download/offline reuse, local ComfyUI lifecycle, macOS update restart mode, preset-to-roam flow, blocked queue recovery, database migration, reversible feedback and shared posterior caching, WebP thumbnail caching, OpenAI and Gemini protocol requests, natural-language Anchor reuse and explicit prefetch retry, named LLM references, immutable canvas-pool task dimensions, persistent canvas anchors, Generate size/replay snapshots, and OAuth callback verification | Application Python dependencies |

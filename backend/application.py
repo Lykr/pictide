@@ -1081,6 +1081,15 @@ class PictideApplication:
             self.events.publish("candidate")
             return result
         async with self._roam_lock:
+            if action == "delete":
+                deleted = await asyncio.to_thread(self.candidates.delete_library,
+                                                  (payload or {}).get("filename"))
+                result = await asyncio.to_thread(self.candidates.list_libraries)
+                self.candidates = await asyncio.to_thread(
+                    self.candidates.select_library, result["selected"])
+                await self._refresh_roam_anchors()
+                self.events.publish("candidate")
+                return {**result, **deleted}
             if action == "select":
                 name = (payload or {}).get("filename")
                 self.candidates = await asyncio.to_thread(self.candidates.select_library, name)

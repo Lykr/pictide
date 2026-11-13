@@ -29,3 +29,5 @@ To switch an existing installation or prepare first launch offline, download the
 Open **Prompts → Library → Upload** and select the downloaded `.sqlite3` file. Uploading selects it automatically. Both editions can coexist; use the library list to switch later.
 
 Switching applies to future prompt generation. Your presets, existing images, and tasks remain.
+
+To reclaim disk space, use the delete button beside the library controls. Deleting the selected vocabulary switches to the next available vocabulary or the empty fallback. Your presets, images, tasks, feedback, and learned preferences remain.

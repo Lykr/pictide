@@ -417,6 +417,8 @@ async def candidate_library(request):
     application = request.app[APPLICATION]
     if request.method == "GET":
         return web.json_response(await application.candidate_library("list"))
+    if request.method == "DELETE":
+        return web.json_response(await application.candidate_library("delete", await body(request)))
     if request.method == "PUT":
         return web.json_response(await application.candidate_library("select", await body(request)))
     path = None
@@ -629,6 +631,7 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
         web.get("/api/candidate/library", candidate_library),
         web.post("/api/candidate/library", candidate_library),
         web.put("/api/candidate/library", candidate_library),
+        web.delete("/api/candidate/library", candidate_library),
         web.get("/api/candidate/{action:tags|presets|dataset}", candidate),
         web.get("/api/candidate/presets/{id}", candidate),
         web.post("/api/candidate/{action:presets|generate|relations}", candidate),
