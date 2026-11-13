@@ -129,17 +129,18 @@ for (const scenario of scenarios) test(`shared layout: ${scenario.name}`, async 
   await page.keyboard.press('Escape');
   await viewer.locator('.generated-viewer-heading button').last().click();
   await page.goto('/#settings/general');
-  await expect(page.locator('.settings-row')).toHaveCount(8);
+  await expect(page.locator('#settings-general .settings-row')).toHaveCount(7);
   const tourButton = page.getByRole('button', { name: /^(Start tour|开始引导)$/ });
   const updateButton = page.locator('[data-application-updates] button').first();
   const tourBox = await tourButton.boundingBox(), updateBox = await updateButton.boundingBox();
   const alignedEdge = box => scenario.width <= 640 ? box.x + box.width : box.x;
   expect(Math.abs(alignedEdge(tourBox) - alignedEdge(updateBox))).toBeLessThan(1);
   expect(updateBox.height).toBe(tourBox.height);
+  await page.goto('/#settings/user-data');
   // A long real-world path must wrap inside the shared row rather than widening it.
   await page.locator('#data-directory').evaluate(el => { el.textContent = 'E:\\Pictide\\' + 'long-directory-name-'.repeat(20); });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  const controls = await page.locator('.settings-row-control').evaluateAll(nodes => nodes.map(el => el.getBoundingClientRect().x));
+  const controls = await page.locator('#settings-user-data .settings-row-control').evaluateAll(nodes => nodes.map(el => el.getBoundingClientRect().x));
   if (scenario.width > 640) expect(Math.max(...controls) - Math.min(...controls)).toBeLessThan(1);
   await capture(page, testInfo, 'settings-long-path');
 });

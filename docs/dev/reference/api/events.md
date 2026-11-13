@@ -11,7 +11,7 @@
 | GET | `/api/bootstrap` | None | Initialization data; fields listed below |
 | GET | `/api/events` | Persistent SSE connection | `event: change`; data is `{revision,topic}` |
 
-Bootstrap includes `name,module,version,database_path,data_directory,backend_types,backends,jobs,artifacts,roam_view,roam_settings,artifact_revision,counts,artifact_page,recommendation,capabilities`. Backend configurations hide API keys. `jobs` contains the most recent 100 jobs, and `artifacts` contains the Roam window near the saved viewing position. General and history settings are read through their respective endpoints.
+Bootstrap includes `name,module,version,database_path,data_directory,backend_types,backends,jobs,artifacts,roam_view,roam_settings,artifact_revision,counts,artifact_page,recommendation,capabilities`. Backend configurations hide API keys. `jobs` contains the most recent 100 jobs, and `artifacts` contains the Roam window near the saved viewing position. `capabilities.user_data` reports whether archive export/import is available from the current localhost request. General and history settings are read through their respective endpoints.
 
 `recommendation` includes `available,model_version,feature_version,policy_version,error`. `capabilities` includes `generation,feedback,preference_learning,cooccurrence_prompts,prompt_sequences,events,roam_prefetch`.
 

@@ -37,7 +37,7 @@ test('standalone generation, API creation and preference reset work without rand
   expect(requests).toHaveLength(2);
   expect(requests[1].request_id).toBe(requests[0].request_id);
   expect(requests[0].request_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-  await page.goto('/#settings/roam');
+  await page.goto('/#settings/user-data');
   await page.getByRole('button', { name: '重置用户偏好', exact: true }).click();
   const reset = page.waitForResponse(response => response.url().endsWith('/api/recommendation/preferences/reset') && response.request().method() === 'POST');
   await page.getByRole('alertdialog').getByRole('button', { name: '重置偏好', exact: true }).click();

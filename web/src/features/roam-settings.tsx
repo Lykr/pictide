@@ -7,7 +7,6 @@ import { Label } from '../components/ui/label';
 import { FormSelect } from '../components/form-select';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../components/ui/input-group';
 import { RoamSettingsChoices, RoamDisplayChoices } from '../components/roam-playback';
-import { PreferenceActions } from '../components/preference-actions';
 import { backendCapabilities } from '../controllers/backend-controls.mjs';
 import { LoaderCircle, Save } from 'lucide-react';
 export function RoamSettings() {
@@ -30,7 +29,6 @@ export function RoamSettings() {
 <div className="settings-field"><Label htmlFor="roam-strong-candidate-multiplier"><span className="field-caption">{t("强力候选倍数")}<HelpTip text={t("强力模式的候选组合数量 = 候选组合数量 × 倍数。只影响新任务。")} /></span></Label><Input id="roam-strong-candidate-multiplier" {...roamInput("strong_candidate_multiplier")} type="number" min="1" max="5" step="1" required /></div>
 </div>
 </fieldset>
-<PreferenceActions />
 <div className="dialog-footer"><Button id="roam-save" type="submit" disabled={state.roamSaving} aria-busy={state.roamSaving}>{state.roamSaving ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{t("保存设置")}</Button></div>
 </form>;
 }

@@ -32,6 +32,7 @@ GROUPS = {
         'tests.backend.application.test_canvas_anchors.CanvasAnchorTests.test_pin_overrides_pool_and_fixed_mode_then_clear_restores_selection',
         'tests.backend.application.test_generation_sizes.GenerationSizeTests.test_generate_batch_sizes_survive_replay_and_config_changes',
         'tests.backend.application.test_chatgpt.ChatGPTTests.test_registration_pkce_state_signature_and_replay',
+        'tests.backend.application.test_user_data.UserDataHTTPTests.test_export_and_import_are_local_management_routes',
     ),
     'corpus': (
         'tests.corpus.test_importer.ImportSmoke.test_post_filter_matches_any_tag_and_keeps_only_surviving_population',

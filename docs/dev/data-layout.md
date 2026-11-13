@@ -36,7 +36,7 @@ The following paths are relative to the selected data directory:
 | `tmp/` | Runtime temporary files |
 | `logs/pictide.log` | Startup, application events, image tasks, and exceptions |
 | `logs/comfyui.log` | Output from ComfyUI started by Pictide; absent when using an external service |
-| `backups/` | Data backups |
+| `backups/` | Data backups, including consistent `before-user-data-import-<timestamp>/pictide.sqlite3` snapshots created before a user-data archive is applied |
 | `cache/updates/`, `tmp/updates/` | Explicitly downloaded updates, staging, operation leases, helper output, and installation results |
 | `backups/updates/` | Program recovery copies and consistent database snapshots created by user-requested upgrades; database snapshots are retained for manual recovery |
 

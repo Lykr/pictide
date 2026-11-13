@@ -202,7 +202,7 @@ function setView(route, updateUrl = true) {
   state.view = view;
   publishUiState({ route: view === 'settings' ? `settings/${section || state.settingsSection}` : view, ...(view !== 'feed' ? { waiting: false } : {}) });
   emitSignal('close-image-info');
-  if (view === 'settings' && ['general', 'backend', 'llm', 'canvas', 'roam', 'history'].includes(section)) state.settingsSection = section;
+  if (view === 'settings' && ['general', 'backend', 'llm', 'canvas', 'roam', 'user-data', 'history'].includes(section)) state.settingsSection = section;
   const editor = view === 'prompts';
   changed();
   if (view !== 'feed') emitSignal('roam-options-close');
@@ -215,15 +215,15 @@ function setView(route, updateUrl = true) {
   pageScroll.restore(view);
 }
 function setSettingsSection(section, updateUrl = true) {
-  if (!['general', 'backend', 'llm', 'canvas', 'roam', 'history'].includes(section)) section = 'general';
+  if (!['general', 'backend', 'llm', 'canvas', 'roam', 'user-data', 'history'].includes(section)) section = 'general';
   state.settingsSection = section;
   if (state.view === 'settings') publishUiState({ route: `settings/${section}` });
   changed();
   if (section === 'roam' && !roamSettingsLoading && !roamSettingsLoaded) loadRoamSettings();
-  if (section === 'history') {
+  if (section === 'user-data') {
     if (!historyLoaded && !historyLoading) loadHistorySettings();
-    jobPager.load();
   }
+  if (section === 'history') jobPager.load();
   if (updateUrl) history.replaceState(null, '', `${location.pathname}${location.search}#settings/${section}`);
 }
 function renderGalleryLoading() {
@@ -664,7 +664,7 @@ async function submitRoamSettings() {
 }
 async function bootstrap() {
   try {
-    const data = await api('/api/bootstrap'); state.backends = data.backends || []; state.jobs = data.jobs || []; state.artifacts = data.artifacts || []; state.artifactRevision = data.artifact_revision ?? 0; state.dataDirectory = data.data_directory || '';
+    const data = await api('/api/bootstrap'); state.backends = data.backends || []; state.jobs = data.jobs || []; state.artifacts = data.artifacts || []; state.artifactRevision = data.artifact_revision ?? 0; state.dataDirectory = data.data_directory || ''; state.userDataLocal = data.capabilities?.user_data === true;
     galleryCursors.restore(data.roam_view || {});
     if (data.artifact_page?.anchor_id !== undefined && galleryCursors.get('feed') && !state.artifacts.some(item => item.id === galleryCursors.get('feed'))) selectImage(data.artifact_page.anchor_id, 'feed');
     state.pages.feed.loaded = true; state.pages.feed.total = data.counts?.roam ?? state.artifacts.length; state.pages.feed.hasMore = data.artifact_page?.has_more ?? state.pages.feed.total > state.artifacts.length; state.pages.feed.hasNewer = !!data.artifact_page?.has_newer; state.pages.feed.cursor = data.artifact_page?.next_cursor ?? state.artifacts.at(-1)?.id ?? null; state.pages.liked.total = data.counts?.liked ?? 0; state.pages.generate.total = data.counts?.generate ?? 0;

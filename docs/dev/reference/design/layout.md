@@ -96,11 +96,11 @@ Place guidance near its target while leaving the target, image actions, and navi
 
 ## Settings
 
-Use General, Roam, Image API, LLM API, Canvas pools, and History tabs under a single Settings heading. Forms share a 780px content width, `.settings-field`, and `.settings-stack`: label rows at least 24px high, 8px to controls, 16px between related fields, and 24px between sections. Two-column groups stack on narrow screens. Default Input / Select height is 36px; units use InputGroup. Place save actions at the lower right and connection tests at the left. On phones, overflowing tab rows scroll horizontally and keep the selected section visible.
+Use General, Roam, Image API, LLM API, Canvas pools, User data, and History tabs under a single Settings heading. Forms share a 780px content width, `.settings-field`, and `.settings-stack`: label rows at least 24px high, 8px to controls, 16px between related fields, and 24px between sections. Two-column groups stack on narrow screens. Default Input / Select height is 36px; units use InputGroup. Place save actions at the lower right and connection tests at the left. On phones, overflowing tab rows scroll horizontally and keep the selected section visible.
 
 ### General
 
-General uses aligned rows for language, theme, image transitions, onboarding, and data location. Show only the data directory path with a soft background and monospace body text; wrap long paths and stack label/value on narrow screens. Avoid nested decorative cards.
+General uses aligned rows for language, theme, image transitions, onboarding, network access, local generation startup, and application updates. Avoid nested decorative cards.
 
 Make effect timing visible. Appearance choices apply immediately and persist; LAN access applies immediately to this running session. Network addresses and QR codes describe access to this same application, and unavailable or remote-only controls explain where they can be configured. Local ComfyUI startup settings use an explicit Save for the next launch; show the current process state separately from that draft. Update checks require an explicit action, with ongoing download/install status beside their controls.
 
@@ -120,9 +120,13 @@ LLM API independently manages named API-key or ChatGPT connections. Natural-lang
 
 Canvas pools are reusable named configurations, edited independently of Image APIs. Put existing/new selection and the name first, followed by paired pixel width and height rows with add/remove actions and an explicit Save. Preserve one complete size row, clear units, and stable row identity while editing. On narrow screens keep each width × height pair and its remove action together. References and deletion failures should identify the configuration that must be changed; selecting or editing a pool must not silently rewrite another API's draft.
 
+### User data
+
+User data is the single owner of the data directory, liked-image and preference transfer, preference review/reset, and initially collapsed image cleanup. Show only the data directory path with a soft background and monospace body text; wrap long paths and stack label/value on narrow screens. Export and import are localhost-only. After an archive is selected, Import confirms that liked images will be added and current learned preferences replaced before upload; later validation failures remain inline or in the shared notification layer.
+
 ### History
 
-History combines task records with initially collapsed image cleanup. Keep task pagination at 15 items and preserve mounted forms across tabs. The sidebar has no independent tasks entry. The top-level availability indicator reflects read-only checks of saved backends at configuration load/save rather than periodic probing. Global Settings uses Lucide Settings; Roam options uses Settings2.
+History contains task records only. Keep task pagination at 15 items and preserve mounted forms across tabs. The sidebar has no independent tasks entry. The top-level availability indicator reflects read-only checks of saved backends at configuration load/save rather than periodic probing. Global Settings uses Lucide Settings; Roam options uses Settings2.
 
 ## Immersive views and anchors
 

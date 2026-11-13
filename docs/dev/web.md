@@ -24,7 +24,7 @@ Frontend unit checks live in `web/tests/unit/`; real-page checks and fixtures li
 
 ## Pages and State
 
-Internal routes are `#feed`, `#generate`, `#liked`, `#prompts`, and `#settings/general|roam|backend|llm|canvas|history`. Task records live in Settings' History section, with no separate Tasks section.
+Internal routes are `#feed`, `#generate`, `#liked`, `#prompts`, and `#settings/general|roam|backend|llm|canvas|user-data|history`. User data owns the data location, liked-image and preference transfer, preference review/reset, and image cleanup. Task records remain in Settings' History section, with no separate Tasks section.
 
 Each feature model owns its draft; React views remain mounted across navigation. Server refreshes update service data without replacing unsaved drafts. Image windows distinguish Generate and Roam by source; Liked spans sources. The backend saves the viewing position. The UI does not access files, SQLite, or Python modules directly; business algorithms run in the backend.
 

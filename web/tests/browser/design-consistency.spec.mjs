@@ -8,9 +8,9 @@ async function prepare(page, context, width = 390) {
 
 for (const width of [320, 390]) test(`settings keep the active tab visible and generation actions readable at ${width}px`, async ({ page, context }) => {
   await prepare(page, context, width);
-  await page.goto('/#settings/history');
+  await page.goto('/#settings/user-data');
   const list = page.getByRole('tablist', { name: 'Settings categories' });
-  const active = page.getByRole('tab', { name: 'History', exact: true });
+  const active = page.getByRole('tab', { name: 'User data', exact: true });
   await expect(active).toHaveAttribute('data-state', 'active');
   await expect.poll(async () => {
     const frame = await list.boundingBox(), tab = await active.boundingBox();

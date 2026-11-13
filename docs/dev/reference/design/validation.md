@@ -22,8 +22,9 @@ For a new or changed surface, record its purpose, primary action, save/effect sc
 | Liked and recovery | Feedback versus selection, thumbnail/full-image roles, export scope, recovery and retained filters | `collection-appearance`, `thumbnails`, `liked-recovery` |
 | Prompts | Read-only library versus editable arrangement, search/IME, unsaved work, preview hierarchy | `natural-prompts`, `anchor-suggestions` |
 | General settings | Immediate preferences, session-only network effects, next-launch startup drafts, update progress | `first-use`, `local-generation`, `updates` |
+| User data | Data location, archive transfer, preference review/reset, owned image cleanup | `user-data` |
 | API and canvas configuration | Selection/new drafts, test versus save, credentials, conditional fields, size-row editing | `llm-connections`, `canvas-pools`, `react-forms` |
-| History | Paging, expanded details, current task status and cancellation scope | `smoke` |
+| History | Task paging, expanded details, current task status and cancellation scope | `smoke` |
 | Guidance and shared overlays | Real action progress, dismissal/resume, target access, focus, locale, safe area | `smoke`, `first-use`, `layout`, `request-id` |
 
 These names refer to `web/tests/browser/*.spec.mjs`; commands and further scenarios remain in [focused checks](../../testing.md). Screenshot review and interaction checks serve different purposes. Verify the states involved in the change rather than treating this table as a claim that every state was exercised in one audit.

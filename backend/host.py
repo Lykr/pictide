@@ -30,6 +30,7 @@ from .store.cleanup import LazyCleanup
 from .store.general_settings import GeneralSettings
 from .store.history_settings import HistorySettings
 from .store.roam_settings import RoamSettings
+from .store.user_data import MAX_ARCHIVE_BYTES as MAX_USER_DATA_BYTES
 from .store.workflow_library import WorkflowLibrary, MAX_BYTES
 from .task import JobService
 from . import __version__
@@ -72,7 +73,9 @@ async def boundary(request, handler):
             if request.headers.get("Sec-Fetch-Site") == "cross-site":
                 raise web.HTTPForbidden(text="不允许跨站修改本地应用。")
             library_upload = request.path == "/api/candidate/library" and request.method == "POST"
-            expected_type = "multipart/form-data" if library_upload else "application/json"
+            user_data_import = request.path == "/api/user-data/import" and request.method == "POST"
+            expected_type = ("multipart/form-data" if library_upload else
+                             "application/zip" if user_data_import else "application/json")
             if request.content_type != expected_type:
                 raise web.HTTPUnsupportedMediaType(text=f"请求需要 {expected_type}。")
         application = request.app.get(APPLICATION)
@@ -139,7 +142,9 @@ async def body(request, limit=MAX_BYTES):
 
 
 async def bootstrap(request):
-    return web.json_response(await request.app[APPLICATION].bootstrap())
+    result = await request.app[APPLICATION].bootstrap()
+    result["capabilities"]["user_data"] = local_generation_access(request)
+    return web.json_response(result)
 
 
 async def connection(request):
@@ -204,9 +209,9 @@ async def recent_unlikes(request):
 
 
 class ExportResponse(web.StreamResponse):
-    def __init__(self, path):
+    def __init__(self, path, filename="pictide-liked.zip"):
         super().__init__(headers={'Content-Type': 'application/zip',
-                                 'Content-Disposition': 'attachment; filename="pictide-liked.zip"',
+                                 'Content-Disposition': f'attachment; filename="{filename}"',
                                  'Content-Length': str(path.stat().st_size)})
         self.download_path = path
 
@@ -224,6 +229,33 @@ class ExportResponse(web.StreamResponse):
 
 async def export_liked(request):
     return ExportResponse(await request.app[APPLICATION].export_liked(await body(request)))
+
+
+async def export_user_data(request):
+    if not local_generation_access(request):
+        raise web.HTTPForbidden(text="Export user data on the computer running Pictide using localhost.")
+    path, filename = await request.app[APPLICATION].export_user_data()
+    return ExportResponse(path, filename)
+
+
+async def import_user_data(request):
+    if not local_generation_access(request):
+        raise web.HTTPForbidden(text="Import user data on the computer running Pictide using localhost.")
+    descriptor, temporary = tempfile.mkstemp(prefix="user-data-import-", suffix=".zip",
+                                              dir=request.app[APPLICATION].paths.tmp)
+    target = Path(temporary)
+    received = 0
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            async for chunk in request.content.iter_chunked(1024 * 1024):
+                received += len(chunk)
+                if received > MAX_USER_DATA_BYTES:
+                    raise web.HTTPRequestEntityTooLarge(max_size=MAX_USER_DATA_BYTES,
+                                                        actual_size=received)
+                await asyncio.to_thread(stream.write, chunk)
+        return web.json_response(await request.app[APPLICATION].import_user_data(target))
+    finally:
+        target.unlink(missing_ok=True)
 
 
 async def feedback(request):
@@ -559,6 +591,8 @@ def create_app(data_dir=None, backend_factory=create_backend, *, allow_lan=False
     app.add_routes([
         web.get("/api/bootstrap", bootstrap), web.get("/api/events", events),
         web.get('/api/updates', updates), web.post('/api/updates/{operation:check|download|install}', update_action),
+        web.get('/api/user-data/export', export_user_data),
+        web.post('/api/user-data/import', import_user_data),
         web.get("/api/settings/prompting", prompt_settings), web.put("/api/settings/prompting", prompt_settings),
         web.get('/api/canvas-pools', canvas_pools), web.put('/api/canvas-pools/{id}', canvas_pools),
         web.delete('/api/canvas-pools/{id}', canvas_pools),

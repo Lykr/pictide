@@ -7,9 +7,10 @@ import { Label } from '../components/ui/label';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../components/ui/collapsible';
 import { ChevronRight, LoaderCircle, Save } from 'lucide-react';
 import { JobHistory } from '../components/job-history';
-export function HistorySettings() {
+
+export function ImageCleanupSettings() {
   const app = useApplication(), state = useModel(app.model);
-  return <><Collapsible>
+  return <Collapsible>
 <CollapsibleTrigger asChild><Button type="button" variant="ghost" size="sm" className="group gap-2 rounded-none bg-transparent px-0 font-semibold hover:bg-transparent aria-expanded:bg-transparent dark:hover:bg-transparent"><ChevronRight className="transition-transform group-data-[state=open]:rotate-90" aria-hidden="true" />{t("图片清理")}</Button></CollapsibleTrigger>
 <CollapsibleContent forceMount className="pt-4 data-[state=closed]:hidden"><form id="history-form" className="settings-stack" onSubmit={event => { event.preventDefault(); void app.saveHistory(); }}>
 {"\n    "}<fieldset id="history-fields" disabled={state.historyBusy}>
@@ -23,5 +24,8 @@ export function HistorySettings() {
 <Button id="history-save" type="submit" className="primary" variant="default" data-tooltip={t("保存后立即检查；之后在启动、浏览或生成等操作时按需清理。")} disabled={state.historyBusy} aria-busy={state.historyBusy}>{state.historyBusy ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{t("保存设置")}</Button>
 </div>
 {"\n  "}</form></CollapsibleContent></Collapsible>
-<JobHistory /></>;
+}
+
+export function HistorySettings() {
+  return <JobHistory />;
 }

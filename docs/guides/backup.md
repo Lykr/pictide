@@ -8,7 +8,7 @@ Back up your data directory before upgrading or moving computers to keep your im
 
 ## Data location
 
-Find the current directory under Settings → General. Windows and Linux packages default to `data/` beside the program; the macOS app uses `~/Library/Application Support/Pictide/`. Source deployments use the project's `data/`.
+Find the current directory under Settings → User data. Windows and Linux packages default to `data/` beside the program; the macOS app uses `~/Library/Application Support/Pictide/`. Source deployments use the project's `data/`.
 
 To store data on another drive, follow the steps for [Windows](setup/windows.md#port-and-data-directory), [Linux](setup/linux.md#port-and-data-directory), or [macOS](setup/macos.md#port-and-data-directory).
 
@@ -20,6 +20,8 @@ To store data on another drive, follow the steps for [Windows](setup/windows.md#
 4. Restart and check your images, likes, and Image API settings.
 
 Backups also contain prompt presets, workflows, libraries, recommendation dependencies, and API keys. Store them securely.
+
+For a smaller transfer containing liked images and learned preferences, use **Settings → User data → Export user data**. Import that ZIP on the destination computer from the same settings tab. The import validates the archive and automatically backs up the destination database first. It does not include API keys, presets, canvas pools, models, libraries, or general and roam settings.
 
 When moving between operating systems, prepare the appropriate application first, then copy `db/`, `images/`, `workflows/`, `history-cleanup.json`, `libraries/`, and `models/` from the same backup. Leave the old operating system's runtime behind.
 

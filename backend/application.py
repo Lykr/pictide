@@ -64,6 +64,7 @@ class PictideApplication:
         self.general = general
         self.roam = roam
         self._roam_lock = asyncio.Lock()
+        self._user_data_lock = asyncio.Lock()
         self.events = EventHub()
         self.tasks.on_change = lambda: self.events.publish("jobs")
         self.updates = None
@@ -135,7 +136,8 @@ class PictideApplication:
             if self._learning_stopping:
                 return
             try:
-                await asyncio.to_thread(self._sync_recommendation)
+                async with self._user_data_lock:
+                    await asyncio.to_thread(self._sync_recommendation)
             except Exception:
                 logging.getLogger(__name__).exception("Background preference learning remains pending")
                 self._recommendation_error = "推荐学习暂不可用，反馈已保存，将在下次操作重试。"
@@ -200,6 +202,37 @@ class PictideApplication:
             raise ValidationError("页码必须是 1 至 9007199254740991 的整数。")
         return asdict(await asyncio.to_thread(self.recommendation.preferences, "local", int(digits), all_terms=all_terms))
 
+    async def export_user_data(self):
+        async with self._user_data_lock:
+            status = await asyncio.to_thread(self.recommendation.status)
+            from .store.user_data import export_user_data
+            pending = asyncio.create_task(asyncio.to_thread(
+                export_user_data, self.paths, self.storage, __version__,
+                status.feature_version, status.policy_version))
+            try:
+                return await asyncio.shield(pending)
+            except asyncio.CancelledError:
+                target, _ = await pending
+                target.unlink(missing_ok=True)
+                raise
+
+    async def import_user_data(self, archive):
+        status = await asyncio.to_thread(self.recommendation.status)
+        from .store.user_data import import_user_data
+        async with self._user_data_lock:
+            if self.active_writes > 1 or self._generation_lock.locked():
+                raise ConflictError("Finish other settings changes and generation work before importing user data.")
+            result = await asyncio.to_thread(
+                import_user_data, self.paths, self.storage, archive,
+                status.feature_version, status.policy_version)
+            invalidate = getattr(self.recommendation, "invalidate_cache", None)
+            if invalidate is not None:
+                await asyncio.to_thread(invalidate)
+        self._recommendation_error = None
+        for topic in ("jobs", "artifacts", "feedback", "recommendation"):
+            self.events.publish(topic)
+        return result
+
     async def reset_preferences(self, payload):
         if set(payload) != {"request_id", "expected_reset_revision"}:
             raise ValidationError("需要 request_id 和 expected_reset_revision。")
@@ -210,14 +243,15 @@ class PictideApplication:
             raise ValidationError("重置修订必须是非负整数。")
         # Drain a durable write on cancellation without routing recommendation
         # through the task module. Retrying keeps the same request identity.
-        pending = asyncio.create_task(asyncio.to_thread(self.recommendation.reset_preferences,
-            "local", request_id, revision))
-        try:
-            result = await asyncio.shield(pending)
-        except asyncio.CancelledError:
-            await pending
-            self.events.publish("recommendation")
-            raise
+        async with self._user_data_lock:
+            pending = asyncio.create_task(asyncio.to_thread(self.recommendation.reset_preferences,
+                "local", request_id, revision))
+            try:
+                result = await asyncio.shield(pending)
+            except asyncio.CancelledError:
+                await pending
+                self.events.publish("recommendation")
+                raise
         self._recommendation_error = None
         self.events.publish("recommendation")
         return asdict(result)

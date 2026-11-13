@@ -129,5 +129,15 @@
   "宽高比（可选）": "Aspect ratio (optional)",
   "图片分辨率（可选）": "Image resolution (optional)",
   "测试连接只读取服务信息，不会生成图片。": "Connection tests only read service information and do not generate images.",
-  "首次选择云端 API 会关闭自动预取；再次保存非零预取数量可开启连续生成。": "Selecting a cloud image API for the first time turns off automatic prefetch. Save a nonzero prefetch count again to enable continuous generation."
+  "首次选择云端 API 会关闭自动预取；再次保存非零预取数量可开启连续生成。": "Selecting a cloud image API for the first time turns off automatic prefetch. Save a nonzero prefetch count again to enable continuous generation.",
+  "用户数据": "User data",
+  "迁移用户数据": "Transfer user data",
+  "包含喜欢图片、反馈和已学习的偏好。": "Includes liked images, feedback, and learned preferences.",
+  "导出用户数据": "Export user data",
+  "导入用户数据": "Import user data",
+  "选择用户数据压缩包": "Choose user-data archive",
+  "请在运行 Pictide 的电脑上通过本机地址操作。": "Use the localhost address on the computer running Pictide.",
+  "导入用户数据？将添加压缩包中的喜欢图片，并替换当前学习偏好。现有数据库会先自动备份。": "Import user data? Liked images in the archive will be added and the current learned preferences will be replaced. The existing database will be backed up first.",
+  "已导入 {liked} 张喜欢图片和 {evidence} 条偏好证据": "Imported {liked} liked images and {evidence} preference records",
+  "用户数据已导出": "User data exported"
 }

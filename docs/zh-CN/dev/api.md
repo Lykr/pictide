@@ -16,13 +16,14 @@ Pictide 当前已实现的 HTTP API 统一入口。先阅读通用约定，再�
 | 创建、分页查看和取消任务 | [生成任务](reference/api/jobs.md) |
 | 查询图片、反馈、清理、偏好评分与排序 | [图片、反馈与评分](reference/api/images.md) |
 | 查看、导出和重置偏好 | [用户偏好](reference/api/preferences.md) |
+| 导出和导入喜欢图片、反馈与学习偏好 | [用户数据](reference/api/user-data.md) |
 | 搜索词库、保存预设、生成和预览相关性 | [候选词库与预设](reference/api/candidate.md) |
 
 ## 通用约定
 
 - 默认地址：`http://127.0.0.1:8189`；以下路径均相对此地址。局域网启动方式见[项目 README](../guides/access.md#局域网访问)。当前没有账号认证，数据和偏好共用本地用户 `local`。
 - 除图片、下载和 SSE 外，响应为 JSON。成功通常返回 `200`；提交任务为 `202`，单独新建工作流为 `201`。
-- 词库上传 `POST /api/candidate/library` 使用 multipart/form-data；其余非 GET/HEAD 的 `/api/` 请求，包括 DELETE，必须携带 `Content-Type: application/json`；无参数时发送 `{}`。请求体须为 JSON 对象，不允许重复字段或 NaN/Infinity。通常上限 8 MiB，候选请求 1,100,000 字节，重置偏好请求 2,048 字节。
+- 词库上传 `POST /api/candidate/library` 使用 multipart/form-data，用户数据导入使用 `application/zip`；其余非 GET/HEAD 的 `/api/` 请求，包括 DELETE，必须携带 `Content-Type: application/json`；无参数时发送 `{}`。JSON 请求体须为对象，不允许重复字段或 NaN/Infinity。通常上限 8 MiB，候选请求 1,100,000 字节，重置偏好请求 2,048 字节。用户数据导入压缩后最多 4 GiB，且只允许本机访问。
 - 修改请求的 `Origin` 若存在须与访问地址同源，`Sec-Fetch-Site: cross-site` 被拒绝；Host 限制为本机地址或局域网入口允许的本机内网 IP。未开放通用跨域调用。
 - API 响应使用 `Cache-Control: no-store`。这不表示图片偏好评分每次重新计算，评分另有持久缓存。
 - 时间通常为 ISO 8601 UTC 字符串；观看位置 `viewed_at` 是毫秒整数。安全整数上限为 `9007199254740991`。

@@ -5,7 +5,6 @@ import { ApiSettings } from './features/api-settings';
 import { RoamSettings } from './features/roam-settings';
 import { HistorySettings } from './features/history-settings';
 import { ImageToolbar } from "./components/image-toolbar";
-import { SettingsRow } from "./components/settings-row";
 import { t, tr } from './i18n/index.mjs';
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { publishUiState } from "./shared/ui-state.mjs";
@@ -16,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
 import { useApplication, useModel } from './shared/application-context';
 import { emitSignal } from './shared/signals.mjs';
 import { GeneralSettings } from "./components/general-settings";
+import { UserDataSettings } from './components/user-data-settings';
 import { ImageInfo } from "./components/image-info";
 import { RoamImmersiveLoading } from "./components/immersive-loading";
 import { RoamAnchors } from "./components/roam-anchors";
@@ -160,15 +160,14 @@ export function FeedShell({ themeError = "" }: { themeError?: string }) {
 <GeneratedResults />
 {"\n    "}</section>
 <section id="settings-view" className="settings-view" hidden={state.view !== "settings"}>
-<Tabs value={state.settingsSection} onValueChange={app.setSettingsSection}><TabsList ref={settingsNavigation} className="settings-navigation" aria-label={settingsNavigationLabel}>{[['general', '通用'], ['roam', '漫游'], ['backend', '生图 API'], ['llm', 'LLM API'], ['canvas', '画幅池'], ['history', '历史']].map(([key, label]) => <TabsTrigger key={key} value={key} data-settings-section={key}>{t(label)}</TabsTrigger>)}</TabsList></Tabs>
+<Tabs value={state.settingsSection} onValueChange={app.setSettingsSection}><TabsList ref={settingsNavigation} className="settings-navigation" aria-label={settingsNavigationLabel}>{[['general', '通用'], ['roam', '漫游'], ['backend', '生图 API'], ['llm', 'LLM API'], ['canvas', '画幅池'], ['user-data', '用户数据'], ['history', '历史']].map(([key, label]) => <TabsTrigger key={key} value={key} data-settings-section={key}>{t(label)}</TabsTrigger>)}</TabsList></Tabs>
 <div className="settings-content">
-<section id="settings-general" className="settings-category" hidden={state.settingsSection !== "general"}><GeneralSettings initialError={themeError} />
-<SettingsRow className="settings-data-location" label={t("数据位置")} stackOnMobile><code id="data-directory">{state.dataDirectory || t("读取中…")}</code></SettingsRow>
-</section>
+<section id="settings-general" className="settings-category" hidden={state.settingsSection !== "general"}><GeneralSettings initialError={themeError} /></section>
 <section id="settings-backend" className="settings-category" hidden={state.settingsSection !== "backend"}><ApiSettings /></section>
 <section id="settings-canvas" className="settings-category" hidden={state.settingsSection !== "canvas"}><CanvasPools /></section>
 <section id="settings-llm" className="settings-category" hidden={state.settingsSection !== "llm"}><PromptSettings /></section>
 <section id="settings-roam" className="settings-category" hidden={state.settingsSection !== "roam"}><RoamSettings /></section>
+<section id="settings-user-data" className="settings-category" hidden={state.settingsSection !== "user-data"}><UserDataSettings /></section>
 <section id="settings-history" className="settings-category space-y-6" hidden={state.settingsSection !== "history"}>
 <HistorySettings />
 </section>

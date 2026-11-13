@@ -8,7 +8,7 @@ Use Settings to adjust the interface, check generation tasks, and manage the spa
 
 ## General settings
 
-Let the interface language and theme follow your system, or choose your own. You can also turn off image transitions and check the path to your data directory here. Changes save automatically.
+Let the interface language and theme follow your system, or choose your own. You can also turn off image transitions here. Changes save automatically.
 
 Choose **Start tour** in the Getting started row to revisit connecting a service and roaming.
 
@@ -19,6 +19,12 @@ If direct installation is unavailable, open the release notes and update manuall
 See [Roam](roam.md) to adjust exploration, or [Getting started](getting-started.md) to connect an image service.
 
 Under **LLM API**, manage named text-service connections using API keys or ChatGPT sign-in. Under **Image API**, choose Danbooru or natural language; natural-language connections select one of your saved LLM APIs. See [setup](getting-started.md#natural-language-prompts).
+
+## User data
+
+Open **Settings → User data** to see the current data directory, transfer liked images and learned preferences, review or reset preferences, and manage historical image cleanup. **Export user data** creates a ZIP containing your current liked originals, prompt text, feedback used for learning, and learned preference state. **Import user data** validates the archive, backs up the database first, adds missing liked images, and replaces the current learned preferences.
+
+The transfer archive does not contain API keys, language-model tokens, image APIs, workflows, presets, canvas pools, models, libraries, or general and roam settings. Use a complete [data-directory backup](backup.md) when moving the whole installation.
 
 ## Start and stop local ComfyUI
 

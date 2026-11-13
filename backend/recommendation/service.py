@@ -36,6 +36,10 @@ class RecommendationService:
     def _cache_key(user_id, version, stamp):
         return user_id, version, policy.POLICY_VERSION, stamp
 
+    def invalidate_cache(self):
+        with self._lock:
+            self._posterior_cache = None
+
     def _remember(self, user_id, version, stamp, keys, factor, center, count, rebuilt=False):
         if factor is not None:
             factor.setflags(write=False)

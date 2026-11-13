@@ -33,7 +33,7 @@ test('modal failures remain accessible and retry the same failed operation', asy
     reads++;
     return route.fulfill({ status: 503, json: { error: 'Preference fixture unavailable' } });
   });
-  await page.goto('/#settings/roam');
+  await page.goto('/#settings/user-data');
   await page.getByRole('button', { name: 'View preferences', exact: true }).click();
   await expect(notice(page)).toContainText('Preference fixture unavailable');
   await expect.poll(() => page.locator('.notification-layer').evaluate(element => !!element.closest('[role="dialog"]'))).toBe(true);
