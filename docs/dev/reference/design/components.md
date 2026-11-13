@@ -27,9 +27,9 @@ Keep an action's name and icon consistent wherever it appears. Show selected sta
 | `destructive` | Explicit deletion or irreversible actions |
 | `link` | Help and documentation |
 
-Usually give each action area one primary button. Keep short labels for save, generate, and confirm. Use Lucide icons for familiar tools such as copy, refresh, close, sort, download, and image navigation; keep names alongside navigation icons. Loading shows the running action and prevents duplicate submission.
+Usually give each action area one primary button. Use an icon-first control when a familiar Lucide icon communicates the action: save, export, import, upload, download, copy, refresh, reset, close, sort, navigation, and similar operations use `IconButton` with an accessible label and tooltip instead of visible text. Keep visible text for choices, navigation destinations, mode names, ambiguous actions, and confirmation actions where an icon alone would not communicate the consequence. Loading shows the running action and prevents duplicate submission.
 
-Explicit configuration saves use the Save icon. While an action is pending, replace its icon with the shared spinner and set `aria-busy`, keeping its label and button dimensions stable. Indicate the actual operation: reading models or deleting a configuration must not make Save look as though it is saving.
+Explicit configuration saves use the icon-only Save recipe. While an action is pending, replace its icon with the shared spinner and set `aria-busy`, keeping the accessible label and button dimensions stable. Indicate the actual operation: reading models or deleting a configuration must not make Save look as though it is saving.
 
 React icon buttons use `web/src/components/actions.tsx`'s `IconButton`, normally `ghost` / `icon-sm`, with a localized accessible name and tooltip. State changes update both accessible names and tooltips while preserving icons.
 
@@ -37,7 +37,7 @@ React icon buttons use `web/src/components/actions.tsx`'s `IconButton`, normally
 
 Show task titles, labels, values, short status, and necessary actions. Keep technical explanations and long background in topic documentation. Tooltips explain their own control in one or two sentences; field help, matching rules, source, sorting, and saving explanations belong to the relevant control. Empty states offer one short explanation and a next action.
 
-Use shared `HelpTip` or `data-tooltip` support instead of permanent explanatory paragraphs beneath every input. Radix Tooltip serves both React controls. Hover or keyboard focus reveals help; help icons also accept click and Enter / Space, and Escape closes them. Help uses layer 1200 above image information at 1100, with mounting inside the active dialog when appropriate. Destructive scope and consequences remain discoverable through explicit controls or confirmation.
+Use shared `HelpTip` or `data-tooltip` support instead of permanent explanatory paragraphs beneath inputs and action groups. Radix Tooltip serves both React controls. Hover or keyboard focus reveals help; help icons also accept click and Enter / Space, and Escape closes them. Help uses layer 1200 above image information at 1100, with mounting inside the active dialog when appropriate. Visible copy is reserved for current state: errors, loading, validation, empty states, unsaved markers, and destructive confirmation scope.
 
 Unchanged page status, unsaved markers, and current progress stay with their controls. Transient results and detailed errors use notifications.
 

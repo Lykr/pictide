@@ -13,7 +13,7 @@ test('user data owns migration, preferences, cleanup, and data location', async 
   await expect(page.getByRole('tab', { name: '用户数据', exact: true })).toHaveAttribute('data-state', 'active');
   await expect(page.locator('#settings-user-data')).toBeVisible();
   await expect(page.locator('#data-directory')).toHaveText(/.+/);
-  await expect(page.getByRole('button', { name: '导出用户数据', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: '导出所选用户数据', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: '导入用户数据', exact: true })).toBeEnabled();
   const liked = page.getByRole('checkbox', { name: '喜欢图片和提示词', exact: true });
   const preferences = page.getByRole('checkbox', { name: '反馈和学习偏好', exact: true });
@@ -21,10 +21,10 @@ test('user data owns migration, preferences, cleanup, and data location', async 
   await expect(preferences).toBeChecked();
   await liked.uncheck();
   await preferences.uncheck();
-  await expect(page.getByRole('button', { name: '导出用户数据', exact: true })).toBeDisabled();
-  await expect(page.getByText('至少选择一种要导出的数据。', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '导出所选用户数据', exact: true }).click();
+  await expect(page.locator('.notification-card[data-state=open]')).toContainText('至少选择一种要导出的数据');
   await preferences.check();
-  await expect(page.getByRole('button', { name: '导出用户数据', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: '导出所选用户数据', exact: true })).toBeEnabled();
   await expect(page.getByText('用户偏好', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '导出用户偏好', exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '图片清理', exact: true })).toBeVisible();
@@ -34,7 +34,7 @@ test('user data owns migration, preferences, cleanup, and data location', async 
 
   const download = page.waitForEvent('download');
   const exported = page.waitForRequest(request => request.url().endsWith('/api/user-data/export'));
-  await page.getByRole('button', { name: '导出用户数据', exact: true }).click();
+  await page.getByRole('button', { name: '导出所选用户数据', exact: true }).click();
   expect((await exported).postDataJSON()).toEqual({ liked_images: false, preferences: true });
   expect((await download).suggestedFilename()).toMatch(/^pictide-user-data-\d{8}T\d{6}\.zip$/);
 });

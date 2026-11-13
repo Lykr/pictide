@@ -39,7 +39,7 @@ export function ApiSettings() {
 <div className="settings-field"><Label htmlFor="backend-name">{t("API 名称")}</Label><Input id="backend-name" {...apiInput("name")} required placeholder={t("本机 ComfyUI")} /></div>
 <div className="settings-field"><Label htmlFor="backend-kind">{t("API 类型")}</Label><FormSelect id="backend-kind" {...apiSelect("kind")}><option value="comfyui">ComfyUI</option><option value="openai">OpenAI Images</option><option value="gemini">Gemini</option></FormSelect></div>
 <div className="settings-field"><Label htmlFor="backend-prompt-type">{t("提示词类型")}</Label><FormSelect id="backend-prompt-type" {...apiSelect("prompt_type")} options={[{ value: "danbooru", label: "Danbooru" }, { value: "natural_language", label: t("自然语言") }]} /></div>
-<div className="settings-field"><Label htmlFor="backend-url">{t("API 地址")}</Label><Input id="backend-url" {...apiInput("url")} type="url" required /></div>
+<div className="settings-field"><Label htmlFor="backend-url"><span className="field-caption">{t("API 地址")}<HelpTip text={t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")} /></span></Label><Input id="backend-url" {...apiInput("url")} type="url" required /></div>
 </div>
 {apiDraft.prompt_type === 'natural_language' && <div className="settings-field">
 <div className="settings-field-heading"><Label htmlFor="backend-llm">LLM API</Label><Button type="button" variant="link" onClick={() => app.setSettingsSection('llm')}>{t('管理 LLM API')}</Button></div>
@@ -50,7 +50,7 @@ export function ApiSettings() {
 <Input id="backend-key" {...apiInput("key")} type="password" autoComplete="new-password" onFocus={event => { if (settings.hasSavedApiKey) event.target.select(); }} />
 </div>
 <fieldset id="cloud-backend" className="settings-stack" hidden={!cloud} disabled={!cloud}>
-<div className="settings-field"><Label htmlFor="backend-model">{t("模型")}</Label><Input id="backend-model" {...apiInput("model")} required placeholder={t("填写服务支持的生图模型 ID")} /><p className="hint">{t("请填写服务支持的生图模型 ID；可选参数留空时使用服务默认值。")}</p></div>
+<div className="settings-field"><Label htmlFor="backend-model"><span className="field-caption">{t("模型")}<HelpTip text={t("请填写服务支持的生图模型 ID；可选参数留空时使用服务默认值。")} /></span></Label><Input id="backend-model" {...apiInput("model")} required placeholder={t("填写服务支持的生图模型 ID")} /></div>
 <fieldset id="openai-options" className="form-grid" hidden={apiDraft.kind !== "openai"} disabled={apiDraft.kind !== "openai"}>
 <div className="settings-field"><Label htmlFor="backend-size">{t("图片尺寸（可选）")}</Label><Input id="backend-size" {...apiInput("size")} placeholder="1024x1024" /></div>
 <div className="settings-field"><Label htmlFor="backend-quality">{t("图片质量（可选）")}</Label><Input id="backend-quality" {...apiInput("quality")} placeholder="auto" /></div>
@@ -59,8 +59,6 @@ export function ApiSettings() {
 <div className="settings-field"><Label htmlFor="backend-aspect-ratio">{t("宽高比（可选）")}</Label><Input id="backend-aspect-ratio" {...apiInput("aspect_ratio")} placeholder="1:1" /></div>
 <div className="settings-field"><Label htmlFor="backend-image-size">{t("图片分辨率（可选）")}</Label><Input id="backend-image-size" {...apiInput("image_size")} placeholder="1K" /></div>
 </fieldset>
-<p className="hint">{t("提示词会发送给此服务；图片和反馈保存在本地。API 使用可能产生费用。")}</p>
-<p className="hint">{t("测试连接只读取服务信息，不会生成图片。")}</p>
 </fieldset>
 <div id="workflow-picker-field" className="settings-field" hidden={cloud}>
 <div className="settings-field-heading"><Label htmlFor="workflow-name--control">{t("工作流")}</Label><div className="workflow-actions">
@@ -75,7 +73,7 @@ export function ApiSettings() {
 <div className="settings-field-heading"><Label htmlFor="default-checkpoint"><span className="field-caption">{t("模型")}<HelpTip text={t("从配置的 ComfyUI 读取模型，留空时自动选择第一个可用模型。")} /></span></Label><IconButton id="load-models" icon={RefreshCw} label={t("读取 API 模型")} size="icon-xs" onClick={api.loadModels} disabled={settings.pending.models} /></div>
 <FormSelect id="default-checkpoint" {...apiSelect("checkpoint")} options={[{ value: "", label: t("自动选择第一个可用模型") }, ...settings.models.map((value: string) => ({ value, label: value }))]}><option value="">{t("自动选择第一个可用模型")}</option></FormSelect>
 </div>
-<Button id="edit-default-parameters" type="button" className="quiet" variant="outline" data-tooltip={t("将默认工作流展开为自定义草稿，编辑采样、尺寸等节点参数")} onClick={api.editDefaultParameters} disabled={settings.pending.template}><SlidersHorizontal aria-hidden="true" />{t("节点参数")}</Button>
+<IconButton id="edit-default-parameters" className="quiet border border-border" icon={SlidersHorizontal} label={t("节点参数")} tooltip={t("将默认工作流展开为自定义草稿，编辑采样、尺寸等节点参数")} onClick={api.editDefaultParameters} disabled={settings.pending.template} />
 </section>
 <fieldset id="custom-workflow" hidden={cloud || !custom} disabled={cloud || !custom}>
 <Collapsible id="node-parameters" className="node-parameters" data-editor-mode={settings.editorMode} open={nodeParametersOpen} onOpenChange={setNodeParametersOpen}>
@@ -102,11 +100,9 @@ export function ApiSettings() {
 </div>
 </fieldset>
 <div className="settings-field">
-<div className="settings-field-heading"><Label htmlFor="backend-canvas-pool">{t('画幅池')}</Label><Button type="button" variant="link" onClick={() => app.setSettingsSection('canvas')}>{t('管理画幅池')}</Button></div>
-<FormSelect id="backend-canvas-pool" disabled={apiDraft.kind === 'gemini'} value={apiDraft.canvas_pool_id || ''} onValueChange={value => api.edit('canvas_pool_id', value)} options={[{value: '', label: t('使用 API 固定尺寸')}, ...pools.pools.map((pool: any) => ({value: pool.id, label: pool.name}))]} />
-<p className="hint">{apiDraft.kind === 'gemini' ? t('此接口使用比例和分辨率档位，暂不支持像素画幅池。') : apiDraft.kind === 'comfyui' ? t('默认工作流可直接使用；自定义工作流需绑定宽高输入。宽高须为 8 的倍数。') : t('漫游可随机抽取池内尺寸，尺寸需符合当前模型要求。')}</p>
-{apiDraft.canvas_pool_id && <p className="hint break-words">{pools.pools.find((pool: any) => pool.id === apiDraft.canvas_pool_id)?.sizes.map((size: any) => `${size.width}×${size.height}${apiDraft.kind === 'comfyui' && (size.width % 8 || size.height % 8) ? t('（不可用）') : ''}`).join(' · ')}</p>}
+<div className="settings-field-heading"><Label htmlFor="backend-canvas-pool"><span className="field-caption">{t('画幅池')}<HelpTip text={apiDraft.kind === 'gemini' ? t('此接口使用比例和分辨率档位，暂不支持像素画幅池。') : apiDraft.kind === 'comfyui' ? t('默认工作流可直接使用；自定义工作流需绑定宽高输入。宽高须为 8 的倍数。') : t('漫游可随机抽取池内尺寸，尺寸需符合当前模型要求。')} /></span></Label><Button type="button" variant="link" onClick={() => app.setSettingsSection('canvas')}>{t('管理画幅池')}</Button></div>
+<FormSelect id="backend-canvas-pool" disabled={apiDraft.kind === 'gemini'} value={apiDraft.canvas_pool_id || ''} onValueChange={value => api.edit('canvas_pool_id', value)} data-tooltip={apiDraft.canvas_pool_id ? pools.pools.find((pool: any) => pool.id === apiDraft.canvas_pool_id)?.sizes.map((size: any) => `${size.width}×${size.height}${apiDraft.kind === 'comfyui' && (size.width % 8 || size.height % 8) ? t('（不可用）') : ''}`).join(' · ') : undefined} options={[{value: '', label: t('使用 API 固定尺寸')}, ...pools.pools.map((pool: any) => ({value: pool.id, label: pool.name}))]} />
 </div>
-<div className="dialog-footer"><Button id="test-backend" ref={targets["api.test"]} type="button" className="quiet" variant="outline" onClick={api.testBackend} disabled={settings.pending.test} aria-busy={settings.pending.test}>{settings.pending.test ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}{t("测试连接")}</Button><Button id="save-backend" ref={targets["api.save"]} type="submit" className="primary" variant="default" disabled={settings.pending.saving} aria-busy={settings.pending.saving}>{settings.pending.saving ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{t("保存 API")}</Button></div>
+<div className="dialog-footer"><IconButton id="test-backend" ref={targets["api.test"]} className={`quiet border border-border ${settings.pending.test ? '[&_svg]:animate-spin' : ''}`} icon={settings.pending.test ? LoaderCircle : RefreshCw} label={settings.pending.test ? t("正在测试连接") : t("测试连接")} tooltip={t("测试连接只读取服务信息，不会生成图片。")} onClick={api.testBackend} disabled={settings.pending.test} aria-busy={settings.pending.test} /><IconButton id="save-backend" ref={targets["api.save"]} type="submit" className={`primary [&_svg]:text-current ${settings.pending.saving ? '[&_svg]:animate-spin' : ''}`} icon={settings.pending.saving ? LoaderCircle : Save} label={t("保存 API")} disabled={settings.pending.saving} aria-busy={settings.pending.saving} /></div>
 </form></>;
 }

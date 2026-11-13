@@ -81,11 +81,9 @@ export function GeneratedResults({ collection = "generate", privacyHost }: { col
       <RecentUnlikes visible={state.visible} busy={state.feedbackPending || state.mutationPending} privacyBlur={privacyBlur} onPrivacyChange={setPrivacyBlur} />
     </span>, privacyHost)}
     {liked && selecting && <div className="mb-4 flex flex-wrap items-center gap-2" aria-label={t('收藏导出')}>
-        <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setSelection(state.artifacts.map(item => item.id))}>{t('全选已加载')}</Button>
+        <IconButton icon={ListChecks} label={t('全选已加载')} disabled={busy} onClick={() => setSelection(state.artifacts.map(item => item.id))} />
         <span className="text-sm text-muted-foreground" role="status">{t('已选 {count} 张', { count: selection.length })}</span>
-        <Button type="button" size="sm" disabled={busy || !selection.length || selection.length > 1000} onClick={() => void exportSelection()}>
-          {exporting ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Download aria-hidden="true" />}{t('导出 ZIP')}
-        </Button>
+        <IconButton className={exporting ? '[&_svg]:animate-spin' : ''} icon={exporting ? LoaderCircle : Download} label={t('导出 ZIP')} disabled={busy || !selection.length || selection.length > 1000} onClick={() => void exportSelection()} />
         {selection.length > 1000 && <span className="text-sm text-muted-foreground">{t('单次最多导出 1000 张图片')}</span>}
     </div>}
     {liked && <LikedTagFilter visible={state.visible} revision={state.revision} disabled={busy} sort={state.sort} />}

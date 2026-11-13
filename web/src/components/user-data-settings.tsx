@@ -8,8 +8,8 @@ import { useErrorNotice } from './notifications';
 import { PreferenceActions } from './preference-actions';
 import { ImageCleanupSettings } from '../features/history-settings';
 import { SettingsRow } from './settings-row';
-import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
+import { HelpTip, IconButton } from './actions';
 
 async function responseError(response: Response) {
   const body = await response.json().catch(() => null);
@@ -30,7 +30,8 @@ export function UserDataSettings() {
   const selected = includeLiked || includePreferences;
 
   const exportData = async () => {
-    if (busy || !local || !selected) return;
+    if (busy || !local) return;
+    if (!selected) { setError(t('至少选择一种要导出的数据。')); return; }
     setExporting(true); setError('');
     try {
       const response = await fetch('/api/user-data/export', {
@@ -82,9 +83,11 @@ export function UserDataSettings() {
     <SettingsRow className="settings-data-location" label={t('数据位置')} stackOnMobile>
       <code id="data-directory">{state.dataDirectory || t('读取中…')}</code>
     </SettingsRow>
-    <SettingsRow stackOnMobile label={<div className="flex flex-col gap-1">
+    <SettingsRow stackOnMobile label={<div className="flex items-center gap-1">
       <span>{t('迁移用户数据')}</span>
-      <span className="text-sm text-muted-foreground">{t('包含喜欢图片、反馈和已学习的偏好。')}</span>
+      <HelpTip text={local
+        ? t('选择要导出的类别。导入时只应用压缩包包含的数据；未包含的数据保持不变。')
+        : t('导入和导出仅可在运行 Pictide 的电脑上通过本机地址操作。')} />
     </div>}>
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
@@ -98,18 +101,10 @@ export function UserDataSettings() {
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button id="user-data-export" type="button" variant="outline" disabled={busy || !local || !selected} onClick={() => void exportData()}>
-            {exporting ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Download aria-hidden="true" />}
-            {t('导出用户数据')}
-          </Button>
-          <Button id="user-data-import" type="button" variant="outline" disabled={busy || !local} onClick={() => input.current?.click()}>
-            {importing ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Upload aria-hidden="true" />}
-            {t('导入用户数据')}
-          </Button>
+          <IconButton id="user-data-export" className={`border border-border ${exporting ? '[&_svg]:animate-spin' : ''}`} icon={exporting ? LoaderCircle : Download} label={exporting ? t('正在导出用户数据') : t('导出所选用户数据')} tooltip={t('导出所选的喜欢图片和/或学习偏好')} disabled={busy || !local} onClick={() => void exportData()} />
+          <IconButton id="user-data-import" className={`border border-border ${importing ? '[&_svg]:animate-spin' : ''}`} icon={importing ? LoaderCircle : Upload} label={importing ? t('正在导入用户数据') : t('导入用户数据')} tooltip={t('仅应用压缩包包含的数据类别；现有数据库会先自动备份')} disabled={busy || !local} onClick={() => input.current?.click()} />
           <input ref={input} id="user-data-file" className="sr-only" type="file" accept=".zip,application/zip" aria-label={t('选择用户数据压缩包')} onChange={event => void importData(event)} />
         </div>
-        {!selected && <p className="hint">{t('至少选择一种要导出的数据。')}</p>}
-        {!local && <p className="hint">{t('请在运行 Pictide 的电脑上通过本机地址操作。')}</p>}
       </div>
     </SettingsRow>
     <PreferenceActions />

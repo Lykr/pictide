@@ -144,5 +144,18 @@
   "已导入 {liked} 张喜欢图片和 {evidence} 条偏好证据": "Imported {liked} liked images and {evidence} preference records",
   "已导入 {liked} 张喜欢图片": "Imported {liked} liked images",
   "已导入 {evidence} 条偏好证据": "Imported {evidence} preference records",
+  "选择要导出的类别。导入时只应用压缩包包含的数据；未包含的数据保持不变。": "Choose the categories to export. Import applies only data included in the archive; anything not included stays unchanged.",
+  "导入和导出仅可在运行 Pictide 的电脑上通过本机地址操作。": "Import and export are available only on the computer running Pictide via localhost.",
+  "导出所选用户数据": "Export selected user data",
+  "导出所选的喜欢图片和/或学习偏好": "Export the selected liked images and/or learned preferences",
+  "正在导出用户数据": "Exporting user data",
+  "正在导入用户数据": "Importing user data",
+  "仅应用压缩包包含的数据类别；现有数据库会先自动备份": "Apply only categories included in the archive; the existing database is backed up first",
+  "云端 API 会接收提示词，可能产生费用；首次选择会关闭自动预取。图片和反馈保存在本地。": "Cloud APIs receive prompts and may incur charges. The first selection turns off automatic prefetch. Images and feedback stay local.",
+  "保存漫游设置": "Save roam settings",
+  "保存图片清理设置": "Save image cleanup settings",
+  "到期且未喜欢的本地图片及提示词 JSON 将永久删除。撤回喜欢后保留 24 小时缓冲；任务记录和 ComfyUI 文件保留。": "Expired unliked local images and prompt JSON are permanently deleted. Unliking grants a 24-hour grace period. Task history and ComfyUI files are retained.",
+  "取消授权": "Cancel authorization",
+  "正在测试连接": "Testing connection",
   "用户数据已导出": "User data exported"
 }

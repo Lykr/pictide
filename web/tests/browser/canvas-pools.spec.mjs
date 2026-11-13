@@ -9,7 +9,7 @@ for (const scenario of [{width: 1365, language: 'en'}, {width: 390, language: 'z
     await expect(page.locator('#canvas-pool-name')).toBeVisible();
     await page.locator('#canvas-pool-name').fill('Common');
     await expect(page.locator('#canvas-pool-sizes button').last()).toBeDisabled();
-    const add = page.locator('#canvas-pool-form button').filter({hasText: scenario.language === 'en' ? 'Add size' : '添加尺寸'});
+    const add = page.getByRole('button', {name: scenario.language === 'en' ? 'Add size' : '添加尺寸', exact: true});
     await add.click();
     await page.locator('[data-canvas-size]').nth(1).getByRole('spinbutton').nth(0).fill('768');
     await page.locator('[data-canvas-size]').nth(1).getByRole('spinbutton').nth(1).fill('1024');

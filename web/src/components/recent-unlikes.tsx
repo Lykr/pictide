@@ -47,7 +47,7 @@ export function RecentUnlikes({ visible, busy, privacyBlur, onPrivacyChange }: {
             </Button>
             <div className="recent-unlikes-actions">
               <span className="text-xs text-muted-foreground">{remaining(item.unliked_protected_until, state.now)}</span>
-              <Button type="button" variant="secondary" className="w-full" disabled={busy} onClick={() => restore(item)}><HeartPlus aria-hidden="true" />{t('重新喜欢')}</Button>
+              <IconButton className="size-11 w-full" icon={HeartPlus} label={t('重新喜欢')} disabled={busy} onClick={() => restore(item)} />
             </div>
           </Card>)}
         </div>

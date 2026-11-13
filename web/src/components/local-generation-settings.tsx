@@ -1,6 +1,6 @@
 import '../styles/local-generation.css';
 import { useEffect, useState } from 'react';
-import { ChevronDown, LoaderCircle, Save, Search } from 'lucide-react';
+import { ChevronDown, LoaderCircle, RefreshCw, Save, Search } from 'lucide-react';
 import { useApplication, useModel } from '../shared/application-context';
 import { t, messageKey } from '../i18n/index.mjs';
 import { notifySuccess } from '../shared/notifications.mjs';
@@ -13,6 +13,7 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from './ui/collapsible';
+import { HelpTip, IconButton } from './actions';
 
 const phases: Record<string, string> = {
   disabled: '未启用', starting: '正在启动 ComfyUI…', running: 'ComfyUI 已由 Pictide 启动',
@@ -37,16 +38,15 @@ export function LocalGenerationSettings() {
   const save = async () => {
     if (await controller.save()) notifySuccess(() => t('已保存，下次启动 Pictide 时生效。'), { id: 'local-generation-saved' });
   };
-  return <SettingsRow separated stackOnMobile align="start" className="local-generation-settings" label={t('ComfyUI 随应用启停')}>
+  return <SettingsRow separated stackOnMobile align="start" className="local-generation-settings" label={<span className="flex items-center gap-1">{t('ComfyUI 随应用启停')}<HelpTip text={t('已运行的 ComfyUI 会直接复用；退出时只关闭本次由 Pictide 启动的进程。')} /></span>}>
     {state.canConfigure === null ? <div className="flex flex-col items-start gap-2"><span className="text-sm text-muted-foreground">{t(state.error ? '读取启停设置失败。' : '正在读取…')}</span>
-      {state.error && <Button type="button" variant="outline" onClick={() => void controller.load()}>{t('重试')}</Button>}</div> : state.canConfigure === false ?
+      {state.error && <IconButton icon={RefreshCw} label={t('重试')} onClick={() => void controller.load()} />}</div> : state.canConfigure === false ?
       <p className="text-sm text-muted-foreground">{t('请在运行 Pictide 的电脑上通过本机地址配置。')}</p> :
       <div className="flex min-w-0 flex-col gap-3">
         <Label htmlFor="local-generation-enabled" className="gap-2">
           <Checkbox id="local-generation-enabled" checked={draft.enabled} disabled={busy} onCheckedChange={value => controller.edit('enabled', value === true)} />
           <span>{t('跟随 Pictide 启动和退出')}</span>
         </Label>
-        <p className="text-sm leading-relaxed text-muted-foreground">{t('已运行的 ComfyUI 会直接复用；退出时只关闭本次由 Pictide 启动的进程。')}</p>
         {draft.enabled && <div className="flex min-w-0 flex-col gap-3">
           {state.choices.length ? <div className="grid min-w-0 gap-1.5">
             <Label htmlFor="local-generation-backend">{t('关联生图 API')}</Label>
@@ -62,9 +62,7 @@ export function LocalGenerationSettings() {
             <Label htmlFor="local-generation-path">{t('ComfyUI 安装路径')}</Label>
             <Input id="local-generation-path" autoComplete="off" placeholder={t('输入安装目录，或留空后自动识别')} {...field('install_dir')} />
           </div>
-          <Button type="button" className="self-start" variant="outline" disabled={busy || !draft.backend_id} onClick={() => void controller.detect()}>
-            {state.busy === 'detect' ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}{t('自动识别')}
-          </Button>
+          <IconButton className={`self-start border border-border ${state.busy === 'detect' ? '[&_svg]:animate-spin' : ''}`} icon={state.busy === 'detect' ? LoaderCircle : Search} label={t('自动识别')} disabled={busy || !draft.backend_id} onClick={() => void controller.detect()} />
           {state.candidates.length > 1 && <div className="grid min-w-0 gap-1.5">
             <Label htmlFor="local-generation-candidates">{t('选择识别结果')}</Label>
             <Select value={selected} disabled={busy} onValueChange={value => { setSelected(value); controller.choose(Number(value)); }}>
@@ -78,17 +76,14 @@ export function LocalGenerationSettings() {
               {([['python', 'Python 解释器'], ['entry', 'ComfyUI 入口文件'], ['cwd', '工作目录']] as const).map(([key, label]) => <div className="grid min-w-0 gap-1.5" key={key}>
                 <Label htmlFor={`local-generation-${key}`}>{t(label)}</Label><Input id={`local-generation-${key}`} autoComplete="off" {...field(key)} />
               </div>)}
-              <div className="grid min-w-0 gap-1.5"><Label htmlFor="local-generation-args">{t('启动参数（每行一个参数）')}</Label>
+              <div className="grid min-w-0 gap-1.5"><Label htmlFor="local-generation-args"><span className="field-caption">{t('启动参数（每行一个参数）')}<HelpTip text={t('带空格的路径也占一行，无需引号。监听地址和端口跟随关联 API。')} /></span></Label>
                 <Textarea id="local-generation-args" className="min-h-32 font-mono text-xs" spellCheck={false} {...field('args')} />
-                <p className="text-sm text-muted-foreground">{t('带空格的路径也占一行，无需引号。监听地址和端口跟随关联 API。')}</p>
               </div>
             </CollapsibleContent>
           </Collapsible>
         </div>}
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" disabled={busy || !state.dirty} aria-busy={state.busy === 'save'} onClick={() => void save()}>
-            {state.busy === 'save' ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{t('保存启停设置')}
-          </Button>
+          <IconButton type="button" className={state.busy === 'save' ? '[&_svg]:animate-spin' : ''} icon={state.busy === 'save' ? LoaderCircle : Save} label={t('保存启停设置')} disabled={busy || !state.dirty} aria-busy={state.busy === 'save'} onClick={() => void save()} />
           {state.dirty && <span className="text-sm text-muted-foreground">{t('有未保存的修改')}</span>}
         </div>
         {state.restartRequired && <p className="text-sm text-muted-foreground" role="status">{t('下次启动 Pictide 时生效。')}</p>}

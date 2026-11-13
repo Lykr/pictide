@@ -397,7 +397,7 @@ export function EditorWorkspace() {
             <IconButton icon={Copy} label={t("复制预设")} disabled={busy || !loaded} onClick={() => create(true)} />
             <IconButton icon={operation === 'remove' ? LoaderCircle : Trash2} className={operation === 'remove' ? '[&_svg]:animate-spin' : ''} label={t("删除预设")} disabled={busy || !preset.id} aria-busy={operation === 'remove'} onClick={remove} />
             <span className="spacer" /><span className="text-xs text-muted-foreground" role="status">{loaded && dirty ? t("未保存") : ""}</span>
-            <Button disabled={busy || !dirty} aria-busy={operation === 'save'} onClick={save} data-tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")}>{operation === 'save' ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : success ? <Check aria-hidden="true" /> : <Save aria-hidden="true" />}{t("保存")}</Button>
+            <IconButton className={operation === 'save' ? '[&_svg]:animate-spin' : ''} icon={operation === 'save' ? LoaderCircle : success ? Check : Save} label={t("保存")} tooltip={t("保存当前预设，包括固定词、输出顺序和共现扩展设置。")} disabled={busy || !dirty} aria-busy={operation === 'save'} onClick={save} />
           </div>
         </section>
         {tab === "settings" ? <form className="cooc-settings" onSubmit={event => { event.preventDefault(); save(); }}>

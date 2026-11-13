@@ -1,6 +1,7 @@
 import { emitSignal, onSignal, offSignal } from '../shared/signals.mjs';
 import { runUiCommand } from '../shared/ui-state.mjs';
 import { SettingsRow } from "./settings-row";
+import { IconButton } from "./actions";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUpToLine, Download, LoaderCircle, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
@@ -121,13 +122,11 @@ export function ApplicationUpdates() {
   </div>} data-application-updates="">
     <div className="flex flex-col gap-2 w-full">
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" variant="outline" disabled={working || !status} onClick={() => void act("check")}>
-          {working ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}{t("检查更新")}
-        </Button>
+        <IconButton className={`border border-border ${working ? '[&_svg]:animate-spin' : ''}`} icon={working ? LoaderCircle : RefreshCw} label={t("检查更新")} disabled={working || !status} onClick={() => void act("check")} />
       </div>
       {status && newer && <div className="flex flex-wrap items-center gap-3 text-sm">
         <a className="underline underline-offset-4" href={status.release_url} target="_blank" rel="noreferrer">{t("发行说明")}</a>
-        {status.can_download && phase !== "ready" && <Button type="button" variant="outline" size="sm" disabled={working} onClick={() => void act("download")}><Download aria-hidden="true" />{t("下载更新")}</Button>}
+        {status.can_download && phase !== "ready" && <IconButton icon={Download} label={t("下载更新")} disabled={working} onClick={() => void act("download")} />}
         {status.can_install && <Button type="button" size="sm" disabled={working} onClick={() => void act("install")}><ArrowUpToLine aria-hidden="true" />{t("安装并重启")}</Button>}
       </div>}
       {["downloading", "verifying", "preparing", "installing"].includes(phase || "") && <div className="flex flex-col gap-2 text-sm" role="status">

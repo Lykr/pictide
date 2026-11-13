@@ -7,8 +7,7 @@ import { copyText } from '../lib/copy-text';
 import { notifySuccess } from '../shared/notifications.mjs';
 import { useErrorNotice } from './notifications';
 import { SettingsRow } from './settings-row';
-import { IconButton } from './actions';
-import { Button } from './ui/button';
+import { HelpTip, IconButton } from './actions';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -47,7 +46,7 @@ export function NetworkSettings() {
     try { await copyText(url); notifySuccess(t('已复制'), { id: 'clipboard' }); }
     catch { setError(t('复制失败，请选中文本复制')); }
   };
-  return <SettingsRow separated stackOnMobile align="start" label={t('局域网访问')}>
+  return <SettingsRow separated stackOnMobile align="start" label={<span className="flex items-center gap-1">{t('局域网访问')}<HelpTip text={t('立即生效，本次运行有效。访问设备共用图片、设置和偏好。')} /></span>}>
     <div className="flex min-w-0 flex-col items-start gap-3" data-network-settings="">
       <Label htmlFor="network-enabled" className="gap-2">
         <Checkbox id="network-enabled" checked={status?.enabled ?? false}
@@ -55,9 +54,8 @@ export function NetworkSettings() {
           onCheckedChange={value => void load(value === true)} />
         {t('允许同一局域网的设备访问')}{busy && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}
       </Label>
-      <p className="text-sm text-muted-foreground">{t('立即生效，本次运行有效。访问设备共用图片、设置和偏好。')}</p>
       {status && !status.can_configure && <p className="text-sm text-muted-foreground">{t('请在运行 Pictide 的电脑上通过本机地址配置。')}</p>}
-      {error && <Button variant="outline" type="button" disabled={busy} onClick={() => void load()}>{t('重试')}</Button>}
+      {error && <IconButton icon={RefreshCw} label={t('重试')} disabled={busy} onClick={() => void load()} />}
       {status?.enabled && <>
         {status.urls.length > 1 && <Select value={url} onValueChange={setSelected}>
           <SelectTrigger aria-label={t('局域网地址')} className="w-full"><SelectValue /></SelectTrigger>
@@ -69,8 +67,9 @@ export function NetworkSettings() {
             <IconButton icon={Copy} label={t('复制访问地址')} onClick={() => void copy()} />
             <IconButton icon={busy ? LoaderCircle : RefreshCw} className={busy ? '[&_svg]:animate-spin' : ''} label={t('刷新访问地址')} disabled={busy} onClick={() => void load()} />
           </div>
-          <QRCodeSVG value={url} size={160} marginSize={4} title={t('手机扫码访问 Pictide')} className="max-w-full rounded-md" />
-          <p className="text-sm text-muted-foreground">{t('地址对应本机的不同网卡。手机连接同一局域网后扫码，连接受阻时检查防火墙的专用网络权限。')}</p>
+          <div data-tooltip={t('地址对应本机的不同网卡。手机连接同一局域网后扫码，连接受阻时检查防火墙的专用网络权限。')}>
+            <QRCodeSVG value={url} size={160} marginSize={4} title={t('手机扫码访问 Pictide')} className="max-w-full rounded-md" />
+          </div>
         </> : <p className="text-sm text-muted-foreground">{t('未找到局域网地址，请检查网络后刷新。')}</p>}
       </>}
     </div>

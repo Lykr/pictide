@@ -4,7 +4,6 @@ import { useApplication, useModel } from '../shared/application-context';
 import { t } from '../i18n/index.mjs';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Button } from '../components/ui/button';
 import { FormSelect } from '../components/form-select';
 import { HelpTip, IconButton } from '../components/actions';
 
@@ -26,7 +25,7 @@ export function CanvasPools() {
         <IconButton icon={Trash2} label={t('移除第 {index} 组尺寸', {index: index + 1})} className="mb-0.5" disabled={draft.sizes.length === 1} onClick={() => service.removeSize(size.key)} />
       </div>)}
     </div>
-    <div><Button type="button" variant="outline" onClick={service.addSize} disabled={draft.sizes.length >= 64}><Plus aria-hidden="true" />{t('添加尺寸')}</Button></div>
-    <div className="dialog-footer"><Button id="save-canvas-pool" type="submit" disabled={!state.dirty || state.busy} aria-busy={state.operation === 'save'}>{state.operation === 'save' ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{t('保存画幅池')}</Button></div>
+    <div><IconButton icon={Plus} label={t('添加尺寸')} onClick={service.addSize} disabled={draft.sizes.length >= 64} /></div>
+    <div className="dialog-footer"><IconButton id="save-canvas-pool" type="submit" className={state.operation === 'save' ? '[&_svg]:animate-spin' : ''} icon={state.operation === 'save' ? LoaderCircle : Save} label={t('保存画幅池')} disabled={!state.dirty || state.busy} aria-busy={state.operation === 'save'} /></div>
   </form>;
 }
