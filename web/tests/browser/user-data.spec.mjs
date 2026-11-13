@@ -16,7 +16,8 @@ test('user data owns migration, preferences, cleanup, and data location', async 
   await expect(page.getByRole('button', { name: '导出用户数据', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: '导入用户数据', exact: true })).toBeEnabled();
   await expect(page.getByText('用户偏好', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '图片清理', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '图片清理', exact: true })).toBeVisible();
+  await expect(page.locator('#history-retention-days')).toBeVisible();
   await expect(page.locator('#settings-general')).toBeHidden();
   await expect(page.locator('#settings-history')).toBeHidden();
 
